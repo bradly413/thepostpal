@@ -8,19 +8,20 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-function getPassword() {
+function getCredentials() {
+  const username = process.env.PORTAL_USERNAME;
   const pw = process.env.PORTAL_PASSWORD;
-  if (!pw) throw new Error("PORTAL_PASSWORD environment variable is required");
-  return pw;
+  if (!username || !pw) throw new Error("PORTAL_USERNAME and PORTAL_PASSWORD environment variables are required");
+  return { username, password: pw };
 }
 
-export async function verifyPassword(password: string): Promise<boolean> {
-  const expected = getPassword();
-  if (password.length !== expected.length) return false;
-  return timingSafeEqual(
-    new TextEncoder().encode(password),
-    new TextEncoder().encode(expected),
-  );
+export async function verifyCredentials(username: string, password: string): Promise<boolean> {
+  const expected = getCredentials();
+  const userMatch = username.length === expected.username.length &&
+    timingSafeEqual(new TextEncoder().encode(username), new TextEncoder().encode(expected.username));
+  const passMatch = password.length === expected.password.length &&
+    timingSafeEqual(new TextEncoder().encode(password), new TextEncoder().encode(expected.password));
+  return userMatch && passMatch;
 }
 
 export async function createSession(): Promise<string> {

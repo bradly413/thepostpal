@@ -19,7 +19,7 @@ export default function LoginPage() {
     const res = await fetch("/api/auth", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ password }),
+      body: JSON.stringify({ username, password }),
     });
 
     if (res.ok) {
@@ -74,7 +74,7 @@ export default function LoginPage() {
           {error && <p className="text-danger text-sm">{error}</p>}
           <button
             type="submit"
-            disabled={loading || !password}
+            disabled={loading || !username || !password}
             className="w-full rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-3 text-white font-medium transition-all hover:bg-accent/30 hover:border-accent/40 disabled:opacity-50"
           >
             {loading ? "Signing in..." : "Sign In"}
