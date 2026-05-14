@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useState, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 
@@ -51,6 +51,14 @@ const groupedTemplates = PILLAR_ORDER
   .filter((g) => g.items.length > 0);
 
 export default function TemplatesPage() {
+  return (
+    <Suspense>
+      <TemplatesContent />
+    </Suspense>
+  );
+}
+
+function TemplatesContent() {
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
   const [filter, setFilter] = useState(PILLARS.includes(initialPillar) ? initialPillar : "All");

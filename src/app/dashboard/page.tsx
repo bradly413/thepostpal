@@ -248,7 +248,7 @@ function MiniCalendar() {
 }
 
 const HERO_SLIDES = [
-  { src: "", label: "New Listing Post" },
+  { src: "/previews/new-listing.png", label: "New Listing Post" },
   { src: "", label: "Market Update" },
   { src: "", label: "Neighborhood Spotlight" },
   { src: "", label: "Just Sold" },
@@ -274,8 +274,12 @@ function NewPostSlideshow() {
               pointerEvents: i === current ? "auto" : "none",
             }}
           >
-            <div className="absolute inset-0 bg-gradient-to-br from-[#1a1d23] via-[#2a2d35] to-[#1a1d23]" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-black/10 to-transparent" />
+            {slide.src ? (
+              <img src={slide.src} alt={slide.label} className="absolute inset-0 w-full h-full object-cover" />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-[#1a1d23] via-[#2a2d35] to-[#1a1d23]" />
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/40 to-black/20" />
             <div className="absolute inset-0 bg-gradient-to-br from-white/[0.08] to-transparent" />
           </div>
         ))}
