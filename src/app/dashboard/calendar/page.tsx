@@ -264,7 +264,7 @@ export default function CalendarPage() {
   }
 
   function handleDeletePost() {
-    if (editingPost) {
+    if (editingPost && window.confirm("Delete this post?")) {
       deleteScheduledPost(editingPost.id);
       setModalMode(null);
     }
@@ -289,7 +289,7 @@ export default function CalendarPage() {
   }
 
   function handleDeleteEvent() {
-    if (editingEvent) {
+    if (editingEvent && window.confirm("Delete this event?")) {
       deleteCalendarEvent(editingEvent.id);
       setModalMode(null);
     }
@@ -391,7 +391,7 @@ export default function CalendarPage() {
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" checked={showHolidays} onChange={(e) => setShowHolidays(e.target.checked)} className="rounded border-border accent-accent" />
+                <input type="checkbox" name="show-holidays" checked={showHolidays} onChange={(e) => setShowHolidays(e.target.checked)} className="rounded border-border accent-accent" />
                 <span className="text-[11px] text-text-secondary">Holidays</span>
               </label>
               <div className="flex gap-1 rounded-xl bg-surface border border-border p-1">
@@ -421,10 +421,10 @@ export default function CalendarPage() {
                   const isToday = cell.dateKey === todayKey;
                   const totalItems = cellPosts.length + cellEvents.length + (holiday ? 1 : 0);
                   return (
-                    <div
+                    <button
                       key={i}
                       onClick={() => openDayDetail(cell.dateKey)}
-                      className={`min-h-[110px] border-b border-r border-border p-1.5 cursor-pointer hover:bg-elevated/30 transition-colors ${
+                      className={`min-h-[110px] border-b border-r border-border p-1.5 cursor-pointer hover:bg-elevated/30 transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
                     >
@@ -463,7 +463,7 @@ export default function CalendarPage() {
                           <p className="text-[9px] text-text-secondary px-1">+{totalItems - (holiday ? 3 : 4)} more</p>
                         )}
                       </div>
-                    </div>
+                    </button>
                   );
                 })}
               </div>
@@ -485,8 +485,8 @@ export default function CalendarPage() {
                         <p className="text-[10px] text-text-secondary font-bold uppercase">{wd.dayName}</p>
                         <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-accent" : "text-text"}`}>{wd.day}</p>
                       </div>
-                      <div
-                        className="min-h-[400px] p-2 space-y-1.5 cursor-pointer hover:bg-elevated/20 transition-colors"
+                      <button
+                        className="min-h-[400px] p-2 space-y-1.5 cursor-pointer hover:bg-elevated/20 transition-colors w-full text-left"
                         onClick={() => openDayDetail(wd.dateKey)}
                       >
                         {holiday && (
@@ -518,7 +518,7 @@ export default function CalendarPage() {
                             <p className="text-[10px] opacity-70 capitalize">{p.platform}</p>
                           </button>
                         ))}
-                      </div>
+                      </button>
                     </div>
                   );
                 })}
@@ -617,8 +617,8 @@ export default function CalendarPage() {
 
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div className="w-full max-w-md max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-text font-heading">{formatDisplayDate(selectedDate)}</h3>
@@ -626,7 +626,7 @@ export default function CalendarPage() {
                   <p className="text-xs font-semibold text-warning mt-0.5">{holidayMap.get(selectedDate)}</p>
                 )}
               </div>
-              <button onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -705,11 +705,11 @@ export default function CalendarPage() {
 
       {/* Schedule Post Modal */}
       {modalMode === "post" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text font-heading">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
-              <button onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -777,7 +777,7 @@ export default function CalendarPage() {
                   value={formCaption}
                   onChange={(e) => setFormCaption(e.target.value)}
                   rows={3}
-                  placeholder="Write your post caption..."
+                  placeholder="Write your post caption…"
                   className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                 />
               </div>
@@ -842,11 +842,11 @@ export default function CalendarPage() {
 
       {/* Event Modal */}
       {modalMode === "event" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text font-heading">{editingEvent ? "Edit Event" : "Add Event"}</h3>
-              <button onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -858,7 +858,7 @@ export default function CalendarPage() {
                   type="text"
                   value={eventTitle}
                   onChange={(e) => setEventTitle(e.target.value)}
-                  placeholder="Open house, closing, meeting..."
+                  placeholder="Open house, closing, meeting…"
                   className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
                 />
               </div>
@@ -913,7 +913,7 @@ export default function CalendarPage() {
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
                   rows={2}
-                  placeholder="Any additional details..."
+                  placeholder="Any additional details…"
                   className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
                 />
               </div>

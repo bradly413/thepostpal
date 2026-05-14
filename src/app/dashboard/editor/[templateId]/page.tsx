@@ -342,7 +342,7 @@ export default function EditorPage({
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !aiGenerating) { e.preventDefault(); handleAiGenerate(); } }}
-                placeholder="Describe an image to generate..."
+                placeholder="Describe an image to generate…"
                 className="flex-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
               />
               <div className="flex items-center justify-between mt-2">
@@ -385,7 +385,10 @@ export default function EditorPage({
                         ? "border-success bg-success/5"
                         : "border-border hover:border-accent/50"
                   }`}
+                  role="button"
+                  tabIndex={0}
                   onClick={() => document.getElementById("photo-input")?.click()}
+                  onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); document.getElementById("photo-input")?.click(); } }}
                 >
                   {photo ? (
                     <div className="space-y-2 relative">
@@ -598,13 +601,15 @@ export default function EditorPage({
                       <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       Schedule Post
                     </p>
-                    <button onClick={() => setShowSchedule(false)} className="text-text-secondary hover:text-text transition-colors">
+                    <button onClick={() => setShowSchedule(false)} aria-label="Close" className="text-text-secondary hover:text-text transition-colors">
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
                   <div className="flex gap-2">
                     <input
                       type="date"
+                      name="schedule-date"
+                      aria-label="Schedule date"
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
                       min={new Date().toISOString().split("T")[0]}
@@ -612,6 +617,8 @@ export default function EditorPage({
                     />
                     <input
                       type="time"
+                      name="schedule-time"
+                      aria-label="Schedule time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
                       className="w-28 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:dark]"
@@ -664,11 +671,11 @@ export default function EditorPage({
       </div>
 
       {showPhotoPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setShowPhotoPicker(false)}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" role="presentation" onClick={() => setShowPhotoPicker(false)}>
           <div className="w-full max-w-lg max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-5 py-4 border-b border-border">
               <h3 className="text-base font-heading text-text">Choose a Photo</h3>
-              <button onClick={() => setShowPhotoPicker(false)} className="text-text-secondary hover:text-text transition-colors">
+              <button onClick={() => setShowPhotoPicker(false)} aria-label="Close" className="text-text-secondary hover:text-text transition-colors">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -683,7 +690,7 @@ export default function EditorPage({
                         onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
                         className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
                       >
-                        <img src={p.src} alt={p.name} className="h-full w-full object-cover" />
+                        <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
                           <span className="w-full px-1 py-0.5 text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity truncate bg-black/50">{p.name}</span>
                         </div>

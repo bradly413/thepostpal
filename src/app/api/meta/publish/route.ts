@@ -4,8 +4,9 @@ import { publishToFacebook, publishToInstagram } from "@/lib/meta";
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { platform, pageId, pageToken, igAccountId, caption, imageUrl, scheduledTime } = body;
+    const { platform, pageId, igAccountId, caption, imageUrl, scheduledTime } = body;
 
+    const pageToken = process.env.META_PAGE_ACCESS_TOKEN;
     if (!pageToken || !pageId) {
       return NextResponse.json({ error: "Not connected to Facebook" }, { status: 400 });
     }

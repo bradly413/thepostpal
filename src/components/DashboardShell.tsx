@@ -32,7 +32,7 @@ const EXTRA_NAV: NavItem[] = [
 ];
 
 const ALL_NAV: NavItem[] = [...NAV, ...EXTRA_NAV];
-const NAV_ITEM_H = 44;
+const NAV_ITEM_H = 36;
 
 function SidebarIcon({ type }: { type: string }) {
   const props = { width: 18, height: 18, fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5 };
@@ -74,12 +74,27 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [mobileNav, setMobileNav] = useState(false);
   const [theme, setTheme] = useState<"dark" | "light">("dark");
   const contentRef = useRef<HTMLDivElement>(null);
+  const [navItemH, setNavItemH] = useState(NAV_ITEM_H);
 
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved === "true") setCollapsed(true);
     const savedTheme = localStorage.getItem("theme");
     if (savedTheme === "light") setTheme("light");
+  }, []);
+
+  useEffect(() => {
+    function measure() {
+      if (!contentRef.current) return;
+      const available = contentRef.current.clientHeight - 8;
+      const sepH = 9;
+      const totalItems = ALL_NAV.length;
+      const h = Math.floor((available - sepH) / totalItems);
+      setNavItemH(Math.max(30, Math.min(h, 44)));
+    }
+    measure();
+    window.addEventListener("resize", measure);
+    return () => window.removeEventListener("resize", measure);
   }, []);
 
   useEffect(() => {
@@ -112,7 +127,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   let highlightTop = -999;
   if (highlightIdx >= 0) {
     const sepsBefore = highlightIdx >= separatorOffset ? 1 : 0;
-    highlightTop = NAV_PAD + highlightIdx * NAV_ITEM_H + sepsBefore * 17;
+    highlightTop = NAV_PAD + highlightIdx * navItemH + sepsBefore * 9;
   }
 
   const navWidth = collapsed ? 72 : 240;
@@ -171,10 +186,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         }
         .ds-nav-content {
           flex: 1;
-          padding: 8px 0;
+          padding: 4px 0;
           position: relative;
-          overflow-x: hidden;
-          overflow-y: auto;
+          overflow: hidden;
           direction: rtl;
         }
         .ds-nav-content::-webkit-scrollbar {
@@ -187,7 +201,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         .ds-nav-item {
           position: relative;
           margin-left: 12px;
-          height: ${NAV_ITEM_H}px;
+          height: ${navItemH}px;
           display: flex;
           align-items: center;
           color: rgba(255,255,255,0.55);
@@ -223,7 +237,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           position: absolute;
           right: 0;
           width: calc(100% - 12px);
-          height: ${NAV_ITEM_H}px;
+          height: ${navItemH}px;
           background: #0c0c0e;
           border-radius: 14px 0 0 14px;
           transition: top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -254,7 +268,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           background: rgba(59,130,246,0.12);
           border: 1px solid rgba(59,130,246,0.35);
           cursor: pointer;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           flex-shrink: 0;
           box-shadow: 0 0 14px rgba(59,130,246,0.15), 0 0 4px rgba(59,130,246,0.2), inset 0 0 8px rgba(59,130,246,0.08);
         }
@@ -283,7 +297,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           align-items: center;
           justify-content: center;
           color: #fff;
-          transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: background 0.4s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.4s cubic-bezier(0.4, 0, 0.2, 1), box-shadow 0.4s cubic-bezier(0.4, 0, 0.2, 1);
           box-shadow: 0 0 10px rgba(59,130,246,0.5), 0 0 20px rgba(59,130,246,0.2);
         }
         .ds-theme-on .ds-theme-knob {
@@ -343,7 +357,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
       {/* Mobile header */}
       <div className="ds-mobile-header">
-        <button onClick={() => setMobileNav(true)} className="p-1 text-white/60">
+        <button onClick={() => setMobileNav(true)} aria-label="Open navigation menu" className="p-1 text-white/60">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
         </button>
         <span className="ml-3 text-sm font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>thepostpal</span>
@@ -360,7 +374,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           >
             <div className="flex items-center justify-between p-4">
               <span className="text-lg font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>thepostpal</span>
-              <button onClick={() => setMobileNav(false)} className="p-1 text-white/40">
+              <button onClick={() => setMobileNav(false)} aria-label="Close navigation menu" className="p-1 text-white/40">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -376,6 +390,15 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                   <Link key={item.label} href={item.href} onClick={() => setMobileNav(false)} className={cls}>{children}</Link>
                 );
               })}
+              <button
+                onClick={() => { setMobileNav(false); handleLogout(); }}
+                className="flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors text-white/55 hover:text-white/70 w-full mt-2 border-t border-white/[0.06] pt-3"
+              >
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
+                </svg>
+                Logout
+              </button>
             </nav>
           </div>
         </div>
@@ -391,6 +414,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           )}
           <button
             onClick={toggleCollapsed}
+            aria-label="Toggle sidebar"
             className="flex items-center justify-center w-10 h-10 rounded-xl text-white/40 hover:text-white transition-colors"
             style={collapsed ? { margin: "0 auto" } : {}}
           >
@@ -420,7 +444,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             </Link>
           ))}
 
-          <hr style={{ margin: "8px 0 8px 16px" }} />
+          <hr style={{ margin: "4px 0 4px 16px" }} />
 
           {EXTRA_NAV.map((item, i) => {
             const cls = `ds-nav-item ${isActive(item.href) ? "active" : ""}`;
@@ -470,6 +494,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 </button>
                 <button
                   onClick={() => setFooterOpen(!footerOpen)}
+                  aria-label="Toggle user menu"
                   className="ds-footer-caret p-2 text-white/30 hover:text-white transition-all"
                   style={{ transform: footerOpen ? "rotate(180deg)" : "rotate(0)", transition: "transform 0.2s, opacity 0.2s" }}
                 >

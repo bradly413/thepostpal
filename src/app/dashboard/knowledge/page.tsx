@@ -43,6 +43,7 @@ export default function KnowledgePage() {
   const [content, setContent] = useState("");
   const [saving, setSaving] = useState(false);
   const [expanded, setExpanded] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
   const fetchArticles = useCallback(async () => {
     try {
@@ -61,6 +62,7 @@ export default function KnowledgePage() {
   async function handleSave() {
     if (!title.trim() || !content.trim()) return;
     setSaving(true);
+    setError(null);
     try {
       const res = await fetch("/api/knowledge", {
         method: "POST",
@@ -73,21 +75,33 @@ export default function KnowledgePage() {
         setCategory("Neighborhood Guides");
         setShowAdd(false);
         fetchArticles();
+      } else {
+        setError("Failed to save article. Please try again.");
       }
+    } catch {
+      setError("Failed to save article. Check your network and try again.");
     } finally {
       setSaving(false);
     }
   }
 
   async function handleDelete(id: string) {
-    const res = await fetch("/api/knowledge", {
-      method: "DELETE",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    });
-    if (res.ok) {
-      setArticles((prev) => prev.filter((a) => a.id !== id));
-      if (expanded === id) setExpanded(null);
+    if (!window.confirm("Delete this article?")) return;
+    setError(null);
+    try {
+      const res = await fetch("/api/knowledge", {
+        method: "DELETE",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      if (res.ok) {
+        setArticles((prev) => prev.filter((a) => a.id !== id));
+        if (expanded === id) setExpanded(null);
+      } else {
+        setError("Failed to delete article. Please try again.");
+      }
+    } catch {
+      setError("Failed to delete article. Check your network and try again.");
     }
   }
 
@@ -221,6 +235,14 @@ export default function KnowledgePage() {
         </div>
         <div className="pointer-events-none absolute right-0 top-0 bottom-2 w-12 bg-gradient-to-l from-bg to-transparent" />
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="mb-4 shrink-0 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-danger">{error}</p>
+          <button onClick={() => setError(null)} className="text-xs text-danger/60 hover:text-danger transition-colors">Dismiss</button>
+        </div>
+      )}
 
       {/* Articles List */}
       {loading ? (

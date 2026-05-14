@@ -16,16 +16,21 @@ export default function LoginPage() {
     setLoading(true);
     setError("");
 
-    const res = await fetch("/api/auth", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ username, password }),
-    });
+    try {
+      const res = await fetch("/api/auth", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, password }),
+      });
 
-    if (res.ok) {
-      router.push("/dashboard");
-    } else {
-      setError("Wrong username or password. Try again.");
+      if (res.ok) {
+        router.push("/dashboard");
+      } else {
+        setError("Wrong username or password. Try again.");
+        setLoading(false);
+      }
+    } catch {
+      setError("Connection error. Try again.");
       setLoading(false);
     }
   }
@@ -43,6 +48,10 @@ export default function LoginPage() {
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="Username"
+            aria-label="Username"
+            name="username"
+            autoComplete="username"
+            spellCheck={false}
             className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-center text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition-colors"
             autoFocus
           />
@@ -52,11 +61,15 @@ export default function LoginPage() {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Password"
+              aria-label="Password"
+              name="password"
+              autoComplete="current-password"
               className="w-full rounded-xl border border-border bg-surface px-4 py-3 text-center text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition-colors"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
+              aria-label="Toggle password visibility"
               className="absolute right-3 top-1/2 -translate-y-1/2 text-text-secondary/50 hover:text-text-secondary transition-colors"
             >
               {showPassword ? (
@@ -75,15 +88,11 @@ export default function LoginPage() {
           <button
             type="submit"
             disabled={loading || !username || !password}
-            className="w-full rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-3 text-white font-medium transition-all hover:bg-accent/30 hover:border-accent/40 disabled:opacity-50"
+            className="w-full rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-3 text-white font-medium transition-colors transition-opacity hover:bg-accent/30 hover:border-accent/40 disabled:opacity-50"
           >
-            {loading ? "Signing in..." : "Sign In"}
+            {loading ? "Signing in…" : "Sign In"}
           </button>
         </form>
-
-        <button className="mt-4 text-xs text-text-secondary/50 hover:text-accent transition-colors">
-          Forgot username or password?
-        </button>
 
         <p className="mt-4 text-xs text-text-secondary/50">Powered by Bradly Robert Creative</p>
       </div>

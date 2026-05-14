@@ -252,7 +252,9 @@ export default function AIAssistantPage() {
                       : "ai-msg-assistant rounded-bl-md"
                   }`}>
                     {msg.role === "assistant" ? (
-                      <div className="text-sm text-white/80 leading-relaxed prose-sm" dangerouslySetInnerHTML={{ __html: formatMarkdown(msg.content) }} />
+                      <div className="text-sm text-white/80 leading-relaxed prose-sm">
+                        {renderMarkdown(msg.content)}
+                      </div>
                     ) : (
                       <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
                     )}
@@ -314,6 +316,23 @@ export default function AIAssistantPage() {
                   </span>
                 </button>
               ))}
+            </div>
+          </div>
+        )}
+
+        {/* New Conversation button */}
+        {hasMessages && (
+          <div className="shrink-0 px-6 pb-2">
+            <div className="max-w-2xl mx-auto flex justify-end">
+              <button
+                onClick={() => { setMessages([]); setInput(""); setError(null); }}
+                className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/30 hover:text-white/70 hover:border-white/[0.12] transition-all"
+              >
+                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+                </svg>
+                New Conversation
+              </button>
             </div>
           </div>
         )}
@@ -440,24 +459,100 @@ export default function AIAssistantPage() {
   );
 }
 
-function formatMarkdown(text: string): string {
-  let html = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
+function renderMarkdown(text: string): React.ReactNode {
+  const lines = text.split("\n");
+  const elements: React.ReactNode[] = [];
+  let i = 0;
 
-  html = html.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre class="bg-white/[0.04] rounded-lg p-3 my-2 overflow-x-auto text-xs"><code>$2</code></pre>');
-  html = html.replace(/`([^`]+)`/g, '<code class="bg-white/[0.06] px-1.5 py-0.5 rounded text-xs text-accent">$1</code>');
-  html = html.replace(/\*\*([^*]+)\*\*/g, "<strong class=\"text-white/90\">$1</strong>");
-  html = html.replace(/\*([^*]+)\*/g, "<em>$1</em>");
-  html = html.replace(/^### (.+)$/gm, '<h3 class="text-sm font-bold text-white/90 mt-3 mb-1">$1</h3>');
-  html = html.replace(/^## (.+)$/gm, '<h2 class="text-base font-bold text-white/90 mt-4 mb-1.5">$1</h2>');
-  html = html.replace(/^# (.+)$/gm, '<h1 class="text-lg font-bold text-white/90 mt-4 mb-2">$1</h1>');
-  html = html.replace(/^- (.+)$/gm, '<li class="ml-4 list-disc text-white/60">$1</li>');
-  html = html.replace(/^(\d+)\. (.+)$/gm, '<li class="ml-4 list-decimal text-white/60">$1. $2</li>');
-  html = html.replace(/\n{2,}/g, '</p><p class="mt-2">');
-  html = html.replace(/\n/g, "<br/>");
-  html = `<p>${html}</p>`;
+  while (i < lines.length) {
+    const line = lines[i];
 
-  return html;
+    // Code blocks
+    if (line.startsWith("```")) {
+      const codeLines: string[] = [];
+      i++;
+      while (i < lines.length && !lines[i].startsWith("```")) {
+        codeLines.push(lines[i]);
+        i++;
+      }
+      i++; // skip closing ```
+      elements.push(
+        <pre key={elements.length} className="bg-white/[0.04] rounded-lg p-3 my-2 overflow-x-auto text-xs">
+          <code>{codeLines.join("\n")}</code>
+        </pre>
+      );
+      continue;
+    }
+
+    // Headings
+    if (line.startsWith("### ")) {
+      elements.push(<h3 key={elements.length} className="text-sm font-bold text-white/90 mt-3 mb-1">{renderInline(line.slice(4))}</h3>);
+      i++;
+      continue;
+    }
+    if (line.startsWith("## ")) {
+      elements.push(<h2 key={elements.length} className="text-base font-bold text-white/90 mt-4 mb-1.5">{renderInline(line.slice(3))}</h2>);
+      i++;
+      continue;
+    }
+    if (line.startsWith("# ")) {
+      elements.push(<h1 key={elements.length} className="text-lg font-bold text-white/90 mt-4 mb-2">{renderInline(line.slice(2))}</h1>);
+      i++;
+      continue;
+    }
+
+    // List items
+    if (line.startsWith("- ")) {
+      elements.push(<li key={elements.length} className="ml-4 list-disc text-white/60">{renderInline(line.slice(2))}</li>);
+      i++;
+      continue;
+    }
+    const olMatch = line.match(/^(\d+)\. (.+)$/);
+    if (olMatch) {
+      elements.push(<li key={elements.length} className="ml-4 list-decimal text-white/60">{renderInline(olMatch[2])}</li>);
+      i++;
+      continue;
+    }
+
+    // Empty line = paragraph break
+    if (line.trim() === "") {
+      elements.push(<br key={elements.length} />);
+      i++;
+      continue;
+    }
+
+    // Regular paragraph
+    elements.push(<p key={elements.length} className="mt-1">{renderInline(line)}</p>);
+    i++;
+  }
+
+  return <>{elements}</>;
+}
+
+function renderInline(text: string): React.ReactNode {
+  // Split text into segments: code, bold, italic, and plain text
+  const parts: React.ReactNode[] = [];
+  const regex = /`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
+  let lastIndex = 0;
+  let match: RegExpExecArray | null;
+
+  while ((match = regex.exec(text)) !== null) {
+    if (match.index > lastIndex) {
+      parts.push(text.slice(lastIndex, match.index));
+    }
+    if (match[1] !== undefined) {
+      parts.push(<code key={parts.length} className="bg-white/[0.06] px-1.5 py-0.5 rounded text-xs text-accent">{match[1]}</code>);
+    } else if (match[2] !== undefined) {
+      parts.push(<strong key={parts.length} className="text-white/90">{match[2]}</strong>);
+    } else if (match[3] !== undefined) {
+      parts.push(<em key={parts.length}>{match[3]}</em>);
+    }
+    lastIndex = match.index + match[0].length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length === 1 ? parts[0] : <>{parts}</>;
 }

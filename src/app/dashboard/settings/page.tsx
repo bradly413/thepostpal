@@ -92,6 +92,7 @@ function SettingsContent() {
   }
 
   function handleDisconnectMeta() {
+    if (!window.confirm("Disconnect Meta account?")) return;
     clearMetaConnection();
     setMeta(null);
   }
@@ -152,17 +153,19 @@ function SettingsContent() {
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   {[
-                    { key: "name", label: "Full Name" },
-                    { key: "title", label: "Title" },
-                    { key: "email", label: "Email" },
-                    { key: "phone", label: "Phone" },
-                    { key: "company", label: "Company" },
-                    { key: "website", label: "Website" },
+                    { key: "name", label: "Full Name", type: "text", autocomplete: "name" },
+                    { key: "title", label: "Title", type: "text", autocomplete: "organization-title" },
+                    { key: "email", label: "Email", type: "email", autocomplete: "email" },
+                    { key: "phone", label: "Phone", type: "tel", autocomplete: "tel" },
+                    { key: "company", label: "Company", type: "text", autocomplete: "organization" },
+                    { key: "website", label: "Website", type: "url", autocomplete: "url" },
                   ].map((field) => (
                     <div key={field.key}>
                       <label className="block text-xs font-medium text-text mb-1.5">{field.label}</label>
                       <input
-                        type="text"
+                        type={field.type}
+                        name={field.key}
+                        autoComplete={field.autocomplete}
                         value={profile[field.key as keyof typeof profile]}
                         onChange={(e) => setProfile({ ...profile, [field.key]: e.target.value })}
                         className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
@@ -215,6 +218,8 @@ function SettingsContent() {
                       <p className="text-xs text-text-secondary mt-0.5">{toggle.desc}</p>
                     </div>
                     <button
+                      role="switch"
+                      aria-checked={!!posting[toggle.key as keyof typeof posting]}
                       onClick={() => setPosting({ ...posting, [toggle.key]: !posting[toggle.key as keyof typeof posting] })}
                       className={`relative h-6 w-11 rounded-full transition-colors ${
                         posting[toggle.key as keyof typeof posting] ? "bg-accent" : "bg-border"
@@ -245,6 +250,8 @@ function SettingsContent() {
                       <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
                     </div>
                     <button
+                      role="switch"
+                      aria-checked={!!notifications[item.key as keyof typeof notifications]}
                       onClick={() => setNotifications({ ...notifications, [item.key]: !notifications[item.key as keyof typeof notifications] })}
                       className={`relative h-6 w-11 rounded-full transition-colors ${
                         notifications[item.key as keyof typeof notifications] ? "bg-accent" : "bg-border"

@@ -24,13 +24,14 @@ export default function VideosPage() {
   const [selectedVideo, setSelectedVideo] = useState<VideoItem | null>(null);
   const [tab, setTab] = useState<Tab>("all");
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetch("/api/vimeo/videos")
       .then((r) => r.json())
       .then((d) => { if (d.data) setVimeoVideos(d.data); })
-      .catch(() => {})
+      .catch((err) => { setError("Failed to load videos. Please try again later."); console.error("Vimeo fetch error:", err); })
       .finally(() => setLoading(false));
   }, []);
 
@@ -164,6 +165,14 @@ export default function VideosPage() {
           Drop videos here
         </div>
       </div>
+
+      {/* Error state */}
+      {error && (
+        <div className="mb-4 shrink-0 rounded-xl bg-danger/10 border border-danger/20 px-4 py-3 flex items-center justify-between">
+          <p className="text-sm text-danger">{error}</p>
+          <button onClick={() => setError(null)} className="text-xs text-danger/60 hover:text-danger transition-colors">Dismiss</button>
+        </div>
+      )}
 
       {/* Video Grid */}
       {loading ? (

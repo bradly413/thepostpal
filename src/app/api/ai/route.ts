@@ -106,10 +106,12 @@ export async function POST(req: Request) {
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
       system: SYSTEM_PROMPT + knowledgeContext,
-      messages: messages.map((m: { role: string; content: string }) => ({
-        role: m.role as "user" | "assistant",
-        content: m.content,
-      })),
+      messages: messages
+        .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
+        .map((m: { role: string; content: string }) => ({
+          role: m.role as "user" | "assistant",
+          content: m.content,
+        })),
     });
 
     const text =
