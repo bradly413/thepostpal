@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import PageTransition from "./PageTransition";
+import FeedbackWidget from "./FeedbackWidget";
 import { useState, useEffect, useRef } from "react";
 
 interface NavItem {
@@ -550,6 +551,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           </footer>
         )}
       </div>
+
+      <FeedbackWidget />
     </div>
   );
 }
