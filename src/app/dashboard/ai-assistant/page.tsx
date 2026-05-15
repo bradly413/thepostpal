@@ -129,6 +129,7 @@ function AIAssistantInner() {
     const prompt = searchParams.get("prompt");
     if (prompt && !messages.length && !loading) {
       initialPromptHandled.current = true;
+      setInput(prompt);
       sendMessage(prompt);
     }
   }, [searchParams, messages.length, loading, sendMessage]);
@@ -228,22 +229,6 @@ function AIAssistantInner() {
           filter: blur(40px);
           opacity: 0.45;
         }
-        .ai-mockup-glow {
-          border-radius: 1rem;
-          box-shadow:
-            0 0 30px 6px rgba(212, 168, 83, 0.18),
-            0 0 60px 16px rgba(212, 168, 83, 0.10),
-            0 0 100px 30px rgba(212, 168, 83, 0.05),
-            0 20px 40px -10px rgba(0, 0, 0, 0.5);
-          transition: box-shadow 0.6s ease;
-        }
-        .ai-mockup-glow:hover {
-          box-shadow:
-            0 0 40px 10px rgba(212, 168, 83, 0.22),
-            0 0 80px 24px rgba(212, 168, 83, 0.12),
-            0 0 120px 40px rgba(212, 168, 83, 0.06),
-            0 24px 48px -10px rgba(0, 0, 0, 0.6);
-        }
         @keyframes slide-in-right {
           from { transform: translateX(60px) scale(0.97); opacity: 0; }
           to   { transform: translateX(0) scale(1); opacity: 1; }
@@ -327,15 +312,13 @@ function AIAssistantInner() {
           <div className="flex-1" />
           <div className={`mb-6 w-full flex flex-col items-center ${slideIn ? "ai-slide-in" : ""}`}>
             <div className="max-w-[380px] w-full px-4">
-              <div className="ai-mockup-glow">
-                <SocialMockup
-                  platform={activePost.platform}
-                  caption={activePost.caption || undefined}
-                  hashtags={activePost.hashtags || undefined}
-                  imageUrl={activePost.imageUrl || undefined}
-                  username="Angie Nichols"
-                />
-              </div>
+              <SocialMockup
+                platform={activePost.platform}
+                caption={activePost.caption || undefined}
+                hashtags={activePost.hashtags || undefined}
+                imageUrl={activePost.imageUrl || undefined}
+                username="Angie Nichols"
+              />
               {lastAssistant && (
                 <div className="mt-3 px-1">
                   <button
@@ -355,7 +338,7 @@ function AIAssistantInner() {
         ) : activePost && loading ? (
           <div className="mb-6 w-full flex flex-col items-center">
             <div className="max-w-[380px] w-full px-4">
-              <div className="ai-mockup-glow opacity-50 relative">
+              <div className="opacity-50 relative">
                 <SocialMockup
                   platform={activePost.platform}
                   caption={activePost.caption || undefined}
