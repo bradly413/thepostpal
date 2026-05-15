@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { brandKnowledge } from "@/lib/brand-knowledge";
 import { buildKnowledgeContext } from "@/lib/knowledge-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { templates } from "@/lib/templates";
 
 const bk = brandKnowledge;
 
@@ -71,7 +72,59 @@ The content strategy uses these pillars:
 - Keep captions concise for Instagram (under 2200 chars) and conversational for Facebook
 - When suggesting content ideas, tie them to content pillars
 - Format responses with markdown for readability
-- Be proactive in suggesting improvements or alternatives`;
+- Be proactive in suggesting improvements or alternatives
+
+## CRITICAL: Always Generate Content
+When the user asks you to write a post, caption, or any content — ALWAYS generate it immediately. NEVER ask clarifying questions or say you need more details. Use the information provided and fill in reasonable defaults for anything missing. If they mention a property address, use it. If they don't specify details like bedrooms/bathrooms, make a reasonable assumption or keep the copy general. The user wants to see a finished post they can edit, not a conversation about what the post should be.
+
+When writing a platform-specific post (Instagram, Facebook, LinkedIn, Twitter), structure your response as:
+
+---
+[The actual caption/post text here, written as if Angie is posting it]
+---
+
+**Hashtags:** #tag1 #tag2 #tag3 ...
+
+This separator format helps the platform mockup extract and display your content correctly.`;
+
+function findMatchingTemplate(userMessage: string): string {
+  const lower = userMessage.toLowerCase();
+  const matched: typeof templates = [];
+
+  if (/new listing|just listed|listing announce/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "New Listing"));
+  } else if (/just sold|sold|closing/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Just Sold"));
+  } else if (/market|stats|data|update|snapshot/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Market Clarity"));
+  } else if (/tip|checklist|buyer|seller|staging/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Buyer / Seller Tips"));
+  } else if (/neighborhood|community|spotlight/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Neighborhood Life"));
+  } else if (/holiday|memorial|christmas|thanksgiving|halloween|fourth|labor day/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Holiday"));
+  } else if (/season|spring|summer|fall|winter/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Seasonal"));
+  } else if (/event|festival/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Local Life"));
+  } else if (/story|reel|stories/i.test(lower)) {
+    matched.push(...templates.filter((t) => t.pillar === "Stories / Reels"));
+  }
+
+  if (matched.length === 0) return "";
+
+  const templateInfo = matched
+    .map((t) => {
+      const fields = t.fields.map((f) => `  - ${f.label} (${f.type}): e.g. "${f.defaultValue}"`).join("\n");
+      return `Template: ${t.name}\nFormat: ${t.width}x${t.height}\nFields:\n${fields}`;
+    })
+    .join("\n\n");
+
+  return `\n\n## Matching Brand Template
+The user's request matches these brand templates. Use the template structure and default values as inspiration for the content format and tone. Write the post content to match this template's fields:
+
+${templateInfo}`;
+}
 
 export async function POST(req: Request) {
   const ip = getClientIp(req.headers as unknown as Headers);
@@ -98,6 +151,7 @@ export async function POST(req: Request) {
 
   const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
   const knowledgeContext = lastUserMsg ? buildKnowledgeContext(lastUserMsg.content) : "";
+  const templateContext = lastUserMsg ? findMatchingTemplate(lastUserMsg.content) : "";
 
   const client = new Anthropic({ apiKey });
 
@@ -105,7 +159,7 @@ export async function POST(req: Request) {
     const response = await client.messages.create({
       model: "claude-sonnet-4-20250514",
       max_tokens: 1500,
-      system: SYSTEM_PROMPT + knowledgeContext,
+      system: SYSTEM_PROMPT + knowledgeContext + templateContext,
       messages: messages
         .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
         .map((m: { role: string; content: string }) => ({

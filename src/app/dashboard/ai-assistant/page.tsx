@@ -4,7 +4,8 @@ import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 import SocialMockup, { type Platform } from "@/components/SocialMockup";
-import { detectPlatform, extractCaption, extractHashtags } from "@/lib/social-detect";
+import { detectPlatform, extractCaption, extractHashtags, stripHashtagsFromCaption } from "@/lib/social-detect";
+import { pickMockupImage } from "@/lib/mockup-library";
 
 type Message = {
   id: string;
@@ -17,6 +18,7 @@ interface GeneratedPost {
   platform: Platform;
   caption: string | null;
   hashtags: string | null;
+  imageUrl: string | null;
   rawContent: string;
   timestamp: number;
 }
@@ -82,12 +84,17 @@ export default function AIAssistantPage() {
       const assistantMsg: Message = { id: crypto.randomUUID(), role: "assistant", content: data.message, timestamp: new Date() };
       setMessages([...newMessages, assistantMsg]);
 
-      const platform = detectPlatform(content) || detectPlatform(data.message);
+      const platform = detectPlatform(content);
       if (platform) {
+        const rawCaption = extractCaption(data.message);
+        const hashtags = extractHashtags(data.message);
+        const caption = rawCaption && hashtags ? stripHashtagsFromCaption(rawCaption) : rawCaption;
+        const imageUrl = pickMockupImage(content);
         const post: GeneratedPost = {
           platform,
-          caption: extractCaption(data.message),
-          hashtags: extractHashtags(data.message),
+          caption,
+          hashtags,
+          imageUrl,
           rawContent: data.message,
           timestamp: Date.now(),
         };
@@ -215,28 +222,32 @@ export default function AIAssistantPage() {
         }
         .ai-ambilight-glow {
           position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          filter: blur(3.5vw);
-          transform: scale(1.12);
-          opacity: 0.5;
-          transition: opacity 0.6s ease;
+          top: -20px;
+          left: -20px;
+          right: -20px;
+          bottom: -20px;
+          width: auto;
+          height: auto;
+          filter: blur(50px) saturate(1.6) brightness(1.2);
+          transform: scale(1.08);
+          opacity: 0.6;
+          transition: opacity 0.6s ease, transform 0.6s ease;
           pointer-events: none;
           z-index: 0;
         }
         .ai-ambilight:hover .ai-ambilight-glow {
-          opacity: 0.75;
-          transform: scale(1.18);
+          opacity: 0.8;
+          transform: scale(1.12);
         }
-        @keyframes slide-in-up {
-          from { transform: translateY(40px); opacity: 0; }
-          to   { transform: translateY(0); opacity: 1; }
+        @keyframes slide-in-right {
+          from { transform: translateX(60px) scale(0.97); opacity: 0; }
+          to   { transform: translateX(0) scale(1); opacity: 1; }
         }
         .ai-slide-in {
-          animation: slide-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+          animation: slide-in-right 0.55s cubic-bezier(0.22, 1, 0.36, 1) forwards;
         }
+        .ai-mockup-scroll::-webkit-scrollbar { display: none; }
+        .ai-mockup-scroll { -ms-overflow-style: none; scrollbar-width: none; }
 
         [data-theme="light"] .ai-silk-base {
           background-image:
@@ -283,11 +294,13 @@ export default function AIAssistantPage() {
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w4" style={{ filter: "url(#ai-silk-warp-2)" }} />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-sheen" style={{ filter: "url(#ai-silk-warp)" }} />
 
-      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 relative z-10 overflow-y-auto">
+      <div className={`flex-1 min-h-0 flex flex-col items-center px-6 relative z-10 overflow-hidden ${
+        activePost || lastAssistant || loading ? "justify-end pb-6" : "justify-center"
+      }`}>
 
         {/* Error */}
         {error && (
-          <div className="rounded-2xl bg-red-500/5 border border-red-500/15 px-6 py-5 max-w-sm mb-8 text-center">
+          <div className="rounded-2xl bg-red-500/5 border border-red-500/15 px-6 py-5 max-w-sm mb-4 text-center">
             <p className="text-sm text-red-400/80">{error}</p>
             <button onClick={() => setError(null)} className="text-xs text-red-400/40 mt-3 hover:text-red-400 transition-colors">Dismiss</button>
           </div>
@@ -295,7 +308,7 @@ export default function AIAssistantPage() {
 
         {/* Loading state (no mockup yet) */}
         {loading && !activePost && (
-          <div className="flex flex-col items-center gap-3 mb-8">
+          <div className="flex flex-col items-center gap-3 mb-6">
             <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
@@ -303,71 +316,78 @@ export default function AIAssistantPage() {
           </div>
         )}
 
-        {/* Social mockup with ambilight glow */}
+        {/* Social mockup with ambilight glow — constrained to fit */}
         {activePost && !loading ? (
-          <div className={`mb-10 max-w-sm w-full ai-ambilight ${slideIn ? "ai-slide-in" : ""}`}>
-            {/* Glow layer */}
-            <div className="ai-ambilight-glow rounded-2xl overflow-hidden">
-              <SocialMockup
-                platform={activePost.platform}
-                caption={activePost.caption || undefined}
-                hashtags={activePost.hashtags || undefined}
-                username="Angie Nichols"
-              />
-            </div>
-            {/* Actual mockup */}
-            <div className="relative z-[2]">
-              <SocialMockup
-                platform={activePost.platform}
-                caption={activePost.caption || undefined}
-                hashtags={activePost.hashtags || undefined}
-                username="Angie Nichols"
-              />
-            </div>
-            {/* Caption below mockup */}
-            {lastAssistant && (
-              <div className="mt-4 px-1">
-                <button
-                  onClick={() => { setActivePost(null); }}
-                  className="flex items-center gap-1.5 text-[11px] font-medium text-white/30 hover:text-accent transition-colors"
-                >
-                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
-                  </svg>
-                  View full response
-                </button>
+          <div className={`mb-4 flex-1 min-h-0 w-full flex justify-center overflow-hidden pt-4 pb-2 ${slideIn ? "ai-slide-in" : ""}`}>
+            <div className="max-w-[360px] w-full h-full overflow-y-auto ai-mockup-scroll px-5">
+              <div className="ai-ambilight">
+                <div className="ai-ambilight-glow rounded-2xl overflow-hidden">
+                  <SocialMockup
+                    platform={activePost.platform}
+                    caption={activePost.caption || undefined}
+                    hashtags={activePost.hashtags || undefined}
+                    imageUrl={activePost.imageUrl || undefined}
+                    username="Angie Nichols"
+                  />
+                </div>
+                <div className="relative z-[2]">
+                  <SocialMockup
+                    platform={activePost.platform}
+                    caption={activePost.caption || undefined}
+                    hashtags={activePost.hashtags || undefined}
+                    imageUrl={activePost.imageUrl || undefined}
+                    username="Angie Nichols"
+                  />
+                </div>
               </div>
-            )}
+              {lastAssistant && (
+                <div className="mt-2 px-1 pb-2">
+                  <button
+                    onClick={() => { setActivePost(null); }}
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-white/30 hover:text-accent transition-colors"
+                  >
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                    </svg>
+                    View full response
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         ) : activePost && loading ? (
-          /* Loading overlay on existing mockup */
-          <div className="mb-10 max-w-sm w-full ai-ambilight">
-            <div className="ai-ambilight-glow rounded-2xl overflow-hidden opacity-20">
-              <SocialMockup
-                platform={activePost.platform}
-                caption={activePost.caption || undefined}
-                hashtags={activePost.hashtags || undefined}
-                username="Angie Nichols"
-              />
-            </div>
-            <div className="relative z-[2] opacity-40">
-              <SocialMockup
-                platform={activePost.platform}
-                caption={activePost.caption || undefined}
-                hashtags={activePost.hashtags || undefined}
-                username="Angie Nichols"
-              />
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-                <p className="text-sm text-white/50 font-medium mt-2">Generating new post...</p>
+          <div className="mb-4 flex-1 min-h-0 w-full flex justify-center overflow-hidden pt-4">
+            <div className="max-w-[320px] w-full h-full overflow-hidden">
+              <div className="ai-ambilight opacity-40">
+                <div className="ai-ambilight-glow rounded-2xl overflow-hidden opacity-50">
+                  <SocialMockup
+                    platform={activePost.platform}
+                    caption={activePost.caption || undefined}
+                    hashtags={activePost.hashtags || undefined}
+                    imageUrl={activePost.imageUrl || undefined}
+                    username="Angie Nichols"
+                  />
+                </div>
+                <div className="relative z-[2]">
+                  <SocialMockup
+                    platform={activePost.platform}
+                    caption={activePost.caption || undefined}
+                    hashtags={activePost.hashtags || undefined}
+                    imageUrl={activePost.imageUrl || undefined}
+                    username="Angie Nichols"
+                  />
+                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
+                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    <p className="text-sm text-white/50 font-medium mt-2">Generating new post...</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         ) : !loading && !activePost && lastAssistant ? (
-          /* Non-platform response — show text card */
-          <div className="mb-10 max-w-lg w-full">
+          <div className="mb-5 max-w-lg w-full">
             <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
               <div className="flex items-center gap-2 mb-3">
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
@@ -381,8 +401,7 @@ export default function AIAssistantPage() {
             </div>
           </div>
         ) : !loading && !activePost ? (
-          /* Empty state */
-          <div className="text-center mb-10">
+          <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent/8 mb-5">
               <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
                 <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
@@ -394,7 +413,7 @@ export default function AIAssistantPage() {
         ) : null}
 
         {/* Prompt card */}
-        <div ref={cardRef} className="w-full max-w-xl">
+        <div ref={cardRef} className="w-full max-w-xl flex-shrink-0">
           <div className={`relative rounded-2xl ${loading ? "p-[2px]" : ""}`}>
             {/* Rainbow border when loading */}
             {loading && (
@@ -488,7 +507,7 @@ export default function AIAssistantPage() {
 
       {/* History strip */}
       {history.length > 0 && (
-        <div className="border-t border-white/[0.05] px-6 py-3 bg-white/[0.01] relative z-10">
+        <div className="border-t border-white/[0.05] px-6 py-2.5 bg-white/[0.01] relative z-10 flex-shrink-0">
           <div className="flex items-center gap-4">
             <p className="text-[9px] uppercase tracking-[0.2em] text-white/20 shrink-0 font-medium">Recent</p>
             <div className="flex gap-2 overflow-x-auto pb-0.5">
@@ -511,7 +530,7 @@ export default function AIAssistantPage() {
             </div>
             {/* New conversation */}
             <button
-              onClick={() => { setMessages([]); setActivePost(null); setError(null); }}
+              onClick={() => { setMessages([]); setActivePost(null); setError(null); setHistory([]); }}
               className="shrink-0 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] font-medium text-white/20 hover:text-white/50 hover:border-white/[0.12] transition-all ml-auto"
             >
               <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

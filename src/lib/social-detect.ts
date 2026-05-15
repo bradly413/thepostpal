@@ -43,3 +43,10 @@ export function extractHashtags(text: string): string | null {
   if (tags && tags.length >= 2) return tags.slice(0, 8).join(" ");
   return null;
 }
+
+export function stripHashtagsFromCaption(caption: string): string {
+  return caption
+    .replace(/\*{0,2}Hashtags:?\*{0,2}\s*/gi, "")
+    .replace(/(#\w+\s*){2,}/g, "")
+    .trim();
+}
