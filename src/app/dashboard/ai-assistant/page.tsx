@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useCallback } from "react";
+import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 
 type Message = {
@@ -45,6 +46,7 @@ function QuickActionIcon({ type }: { type: string }) {
 }
 
 export default function AIAssistantPage() {
+  const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
@@ -53,6 +55,7 @@ export default function AIAssistantPage() {
   const [suggestionFade, setSuggestionFade] = useState(true);
   const chatRef = useRef<HTMLDivElement>(null);
   const cardRef = useRef<HTMLDivElement>(null);
+  const initialPromptHandled = useRef(false);
 
   useEffect(() => {
     if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
@@ -95,6 +98,15 @@ export default function AIAssistantPage() {
       setLoading(false);
     }
   }, [loading, messages]);
+
+  useEffect(() => {
+    if (initialPromptHandled.current) return;
+    const prompt = searchParams.get("prompt");
+    if (prompt && !messages.length && !loading) {
+      initialPromptHandled.current = true;
+      sendMessage(prompt);
+    }
+  }, [searchParams, messages.length, loading, sendMessage]);
 
   const hasMessages = messages.length > 0;
 
@@ -206,6 +218,37 @@ export default function AIAssistantPage() {
         .ai-typing-dot { animation: typing-pulse 1.4s ease-in-out infinite; }
         .ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
         .ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+
+        [data-theme="light"] .ai-silk-base {
+          background-image:
+            radial-gradient(ellipse 130% 90% at 25% 45%, rgba(212,168,83,0.06) 0%, transparent 50%),
+            radial-gradient(ellipse 90% 130% at 75% 35%, rgba(212,168,83,0.04) 0%, transparent 45%),
+            linear-gradient(160deg, #F0EDE8 0%, #E8E4DF 40%, #EDE9E3 100%);
+        }
+        [data-theme="light"] .ai-silk-w1,
+        [data-theme="light"] .ai-silk-w2,
+        [data-theme="light"] .ai-silk-w3,
+        [data-theme="light"] .ai-silk-w4 {
+          background-image: none;
+        }
+        [data-theme="light"] .ai-silk-sheen {
+          background-image: linear-gradient(108deg, transparent 25%, rgba(212,168,83,0.04) 38%, rgba(212,168,83,0.08) 50%, rgba(212,168,83,0.04) 62%, transparent 75%);
+        }
+        [data-theme="light"] .ai-card-idle {
+          background-image: none;
+          background: rgba(255,255,255,0.75);
+          border-color: rgba(120,120,130,0.2);
+          box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
+        }
+        [data-theme="light"] .ai-msg-assistant {
+          background-image: none;
+          background: rgba(255,255,255,0.65);
+          border-color: rgba(120,120,130,0.15);
+          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+        }
+        [data-theme="light"] .ai-msg-user {
+          background: linear-gradient(135deg, rgba(212,168,83,0.85) 0%, rgba(212,168,83,0.7) 100%);
+        }
       `}</style>
 
       {/* SVG filters */}

@@ -84,7 +84,7 @@ function TemplatesContent() {
         </div>
         <Link
           href={`/dashboard/editor/${templates[0]?.id}`}
-          className="flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all self-start"
+          className="flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:bg-accent/85 shadow-sm hover:shadow-md transition-all self-start"
         >
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -168,7 +168,7 @@ function TemplatesContent() {
                   <Link
                     key={t.id}
                     href={`/dashboard/editor/${t.id}`}
-                    className="group rounded-2xl bg-surface border border-border overflow-hidden hover:border-accent/40 hover:shadow-xl hover:shadow-accent/5 transition-all"
+                    className="group rounded-2xl bg-surface border border-border overflow-hidden hover:border-accent/40 shadow-sm hover:shadow-lg hover:shadow-accent/5 transition-all"
                   >
                     <div className={`relative aspect-[4/3] flex items-center justify-center ${bgPreview[t.bgType] || "bg-elevated"}`}>
                       <div className="text-center px-6">

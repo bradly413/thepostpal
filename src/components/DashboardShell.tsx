@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import PageTransition from "./PageTransition";
 import { useState, useEffect, useRef } from "react";
 
 interface NavItem {
@@ -151,7 +152,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           overflow: hidden;
           user-select: none;
           z-index: 50;
-          transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+          transition: width 0.25s cubic-bezier(0.4, 0, 0.2, 1), background-color 0.4s ease, color 0.4s ease, border-color 0.4s ease;
         }
         @media (min-width: 768px) {
           .ds-nav { display: flex; }
@@ -406,10 +407,10 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
       <div className={`ds-nav ${collapsed ? "ds-collapsed" : ""}`} style={{ width: navWidth }}>
         {/* Header */}
-        <div className="relative flex items-center shrink-0" style={{ height: 80, padding: "0 16px" }}>
+        <div className="relative flex items-center shrink-0" style={{ height: 80, padding: "0 8px" }}>
           {!collapsed && (
             <div className="flex-1 overflow-hidden" style={{ transition: "opacity 0.8s" }}>
-              <img src={theme === "dark" ? "/logos/thepostpal-white.png" : "/logos/thepostpal-black.png"} alt="thepostpal" className="w-full max-w-[180px] opacity-90" />
+              <img src={theme === "dark" ? "/logos/thepostpal-white.png" : "/logos/thepostpal-black.png"} alt="thepostpal" className="opacity-90" style={{ width: "118%", maxWidth: "none", marginLeft: "-6%", marginTop: "-4px" }} />
             </div>
           )}
           <button
@@ -538,8 +539,8 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto ds-main">
-          {children}
+        <main className="flex-1 flex flex-col overflow-y-auto ds-main">
+          <PageTransition>{children}</PageTransition>
         </main>
         {!pathname.startsWith("/dashboard/editor") && (
           <footer className="shrink-0 py-1 pr-4 text-right">

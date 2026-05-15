@@ -2,8 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useState, useEffect, useCallback, useRef } from "react";
 import WaveformCanvas from "@/components/WaveformCanvas";
+import AuroraCanvas from "@/components/AuroraCanvas";
 import { templates } from "@/lib/templates";
 import { formatDuration, getThumbnail, getVideoId } from "@/lib/vimeo";
 import type { VimeoVideo, VimeoListResponse } from "@/lib/vimeo";
@@ -14,33 +16,126 @@ const FALLBACK_VIDEOS = [
   { src: "", title: "Neighborhood Spotlight: Kirkwood", duration: "1:58" },
 ];
 
-function SketchBorder() {
-  const ref = useRef<HTMLDivElement>(null);
+const AI_PROMPTS = [
+  "Make a post for Father’s Day",
+  "Schedule a Facebook post for this Saturday",
+  "Make a post for my new listing",
+  "Create an Instagram post for Memorial Day Weekend",
+  "Write a caption for my just sold photo",
+  "Plan my social media for next week",
+  "Create an engagement post for my neighborhood",
+];
+
+function AiAssistantCard() {
+  const router = useRouter();
+  const [promptIndex, setPromptIndex] = useState(0);
+  const [fading, setFading] = useState(false);
+  const [userInput, setUserInput] = useState("");
+  const [generating, setGenerating] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const card = ref.current?.closest('.ai-card');
-    if (!card) return;
-    const onEnter = () => card.classList.add('start');
-    const onEnd = () => card.classList.remove('start');
-    card.addEventListener('pointerenter', onEnter);
-    const svgs = card.querySelectorAll('.sketch-lines svg');
-    svgs.forEach((s) => s.addEventListener('animationend', onEnd));
-    return () => {
-      card.removeEventListener('pointerenter', onEnter);
-      svgs.forEach((s) => s.removeEventListener('animationend', onEnd));
-    };
-  }, []);
+    if (userInput) return;
+    const interval = setInterval(() => {
+      setFading(true);
+      setTimeout(() => {
+        setPromptIndex((i) => (i + 1) % AI_PROMPTS.length);
+        setFading(false);
+      }, 900);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, [userInput]);
 
-  const svgRect = (
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" preserveAspectRatio="none">
-      <rect x="0" y="0" width="100" height="100" rx="20" ry="20" pathLength="10" />
-    </svg>
-  );
+  const handleSubmit = () => {
+    const text = userInput.trim();
+    if (!text) return;
+    setGenerating(true);
+    setTimeout(() => {
+      router.push(`/dashboard/ai-assistant?prompt=${encodeURIComponent(text)}`);
+    }, 1200);
+  };
 
   return (
-    <div ref={ref} className="sketch-lines">
-      <div>{svgRect}{svgRect}{svgRect}{svgRect}</div>
-      <div>{svgRect}{svgRect}{svgRect}{svgRect}</div>
+    <div
+      className={`ai-card col-span-1 md:col-span-2 row-span-1 group relative ${generating ? "p-[2px]" : ""}`}
+      style={{ borderRadius: 24 }}
+    >
+      {generating && (
+        <>
+          <div className="absolute inset-0 rounded-[24px] ai-gen-border" />
+          <div className="absolute inset-0 rounded-[24px] ai-gen-border ai-gen-glow" />
+        </>
+      )}
+      <div
+        className={`relative w-full h-full overflow-hidden rounded-[22px] ${generating ? "" : "bento-card"}`}
+        style={{ padding: 0 }}
+      >
+        <div className="ai-video-bg absolute inset-0 overflow-hidden" style={{ zIndex: 0 }}>
+          <video
+            autoPlay
+            loop
+            muted
+            playsInline
+            className="absolute w-full h-full object-cover"
+            style={{ opacity: 0.5 }}
+            src="/videos/ai-aurora.webm"
+          />
+          <div className="absolute inset-0" style={{ background: "radial-gradient(ellipse at center, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.6) 60%, rgba(0,0,0,0.85) 100%)" }} />
+        </div>
+        <div className="ai-light-aurora">
+          <div className="ai-light-aurora-bg" />
+          <div className="ai-light-aurora-fade" />
+        </div>
+        <div className="relative z-10 flex flex-col h-full">
+          <div className="flex items-center gap-2.5 px-5 pt-4 pb-2">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-blue-400 shrink-0">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            <span className="text-xs font-semibold text-text">AI Assistant</span>
+            <span className="text-[10px] text-text-secondary/40 hidden sm:inline">—</span>
+            <span className="text-[10px] text-text-secondary/40 hidden sm:inline">Write captions, plan content, match your brand voice</span>
+          </div>
+          <div className="flex-1 flex items-center px-4 pb-4">
+            <div className="ai-prompt-input w-full flex items-center gap-4 rounded-2xl px-5 py-4 transition-all">
+              <div className="flex-1 relative" style={{ height: "1.4em" }}>
+                {!userInput && !generating && (
+                  <span
+                    className="ai-prompt-suggestion absolute inset-0 truncate pointer-events-none"
+                    style={{ opacity: fading ? 0 : 1, transition: "opacity 0.9s ease" }}
+                  >
+                    {AI_PROMPTS[promptIndex]}
+                  </span>
+                )}
+                <input
+                  ref={inputRef}
+                  type="text"
+                  value={userInput}
+                  onChange={(e) => setUserInput(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
+                  disabled={generating}
+                  className="absolute inset-0 w-full text-[15px] bg-transparent border-none outline-none ai-prompt-text z-10"
+                />
+              </div>
+              <button
+                onClick={handleSubmit}
+                disabled={generating}
+                className="ai-prompt-btn flex h-8 w-8 items-center justify-center rounded-lg shrink-0 transition-colors cursor-pointer"
+              >
+                {generating ? (
+                  <svg width="16" height="16" className="animate-spin text-blue-400" fill="none" viewBox="0 0 24 24">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" />
+                    <path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5} className="text-blue-400">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12h15m0 0l-6.75-6.75M19.5 12l-6.75 6.75" />
+                  </svg>
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }
@@ -475,45 +570,6 @@ export default function DashboardPage() {
         [data-qa="holiday"]:hover { box-shadow: 0 0 12px #ef4444, 0 0 4px #ef4444 !important; }
         [data-qa="engage"]:hover { box-shadow: 0 0 12px #f97316, 0 0 4px #f97316 !important; }
         .ai-card { position: relative; }
-        .ai-card .spline-bg { position: absolute; inset: 0; pointer-events: none; opacity: 0.6; }
-        .ai-card .sketch-lines {
-          position: absolute;
-          inset: 0;
-          pointer-events: none;
-          z-index: 1;
-        }
-        .ai-card .sketch-lines > div {
-          position: absolute;
-          inset: 0;
-        }
-        .ai-card .sketch-lines > div:last-child {
-          transform: rotate(180deg);
-        }
-        .ai-card .sketch-lines svg {
-          display: block;
-          position: absolute;
-          inset: 0;
-          overflow: visible;
-          fill: none;
-          stroke-width: 1;
-          stroke: #7cb8ff;
-          width: 100%;
-          height: 100%;
-          stroke-dasharray: 2 10;
-          stroke-dashoffset: 14;
-          opacity: 0;
-        }
-        .ai-card .sketch-lines svg:nth-child(1) { stroke: rgba(160,210,255,0.9); }
-        .ai-card .sketch-lines svg:nth-child(2) { stroke-width: 3px; filter: blur(16px); stroke: rgba(96,165,250,0.5); }
-        .ai-card .sketch-lines svg:nth-child(3) { stroke-width: 2px; filter: blur(5px); stroke: rgba(130,190,255,0.6); }
-        .ai-card .sketch-lines svg:nth-child(4) { stroke-width: 4px; filter: blur(40px); stroke: rgba(96,165,250,0.35); }
-        .ai-card.start .sketch-lines svg {
-          animation: sketch-stroke 2.4s ease-in-out;
-        }
-        @keyframes sketch-stroke {
-          20%, 45% { opacity: 1; }
-          100% { stroke-dashoffset: 4; opacity: 0; }
-        }
         @media (max-width: 1023px) {
           .dash-grid { grid-auto-rows: auto; }
         }
@@ -562,60 +618,7 @@ export default function DashboardPage() {
           <TemplateCarousel templates={filtered} />
 
           {/* AI Assistant card */}
-          <Link
-            href="/dashboard/ai-assistant"
-            className="ai-card bento-card col-span-1 row-span-1 p-5 flex flex-col justify-between group relative overflow-hidden lg:max-h-[180px]"
-          >
-            <SketchBorder />
-            <div className="spline-bg">
-              <WaveformCanvas />
-            </div>
-            <div className="relative z-10">
-              <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] mb-3">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-blue-400">
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                </svg>
-              </div>
-              <h3 className="text-sm font-bold text-text">AI Assistant</h3>
-              <p className="text-[11px] text-text-secondary/50 mt-1 leading-relaxed">Write captions, plan content, match your brand voice</p>
-            </div>
-            <div className="relative z-10 mt-3">
-              <span className="inline-flex items-center gap-1 text-[10px] font-medium text-blue-400/70 group-hover:text-blue-400 transition-colors">
-                Ask anything
-                <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-              </span>
-            </div>
-          </Link>
-
-          {/* Stats / View All card */}
-          <div className="bento-card col-span-1 row-span-1 p-4 flex flex-col justify-between lg:max-h-[170px] lg:overflow-hidden">
-            <div>
-              <p className="text-[10px] uppercase tracking-[0.2em] text-text-secondary/40 mb-2">Library</p>
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary/60">Templates</span>
-                  <span className="text-sm font-bold text-text">{templates.length}</span>
-                </div>
-                <div className="h-px bg-white/5" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary/60">Pillars</span>
-                  <span className="text-sm font-bold text-text">{new Set(templates.map((t) => t.pillar)).size}</span>
-                </div>
-                <div className="h-px bg-white/5" />
-                <div className="flex items-center justify-between">
-                  <span className="text-xs text-text-secondary/60">Photo slots</span>
-                  <span className="text-sm font-bold text-text">{templates.filter((t) => t.hasPhotoSlot).length}</span>
-                </div>
-              </div>
-            </div>
-            <Link
-              href="/dashboard/templates"
-              className="mt-2 flex items-center justify-center gap-1.5 text-[11px] font-medium text-text-secondary/50 hover:text-text transition-colors"
-            >
-              View All Templates
-              <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
-            </Link>
-          </div>
+          <AiAssistantCard />
 
           {/* Listing Videos — bottom right */}
           <VideoCarousel />
