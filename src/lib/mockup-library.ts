@@ -98,6 +98,94 @@ const library: Record<MockupCategory, MockupImage[]> = {
   ],
 };
 
+const HOLIDAY_UNSPLASH: Record<string, string[]> = {
+  "memorial day": [
+    "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
+    "https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800&q=80",
+    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80",
+  ],
+  "fourth of july": [
+    "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
+    "https://images.unsplash.com/photo-1530982011887-3cc11cc85693?w=800&q=80",
+    "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&q=80",
+  ],
+  "4th of july": [
+    "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
+    "https://images.unsplash.com/photo-1530982011887-3cc11cc85693?w=800&q=80",
+    "https://images.unsplash.com/photo-1501594907352-04cda38ebc29?w=800&q=80",
+  ],
+  "independence day": [
+    "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
+    "https://images.unsplash.com/photo-1530982011887-3cc11cc85693?w=800&q=80",
+  ],
+  "veterans day": [
+    "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
+    "https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800&q=80",
+  ],
+  "labor day": [
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80",
+    "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&q=80",
+  ],
+  "mothers day": [
+    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
+    "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=800&q=80",
+  ],
+  "mother's day": [
+    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
+    "https://images.unsplash.com/photo-1462275646964-a0e3c11f18a6?w=800&q=80",
+  ],
+  "fathers day": [
+    "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&q=80",
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80",
+  ],
+  "father's day": [
+    "https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800&q=80",
+    "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80",
+  ],
+  thanksgiving: [
+    "https://images.unsplash.com/photo-1509315811345-a59b07a951e7?w=800&q=80",
+    "https://images.unsplash.com/photo-1541532713592-79a0317b6b77?w=800&q=80",
+  ],
+  christmas: [
+    "https://images.unsplash.com/photo-1512389142860-9c449e58a814?w=800&q=80",
+    "https://images.unsplash.com/photo-1543589077-47d81606c1bf?w=800&q=80",
+  ],
+  "new years": [
+    "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=800&q=80",
+    "https://images.unsplash.com/photo-1514862402476-a3f8dc245b93?w=800&q=80",
+  ],
+  "new year's": [
+    "https://images.unsplash.com/photo-1467810563316-b5476525c0f9?w=800&q=80",
+    "https://images.unsplash.com/photo-1514862402476-a3f8dc245b93?w=800&q=80",
+  ],
+  halloween: [
+    "https://images.unsplash.com/photo-1509557965875-b88c97052f0e?w=800&q=80",
+    "https://images.unsplash.com/photo-1508361001413-7a9dca21d08a?w=800&q=80",
+  ],
+  "valentines day": [
+    "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=800&q=80",
+    "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800&q=80",
+  ],
+  "valentine's day": [
+    "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=800&q=80",
+    "https://images.unsplash.com/photo-1516589178581-6cd7833ae3b2?w=800&q=80",
+  ],
+  easter: [
+    "https://images.unsplash.com/photo-1521967906867-14ec9d64bee8?w=800&q=80",
+    "https://images.unsplash.com/photo-1490750967868-88aa4f44baee?w=800&q=80",
+  ],
+  "st patricks": [
+    "https://images.unsplash.com/photo-1521176022425-73a1cbf41097?w=800&q=80",
+  ],
+  "juneteenth": [
+    "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
+  ],
+  fireworks: [
+    "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
+    "https://images.unsplash.com/photo-1530982011887-3cc11cc85693?w=800&q=80",
+  ],
+};
+
 const keywordMap: Record<string, MockupCategory> = {
   listing: "listing",
   "new listing": "listing",
@@ -125,8 +213,6 @@ const keywordMap: Record<string, MockupCategory> = {
   fall: "seasonal",
   winter: "seasonal",
   holiday: "seasonal",
-  christmas: "seasonal",
-  thanksgiving: "seasonal",
   "st. louis": "local",
   "st louis": "local",
   "forest park": "local",
@@ -156,6 +242,16 @@ function hasImages(category: MockupCategory): boolean {
 
 export function pickMockupImage(prompt: string): string | null {
   const lower = prompt.toLowerCase();
+
+  // Check holidays first — use Unsplash images for holiday posts
+  const sortedHolidays = Object.keys(HOLIDAY_UNSPLASH).sort(
+    (a, b) => b.length - a.length
+  );
+  for (const holiday of sortedHolidays) {
+    if (lower.includes(holiday)) {
+      return pickRandom(HOLIDAY_UNSPLASH[holiday]);
+    }
+  }
 
   const sortedKeywords = Object.keys(keywordMap).sort(
     (a, b) => b.length - a.length
