@@ -102,7 +102,7 @@ const HOLIDAY_UNSPLASH: Record<string, string[]> = {
   "memorial day": [
     "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
     "https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800&q=80",
-    "https://images.unsplash.com/photo-1560518883-ce09059eeffa?w=800&q=80",
+    "https://images.unsplash.com/photo-1603827457577-609e6f42a45e?w=800&q=80",
   ],
   "fourth of july": [
     "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
