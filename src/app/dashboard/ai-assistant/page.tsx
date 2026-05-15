@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
+import SocialMockup, { type Platform } from "@/components/SocialMockup";
+import { detectPlatform, extractCaption, extractHashtags } from "@/lib/social-detect";
 
 type Message = {
   id: string;
@@ -11,39 +13,28 @@ type Message = {
   timestamp: Date;
 };
 
-const QUICK_ACTIONS = [
-  { label: "Write Caption", icon: "caption", prompt: "Write an engaging Instagram caption for a new listing in West County. Make it warm and on-brand." },
-  { label: "Suggest Hashtags", icon: "hashtag", prompt: "Suggest 10 relevant hashtags for a real estate post about a beautiful home in Chesterfield, MO. Mix broad reach with local tags." },
-  { label: "Content Ideas", icon: "ideas", prompt: "Give me 5 creative social media content ideas for this week. Cover different content pillars and mix Facebook and Instagram formats." },
-  { label: "Brand Voice Rewrite", icon: "brand", prompt: "Rewrite this in my brand voice (warm, optimistic, helpful, casual yet clean): \"Check out this amazing house for sale! 4 bed 3 bath in a great neighborhood. Call me for details!\"" },
-  { label: "Template Match", icon: "template", prompt: `I have these templates available: ${templates.map((t) => `"${t.name}" (${t.pillar})`).join(", ")}. Which templates should I use for this week's content? Suggest a posting schedule.` },
-  { label: "Week Planner", icon: "planner", prompt: "Plan my social media content for next week. Include specific post ideas for each day (Monday-Friday), assign content pillars, suggest platforms (Facebook vs Instagram vs Both), and recommend the best posting times." },
-];
+interface GeneratedPost {
+  platform: Platform;
+  caption: string | null;
+  hashtags: string | null;
+  rawContent: string;
+  timestamp: number;
+}
 
-const CHAT_SUGGESTIONS = [
+const PROMPT_SUGGESTIONS = [
   "Write an Instagram caption for a new listing in West County with 4 beds and a big backyard",
   "Give me 5 content ideas for this week mixing listings, tips, and community posts",
   "Suggest hashtags for a just-sold post in Chesterfield, Missouri",
-  "Rewrite this caption in my brand voice: Check out this stunning home!",
-  "Plan my social media content for Monday through Friday this week",
   "Write a Facebook post celebrating a client closing on their first home",
   "Create an engaging story sequence for an open house this weekend",
   "Suggest 3 neighborhood spotlight posts for the St. Louis suburbs",
+  "Draft a market update post about spring housing trends in Missouri",
   "Write a warm holiday greeting post for my real estate followers",
   "Give me caption ideas for before-and-after home staging photos",
-  "Draft a market update post about spring housing trends in Missouri",
   "Write an engaging bio update for my Instagram real estate profile",
+  "Plan my social media content for Monday through Friday this week",
+  "Write a LinkedIn post about the importance of staging your home",
 ];
-
-function QuickActionIcon({ type }: { type: string }) {
-  const props = { width: 16, height: 16, fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5 };
-  if (type === "caption") return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>;
-  if (type === "hashtag") return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M5.25 8.25h15m-16.5 7.5h15m-1.8-13.5l-3.9 19.5m-2.1-19.5l-3.9 19.5" /></svg>;
-  if (type === "ideas") return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" /></svg>;
-  if (type === "brand") return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" /></svg>;
-  if (type === "template") return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" /></svg>;
-  return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>;
-}
 
 export default function AIAssistantPage() {
   const searchParams = useSearchParams();
@@ -53,25 +44,23 @@ export default function AIAssistantPage() {
   const [error, setError] = useState<string | null>(null);
   const [suggestionIdx, setSuggestionIdx] = useState(0);
   const [suggestionFade, setSuggestionFade] = useState(true);
-  const chatRef = useRef<HTMLDivElement>(null);
+  const [activePost, setActivePost] = useState<GeneratedPost | null>(null);
+  const [slideIn, setSlideIn] = useState(false);
+  const [history, setHistory] = useState<GeneratedPost[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
   const initialPromptHandled = useRef(false);
 
   useEffect(() => {
-    if (chatRef.current) chatRef.current.scrollTop = chatRef.current.scrollHeight;
-  }, [messages]);
-
-  useEffect(() => {
-    if (input || messages.length > 0) return;
+    if (input || activePost) return;
     const interval = setInterval(() => {
       setSuggestionFade(false);
       setTimeout(() => {
-        setSuggestionIdx((i) => (i + 1) % CHAT_SUGGESTIONS.length);
+        setSuggestionIdx((i) => (i + 1) % PROMPT_SUGGESTIONS.length);
         setSuggestionFade(true);
       }, 1200);
     }, 7000);
     return () => clearInterval(interval);
-  }, [input, messages.length]);
+  }, [input, activePost]);
 
   const sendMessage = useCallback(async (content: string) => {
     if (!content.trim() || loading) return;
@@ -92,6 +81,23 @@ export default function AIAssistantPage() {
       if (!res.ok) { setError(data.error || "Something went wrong"); setLoading(false); return; }
       const assistantMsg: Message = { id: crypto.randomUUID(), role: "assistant", content: data.message, timestamp: new Date() };
       setMessages([...newMessages, assistantMsg]);
+
+      const platform = detectPlatform(content) || detectPlatform(data.message);
+      if (platform) {
+        const post: GeneratedPost = {
+          platform,
+          caption: extractCaption(data.message),
+          hashtags: extractHashtags(data.message),
+          rawContent: data.message,
+          timestamp: Date.now(),
+        };
+        setHistory((prev) => [post, ...prev]);
+        setActivePost(post);
+        setSlideIn(true);
+        setTimeout(() => setSlideIn(false), 600);
+      } else {
+        setActivePost(null);
+      }
     } catch {
       setError("Failed to connect. Check your network and try again.");
     } finally {
@@ -108,7 +114,7 @@ export default function AIAssistantPage() {
     }
   }, [searchParams, messages.length, loading, sendMessage]);
 
-  const hasMessages = messages.length > 0;
+  const lastAssistant = messages.filter((m) => m.role === "assistant").at(-1);
 
   return (
     <div className="flex flex-col h-full relative overflow-hidden">
@@ -203,21 +209,34 @@ export default function AIAssistantPage() {
           filter: blur(40px);
           opacity: 0.45;
         }
-        .ai-msg-user {
-          background: linear-gradient(135deg, rgba(212,168,83,0.9) 0%, rgba(212,168,83,0.75) 100%);
+        .ai-ambilight {
+          position: relative;
+          display: inline-block;
         }
-        .ai-msg-assistant {
-          background-image: linear-gradient(to bottom, rgba(30,30,30,1), rgba(22,22,22,1));
-          border: 1px solid rgba(255,255,255,0.06);
-          box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+        .ai-ambilight-glow {
+          position: absolute;
+          top: 0;
+          left: 0;
+          width: 100%;
+          height: 100%;
+          filter: blur(3.5vw);
+          transform: scale(1.12);
+          opacity: 0.5;
+          transition: opacity 0.6s ease;
+          pointer-events: none;
+          z-index: 0;
         }
-        @keyframes typing-pulse {
-          0%, 100% { opacity: 0.3; }
-          50% { opacity: 1; }
+        .ai-ambilight:hover .ai-ambilight-glow {
+          opacity: 0.75;
+          transform: scale(1.18);
         }
-        .ai-typing-dot { animation: typing-pulse 1.4s ease-in-out infinite; }
-        .ai-typing-dot:nth-child(2) { animation-delay: 0.2s; }
-        .ai-typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes slide-in-up {
+          from { transform: translateY(40px); opacity: 0; }
+          to   { transform: translateY(0); opacity: 1; }
+        }
+        .ai-slide-in {
+          animation: slide-in-up 0.5s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+        }
 
         [data-theme="light"] .ai-silk-base {
           background-image:
@@ -240,15 +259,6 @@ export default function AIAssistantPage() {
           border-color: rgba(120,120,130,0.2);
           box-shadow: 0 1px 3px rgba(0,0,0,0.05), 0 4px 12px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.8);
         }
-        [data-theme="light"] .ai-msg-assistant {
-          background-image: none;
-          background: rgba(255,255,255,0.65);
-          border-color: rgba(120,120,130,0.15);
-          box-shadow: 0 1px 4px rgba(0,0,0,0.04);
-        }
-        [data-theme="light"] .ai-msg-user {
-          background: linear-gradient(135deg, rgba(212,168,83,0.85) 0%, rgba(212,168,83,0.7) 100%);
-        }
       `}</style>
 
       {/* SVG filters */}
@@ -265,7 +275,7 @@ export default function AIAssistantPage() {
         </defs>
       </svg>
 
-      {/* Silk background layers */}
+      {/* Silk background */}
       <div className="absolute inset-0 ai-silk-base" />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w1" style={{ filter: "url(#ai-silk-warp)" }} />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w2" style={{ filter: "url(#ai-silk-warp-2)" }} />
@@ -273,231 +283,245 @@ export default function AIAssistantPage() {
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w4" style={{ filter: "url(#ai-silk-warp-2)" }} />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-sheen" style={{ filter: "url(#ai-silk-warp)" }} />
 
-      {/* Main content */}
-      <div className="flex-1 flex flex-col relative z-10 overflow-hidden">
+      <div className="flex-1 flex flex-col items-center justify-center px-6 py-10 relative z-10 overflow-y-auto">
 
-        {/* Chat messages area */}
-        {hasMessages ? (
-          <div ref={chatRef} className="flex-1 overflow-y-auto px-6 py-6">
-            <div className="max-w-2xl mx-auto space-y-5">
-              {messages.map((msg) => (
-                <div key={msg.id} className={`flex gap-3 ${msg.role === "user" ? "justify-end" : ""}`}>
-                  {msg.role === "assistant" && (
-                    <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] mt-0.5">
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                    </div>
-                  )}
-                  <div className={`rounded-2xl px-4 py-3 max-w-[85%] ${
-                    msg.role === "user"
-                      ? "ai-msg-user text-black rounded-br-md"
-                      : "ai-msg-assistant rounded-bl-md"
-                  }`}>
-                    {msg.role === "assistant" ? (
-                      <div className="text-sm text-white/80 leading-relaxed prose-sm">
-                        {renderMarkdown(msg.content)}
-                      </div>
-                    ) : (
-                      <p className="text-sm font-medium leading-relaxed">{msg.content}</p>
-                    )}
-                  </div>
-                </div>
-              ))}
-
-              {loading && (
-                <div className="flex gap-3">
-                  <div className="shrink-0 flex h-8 w-8 items-center justify-center rounded-xl bg-white/[0.06] mt-0.5">
-                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                  </div>
-                  <div className="ai-msg-assistant rounded-2xl rounded-bl-md px-5 py-4">
-                    <div className="flex gap-1.5">
-                      <div className="w-2 h-2 rounded-full bg-accent/60 ai-typing-dot" />
-                      <div className="w-2 h-2 rounded-full bg-accent/60 ai-typing-dot" />
-                      <div className="w-2 h-2 rounded-full bg-accent/60 ai-typing-dot" />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {error && (
-                <div className="rounded-2xl bg-red-500/5 border border-red-500/15 px-5 py-4 max-w-sm mx-auto text-center">
-                  <p className="text-sm text-red-400/80">{error}</p>
-                  <button onClick={() => setError(null)} className="text-xs text-red-400/40 mt-2 hover:text-red-400 transition-colors">Dismiss</button>
-                </div>
-              )}
-            </div>
+        {/* Error */}
+        {error && (
+          <div className="rounded-2xl bg-red-500/5 border border-red-500/15 px-6 py-5 max-w-sm mb-8 text-center">
+            <p className="text-sm text-red-400/80">{error}</p>
+            <button onClick={() => setError(null)} className="text-xs text-red-400/40 mt-3 hover:text-red-400 transition-colors">Dismiss</button>
           </div>
-        ) : (
-          /* Empty state — centered hero */
-          <div className="flex-1 flex flex-col items-center justify-center px-6">
-            <div className="text-center mb-10">
-              <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent/8 mb-5">
-                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
-                </svg>
-              </div>
-              <h1 className="text-2xl md:text-3xl font-bold text-white font-heading">AI Assistant</h1>
-              <p className="text-sm text-white/25 mt-2">Your brand-aware assistant for captions, content ideas, and social strategy</p>
-            </div>
+        )}
 
-            {/* Quick action grid */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-2.5 w-full max-w-xl mb-10">
-              {QUICK_ACTIONS.map((action) => (
+        {/* Loading state (no mockup yet) */}
+        {loading && !activePost && (
+          <div className="flex flex-col items-center gap-3 mb-8">
+            <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
+              <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+            </svg>
+            <p className="text-sm text-white/30 font-medium">Crafting your post...</p>
+          </div>
+        )}
+
+        {/* Social mockup with ambilight glow */}
+        {activePost && !loading ? (
+          <div className={`mb-10 max-w-sm w-full ai-ambilight ${slideIn ? "ai-slide-in" : ""}`}>
+            {/* Glow layer */}
+            <div className="ai-ambilight-glow rounded-2xl overflow-hidden">
+              <SocialMockup
+                platform={activePost.platform}
+                caption={activePost.caption || undefined}
+                hashtags={activePost.hashtags || undefined}
+                username="Angie Nichols"
+              />
+            </div>
+            {/* Actual mockup */}
+            <div className="relative z-[2]">
+              <SocialMockup
+                platform={activePost.platform}
+                caption={activePost.caption || undefined}
+                hashtags={activePost.hashtags || undefined}
+                username="Angie Nichols"
+              />
+            </div>
+            {/* Caption below mockup */}
+            {lastAssistant && (
+              <div className="mt-4 px-1">
                 <button
-                  key={action.label}
-                  onClick={() => sendMessage(action.prompt)}
-                  className="flex items-center gap-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] p-3.5 text-left hover:bg-white/[0.06] hover:border-white/[0.12] transition-all group"
+                  onClick={() => { setActivePost(null); }}
+                  className="flex items-center gap-1.5 text-[11px] font-medium text-white/30 hover:text-accent transition-colors"
                 >
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/[0.04] text-white/30 group-hover:text-accent group-hover:bg-accent/10 transition-colors shrink-0">
-                    <QuickActionIcon type={action.icon} />
-                  </div>
-                  <span className="text-xs font-medium text-white/40 group-hover:text-white/80 transition-colors">
-                    {action.label}
-                  </span>
+                  <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" />
+                  </svg>
+                  View full response
                 </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* New Conversation button */}
-        {hasMessages && (
-          <div className="shrink-0 px-6 pb-2">
-            <div className="max-w-2xl mx-auto flex justify-end">
-              <button
-                onClick={() => { setMessages([]); setInput(""); setError(null); }}
-                className="flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/30 hover:text-white/70 hover:border-white/[0.12] transition-all"
-              >
-                <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-                </svg>
-                New Conversation
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Quick actions strip when in chat */}
-        {hasMessages && !loading && (
-          <div className="shrink-0 px-6 pb-3">
-            <div className="max-w-2xl mx-auto flex gap-1.5 overflow-x-auto" style={{ scrollbarWidth: "none" }}>
-              {QUICK_ACTIONS.map((action) => (
-                <button
-                  key={action.label}
-                  onClick={() => sendMessage(action.prompt)}
-                  className="shrink-0 flex items-center gap-1.5 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-1.5 text-[11px] font-medium text-white/30 hover:text-white/70 hover:border-white/[0.12] transition-all"
-                >
-                  <QuickActionIcon type={action.icon} />
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Prompt card */}
-        <div className="shrink-0 px-6 pb-6">
-          <div ref={cardRef} className={`w-full max-w-2xl mx-auto ${hasMessages ? "" : ""}`}>
-            <div className={`relative rounded-2xl ${loading ? "p-[2px]" : ""}`}>
-              {/* Animated rainbow border when loading */}
-              {loading && (
-                <>
-                  <div className="absolute inset-0 rounded-2xl ai-gen-border z-0" />
-                  <div className="absolute inset-0 rounded-2xl ai-gen-border ai-gen-glow z-0" />
-                </>
-              )}
-              <div className={`rounded-2xl border backdrop-blur-sm ai-card-idle ${loading ? "relative z-10" : ""}`}>
-
-                {/* Textarea */}
-                <div className="relative px-4 pt-3 pb-2">
-                  {!input && !hasMessages && (
-                    <div
-                      className="absolute inset-x-4 top-3 pointer-events-none text-[14px] leading-relaxed transition-opacity duration-[1200ms] ease-in-out"
-                      style={{ opacity: suggestionFade ? 0.3 : 0 }}
-                    >
-                      {CHAT_SUGGESTIONS[suggestionIdx]}
-                      <span className="text-[10px] text-white/10 ml-2">Tab</span>
-                    </div>
-                  )}
-                  {!input && hasMessages && (
-                    <div className="absolute inset-x-4 top-3 pointer-events-none text-[14px] text-white/20 leading-relaxed">
-                      Ask a follow-up or start a new topic...
-                    </div>
-                  )}
-                  <textarea
-                    value={input}
-                    onChange={(e) => setInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Tab" && !input && !hasMessages) { e.preventDefault(); setInput(CHAT_SUGGESTIONS[suggestionIdx]); }
-                      if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
-                    }}
-                    rows={3}
-                    className="w-full bg-transparent text-[14px] text-white focus:outline-none resize-none leading-relaxed relative z-10 transition-opacity duration-700"
-                    style={{ textShadow: "0 -1px 0 rgba(0,0,0,0.3)", opacity: loading ? 0.15 : 1 }}
-                  />
-                </div>
-
-                {/* Divider */}
-                <div className="mx-4 border-t border-white/[0.04]" style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.03)" }} />
-
-                {/* Bottom toolbar */}
-                <div className="flex items-center justify-between px-3 py-2.5">
-                  <div className="flex items-center gap-1">
-                    {/* Model badge */}
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/20">
-                      <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-accent/40">
-                        <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                      </svg>
-                      Powered by Claude
-                    </div>
-
-                    <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
-
-                    {/* Brand voice indicator */}
-                    <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/20">
-                      <div className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
-                      Brand Voice Active
-                    </div>
-                  </div>
-
-                  {/* Send button */}
-                  <button
-                    onClick={() => sendMessage(input)}
-                    disabled={!input.trim() || loading}
-                    className={`rounded-xl px-5 py-2 text-[12px] font-semibold transition-all flex items-center gap-2 ${
-                      input.trim() && !loading
-                        ? "bg-accent text-black hover:bg-accent/90 active:scale-[0.97] shadow-lg shadow-accent/20"
-                        : "bg-white/[0.04] text-white/15 cursor-not-allowed"
-                    }`}
-                  >
-                    {loading ? (
-                      <>
-                        <svg width="12" height="12" className="animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
-                        Thinking
-                      </>
-                    ) : (
-                      <>
-                        <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
-                        </svg>
-                        Send
-                      </>
-                    )}
-                  </button>
-                </div>
               </div>
-            </div>
-
-            {/* Keyboard hint */}
-            {input.trim() && !loading && (
-              <p className="text-center text-[10px] text-white/10 mt-3">Enter to send</p>
             )}
           </div>
+        ) : activePost && loading ? (
+          /* Loading overlay on existing mockup */
+          <div className="mb-10 max-w-sm w-full ai-ambilight">
+            <div className="ai-ambilight-glow rounded-2xl overflow-hidden opacity-20">
+              <SocialMockup
+                platform={activePost.platform}
+                caption={activePost.caption || undefined}
+                hashtags={activePost.hashtags || undefined}
+                username="Angie Nichols"
+              />
+            </div>
+            <div className="relative z-[2] opacity-40">
+              <SocialMockup
+                platform={activePost.platform}
+                caption={activePost.caption || undefined}
+                hashtags={activePost.hashtags || undefined}
+                username="Angie Nichols"
+              />
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
+                <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                <p className="text-sm text-white/50 font-medium mt-2">Generating new post...</p>
+              </div>
+            </div>
+          </div>
+        ) : !loading && !activePost && lastAssistant ? (
+          /* Non-platform response — show text card */
+          <div className="mb-10 max-w-lg w-full">
+            <div className="rounded-2xl border border-white/[0.06] bg-white/[0.03] backdrop-blur-sm p-5 shadow-[0_8px_32px_rgba(0,0,0,0.3)]">
+              <div className="flex items-center gap-2 mb-3">
+                <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                </svg>
+                <span className="text-[11px] font-medium text-white/40">AI Response</span>
+              </div>
+              <div className="text-sm text-white/70 leading-relaxed max-h-[300px] overflow-y-auto">
+                {renderMarkdown(lastAssistant.content)}
+              </div>
+            </div>
+          </div>
+        ) : !loading && !activePost ? (
+          /* Empty state */
+          <div className="text-center mb-10">
+            <div className="inline-flex items-center justify-center w-12 h-12 rounded-2xl bg-accent/8 mb-5">
+              <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
+              </svg>
+            </div>
+            <h1 className="text-2xl md:text-3xl font-bold text-white font-heading">AI Assistant</h1>
+            <p className="text-sm text-white/25 mt-2">Describe a post and see it come to life in a platform mockup</p>
+          </div>
+        ) : null}
+
+        {/* Prompt card */}
+        <div ref={cardRef} className="w-full max-w-xl">
+          <div className={`relative rounded-2xl ${loading ? "p-[2px]" : ""}`}>
+            {/* Rainbow border when loading */}
+            {loading && (
+              <>
+                <div className="absolute inset-0 rounded-2xl ai-gen-border z-0" />
+                <div className="absolute inset-0 rounded-2xl ai-gen-border ai-gen-glow z-0" />
+              </>
+            )}
+            <div className={`rounded-2xl border backdrop-blur-sm ai-card-idle ${loading ? "relative z-10" : ""}`}>
+              {/* Textarea */}
+              <div className="relative px-4 pt-3 pb-2">
+                {!input && !activePost && !lastAssistant && (
+                  <div
+                    className="absolute inset-x-4 top-3 pointer-events-none text-[14px] leading-relaxed transition-opacity duration-[1200ms] ease-in-out"
+                    style={{ opacity: suggestionFade ? 0.3 : 0 }}
+                  >
+                    {PROMPT_SUGGESTIONS[suggestionIdx]}
+                    <span className="text-[10px] text-white/10 ml-2">Tab</span>
+                  </div>
+                )}
+                {!input && (activePost || lastAssistant) && (
+                  <div className="absolute inset-x-4 top-3 pointer-events-none text-[14px] text-white/20 leading-relaxed">
+                    Ask a follow-up or describe a new post...
+                  </div>
+                )}
+                <textarea
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Tab" && !input && !activePost && !lastAssistant) { e.preventDefault(); setInput(PROMPT_SUGGESTIONS[suggestionIdx]); }
+                    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); sendMessage(input); }
+                  }}
+                  rows={3}
+                  className="w-full bg-transparent text-[14px] text-white focus:outline-none resize-none leading-relaxed relative z-10 transition-opacity duration-700"
+                  style={{ textShadow: "0 -1px 0 rgba(0,0,0,0.3)", opacity: loading ? 0.15 : 1 }}
+                />
+              </div>
+
+              {/* Divider */}
+              <div className="mx-4 border-t border-white/[0.04]" style={{ boxShadow: "0 1px 0 rgba(255,255,255,0.03)" }} />
+
+              {/* Bottom toolbar */}
+              <div className="flex items-center justify-between px-3 py-2.5">
+                <div className="flex items-center gap-1">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/20">
+                    <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-accent/40">
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                    </svg>
+                    Powered by Claude
+                  </div>
+                  <div className="w-px h-4 bg-white/[0.06] mx-0.5" />
+                  <div className="flex items-center gap-1.5 px-2.5 py-1.5 text-[11px] text-white/20">
+                    <div className="w-1.5 h-1.5 rounded-full bg-green-500/60" />
+                    Brand Voice Active
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => sendMessage(input)}
+                  disabled={!input.trim() || loading}
+                  className={`rounded-xl px-5 py-2 text-[12px] font-semibold transition-all flex items-center gap-2 ${
+                    input.trim() && !loading
+                      ? "bg-accent text-black hover:bg-accent/90 active:scale-[0.97] shadow-lg shadow-accent/20"
+                      : "bg-white/[0.04] text-white/15 cursor-not-allowed"
+                  }`}
+                >
+                  {loading ? (
+                    <>
+                      <svg width="12" height="12" className="animate-spin" fill="none" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-20" /><path d="M4 12a8 8 0 018-8" stroke="currentColor" strokeWidth="3" strokeLinecap="round" /></svg>
+                      Thinking
+                    </>
+                  ) : (
+                    <>
+                      <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                        <path strokeLinecap="round" strokeLinejoin="round" d="M6 12L3.269 3.126A59.768 59.768 0 0121.485 12 59.77 59.77 0 013.27 20.876L5.999 12zm0 0h7.5" />
+                      </svg>
+                      Send
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Keyboard hint */}
+          {input.trim() && !loading && (
+            <p className="text-center text-[10px] text-white/10 mt-3">Enter to send</p>
+          )}
         </div>
       </div>
+
+      {/* History strip */}
+      {history.length > 0 && (
+        <div className="border-t border-white/[0.05] px-6 py-3 bg-white/[0.01] relative z-10">
+          <div className="flex items-center gap-4">
+            <p className="text-[9px] uppercase tracking-[0.2em] text-white/20 shrink-0 font-medium">Recent</p>
+            <div className="flex gap-2 overflow-x-auto pb-0.5">
+              {history.map((post) => (
+                <button
+                  key={post.timestamp}
+                  onClick={() => { setActivePost(post); }}
+                  className={`shrink-0 flex items-center gap-1.5 rounded-lg border px-3 py-1.5 text-[11px] font-medium transition-all ${
+                    activePost?.timestamp === post.timestamp
+                      ? "border-accent/40 bg-accent/10 text-accent"
+                      : "border-white/[0.06] bg-white/[0.02] text-white/30 hover:text-white/60 hover:border-white/[0.12]"
+                  }`}
+                >
+                  <span className="text-[13px]">
+                    {post.platform === "instagram" ? "📸" : post.platform === "facebook" ? "📘" : post.platform === "linkedin" ? "💼" : "🐦"}
+                  </span>
+                  {post.platform.charAt(0).toUpperCase() + post.platform.slice(1)}
+                </button>
+              ))}
+            </div>
+            {/* New conversation */}
+            <button
+              onClick={() => { setMessages([]); setActivePost(null); setError(null); }}
+              className="shrink-0 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] font-medium text-white/20 hover:text-white/50 hover:border-white/[0.12] transition-all ml-auto"
+            >
+              <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
+              </svg>
+              New
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
@@ -510,7 +534,6 @@ function renderMarkdown(text: string): React.ReactNode {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Code blocks
     if (line.startsWith("```")) {
       const codeLines: string[] = [];
       i++;
@@ -518,7 +541,7 @@ function renderMarkdown(text: string): React.ReactNode {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      i++;
       elements.push(
         <pre key={elements.length} className="bg-white/[0.04] rounded-lg p-3 my-2 overflow-x-auto text-xs">
           <code>{codeLines.join("\n")}</code>
@@ -527,44 +550,34 @@ function renderMarkdown(text: string): React.ReactNode {
       continue;
     }
 
-    // Headings
     if (line.startsWith("### ")) {
       elements.push(<h3 key={elements.length} className="text-sm font-bold text-white/90 mt-3 mb-1">{renderInline(line.slice(4))}</h3>);
-      i++;
-      continue;
+      i++; continue;
     }
     if (line.startsWith("## ")) {
       elements.push(<h2 key={elements.length} className="text-base font-bold text-white/90 mt-4 mb-1.5">{renderInline(line.slice(3))}</h2>);
-      i++;
-      continue;
+      i++; continue;
     }
     if (line.startsWith("# ")) {
       elements.push(<h1 key={elements.length} className="text-lg font-bold text-white/90 mt-4 mb-2">{renderInline(line.slice(2))}</h1>);
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // List items
     if (line.startsWith("- ")) {
       elements.push(<li key={elements.length} className="ml-4 list-disc text-white/60">{renderInline(line.slice(2))}</li>);
-      i++;
-      continue;
+      i++; continue;
     }
     const olMatch = line.match(/^(\d+)\. (.+)$/);
     if (olMatch) {
       elements.push(<li key={elements.length} className="ml-4 list-decimal text-white/60">{renderInline(olMatch[2])}</li>);
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // Empty line = paragraph break
     if (line.trim() === "") {
       elements.push(<br key={elements.length} />);
-      i++;
-      continue;
+      i++; continue;
     }
 
-    // Regular paragraph
     elements.push(<p key={elements.length} className="mt-1">{renderInline(line)}</p>);
     i++;
   }
@@ -573,7 +586,6 @@ function renderMarkdown(text: string): React.ReactNode {
 }
 
 function renderInline(text: string): React.ReactNode {
-  // Split text into segments: code, bold, italic, and plain text
   const parts: React.ReactNode[] = [];
   const regex = /`([^`]+)`|\*\*([^*]+)\*\*|\*([^*]+)\*/g;
   let lastIndex = 0;

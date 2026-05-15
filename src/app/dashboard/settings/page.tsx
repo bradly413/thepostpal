@@ -104,9 +104,12 @@ function SettingsContent() {
 
   const tabs = [
     { id: "profile", label: "Profile" },
+    { id: "account", label: "Account" },
     { id: "posting", label: "Posting" },
     { id: "notifications", label: "Notifications" },
-    { id: "account", label: "Account" },
+    { id: "knowledge", label: "Knowledge Base" },
+    { id: "reports", label: "Reports" },
+    { id: "legal", label: "Legal" },
   ];
 
   return (
@@ -139,7 +142,7 @@ function SettingsContent() {
         {/* Content */}
         <div className="flex-1 max-w-2xl">
           {activeTab === "profile" && (
-            <div className="rounded-2xl bg-surface border border-border p-6">
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
               <h2 className="text-base font-bold text-text mb-5">Profile Information</h2>
               <div className="space-y-4">
                 <div className="flex items-center gap-4 mb-6">
@@ -178,7 +181,7 @@ function SettingsContent() {
           )}
 
           {activeTab === "posting" && (
-            <div className="rounded-2xl bg-surface border border-border p-6">
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
               <h2 className="text-base font-bold text-text mb-5">Posting Preferences</h2>
               <div className="space-y-5">
                 <div>
@@ -212,7 +215,7 @@ function SettingsContent() {
                   { key: "autoHashtags", label: "Auto-generate hashtags", desc: "Add relevant hashtags when creating captions" },
                   { key: "watermark", label: "Include brand watermark", desc: "Show your logo on downloaded images" },
                 ].map((toggle) => (
-                  <div key={toggle.key} className="flex items-center justify-between rounded-xl bg-elevated/50 p-4">
+                  <div key={toggle.key} className="flex items-center justify-between rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                     <div>
                       <p className="text-sm font-medium text-text">{toggle.label}</p>
                       <p className="text-xs text-text-secondary mt-0.5">{toggle.desc}</p>
@@ -236,7 +239,7 @@ function SettingsContent() {
           )}
 
           {activeTab === "notifications" && (
-            <div className="rounded-2xl bg-surface border border-border p-6">
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
               <h2 className="text-base font-bold text-text mb-5">Notification Preferences</h2>
               <div className="space-y-3">
                 {[
@@ -244,7 +247,7 @@ function SettingsContent() {
                   { key: "emailPublished", label: "Post published confirmation", desc: "Get notified when a post is successfully published" },
                   { key: "emailWeekly", label: "Weekly performance digest", desc: "Receive a weekly summary of your content performance" },
                 ].map((item) => (
-                  <div key={item.key} className="flex items-center justify-between rounded-xl bg-elevated/50 p-4">
+                  <div key={item.key} className="flex items-center justify-between rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                     <div>
                       <p className="text-sm font-medium text-text">{item.label}</p>
                       <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
@@ -269,18 +272,18 @@ function SettingsContent() {
 
           {activeTab === "account" && (
             <div className="space-y-4">
-              <div className="rounded-2xl bg-surface border border-border p-6">
+              <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
                 <h2 className="text-base font-bold text-text mb-3">Account</h2>
                 <p className="text-sm text-text-secondary mb-4">Manage your account access and security</p>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between rounded-xl bg-elevated/50 p-4">
+                  <div className="flex items-center justify-between rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                     <div>
                       <p className="text-sm font-medium text-text">Change Password</p>
                       <p className="text-xs text-text-secondary mt-0.5">Update your account password</p>
                     </div>
                     <span className="rounded-lg bg-elevated px-2.5 py-1 text-[10px] font-medium text-text-secondary/50">Coming soon</span>
                   </div>
-                  <div className="rounded-xl bg-elevated/50 p-4 space-y-3">
+                  <div className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)] space-y-3">
                     <div className="flex items-center justify-between">
                       <div>
                         <p className="text-sm font-medium text-text">Connected Accounts</p>
@@ -331,7 +334,7 @@ function SettingsContent() {
                   </div>
                 </div>
               </div>
-              <div className="rounded-2xl bg-surface border border-danger/20 p-6">
+              <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-danger/20 p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
                 <h2 className="text-base font-bold text-danger mb-3">Danger Zone</h2>
                 <div className="flex items-center justify-between">
                   <div>
@@ -349,8 +352,89 @@ function SettingsContent() {
             </div>
           )}
 
+          {activeTab === "knowledge" && (
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <h2 className="text-base font-bold text-text mb-3">Knowledge Base</h2>
+              <p className="text-sm text-text-secondary mb-5">Documents and data that inform your AI assistant&apos;s responses</p>
+              <div className="space-y-3">
+                {[
+                  { name: "Brand Voice Guide", type: "PDF", size: "2.4 MB", date: "Apr 12, 2026" },
+                  { name: "Neighborhood Descriptions", type: "DOC", size: "890 KB", date: "Mar 28, 2026" },
+                  { name: "Listing Templates", type: "PDF", size: "1.1 MB", date: "May 1, 2026" },
+                  { name: "FAQs & Objection Handling", type: "DOC", size: "420 KB", date: "Feb 15, 2026" },
+                ].map((doc) => (
+                  <div key={doc.name} className="flex items-center justify-between rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-accent/10 text-xs font-bold text-accent">{doc.type}</div>
+                      <div>
+                        <p className="text-sm font-medium text-text">{doc.name}</p>
+                        <p className="text-[10px] text-text-secondary mt-0.5">{doc.size} &middot; {doc.date}</p>
+                      </div>
+                    </div>
+                    <span className="rounded-lg bg-elevated px-2.5 py-1 text-[10px] font-medium text-text-secondary/50">View</span>
+                  </div>
+                ))}
+              </div>
+              <button className="mt-4 w-full rounded-xl border border-dashed border-border py-3 text-xs font-medium text-text-secondary hover:text-text hover:border-accent/30 transition-all">
+                + Upload Document
+              </button>
+            </div>
+          )}
+
+          {activeTab === "reports" && (
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
+              <h2 className="text-base font-bold text-text mb-3">Reports</h2>
+              <p className="text-sm text-text-secondary mb-5">Track your social media performance</p>
+              <div className="space-y-4">
+                <div className="grid grid-cols-2 gap-3">
+                  {[
+                    { label: "Posts This Month", value: "24", change: "+8%" },
+                    { label: "Total Reach", value: "12.4K", change: "+15%" },
+                    { label: "Engagement Rate", value: "4.2%", change: "+0.3%" },
+                    { label: "Top Platform", value: "Instagram", change: "" },
+                  ].map((stat) => (
+                    <div key={stat.label} className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
+                      <p className="text-[10px] uppercase tracking-wider text-text-secondary/50">{stat.label}</p>
+                      <p className="text-lg font-bold text-text mt-1">{stat.value}</p>
+                      {stat.change && <p className="text-[10px] text-success mt-0.5">{stat.change}</p>}
+                    </div>
+                  ))}
+                </div>
+                <div className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)] text-center">
+                  <p className="text-sm text-text-secondary/40">Detailed analytics coming soon</p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {activeTab === "legal" && (
+            <div className="space-y-4">
+              <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
+                <h2 className="text-base font-bold text-text mb-3">Legal</h2>
+                <p className="text-sm text-text-secondary mb-5">Terms, privacy, and compliance information</p>
+                <div className="space-y-3">
+                  {[
+                    { label: "Terms of Service", desc: "Last updated May 1, 2026" },
+                    { label: "Privacy Policy", desc: "How we handle your data" },
+                    { label: "Data Processing Agreement", desc: "For business accounts" },
+                    { label: "Cookie Policy", desc: "How we use cookies and tracking" },
+                    { label: "Acceptable Use Policy", desc: "Content guidelines and restrictions" },
+                  ].map((item) => (
+                    <div key={item.label} className="flex items-center justify-between rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)] cursor-pointer hover:bg-elevated/70 transition-colors">
+                      <div>
+                        <p className="text-sm font-medium text-text">{item.label}</p>
+                        <p className="text-xs text-text-secondary mt-0.5">{item.desc}</p>
+                      </div>
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-text-secondary/40"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          )}
+
           {/* Save button */}
-          {activeTab !== "account" && (
+          {(activeTab === "profile" || activeTab === "posting" || activeTab === "notifications") && (
             <div className="mt-6 flex items-center gap-3">
               <button
                 onClick={handleSave}
