@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
+import Link from "next/link";
 import { templates } from "@/lib/templates";
 import SocialMockup, { type Platform } from "@/components/SocialMockup";
 import { detectPlatform, extractCaption, extractHashtags, stripHashtagsFromCaption } from "@/lib/social-detect";
@@ -21,6 +22,24 @@ interface GeneratedPost {
   imageUrl: string | null;
   rawContent: string;
   timestamp: number;
+  templateId: string | null;
+}
+
+const TEMPLATE_KEYWORDS: [string[], string, string][] = [
+  [["new listing", "just listed"], "new-listing-photo", "New Listing"],
+  [["just sold", "sold home", "closing day"], "just-sold-photo", "Just Sold"],
+  [["market update", "market stats", "market report"], "market-stats", "Market Stats"],
+  [["open house", "event", "festival"], "event-spotlight", "Event Spotlight"],
+  [["neighborhood", "community spotlight"], "neighborhood-guide", "Neighborhood Guide"],
+  [["tips", "checklist", "buyer tips", "seller tips"], "ivory-checklist", "Tips & Checklist"],
+];
+
+function detectTemplate(prompt: string): { id: string; name: string } | null {
+  const lower = prompt.toLowerCase();
+  for (const [keywords, id, name] of TEMPLATE_KEYWORDS) {
+    if (keywords.some((kw) => lower.includes(kw))) return { id, name };
+  }
+  return null;
 }
 
 const PROMPT_SUGGESTIONS = [
@@ -102,6 +121,7 @@ function AIAssistantInner() {
         const hashtags = extractHashtags(data.message);
         const caption = rawCaption && hashtags ? stripHashtagsFromCaption(rawCaption) : rawCaption;
         const imageUrl = pickMockupImage(content);
+        const matched = detectTemplate(content);
         const post: GeneratedPost = {
           platform,
           caption,
@@ -109,6 +129,7 @@ function AIAssistantInner() {
           imageUrl,
           rawContent: data.message,
           timestamp: Date.now(),
+          templateId: matched?.id ?? null,
         };
         setHistory((prev) => [post, ...prev]);
         setActivePost(post);
@@ -317,8 +338,8 @@ function AIAssistantInner() {
                 imageUrl={activePost.imageUrl || undefined}
                 username="Angie Nichols"
               />
-              {lastAssistant && (
-                <div className="mt-3 px-1">
+              <div className="mt-3 px-1 flex items-center gap-4">
+                {lastAssistant && (
                   <button
                     onClick={() => { setActivePost(null); }}
                     className="flex items-center gap-1.5 text-[11px] font-medium text-white/30 hover:text-accent transition-colors"
@@ -328,8 +349,19 @@ function AIAssistantInner() {
                     </svg>
                     View full response
                   </button>
-                </div>
-              )}
+                )}
+                {activePost.templateId && (
+                  <Link
+                    href={`/dashboard/editor/${activePost.templateId}`}
+                    className="flex items-center gap-1.5 text-[11px] font-medium text-accent/70 hover:text-accent transition-colors"
+                  >
+                    <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931z" />
+                    </svg>
+                    Customize in Template
+                  </Link>
+                )}
+              </div>
             </div>
           </div>
         ) : activePost && loading ? (
