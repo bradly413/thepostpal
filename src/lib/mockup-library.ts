@@ -27,14 +27,29 @@ const library: Record<MockupCategory, MockupImage[]> = {
     { src: "/mockup-library/listing/12.jpg", alt: "Tudor brick exterior" },
     { src: "/mockup-library/listing/13.jpg", alt: "Suburban brick with garage" },
   ],
-  interior: [],
-  sold: [],
+  interior: [
+    { src: "/mockup-library/interior/1.jpg", alt: "Living room with stone fireplace and arched entry" },
+    { src: "/mockup-library/interior/2.jpg", alt: "Foyer with iron staircase and reading nook" },
+    { src: "/mockup-library/interior/3.jpg", alt: "Living room with exposed beams and stone fireplace" },
+    { src: "/mockup-library/interior/4.jpg", alt: "Living room with built-in shelves and fireplace" },
+    { src: "/mockup-library/interior/5.jpg", alt: "Foyer with french doors and console table" },
+    { src: "/mockup-library/interior/6.jpg", alt: "Gourmet kitchen with island and chandelier" },
+  ],
+  sold: [
+    { src: "/mockup-library/sold/1.jpg", alt: "Brick colonial with mature trees" },
+    { src: "/mockup-library/sold/2.jpg", alt: "Brick and stone estate with shutters" },
+    { src: "/mockup-library/sold/3.jpg", alt: "Brick mansion with manicured landscaping" },
+  ],
   neighborhood: [
     { src: "/mockup-library/neighborhood/1.jpg", alt: "Flagstone walkway with hydrangeas" },
     { src: "/mockup-library/neighborhood/2.jpg", alt: "Brick planter with roses" },
     { src: "/mockup-library/neighborhood/3.jpg", alt: "Hostas and hydrangeas landscaping" },
   ],
-  seasonal: [],
+  seasonal: [
+    { src: "/mockup-library/seasonal/1.jpg", alt: "Spring neighborhood with flowering trees" },
+    { src: "/mockup-library/seasonal/2.jpg", alt: "Summer garden path with hydrangeas" },
+    { src: "/mockup-library/seasonal/3.jpg", alt: "White farmhouse with spring blossoms" },
+  ],
   lifestyle: [
     { src: "/mockup-library/lifestyle/1.jpg", alt: "Patio with outdoor furniture" },
     { src: "/mockup-library/lifestyle/2.jpg", alt: "Craftsman backyard patio" },

@@ -51,6 +51,7 @@ export default function AIAssistantPage() {
   const [history, setHistory] = useState<GeneratedPost[]>([]);
   const cardRef = useRef<HTMLDivElement>(null);
   const initialPromptHandled = useRef(false);
+  const lastPlatformRef = useRef<Platform | null>(null);
 
   useEffect(() => {
     if (input || activePost) return;
@@ -84,8 +85,10 @@ export default function AIAssistantPage() {
       const assistantMsg: Message = { id: crypto.randomUUID(), role: "assistant", content: data.message, timestamp: new Date() };
       setMessages([...newMessages, assistantMsg]);
 
-      const platform = detectPlatform(content);
+      const detected = detectPlatform(content);
+      const platform = detected ?? lastPlatformRef.current;
       if (platform) {
+        lastPlatformRef.current = platform;
         const rawCaption = extractCaption(data.message);
         const hashtags = extractHashtags(data.message);
         const caption = rawCaption && hashtags ? stripHashtagsFromCaption(rawCaption) : rawCaption;
@@ -530,7 +533,7 @@ export default function AIAssistantPage() {
             </div>
             {/* New conversation */}
             <button
-              onClick={() => { setMessages([]); setActivePost(null); setError(null); setHistory([]); }}
+              onClick={() => { setMessages([]); setActivePost(null); setError(null); setHistory([]); lastPlatformRef.current = null; }}
               className="shrink-0 flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-white/[0.02] px-3 py-1.5 text-[11px] font-medium text-white/20 hover:text-white/50 hover:border-white/[0.12] transition-all ml-auto"
             >
               <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
