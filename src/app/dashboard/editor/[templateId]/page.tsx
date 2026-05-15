@@ -7,7 +7,7 @@ import { toPng } from "html-to-image";
 import TemplateCanvas from "@/components/TemplateCanvas";
 import { getMetaConnection } from "@/lib/meta-store";
 import { addScheduledPost } from "@/lib/schedule-store";
-import { getUserPhotos, saveUserPhoto, type StoredPhoto } from "@/lib/photo-store";
+import { getUserPhotos, saveUserPhoto, BRAND_PHOTOS, type StoredPhoto } from "@/lib/photo-store";
 
 const CAPTION_SUGGESTIONS = [
   "Just listed! This stunning home won't last long. Schedule your private showing today 🏡",
@@ -422,7 +422,7 @@ export default function EditorPage({
                   />
                 </div>
                 <div className="mt-2 flex gap-1.5">
-                  {getUserPhotos().slice(0, 4).map((p) => (
+                  {[...BRAND_PHOTOS.slice(0, 2), ...getUserPhotos().slice(0, 2)].map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -680,6 +680,23 @@ export default function EditorPage({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
+              <div>
+                <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">Brand Photos</p>
+                <div className="grid grid-cols-4 gap-2">
+                  {BRAND_PHOTOS.map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
+                    >
+                      <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
+                        <span className="w-full px-1 py-0.5 text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity truncate bg-black/50">{p.name}</span>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
               {typeof window !== "undefined" && getUserPhotos().length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">My Uploads</p>
