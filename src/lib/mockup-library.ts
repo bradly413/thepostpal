@@ -100,9 +100,9 @@ const library: Record<MockupCategory, MockupImage[]> = {
 
 const HOLIDAY_UNSPLASH: Record<string, string[]> = {
   "memorial day": [
-    "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
-    "https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800&q=80",
-    "https://images.unsplash.com/photo-1603827457577-609e6f42a45e?w=800&q=80",
+    "https://images.unsplash.com/photo-1561061715-ad0d1ade0b73?w=800&q=80",
+    "https://images.unsplash.com/photo-1620777757395-cf6a48c14167?w=800&q=80",
+    "https://images.unsplash.com/photo-1562884328-39da45501a9c?w=800&q=80",
   ],
   "fourth of july": [
     "https://images.unsplash.com/photo-1498931299210-d53e5ca8ae29?w=800&q=80",
@@ -119,8 +119,9 @@ const HOLIDAY_UNSPLASH: Record<string, string[]> = {
     "https://images.unsplash.com/photo-1530982011887-3cc11cc85693?w=800&q=80",
   ],
   "veterans day": [
-    "https://images.unsplash.com/photo-1569161031678-f49b4b9ca4f2?w=800&q=80",
-    "https://images.unsplash.com/photo-1508433957232-3107f5fd5995?w=800&q=80",
+    "https://images.unsplash.com/photo-1561061715-ad0d1ade0b73?w=800&q=80",
+    "https://images.unsplash.com/photo-1620777757395-cf6a48c14167?w=800&q=80",
+    "https://images.unsplash.com/photo-1562884328-39da45501a9c?w=800&q=80",
   ],
   "labor day": [
     "https://images.unsplash.com/photo-1504384308090-c894fdcc538d?w=800&q=80",
