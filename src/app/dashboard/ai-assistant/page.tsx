@@ -284,7 +284,7 @@ function AIAssistantInner() {
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w4" style={{ filter: "url(#ai-silk-warp-2)" }} />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-sheen" style={{ filter: "url(#ai-silk-warp)" }} />
 
-      <div className={`flex-1 min-h-0 flex flex-col items-center px-6 relative z-10 overflow-y-auto py-6 ${
+      <div className={`flex-1 min-h-0 flex flex-col items-center px-6 relative z-10 overflow-hidden py-4 ${
         !activePost && !lastAssistant && !loading ? "justify-center" : ""
       }`}>
 
@@ -306,12 +306,10 @@ function AIAssistantInner() {
           </div>
         )}
 
-        {/* Social mockup with ambilight glow — constrained to fit */}
+        {/* Social mockup — scaled to fit viewport without scrolling */}
         {activePost && !loading ? (
-          <>
-          <div className="flex-1" />
-          <div className={`mb-6 w-full flex flex-col items-center ${slideIn ? "ai-slide-in" : ""}`}>
-            <div className="max-w-[380px] w-full px-4">
+          <div className={`flex-1 min-h-0 w-full flex flex-col items-center justify-center ${slideIn ? "ai-slide-in" : ""}`}>
+            <div className="max-w-[320px] w-full px-4 scale-[0.85] origin-top">
               <SocialMockup
                 platform={activePost.platform}
                 caption={activePost.caption || undefined}
@@ -334,10 +332,9 @@ function AIAssistantInner() {
               )}
             </div>
           </div>
-          </>
         ) : activePost && loading ? (
-          <div className="mb-6 w-full flex flex-col items-center">
-            <div className="max-w-[380px] w-full px-4">
+          <div className="flex-1 min-h-0 w-full flex flex-col items-center justify-center">
+            <div className="max-w-[320px] w-full px-4 scale-[0.85] origin-top">
               <div className="opacity-50 relative">
                 <SocialMockup
                   platform={activePost.platform}
