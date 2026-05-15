@@ -1,7 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { getFeedback, removeFeedback, clearAllFeedback, type FeedbackItem } from "@/lib/feedback-store";
+import { useState, useEffect, useCallback } from "react";
+
+interface FeedbackItem {
+  id: string;
+  type: "bug" | "feature" | "other";
+  message: string;
+  page: string;
+  timestamp: number;
+}
 
 const TYPE_STYLES: Record<FeedbackItem["type"], { label: string; color: string; bg: string }> = {
   bug: { label: "Bug", color: "text-red-400", bg: "bg-red-500/10" },
@@ -12,21 +19,45 @@ const TYPE_STYLES: Record<FeedbackItem["type"], { label: string; color: string; 
 export default function FeedbackPage() {
   const [items, setItems] = useState<FeedbackItem[]>([]);
   const [filter, setFilter] = useState<"all" | FeedbackItem["type"]>("all");
+  const [loading, setLoading] = useState(true);
+
+  const fetchFeedback = useCallback(async () => {
+    try {
+      const res = await fetch("/api/feedback");
+      const data = await res.json();
+      const parsed = (data.items || []).map((raw: string | FeedbackItem) => {
+        if (typeof raw === "string") return JSON.parse(raw);
+        return raw;
+      });
+      setItems(parsed);
+    } catch {
+      setItems([]);
+    }
+    setLoading(false);
+  }, []);
 
   useEffect(() => {
-    setItems(getFeedback());
-  }, []);
+    fetchFeedback();
+  }, [fetchFeedback]);
 
   const filtered = filter === "all" ? items : items.filter((f) => f.type === filter);
 
-  function handleRemove(id: string) {
-    removeFeedback(id);
-    setItems(getFeedback());
+  async function handleRemove(id: string) {
+    await fetch("/api/feedback", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    });
+    fetchFeedback();
   }
 
-  function handleClearAll() {
+  async function handleClearAll() {
     if (!confirm("Delete all feedback?")) return;
-    clearAllFeedback();
+    await fetch("/api/feedback", {
+      method: "DELETE",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ clearAll: true }),
+    });
     setItems([]);
   }
 
@@ -43,7 +74,7 @@ export default function FeedbackPage() {
         <div>
           <h1 className="text-xl font-bold text-text font-heading">Beta Feedback</h1>
           <p className="text-sm text-text-secondary mt-1">
-            {items.length} item{items.length !== 1 && "s"} from beta testers
+            {loading ? "Loading..." : `${items.length} item${items.length !== 1 ? "s" : ""} from beta testers`}
           </p>
         </div>
         {items.length > 0 && (
@@ -73,7 +104,7 @@ export default function FeedbackPage() {
         ))}
       </div>
 
-      {filtered.length === 0 ? (
+      {filtered.length === 0 && !loading ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
             <svg className="mx-auto h-16 w-16 text-text-secondary/20 mb-4" fill="none" viewBox="0 0 24 24" strokeWidth={0.5} stroke="currentColor">
@@ -86,7 +117,7 @@ export default function FeedbackPage() {
       ) : (
         <div className="flex-1 overflow-y-auto space-y-3 pb-4" style={{ scrollbarWidth: "none" }}>
           {filtered.map((item) => {
-            const style = TYPE_STYLES[item.type];
+            const style = TYPE_STYLES[item.type] || TYPE_STYLES.other;
             const date = new Date(item.timestamp);
             return (
               <div

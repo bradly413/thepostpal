@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { usePathname } from "next/navigation";
-import { saveFeedback } from "@/lib/feedback-store";
 
 const TYPES = [
   { value: "bug" as const, label: "Bug", icon: "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" },
@@ -17,9 +16,15 @@ export default function FeedbackWidget() {
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
 
-  function handleSubmit() {
+  async function handleSubmit() {
     if (!message.trim()) return;
-    saveFeedback({ type, message: message.trim(), page: pathname });
+    try {
+      await fetch("/api/feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ type, message: message.trim(), page: pathname }),
+      });
+    } catch {}
     setMessage("");
     setSent(true);
     setTimeout(() => {

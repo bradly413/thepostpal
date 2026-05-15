@@ -12,6 +12,7 @@
     "@anthropic-ai/sdk": "^0.96.0",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.92",
+    "@upstash/redis": "^1.38.0",
     "cookies-next": "^6.1.1",
     "date-fns": "^4.1.0",
     "gsap": "^3.15.0",
