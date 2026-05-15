@@ -76,6 +76,7 @@ function AiAssistantCard() {
             loop
             muted
             playsInline
+            aria-hidden="true"
             className="absolute w-full h-full object-cover"
             style={{ opacity: 0.5 }}
             src="/videos/ai-aurora.webm"
@@ -88,7 +89,7 @@ function AiAssistantCard() {
         </div>
         <div className="relative z-10 flex flex-col h-full">
           <div className="flex items-center gap-2.5 px-5 pt-4 pb-2">
-            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-blue-400 shrink-0">
+            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="text-blue-400 shrink-0" aria-hidden="true">
               <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
             </svg>
             <span className="text-xs font-semibold text-text">AI Assistant</span>
@@ -113,6 +114,7 @@ function AiAssistantCard() {
                   onChange={(e) => setUserInput(e.target.value)}
                   onKeyDown={(e) => { if (e.key === "Enter") handleSubmit(); }}
                   disabled={generating}
+                  aria-label="Ask AI Assistant"
                   className="absolute inset-0 w-full text-[15px] bg-transparent border-none outline-none ai-prompt-text z-10"
                 />
               </div>
@@ -212,7 +214,7 @@ function VideoCarousel() {
               aria-label="Play video"
             >
               <div className="w-12 h-12 rounded-full bg-white/80 flex items-center justify-center group-hover:scale-110 transition-transform duration-300 shadow-lg">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
                   <path d="M8 5.14v13.72a1 1 0 001.5.86l11.14-6.86a1 1 0 000-1.72L9.5 4.28a1 1 0 00-1.5.86z" fill="#D4A853" />
                 </svg>
               </div>
@@ -265,7 +267,9 @@ function VideoCarousel() {
         <div
           className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-sm flex items-center justify-center px-4"
           onClick={(e) => { if (e.target === e.currentTarget) setPlaying(null); }}
-          role="presentation"
+          role="dialog"
+          aria-modal="true"
+          aria-label="Video player"
         >
           <div className="w-full max-w-4xl rounded-2xl overflow-hidden shadow-2xl shadow-black/60 border border-white/[0.08] bg-black">
             <div className="flex items-center justify-between px-5 py-3 border-b border-white/[0.06]">
@@ -556,12 +560,14 @@ function TemplateCarousel({ templates: items }: { templates: typeof templates })
 }
 
 export default function DashboardPage() {
+  useEffect(() => { document.title = "Dashboard | thepostpal"; }, []);
   const [filter] = useState("All");
 
   const filtered = filter === "All" ? templates : templates.filter((t) => t.pillar === filter);
 
   return (
     <div className="flex flex-col h-full overflow-hidden">
+      <h1 className="sr-only">Dashboard</h1>
       <style>{`
         .qa-btn { background: transparent !important; color: rgba(255,255,255,0.45) !important; box-shadow: none !important; transition: all 0.3s; }
         .qa-btn:hover { color: #fff !important; }
@@ -584,29 +590,36 @@ export default function DashboardPage() {
           {/* New Post — photo slideshow (manual) */}
           <NewPostSlideshow />
 
-          {/* Quick Actions — frosted glass pills */}
-          <div className="bento-card col-span-1 row-span-1 relative overflow-hidden flex flex-col p-4 min-h-[220px] md:min-h-0">
-            <p className="text-[10px] uppercase tracking-[0.2em] text-white/40 mb-3">Quick Actions</p>
-            <div className="flex-1 flex flex-col gap-2">
-              {[
-                { label: "New Listing", color: "#22c55e", href: "/dashboard/editor/new-listing-photo", icon: <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 21v-4.875c0-.621.504-1.125 1.125-1.125h5.25c.621 0 1.125.504 1.125 1.125V21m0 0h4.5V3.545M12.75 21h7.5M10.5 21H3m0 0V3.545M3 3.545l8.574-3.028a1.125 1.125 0 01.852 0L21 3.545" /></svg> },
-                { label: "Just Sold", color: "#3b82f6", href: "/dashboard/editor/just-sold-photo", icon: <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12c0 1.268-.63 2.39-1.593 3.068a3.745 3.745 0 01-1.043 3.296 3.745 3.745 0 01-3.296 1.043A3.745 3.745 0 0112 21c-1.268 0-2.39-.63-3.068-1.593a3.746 3.746 0 01-3.296-1.043 3.745 3.745 0 01-1.043-3.296A3.745 3.745 0 013 12c0-1.268.63-2.39 1.593-3.068a3.745 3.745 0 011.043-3.296 3.746 3.746 0 013.296-1.043A3.746 3.746 0 0112 3c1.268 0 2.39.63 3.068 1.593a3.746 3.746 0 013.296 1.043 3.746 3.746 0 011.043 3.296A3.745 3.745 0 0121 12z" /></svg> },
-                { label: "Holiday", color: "#ef4444", href: "/dashboard/templates?pillar=Holiday", icon: <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 8.25v-1.5m0 1.5c-1.355 0-2.697.056-4.024.166C6.845 8.51 6 9.473 6 10.608v2.513m6-4.871c1.355 0 2.697.056 4.024.166C17.155 8.51 18 9.473 18 10.608v2.513M15 8.25v-1.5m-6 1.5v-1.5m12 9.75l-1.5.75a3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0 3.354 3.354 0 00-3 0 3.354 3.354 0 01-3 0L3 16.5m15-3.379a48.474 48.474 0 00-6-.371c-2.032 0-4.034.126-6 .371m12 0c.39.049.777.102 1.163.16 1.07.16 1.837 1.094 1.837 2.175v5.169c0 .621-.504 1.125-1.125 1.125H4.125A1.125 1.125 0 013 20.625v-5.17c0-1.08.768-2.014 1.837-2.174A47.78 47.78 0 016 13.12" /></svg> },
-                { label: "Engage", color: "#f97316", href: "/dashboard/templates", icon: <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M20.25 8.511c.884.284 1.5 1.128 1.5 2.097v4.286c0 1.136-.847 2.1-1.98 2.193-.34.027-.68.052-1.02.072v3.091l-3-3c-1.354 0-2.694-.055-4.02-.163a2.115 2.115 0 01-.825-.242m9.345-8.334a2.126 2.126 0 00-.476-.095 48.64 48.64 0 00-8.048 0c-1.131.094-1.976 1.057-1.976 2.192v4.286c0 .837.46 1.58 1.155 1.951m9.345-8.334V6.637c0-1.621-1.152-3.026-2.76-3.235A48.455 48.455 0 0011.25 3c-2.115 0-4.198.137-6.24.402-1.608.209-2.76 1.614-2.76 3.235v6.226c0 1.621 1.152 3.026 2.76 3.235.577.075 1.157.14 1.74.194V21l4.155-4.155" /></svg> },
-              ].map((item) => (
-                <Link
-                  key={item.label}
-                  href={item.href}
-                  data-qa={item.label.toLowerCase().replace(/\s+/g, "-")}
-                  className="qa-btn flex-1 rounded-2xl flex items-center gap-3 px-4 text-xs no-underline transition-transform duration-300 hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                  style={{ border: `1px solid ${item.color}` }}
-                >
-                  <span style={{ color: item.color }}>{item.icon}</span>
-                  {item.label}
-                </Link>
-              ))}
+          {/* Brand Setup / Quick Actions */}
+          <Link
+            href="/onboarding"
+            className="bento-card col-span-1 row-span-1 relative overflow-hidden flex flex-col p-5 min-h-[220px] md:min-h-0 no-underline group/brand cursor-pointer hover:border-accent/30 transition-all"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-accent/[0.06] via-transparent to-transparent opacity-0 group-hover/brand:opacity-100 transition-opacity duration-500" />
+            <div className="relative z-10 flex flex-col h-full">
+              <div className="flex items-center gap-2 mb-4">
+                <div className="w-8 h-8 rounded-xl bg-accent/15 flex items-center justify-center">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" />
+                  </svg>
+                </div>
+                <p className="text-[10px] uppercase tracking-[0.2em] text-white/40">Brand Setup</p>
+              </div>
+              <div className="flex-1 flex flex-col justify-center">
+                <h3 className="text-base font-semibold text-text font-heading mb-1.5">Set up your brand</h3>
+                <p className="text-xs text-text-secondary/60 leading-relaxed">
+                  Meet your postpal — answer a few questions and we&apos;ll build your brand book, templates, and voice in about two minutes.
+                </p>
+              </div>
+              <div className="flex items-center gap-2 mt-3">
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-accent/15 border border-accent/25 px-3 py-1.5 text-[11px] font-medium text-accent group-hover/brand:bg-accent/25 transition-colors">
+                  Get started
+                  <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                </span>
+                <span className="text-[10px] text-text-secondary/30">~2 min</span>
+              </div>
             </div>
-          </div>
+          </Link>
 
           {/* Calendar */}
           <div className="bento-card col-span-1 row-span-1 p-4">

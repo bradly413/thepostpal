@@ -10,6 +10,15 @@ export async function GET(req: NextRequest) {
     return NextResponse.redirect(new URL(`/dashboard/settings?meta_error=${encodeURIComponent(msg)}`, req.url));
   }
 
+  // Validate OAuth state parameter to prevent CSRF
+  const state = req.nextUrl.searchParams.get("state");
+  const storedState = req.cookies.get("meta_oauth_state")?.value;
+  if (!state || !storedState || state !== storedState) {
+    return NextResponse.redirect(
+      new URL("/dashboard/settings?meta_error=Invalid+OAuth+state.+Please+try+connecting+again.", req.url),
+    );
+  }
+
   try {
     const { access_token: shortToken } = await exchangeCode(code);
     const { access_token: longToken } = await getLongLivedToken(shortToken);
@@ -47,6 +56,9 @@ export async function GET(req: NextRequest) {
       maxAge: 60 * 60 * 24 * 60,
       path: "/",
     });
+
+    // Clear the OAuth state cookie after successful validation
+    response.cookies.delete("meta_oauth_state");
 
     return response;
   } catch (err) {

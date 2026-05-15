@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import Link from "next/link";
 import { getScheduledPosts, type ScheduledPost } from "@/lib/schedule-store";
 import { getMetaConnection } from "@/lib/meta-store";
 
@@ -100,9 +101,9 @@ export default function FacebookPage() {
           </div>
           <h3 className="text-sm font-bold text-text mb-1">Connect Your Facebook Page</h3>
           <p className="text-xs text-text-secondary mb-4">Go to Settings to connect your Facebook page and see live insights</p>
-          <a href="/dashboard/settings" className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all">
+          <Link href="/dashboard/settings" className="inline-flex items-center gap-2 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all">
             Go to Settings
-          </a>
+          </Link>
         </div>
       )}
 

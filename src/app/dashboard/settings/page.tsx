@@ -13,6 +13,7 @@ export default function SettingsPage() {
 }
 
 function SettingsContent() {
+  useEffect(() => { document.title = "Settings | thepostpal"; }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
@@ -88,7 +89,10 @@ function SettingsContent() {
     }
     const redirect = encodeURIComponent(window.location.origin + "/api/meta/callback");
     const scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish";
-    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirect}&scope=${scopes}&response_type=code&state=settings`;
+    // Generate a random state for CSRF protection and store it in a cookie
+    const state = crypto.randomUUID();
+    document.cookie = `meta_oauth_state=${state}; path=/; max-age=600; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
+    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirect}&scope=${scopes}&response_type=code&state=${state}`;
   }
 
   function handleDisconnectMeta() {

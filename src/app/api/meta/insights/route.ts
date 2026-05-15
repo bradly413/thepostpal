@@ -15,9 +15,9 @@ export async function GET(req: NextRequest) {
     if (metaCookie) connection = JSON.parse(metaCookie);
   } catch { /* invalid cookie */ }
 
-  const pageId = connection?.pageId || req.nextUrl.searchParams.get("pageId");
-  const pageToken = connection?.pageToken || req.nextUrl.searchParams.get("pageToken");
-  const igAccountId = connection?.igAccountId || req.nextUrl.searchParams.get("igAccountId");
+  const pageId = connection?.pageId;
+  const pageToken = connection?.pageToken;
+  const igAccountId = connection?.igAccountId;
 
   if (!pageId || !pageToken) {
     return NextResponse.json({ error: "Not connected to Meta" }, { status: 400 });

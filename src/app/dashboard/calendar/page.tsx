@@ -57,6 +57,7 @@ function formatDateKey(year: number, month: number, day: number): string {
 type ModalMode = "post" | "event" | "day-detail" | null;
 
 export default function CalendarPage() {
+  useEffect(() => { document.title = "Calendar | thepostpal"; }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week">("month");
   const [posts, setPosts] = useState<ScheduledPost[]>([]);
@@ -617,8 +618,8 @@ export default function CalendarPage() {
 
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
-        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Event details" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
               <div>
                 <h3 className="text-lg font-bold text-text font-heading">{formatDisplayDate(selectedDate)}</h3>
@@ -705,8 +706,8 @@ export default function CalendarPage() {
 
       {/* Schedule Post Modal */}
       {modalMode === "post" && (
-        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Schedule post" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text font-heading">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
               <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
@@ -842,8 +843,8 @@ export default function CalendarPage() {
 
       {/* Event Modal */}
       {modalMode === "event" && (
-        <div role="presentation" className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
+          <div role="dialog" aria-modal="true" aria-label="Add event" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-bold text-text font-heading">{editingEvent ? "Edit Event" : "Add Event"}</h3>
               <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">

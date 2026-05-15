@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, Suspense } from "react";
+import { useState, useEffect, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 
@@ -59,6 +59,7 @@ export default function TemplatesPage() {
 }
 
 function TemplatesContent() {
+  useEffect(() => { document.title = "Templates | thepostpal"; }, []);
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
   const [filter, setFilter] = useState(PILLARS.includes(initialPillar) ? initialPillar : "All");

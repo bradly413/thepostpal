@@ -1,7 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { publishToFacebook, publishToInstagram } from "@/lib/meta";
+import { getSession } from "@/lib/auth";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(req: NextRequest) {
+  const authenticated = await getSession();
+  if (!authenticated) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  const ip = getClientIp(req.headers);
+  if (!rateLimit(`meta-publish:${ip}`, 10, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const body = await req.json();
     const { platform, pageId, igAccountId, caption, imageUrl, scheduledTime } = body;

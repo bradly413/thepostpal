@@ -35,7 +35,7 @@ const ALL_NAV: NavItem[] = [...NAV, ...EXTRA_NAV];
 const NAV_ITEM_H = 36;
 
 function SidebarIcon({ type }: { type: string }) {
-  const props = { width: 18, height: 18, fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5 };
+  const props = { width: 18, height: 18, fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5, "aria-hidden": true as const };
   if (type === "dashboard")
     return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>;
   if (type === "templates")
@@ -136,6 +136,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   return (
     <div className="ds-shell flex h-screen overflow-hidden bg-[#0c0c0e]">
+      <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black">Skip to content</a>
       <style>{`
         .ds-nav {
           position: absolute;
@@ -540,7 +541,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 flex flex-col overflow-y-auto ds-main">
+        <main id="main-content" className="flex-1 flex flex-col overflow-y-auto ds-main">
           <PageTransition>{children}</PageTransition>
         </main>
         {!pathname.startsWith("/dashboard/editor") && (

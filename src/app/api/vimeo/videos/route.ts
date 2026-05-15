@@ -1,6 +1,12 @@
 import { NextResponse } from "next/server";
+import { getSession } from "@/lib/auth";
 
 export async function GET() {
+  const authenticated = await getSession();
+  if (!authenticated) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const token = process.env.VIMEO_ACCESS_TOKEN;
   if (!token) {
     return NextResponse.json({ error: "Vimeo not configured" }, { status: 400 });

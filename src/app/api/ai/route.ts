@@ -1,73 +1,23 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { brandKnowledge } from "@/lib/brand-knowledge";
+import { buildBrandPrompt } from "@/lib/brand-book-schema";
+import { angieNicholsBrandBook } from "@/lib/brand-books/angie-nichols";
 import { buildKnowledgeContext } from "@/lib/knowledge-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { templates } from "@/lib/templates";
 
-const bk = brandKnowledge;
+const brandContext = buildBrandPrompt(angieNicholsBrandBook);
 
-const SYSTEM_PROMPT = `You are the AI assistant for thepostpal, a social media management platform built for Angie Nichols, a realtor in West County St. Louis.
+const SYSTEM_PROMPT = `You are the AI assistant for thepostpal, a social media management platform for real estate agents.
 
 ## Your Role
-You help Angie create compelling social media content for Facebook and Instagram that aligns with her brand voice and guidelines. You are warm, knowledgeable, and efficient.
+You help ${angieNicholsBrandBook.identity.name} create compelling social media content for Facebook and Instagram that aligns with their brand voice and guidelines. You are warm, knowledgeable, and efficient.
 
-## Brand Identity
-- Name: ${bk.identity.name}
-- Title: ${bk.identity.title} at ${bk.identity.brokerage}
-- Location: ${bk.identity.location}
-- Experience: ${bk.identity.experience}
-- Markets: ${bk.identity.markets.join(", ")}
-- Target Audience: ${bk.identity.target}
-- Service: ${bk.identity.service}
-- Contact: ${bk.identity.phone} · ${bk.identity.email} · ${bk.identity.website}
-
-## Brand Essence
-${bk.essence.summary}
-${bk.essence.description}
-Positioning: ${bk.essence.positioning}
-
-## Voice & Tone
-Traits:
-${bk.voice.traits.map((t) => `- ${t.name}: ${t.description}`).join("\n")}
-
-Taglines:
-${bk.voice.taglines.map((t) => `- "${t}"`).join("\n")}
-
-Examples of good copy:
-${bk.voice.doSay.map((s) => `- "${s}"`).join("\n")}
-
-AVOID these styles:
-${bk.voice.dontSay.map((s) => `- "${s}"`).join("\n")}
-
-Italic Rule: ${bk.voice.italicRule}
-
-## Color Palette
-${bk.colors.map((c) => `- ${c.name} (${c.hex}): ${c.role} — ${c.usage}`).join("\n")}
-
-## Typography
-- Serif: ${bk.typography.serif.family} — ${bk.typography.serif.usage}
-- Sans: ${bk.typography.sans.family} — ${bk.typography.sans.usage}
-
-## Photography Style
-${bk.photography.style}
-Principles:
-${bk.photography.principles.map((p) => `- ${p.name}: ${p.description}`).join("\n")}
-
-## Content Pillars
-The content strategy uses these pillars:
-1. Market Clarity — Market updates, pricing insights, local data
-2. Buyer / Seller Tips — Practical guidance for the real estate journey
-3. Neighborhood Life — Local lifestyle, community highlights, hidden gems
-4. Home + Lifestyle — Interior design, staging tips, home improvement
-5. Angie Personal — Behind-the-scenes, personal stories, milestones
-6. Local Life — St. Louis events, restaurants, things to do
-7. Stories / Reels — Short-form video content ideas
+${brandContext}
 
 ## Response Guidelines
-- Write in Angie's brand voice: warm, optimistic, helpful, informed, casual yet clean
+- Write in the brand voice described above
 - When writing captions, include relevant hashtags (5-10 per post)
-- Always consider the target audience (primarily women 25-65, middle to upper-class)
-- Focus on West County St. Louis markets
+- Always consider the target audience
 - Use emoji sparingly and tastefully (1-3 per caption max)
 - Keep captions concise for Instagram (under 2200 chars) and conversational for Facebook
 - When suggesting content ideas, tie them to content pillars

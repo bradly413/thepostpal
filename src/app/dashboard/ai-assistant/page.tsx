@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 import SocialMockup, { type Platform } from "@/components/SocialMockup";
@@ -39,6 +39,15 @@ const PROMPT_SUGGESTIONS = [
 ];
 
 export default function AIAssistantPage() {
+  return (
+    <Suspense>
+      <AIAssistantInner />
+    </Suspense>
+  );
+}
+
+function AIAssistantInner() {
+  useEffect(() => { document.title = "AI Assistant | thepostpal"; }, []);
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
@@ -219,28 +228,21 @@ export default function AIAssistantPage() {
           filter: blur(40px);
           opacity: 0.45;
         }
-        .ai-ambilight {
-          position: relative;
-          display: inline-block;
+        .ai-mockup-glow {
+          border-radius: 1rem;
+          box-shadow:
+            0 0 30px 6px rgba(212, 168, 83, 0.18),
+            0 0 60px 16px rgba(212, 168, 83, 0.10),
+            0 0 100px 30px rgba(212, 168, 83, 0.05),
+            0 20px 40px -10px rgba(0, 0, 0, 0.5);
+          transition: box-shadow 0.6s ease;
         }
-        .ai-ambilight-glow {
-          position: absolute;
-          top: -20px;
-          left: -20px;
-          right: -20px;
-          bottom: -20px;
-          width: auto;
-          height: auto;
-          filter: blur(50px) saturate(1.6) brightness(1.2);
-          transform: scale(1.08);
-          opacity: 0.6;
-          transition: opacity 0.6s ease, transform 0.6s ease;
-          pointer-events: none;
-          z-index: 0;
-        }
-        .ai-ambilight:hover .ai-ambilight-glow {
-          opacity: 0.8;
-          transform: scale(1.12);
+        .ai-mockup-glow:hover {
+          box-shadow:
+            0 0 40px 10px rgba(212, 168, 83, 0.22),
+            0 0 80px 24px rgba(212, 168, 83, 0.12),
+            0 0 120px 40px rgba(212, 168, 83, 0.06),
+            0 24px 48px -10px rgba(0, 0, 0, 0.6);
         }
         @keyframes slide-in-right {
           from { transform: translateX(60px) scale(0.97); opacity: 0; }
@@ -297,8 +299,8 @@ export default function AIAssistantPage() {
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-w4" style={{ filter: "url(#ai-silk-warp-2)" }} />
       <div className="absolute -inset-[20%] pointer-events-none ai-silk-sheen" style={{ filter: "url(#ai-silk-warp)" }} />
 
-      <div className={`flex-1 min-h-0 flex flex-col items-center px-6 relative z-10 overflow-hidden ${
-        activePost || lastAssistant || loading ? "justify-end pb-6" : "justify-center"
+      <div className={`flex-1 min-h-0 flex flex-col items-center px-6 relative z-10 overflow-y-auto py-6 ${
+        !activePost && !lastAssistant && !loading ? "justify-center" : ""
       }`}>
 
         {/* Error */}
@@ -321,30 +323,21 @@ export default function AIAssistantPage() {
 
         {/* Social mockup with ambilight glow — constrained to fit */}
         {activePost && !loading ? (
-          <div className={`mb-4 flex-1 min-h-0 w-full flex justify-center overflow-hidden pt-4 pb-2 ${slideIn ? "ai-slide-in" : ""}`}>
-            <div className="max-w-[360px] w-full h-full overflow-y-auto ai-mockup-scroll px-5">
-              <div className="ai-ambilight">
-                <div className="ai-ambilight-glow rounded-2xl overflow-hidden">
-                  <SocialMockup
-                    platform={activePost.platform}
-                    caption={activePost.caption || undefined}
-                    hashtags={activePost.hashtags || undefined}
-                    imageUrl={activePost.imageUrl || undefined}
-                    username="Angie Nichols"
-                  />
-                </div>
-                <div className="relative z-[2]">
-                  <SocialMockup
-                    platform={activePost.platform}
-                    caption={activePost.caption || undefined}
-                    hashtags={activePost.hashtags || undefined}
-                    imageUrl={activePost.imageUrl || undefined}
-                    username="Angie Nichols"
-                  />
-                </div>
+          <>
+          <div className="flex-1" />
+          <div className={`mb-6 w-full flex flex-col items-center ${slideIn ? "ai-slide-in" : ""}`}>
+            <div className="max-w-[380px] w-full px-4">
+              <div className="ai-mockup-glow">
+                <SocialMockup
+                  platform={activePost.platform}
+                  caption={activePost.caption || undefined}
+                  hashtags={activePost.hashtags || undefined}
+                  imageUrl={activePost.imageUrl || undefined}
+                  username="Angie Nichols"
+                />
               </div>
               {lastAssistant && (
-                <div className="mt-2 px-1 pb-2">
+                <div className="mt-3 px-1">
                   <button
                     onClick={() => { setActivePost(null); }}
                     className="flex items-center gap-1.5 text-[11px] font-medium text-white/30 hover:text-accent transition-colors"
@@ -358,33 +351,23 @@ export default function AIAssistantPage() {
               )}
             </div>
           </div>
+          </>
         ) : activePost && loading ? (
-          <div className="mb-4 flex-1 min-h-0 w-full flex justify-center overflow-hidden pt-4">
-            <div className="max-w-[320px] w-full h-full overflow-hidden">
-              <div className="ai-ambilight opacity-40">
-                <div className="ai-ambilight-glow rounded-2xl overflow-hidden opacity-50">
-                  <SocialMockup
-                    platform={activePost.platform}
-                    caption={activePost.caption || undefined}
-                    hashtags={activePost.hashtags || undefined}
-                    imageUrl={activePost.imageUrl || undefined}
-                    username="Angie Nichols"
-                  />
-                </div>
-                <div className="relative z-[2]">
-                  <SocialMockup
-                    platform={activePost.platform}
-                    caption={activePost.caption || undefined}
-                    hashtags={activePost.hashtags || undefined}
-                    imageUrl={activePost.imageUrl || undefined}
-                    username="Angie Nichols"
-                  />
-                  <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
-                    <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
-                      <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
-                    </svg>
-                    <p className="text-sm text-white/50 font-medium mt-2">Generating new post...</p>
-                  </div>
+          <div className="mb-6 w-full flex flex-col items-center">
+            <div className="max-w-[380px] w-full px-4">
+              <div className="ai-mockup-glow opacity-50 relative">
+                <SocialMockup
+                  platform={activePost.platform}
+                  caption={activePost.caption || undefined}
+                  hashtags={activePost.hashtags || undefined}
+                  imageUrl={activePost.imageUrl || undefined}
+                  username="Angie Nichols"
+                />
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 rounded-xl">
+                  <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="#D4A853" strokeWidth={1.5} className="animate-pulse">
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" />
+                  </svg>
+                  <p className="text-sm text-white/50 font-medium mt-2">Generating new post...</p>
                 </div>
               </div>
             </div>

@@ -211,15 +211,15 @@ function FacebookMockup({ format = "square", imageUrl, caption, username, avatar
   }
 
   return (
-    <div className="rounded-xl overflow-hidden bg-[#242526] border border-white/[0.06]">
+    <div className="rounded-xl overflow-hidden bg-[#2a2b2e] border border-white/[0.10] shadow-lg shadow-black/30">
       {/* Header */}
-      <div className="px-3 pt-3 pb-2">
-        <div className="flex items-center gap-2.5 mb-2">
-          <div className="w-9 h-9 rounded-full overflow-hidden">
+      <div className="px-3.5 pt-3.5 pb-2.5">
+        <div className="flex items-center gap-3 mb-2.5">
+          <div className="w-10 h-10 rounded-full overflow-hidden ring-1 ring-white/[0.06]">
             {avatarUrl ? <img src={avatarUrl} alt="" className="w-full h-full object-cover" /> : <DefaultAvatar color="#1877F2" />}
           </div>
           <div className="flex-1">
-            <span className="text-white text-xs font-semibold block">{displayName}</span>
+            <span className="text-white text-[13px] font-semibold block">{displayName}</span>
             <div className="flex items-center gap-1 text-white/40 text-[10px]">
               <span>{displayTime}</span>
               <span>·</span>
@@ -230,7 +230,7 @@ function FacebookMockup({ format = "square", imageUrl, caption, username, avatar
             <circle cx="5" cy="12" r="1.5" /><circle cx="12" cy="12" r="1.5" /><circle cx="19" cy="12" r="1.5" />
           </svg>
         </div>
-        {displayCaption && <p className="text-white/80 text-xs leading-relaxed mb-2">{displayCaption}</p>}
+        {displayCaption && <p className="text-white/85 text-[13px] leading-relaxed mb-2.5">{displayCaption}</p>}
       </div>
 
       {/* Image */}
@@ -241,31 +241,31 @@ function FacebookMockup({ format = "square", imageUrl, caption, username, avatar
       )}
 
       {/* Reactions bar */}
-      <div className="px-3 pt-2.5">
-        <div className="flex items-center justify-between pb-2 border-b border-white/[0.06]">
-          <div className="flex items-center gap-1">
+      <div className="px-3.5 pt-2.5 pb-1">
+        <div className="flex items-center justify-between pb-2.5 border-b border-white/[0.08]">
+          <div className="flex items-center gap-1.5">
             <div className="flex -space-x-0.5">
-              <span className="text-[11px]">👍</span>
-              <span className="text-[11px]">❤️</span>
+              <span className="text-[12px]">👍</span>
+              <span className="text-[12px]">❤️</span>
             </div>
-            <span className="text-white/40 text-[11px]">{displayLikes}</span>
+            <span className="text-white/45 text-[11px]">{displayLikes}</span>
           </div>
-          <div className="flex gap-3 text-white/30 text-[11px]">
+          <div className="flex gap-3 text-white/35 text-[11px]">
             <span>{displayComments} comments</span>
             <span>{displayShares} shares</span>
           </div>
         </div>
 
         {/* Action buttons */}
-        <div className="flex items-center justify-around py-1.5">
+        <div className="flex items-center justify-around py-2">
           {[
             { icon: "👍", label: "Like" },
             { icon: "💬", label: "Comment" },
             { icon: "↗️", label: "Share" },
           ].map((a) => (
-            <button key={a.label} className="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-white/40 hover:bg-white/[0.04] transition-colors">
-              <span className="text-xs">{a.icon}</span>
-              <span className="text-[11px] font-medium">{a.label}</span>
+            <button key={a.label} className="flex items-center gap-1.5 px-4 py-2 rounded-lg text-white/45 hover:bg-white/[0.05] transition-colors">
+              <span className="text-[13px]">{a.icon}</span>
+              <span className="text-[12px] font-medium">{a.label}</span>
             </button>
           ))}
         </div>
@@ -409,22 +409,22 @@ export default function SocialMockup(props: SocialMockupProps) {
   const mockupProps = { ...props, format: activeFormat };
 
   return (
-    <div className="mt-3">
+    <div>
       {/* Platform label + format selector */}
-      <div className="flex items-center justify-between mb-2.5">
+      <div className="flex items-center justify-between mb-3 px-1">
         <div className="flex items-center gap-2">
-          <div className={`w-1.5 h-1.5 rounded-full bg-gradient-to-r ${config.gradient}`} />
-          <span className="text-[11px] font-medium text-white/50">{config.name} Preview</span>
+          <div className={`w-2 h-2 rounded-full bg-gradient-to-r ${config.gradient}`} />
+          <span className="text-[12px] font-semibold text-white/60 tracking-wide">{config.name} Preview</span>
         </div>
-        <div className="flex gap-1">
+        <div className="flex gap-0.5 bg-white/[0.04] rounded-lg p-0.5">
           {config.formats.map((f) => (
             <button
               key={f}
               onClick={() => setActiveFormat(f)}
-              className={`px-2 py-0.5 rounded text-[10px] transition-all ${
+              className={`px-2.5 py-1 rounded-md text-[10px] font-medium transition-all ${
                 activeFormat === f
-                  ? "bg-white/[0.08] text-white/70"
-                  : "text-white/20 hover:text-white/40"
+                  ? "bg-white/[0.12] text-white/80 shadow-sm"
+                  : "text-white/25 hover:text-white/45"
               }`}
             >
               {f.charAt(0).toUpperCase() + f.slice(1)}
@@ -434,7 +434,7 @@ export default function SocialMockup(props: SocialMockupProps) {
       </div>
 
       {/* Mockup */}
-      <div className="max-w-[320px]">
+      <div>
         {platform === "instagram" && <InstagramMockup {...mockupProps} />}
         {platform === "facebook" && <FacebookMockup {...mockupProps} />}
         {platform === "linkedin" && <LinkedInMockup {...mockupProps} />}
