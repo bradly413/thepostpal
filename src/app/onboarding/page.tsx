@@ -438,47 +438,41 @@ function FontPairingCards({
             data-font-card
             type="button"
             onClick={() => onSelect(fp.id)}
-            className="w-full text-left rounded-xl px-5 py-3 transition-all duration-200"
-            style={{
-              opacity: 0,
-              background: "transparent",
-              border: isSelected ? "2px solid rgba(212,168,83,0.6)" : "2px solid rgba(255,255,255,0.08)",
-              boxShadow: isSelected
-                ? "0 0 0 4px rgba(212,168,83,0.1), inset 0 1px 0 rgba(255,255,255,0.04)"
-                : "inset 0 1px 0 rgba(255,255,255,0.04)",
-            }}
+            className={`w-full text-left rounded-xl px-5 py-4 transition-all duration-200 bg-surface ${
+              isSelected
+                ? "border-2 border-text shadow-sm"
+                : "border border-border hover:border-text/40"
+            }`}
+            style={{ opacity: 0 }}
           >
             <div className="flex items-baseline gap-4">
               <p
-                className="leading-[1.1] shrink-0"
+                className="leading-[1.1] shrink-0 text-text"
                 style={{
                   fontFamily: `'${fp.title}', ${fp.titleCategory}`,
                   fontWeight: 700,
                   fontSize: "22px",
-                  color: "rgba(255,255,255,0.92)",
                 }}
               >
                 {fp.title}
               </p>
               <p
-                className="uppercase tracking-[0.2em]"
+                className="uppercase tracking-[0.2em] text-text-secondary"
                 style={{
                   fontFamily: `'${fp.body}', ${fp.bodyCategory}`,
                   fontSize: "9px",
-                  fontWeight: 400,
-                  color: "rgba(255,255,255,0.35)",
+                  fontWeight: 500,
                 }}
               >
                 {fp.body}
               </p>
             </div>
             <p
-              className="leading-snug mt-1"
+              className="leading-snug mt-1 text-text-secondary"
               style={{
                 fontFamily: `'${fp.body}', ${fp.bodyCategory}`,
                 fontWeight: 400,
-                fontSize: "11px",
-                color: "rgba(255,255,255,0.4)",
+                fontSize: "12px",
               }}
             >
               Every property tells a story. We help you find the one that becomes yours.
@@ -500,14 +494,10 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
           key={i}
           className="h-1 rounded-full transition-all duration-500"
           style={{
-            width: i === current ? 28 : i < current ? 20 : 12,
+            width: i === current ? 32 : i < current ? 20 : 12,
             background:
-              i < current
-                ? "#D4A853"
-                : i === current
-                  ? "#D4A853"
-                  : "rgba(255,255,255,0.08)",
-            opacity: i <= current ? 1 : 0.5,
+              i <= current ? "var(--color-text)" : "var(--color-border)",
+            opacity: i <= current ? 1 : 0.7,
           }}
         />
       ))}
@@ -976,53 +966,52 @@ function WizardStep({
   return (
     <div className="flex flex-col min-h-dvh bg-bg">
       {/* Header */}
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+      <header className="flex items-center justify-between px-6 py-5 shrink-0">
         <div className="flex items-center gap-3">
           <img
-            src="/logos/thepostpal-mark.png"
+            src="/logos/thepostpal-black.png"
             alt="thepostpal"
-            className="w-8 h-8 object-contain"
+            className="h-7 w-auto object-contain"
           />
-          <span className="text-sm font-heading font-semibold text-text">thepostpal</span>
+        </div>
+        <div className="flex items-center gap-2 text-[13px]">
+          <span className="text-text-secondary">Already have an account?</span>
+          <a href="/" className="font-medium text-text underline-offset-4 hover:underline">Sign in</a>
         </div>
       </header>
 
-      {/* Content */}
-      <div className="flex-1 flex">
-        {/* Left: Form */}
-        <div className="flex-1 flex flex-col justify-between px-6 sm:px-12 lg:px-20 py-10">
-          <div className="max-w-lg">
-            <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
-              {stepContent()}
-            </div>
+      {/* Content — centered single column */}
+      <div className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-8 sm:pt-12 pb-8">
+        <div className="w-full max-w-[460px]">
+          {/* Progress */}
+          <div className="mb-7 flex items-center justify-center">
+            <StepIndicator current={step} total={TOTAL_STEPS} />
+          </div>
+
+          <div className="animate-in fade-in slide-in-from-bottom-2 duration-500">
+            {stepContent()}
           </div>
 
           {/* Navigation */}
-          <div className="flex items-center justify-between mt-10 max-w-lg">
-            <StepIndicator current={step} total={TOTAL_STEPS} />
-            <div className="flex items-center gap-3">
-              {step > 0 && (
-                <button
-                  onClick={onBack}
-                  className="px-4 py-2.5 text-sm text-text-secondary hover:text-text transition-colors"
-                >
-                  Back
-                </button>
-              )}
+          <div className="flex items-center justify-between gap-3 mt-8 pt-6 border-t border-border">
+            {step > 0 ? (
               <button
-                onClick={onContinue}
-                disabled={!canContinue}
-                className="px-6 py-2.5 rounded-lg bg-text text-bg text-sm font-medium hover:bg-text/90 transition-all disabled:opacity-30 disabled:pointer-events-none"
+                onClick={onBack}
+                className="px-4 py-2.5 text-sm font-medium text-text-secondary hover:text-text transition-colors"
               >
-                Continue
+                ← Back
               </button>
-            </div>
+            ) : (
+              <span />
+            )}
+            <button
+              onClick={onContinue}
+              disabled={!canContinue}
+              className="px-6 py-3 rounded-full bg-text text-bg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-30 disabled:pointer-events-none shadow-sm"
+            >
+              Continue
+            </button>
           </div>
-        </div>
-
-        {/* Right: AI Chat Assistant */}
-        <div className="hidden md:flex w-[340px] lg:w-[420px] shrink-0 flex-col border-l border-border bg-elevated/30">
-          <OnboardingChat step={step} formData={formData} />
         </div>
       </div>
     </div>
@@ -1070,9 +1059,9 @@ function BuildingScreen({ onDone }: { onDone: () => void }) {
         <div className="max-w-sm w-full text-center">
           <div className="relative mx-auto w-20 h-20 mb-8">
             <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
-              <circle cx="40" cy="40" r="36" fill="none" stroke="rgba(255,255,255,0.06)" strokeWidth="3" />
+              <circle cx="40" cy="40" r="36" fill="none" stroke="var(--color-border)" strokeWidth="3" />
               <circle
-                cx="40" cy="40" r="36" fill="none" stroke="#D4A853" strokeWidth="3"
+                cx="40" cy="40" r="36" fill="none" stroke="var(--color-text)" strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 36}`}
                 strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
@@ -1080,7 +1069,7 @@ function BuildingScreen({ onDone }: { onDone: () => void }) {
               />
             </svg>
             <div className="absolute inset-0 flex items-center justify-center">
-              <span className="text-lg font-semibold text-accent tabular-nums">{Math.round(progress)}%</span>
+              <span className="text-lg font-semibold text-text tabular-nums">{Math.round(progress)}%</span>
             </div>
           </div>
 
@@ -1106,7 +1095,7 @@ function BuildingScreen({ onDone }: { onDone: () => void }) {
                 className="h-1 rounded-full transition-all duration-500"
                 style={{
                   width: i === currentStep ? 20 : 6,
-                  background: i <= currentStep ? "#D4A853" : "rgba(255,255,255,0.08)",
+                  background: i <= currentStep ? "var(--color-text)" : "var(--color-border)",
                 }}
               />
             ))}
@@ -1199,7 +1188,7 @@ function BrandReviewScreen({
       content: (
         <div className="flex flex-wrap gap-1.5">
           {pillars.map((p) => (
-            <span key={p.name} className="px-2.5 py-1 rounded-full bg-white/[0.06] border border-white/[0.08] text-[11px] text-text-secondary">
+            <span key={p.name} className="px-2.5 py-1 rounded-full bg-elevated border border-border text-[11px] text-text-secondary">
               {p.name}
             </span>
           ))}
@@ -1257,7 +1246,7 @@ function BrandReviewScreen({
             <button
               onClick={onApprove}
               disabled={saving}
-              className="w-full max-w-xs px-6 py-3.5 rounded-full bg-accent text-bg font-medium text-sm hover:bg-accent/90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none"
+              className="w-full max-w-xs px-6 py-3.5 rounded-full bg-text text-bg font-semibold text-sm hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none shadow-sm"
             >
               {saving ? (
                 <span className="inline-flex items-center gap-2">
@@ -1442,29 +1431,27 @@ export default function OnboardingPage() {
     setPhase("building");
   }
 
-  if (phase === "building") {
-    return <BuildingScreen onDone={handleBuildComplete} />;
-  }
-
-  if (phase === "review" && brandBook) {
-    return (
-      <BrandReviewScreen
-        brandBook={brandBook}
-        onApprove={handleApprove}
-        onRegenerate={handleRegenerate}
-        saving={saving}
-      />
-    );
-  }
-
   return (
-    <WizardStep
-      step={step}
-      formData={formData}
-      setFormData={setFormData}
-      onBack={handleBack}
-      onContinue={handleContinue}
-      canContinue={canContinue}
-    />
+    <div data-theme="light" className="min-h-dvh bg-bg text-text">
+      {phase === "building" ? (
+        <BuildingScreen onDone={handleBuildComplete} />
+      ) : phase === "review" && brandBook ? (
+        <BrandReviewScreen
+          brandBook={brandBook}
+          onApprove={handleApprove}
+          onRegenerate={handleRegenerate}
+          saving={saving}
+        />
+      ) : (
+        <WizardStep
+          step={step}
+          formData={formData}
+          setFormData={setFormData}
+          onBack={handleBack}
+          onContinue={handleContinue}
+          canContinue={canContinue}
+        />
+      )}
+    </div>
   );
 }

@@ -12,11 +12,9 @@ export default function AuthPage() {
   const [showPassword, setShowPassword] = useState(false);
   const router = useRouter();
 
-  // Login fields
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
 
-  // Signup fields
   const [firstName, setFirstName] = useState("");
   const [lastName, setLastName] = useState("");
   const [email, setEmail] = useState("");
@@ -90,140 +88,167 @@ export default function AuthPage() {
   }
 
   const inputClass =
-    "w-full rounded-xl border border-border bg-surface px-4 py-3 text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 transition-colors text-sm";
+    "w-full rounded-lg border border-border bg-surface px-4 py-3 text-text placeholder:text-text-secondary/60 focus:border-text focus:outline-none focus:ring-2 focus:ring-text/10 transition-all text-[14px]";
 
   return (
-    <div className="flex flex-1 items-center justify-center px-4 bg-bg login-bg">
-      <div className="w-full max-w-sm">
+    <div data-theme="light" className="min-h-dvh w-full bg-bg text-text flex flex-col">
+      {/* Header */}
+      <header className="flex items-center justify-between px-6 sm:px-10 py-5 shrink-0">
         <img
-          src="/logos/thepostpal-white.png"
+          src="/logos/thepostpal-black.png"
           alt="thepostpal"
-          className="mx-auto -mb-12 h-56 w-auto"
+          className="h-7 w-auto object-contain"
         />
-        <p className="text-text-secondary text-sm mb-8 text-center">
-          your ai social media assistant
-        </p>
-
-        {/* Tabs */}
-        <div className="flex mb-6 rounded-xl bg-surface/50 border border-border p-1">
+        <div className="flex items-center gap-2 text-[13px]">
+          <span className="text-text-secondary">
+            {mode === "login" ? "New here?" : "Already have an account?"}
+          </span>
           <button
             type="button"
-            onClick={() => switchMode("login")}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
-              mode === "login"
-                ? "bg-accent/20 text-accent border border-accent/30"
-                : "text-text-secondary hover:text-text border border-transparent"
-            }`}
+            onClick={() => switchMode(mode === "login" ? "signup" : "login")}
+            className="font-medium text-text underline underline-offset-4 hover:no-underline"
           >
-            Sign In
-          </button>
-          <button
-            type="button"
-            onClick={() => switchMode("signup")}
-            className={`flex-1 py-2.5 text-sm font-medium rounded-lg transition-all ${
-              mode === "signup"
-                ? "bg-accent/20 text-accent border border-accent/30"
-                : "text-text-secondary hover:text-text border border-transparent"
-            }`}
-          >
-            Create Account
+            {mode === "login" ? "Create account" : "Sign in"}
           </button>
         </div>
+      </header>
 
-        {mode === "login" ? (
-          <form onSubmit={handleLogin} className="space-y-3">
-            <input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              placeholder="Username"
-              aria-label="Username"
-              autoComplete="username"
-              spellCheck={false}
-              className={inputClass}
-              autoFocus
-            />
-            <div className="relative">
+      {/* Center column */}
+      <main className="flex-1 flex items-center justify-center px-4 py-6">
+        <div className="w-full max-w-[400px]">
+          <div className="mb-7 text-center">
+            <h1 className="text-[28px] sm:text-[32px] font-bold text-text font-heading leading-[1.1] tracking-tight">
+              {mode === "login" ? "Welcome back" : "Create your account"}
+            </h1>
+            <p className="mt-2 text-[14px] text-text-secondary">
+              {mode === "login"
+                ? "Sign in to keep your social pipeline moving."
+                : "Your AI social media assistant — start in 60 seconds."}
+            </p>
+          </div>
+
+          {mode === "login" ? (
+            <form onSubmit={handleLogin} className="space-y-3">
+              <FieldLabel htmlFor="username">Username</FieldLabel>
               <input
-                type={showPassword ? "text" : "password"}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Password"
-                aria-label="Password"
-                autoComplete="current-password"
-                className={inputClass}
-              />
-              <PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-            </div>
-            {error && <p className="text-danger text-sm text-center">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading || !username || !password}
-              className="w-full rounded-full bg-accent py-3 text-bg font-semibold text-sm transition-all hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loading ? "Signing in…" : "Sign In"}
-            </button>
-          </form>
-        ) : (
-          <form onSubmit={handleSignup} className="space-y-3">
-            <div className="flex gap-3">
-              <input
+                id="username"
                 type="text"
-                value={firstName}
-                onChange={(e) => setFirstName(e.target.value)}
-                placeholder="First name"
-                aria-label="First name"
-                autoComplete="given-name"
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                placeholder="yourname"
+                aria-label="Username"
+                autoComplete="username"
+                spellCheck={false}
                 className={inputClass}
                 autoFocus
               />
+              <FieldLabel htmlFor="password">Password</FieldLabel>
+              <div className="relative">
+                <input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  aria-label="Password"
+                  autoComplete="current-password"
+                  className={inputClass}
+                />
+                <PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+              </div>
+              {error && <p className="text-danger text-[13px] text-center pt-1">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !username || !password}
+                className="mt-2 w-full rounded-lg bg-text py-3 text-bg font-semibold text-[14px] transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+              >
+                {loading ? "Signing in…" : "Sign In"}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleSignup} className="space-y-3">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <FieldLabel htmlFor="firstName">First name</FieldLabel>
+                  <input
+                    id="firstName"
+                    type="text"
+                    value={firstName}
+                    onChange={(e) => setFirstName(e.target.value)}
+                    placeholder="Jane"
+                    aria-label="First name"
+                    autoComplete="given-name"
+                    className={inputClass}
+                    autoFocus
+                  />
+                </div>
+                <div>
+                  <FieldLabel htmlFor="lastName">Last name</FieldLabel>
+                  <input
+                    id="lastName"
+                    type="text"
+                    value={lastName}
+                    onChange={(e) => setLastName(e.target.value)}
+                    placeholder="Smith"
+                    aria-label="Last name"
+                    autoComplete="family-name"
+                    className={inputClass}
+                  />
+                </div>
+              </div>
+              <FieldLabel htmlFor="email">Work email</FieldLabel>
               <input
-                type="text"
-                value={lastName}
-                onChange={(e) => setLastName(e.target.value)}
-                placeholder="Last name"
-                aria-label="Last name"
-                autoComplete="family-name"
+                id="email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="jane@brokerage.com"
+                aria-label="Email address"
+                autoComplete="email"
                 className={inputClass}
               />
-            </div>
-            <input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email address"
-              aria-label="Email address"
-              autoComplete="email"
-              className={inputClass}
-            />
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                value={signupPassword}
-                onChange={(e) => setSignupPassword(e.target.value)}
-                placeholder="Create password"
-                aria-label="Create password"
-                autoComplete="new-password"
-                className={inputClass}
-              />
-              <PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
-            </div>
-            {error && <p className="text-danger text-sm text-center">{error}</p>}
-            <button
-              type="submit"
-              disabled={loading || !firstName || !lastName || !email || !signupPassword}
-              className="w-full rounded-full bg-accent py-3 text-bg font-semibold text-sm transition-all hover:bg-accent/90 disabled:opacity-40 disabled:cursor-not-allowed"
-            >
-              {loading ? "Creating account…" : "Create Account"}
-            </button>
-          </form>
-        )}
+              <FieldLabel htmlFor="signupPassword">Password</FieldLabel>
+              <div className="relative">
+                <input
+                  id="signupPassword"
+                  type={showPassword ? "text" : "password"}
+                  value={signupPassword}
+                  onChange={(e) => setSignupPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                  aria-label="Create password"
+                  autoComplete="new-password"
+                  className={inputClass}
+                />
+                <PasswordToggle show={showPassword} onToggle={() => setShowPassword(!showPassword)} />
+              </div>
+              {error && <p className="text-danger text-[13px] text-center pt-1">{error}</p>}
+              <button
+                type="submit"
+                disabled={loading || !firstName || !lastName || !email || !signupPassword}
+                className="mt-2 w-full rounded-lg bg-text py-3 text-bg font-semibold text-[14px] transition-all hover:opacity-90 disabled:opacity-30 disabled:cursor-not-allowed shadow-sm"
+              >
+                {loading ? "Creating account…" : "Create Account"}
+              </button>
+              <p className="pt-2 text-center text-[11px] text-text-secondary/70 leading-relaxed">
+                By creating an account you agree to our terms and acknowledge our privacy policy.
+              </p>
+            </form>
+          )}
+        </div>
+      </main>
 
-        <p className="mt-6 text-xs text-text-secondary/40 text-center">
-          Powered by Bradly Robert Creative
-        </p>
-      </div>
+      <footer className="px-6 py-5 text-center text-[11px] text-text-secondary/60 shrink-0">
+        Powered by Bradly Robert Creative
+      </footer>
     </div>
+  );
+}
+
+function FieldLabel({ children, htmlFor }: { children: React.ReactNode; htmlFor: string }) {
+  return (
+    <label htmlFor={htmlFor} className="block text-[12px] font-medium text-text-secondary mb-1">
+      {children}
+    </label>
   );
 }
 

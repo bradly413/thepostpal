@@ -78,7 +78,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const [hoverIdx, setHoverIdx] = useState<number | null>(null);
   const [footerOpen, setFooterOpen] = useState(false);
   const [mobileNav, setMobileNav] = useState(false);
-  const [theme, setTheme] = useState<"dark" | "light">("dark");
+  const [theme, setTheme] = useState<"dark" | "light">("light");
   const contentRef = useRef<HTMLDivElement>(null);
   const [navItemH, setNavItemH] = useState(NAV_ITEM_H);
 
@@ -86,7 +86,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved === "true") setCollapsed(true);
     const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light") setTheme("light");
+    if (savedTheme === "dark") setTheme("dark");
   }, []);
 
   useEffect(() => {

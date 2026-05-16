@@ -108,6 +108,21 @@ html[data-theme] body {
   color: #0F0F0F;
 }
 
+/* Force Tailwind utility classes to use light values within data-theme="light" scope.
+   Needed because @theme inline freezes the var values at build time. The dual
+   "self-match" + "descendant-match" selector handles both the wrapper element
+   (which has data-theme="light" AND the utility class) and its descendants. */
+[data-theme="light"].bg-bg, [data-theme="light"] .bg-bg { background-color: #F0EDE8 !important; }
+[data-theme="light"].bg-surface, [data-theme="light"] .bg-surface { background-color: #FFFFFF !important; }
+[data-theme="light"].bg-elevated, [data-theme="light"] .bg-elevated { background-color: #F5F3EF !important; }
+[data-theme="light"].bg-text, [data-theme="light"] .bg-text { background-color: #0F0F0F !important; }
+[data-theme="light"].border-border, [data-theme="light"] .border-border { border-color: #E0DDD6 !important; }
+[data-theme="light"].border-text, [data-theme="light"] .border-text { border-color: #0F0F0F !important; }
+[data-theme="light"].text-text, [data-theme="light"] .text-text { color: #0F0F0F !important; }
+[data-theme="light"].text-text-secondary, [data-theme="light"] .text-text-secondary { color: #5A5A5A !important; }
+[data-theme="light"].text-bg, [data-theme="light"] .text-bg { color: #F0EDE8 !important; }
+[data-theme="light"] .hover\:bg-text\/90:hover { background-color: rgba(15,15,15,0.9) !important; }
+
 [data-theme="light"] .bento-card {
   background: linear-gradient(135deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.4) 100%);
   backdrop-filter: blur(24px) saturate(1.2);
