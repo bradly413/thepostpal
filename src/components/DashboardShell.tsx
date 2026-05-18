@@ -367,7 +367,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <button onClick={() => setMobileNav(true)} aria-label="Open navigation menu" className="p-1 text-white/60">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
         </button>
-        <span className="ml-3 text-sm font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>thepostpal</span>
+        <span className="ml-3 text-sm font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>Posterboy</span>
       </div>
 
       {/* Mobile drawer overlay */}
@@ -380,7 +380,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4">
-              <span className="text-lg font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>thepostpal</span>
+              <span className="text-lg font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>Posterboy</span>
               <button onClick={() => setMobileNav(false)} aria-label="Close navigation menu" className="p-1 text-white/40">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -416,7 +416,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <div className="relative flex items-center shrink-0" style={{ height: 80, padding: "0 8px" }}>
           {!collapsed && (
             <div className="flex-1 overflow-hidden" style={{ transition: "opacity 0.8s" }}>
-              <img src={theme === "dark" ? "/logos/thepostpal-white.png" : "/logos/thepostpal-black.png"} alt="thepostpal" className="opacity-90" style={{ width: "118%", maxWidth: "none", marginLeft: "-6%", marginTop: "-4px" }} />
+              <img src={theme === "dark" ? "/logos/thepostpal-white.png" : "/logos/thepostpal-black.png"} alt="Posterboy Social" className="opacity-90" style={{ width: "118%", maxWidth: "none", marginLeft: "-6%", marginTop: "-4px" }} />
             </div>
           )}
           <button
@@ -550,7 +550,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         </main>
         {!pathname.startsWith("/dashboard/editor") && (
           <footer className="shrink-0 py-1 pr-4 text-right">
-            <p className="text-[10px] text-text-secondary/30 tracking-wide">&copy; 2026 Bradly Robert Creative LLC. All rights reserved.</p>
+            <p className="text-[10px] text-text-secondary/30 tracking-wide">&copy; 2026 Bradly Robert Creative LLC. All rights reserved. Posterboy Social™ is a trademark of Bradly Robert Creative LLC.</p>
           </footer>
         )}
       </div>
