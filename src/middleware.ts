@@ -7,12 +7,18 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-const PUBLIC_PATHS = ["/", "/api/auth"];
+const PUBLIC_PATHS = ["/"];
+const PUBLIC_PREFIXES = ["/api/auth"];
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  if (PUBLIC_PATHS.some((p) => pathname === p) || pathname.startsWith("/_next") || pathname.startsWith("/logos")) {
+  if (
+    PUBLIC_PATHS.some((p) => pathname === p) ||
+    PUBLIC_PREFIXES.some((prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)) ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/logos")
+  ) {
     return NextResponse.next();
   }
 
