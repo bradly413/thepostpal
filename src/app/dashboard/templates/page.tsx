@@ -27,9 +27,15 @@ const pillarColors: Record<string, string> = {
   "Just Sold": "bg-blue-500/15 text-blue-400",
   "Holiday": "bg-red-500/15 text-red-400",
   "Seasonal": "bg-amber-500/15 text-amber-400",
+  "Business Growth": "bg-violet-500/15 text-violet-300",
+  "Promotions": "bg-pink-500/15 text-pink-300",
+  "Testimonials": "bg-cyan-500/15 text-cyan-300",
+  "Company Updates": "bg-slate-500/15 text-slate-300",
+  "Educational": "bg-emerald-500/15 text-emerald-300",
+  "Events": "bg-orange-500/15 text-orange-300",
 };
 
-const PILLAR_ORDER = [
+const PREFERRED_PILLAR_ORDER = [
   "New Listing",
   "Just Sold",
   "Market Clarity",
@@ -42,11 +48,24 @@ const PILLAR_ORDER = [
   "Stories / Reels",
   "Holiday",
   "Seasonal",
+  "Business Growth",
+  "Promotions",
+  "Testimonials",
+  "Company Updates",
+  "Educational",
+  "Events",
 ];
 
-const PILLARS = ["All", ...PILLAR_ORDER.filter((p) => templates.some((t) => t.pillar === p))];
+const discoveredPillars = Array.from(new Set(templates.map((t) => t.pillar)));
 
-const groupedTemplates = PILLAR_ORDER
+const orderedPillars = [
+  ...PREFERRED_PILLAR_ORDER.filter((pillar) => discoveredPillars.includes(pillar)),
+  ...discoveredPillars.filter((pillar) => !PREFERRED_PILLAR_ORDER.includes(pillar)).sort(),
+];
+
+const PILLARS = ["All", ...orderedPillars];
+
+const groupedTemplates = orderedPillars
   .map((pillar) => ({ pillar, items: templates.filter((t) => t.pillar === pillar) }))
   .filter((g) => g.items.length > 0);
 
@@ -59,7 +78,7 @@ export default function TemplatesPage() {
 }
 
 function TemplatesContent() {
-  useEffect(() => { document.title = "Templates | thepostpal"; }, []);
+  useEffect(() => { document.title = "Templates — Posterboy Social"; }, []);
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
   const [filter, setFilter] = useState(PILLARS.includes(initialPillar) ? initialPillar : "All");
