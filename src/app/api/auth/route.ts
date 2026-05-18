@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyCredentials, createSession } from "@/lib/auth";
+import { authenticateUser, createSession } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -20,17 +20,21 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { username, password } = await request.json();
+  const { username, email, identifier, password } = await request.json();
+  const loginIdentifier = [identifier, email, username].find(
+    (value) => typeof value === "string" && value.trim().length > 0,
+  ) as string | undefined;
 
-  if (!username || !password || typeof username !== "string" || typeof password !== "string") {
-    return NextResponse.json({ error: "Username and password required" }, { status: 400 });
+  if (!loginIdentifier || !password || typeof password !== "string") {
+    return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
 
-  if (!(await verifyCredentials(username, password))) {
+  const sessionPayload = await authenticateUser(loginIdentifier, password);
+  if (!sessionPayload) {
     return NextResponse.json({ error: "Wrong password" }, { status: 401 });
   }
 
-  const token = await createSession();
+  const token = await createSession(sessionPayload);
   const response = NextResponse.json({ success: true });
   response.cookies.set("session", token, {
     httpOnly: true,
