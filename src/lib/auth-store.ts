@@ -41,7 +41,7 @@ interface AuthStoreSnapshot {
   users: AuthUserRecord[];
 }
 
-const STORE_DIR = path.join(process.cwd(), ".data");
+const STORE_DIR = path.join(process.env.AUTH_STORE_DIR || "/tmp", "posterboy-social");
 const STORE_PATH = path.join(STORE_DIR, "auth-store.json");
 
 const EMAIL_KEY_PREFIX = "auth:user-email:";
