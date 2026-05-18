@@ -560,7 +560,7 @@ function TemplateCarousel({ templates: items }: { templates: typeof templates })
 }
 
 export default function DashboardPage() {
-  useEffect(() => { document.title = "Dashboard | thepostpal"; }, []);
+  useEffect(() => { document.title = "Dashboard — Posterboy Social"; }, []);
   const [filter] = useState("All");
 
   const filtered = filter === "All" ? templates : templates.filter((t) => t.pillar === filter);
@@ -608,7 +608,7 @@ export default function DashboardPage() {
               <div className="flex-1 flex flex-col justify-center">
                 <h3 className="text-base font-semibold text-text font-heading mb-1.5">Set up your brand</h3>
                 <p className="text-xs text-text-secondary/60 leading-relaxed">
-                  Meet your postpal — answer a few questions and we&apos;ll build your brand book, templates, and voice in about two minutes.
+                  Meet Posterboy — answer a few questions and we&apos;ll build your brand book, templates, and voice in about two minutes.
                 </p>
               </div>
               <div className="flex items-center gap-2 mt-3">
