@@ -1,9 +1,9 @@
-import { SignJWT, jwtVerify } from "jose";
+import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { cookies } from "next/headers";
 import { timingSafeEqual } from "crypto";
 import { authenticateStoredUser } from "@/lib/auth-store";
 
-export interface SessionPayload {
+export interface SessionPayload extends JWTPayload {
   role: string;
   legacy?: boolean;
   sub?: string;
