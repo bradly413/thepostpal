@@ -96,7 +96,7 @@ export default function AuthPage() {
       <header className="flex items-center justify-between px-6 sm:px-10 py-5 shrink-0">
         <img
           src="/logos/thepostpal-black.png"
-          alt="thepostpal"
+          alt="Posterboy Social"
           className="h-7 w-auto object-contain"
         />
         <div className="flex items-center gap-2 text-[13px]">
@@ -122,8 +122,8 @@ export default function AuthPage() {
             </h1>
             <p className="mt-2 text-[14px] text-text-secondary">
               {mode === "login"
-                ? "Sign in to keep your social pipeline moving."
-                : "Your AI social media assistant — start in 60 seconds."}
+                ? "Sign in to post and move on."
+                : "Social media for people who hate social media."}
             </p>
           </div>
 
