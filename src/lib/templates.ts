@@ -168,7 +168,7 @@ export const templates: Template[] = [
     ],
   },
 
-  // ── New Listing ──────────────────────────────────────────
+  // ── New Listing ───────────────────────────────────────────
   {
     id: "new-listing-photo",
     name: "New Listing Photo",
@@ -204,7 +204,7 @@ export const templates: Template[] = [
     ],
   },
 
-  // ── Just Sold ────────────────────────────────────────────
+  // ── Just Sold ──────────────────────────────────────────────
   {
     id: "just-sold-photo",
     name: "Just Sold Photo",
@@ -238,7 +238,7 @@ export const templates: Template[] = [
     ],
   },
 
-  // ── Holiday Templates ────────────────────────────────────
+  // ── Holiday Templates ─────────────────────────────────────
   {
     id: "holiday-memorial-day",
     name: "Memorial Day",
@@ -336,7 +336,7 @@ export const templates: Template[] = [
     ],
   },
 
-  // ── First Day of Season ──────────────────────────────────
+  // ── First Day of Season ───────────────────────────────────
   {
     id: "season-spring",
     name: "First Day of Spring",
@@ -397,4 +397,139 @@ export const templates: Template[] = [
       { id: "body", label: "Message", type: "body", defaultValue: "Snow, hot cocoa, and the warmth of home.", maxLength: 100 },
     ],
   },
+
+  // ── Business / Cross-Industry Templates ────────────────────
+  {
+    id: "business-service-spotlight",
+    name: "Service Spotlight Card",
+    pillar: "Business Growth",
+    description: "Simple service highlight for coaches, consultants, agencies, and local businesses.",
+    width: 1080,
+    height: 1080,
+    bgType: "ivory",
+    layout: "left-aligned",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "SERVICE SPOTLIGHT", maxLength: 30 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "What We Help With", maxLength: 60 },
+      { id: "body", label: "Body Text", type: "body", defaultValue: "Clear, concise copy about the service you provide and the result it creates.", maxLength: 220 },
+      { id: "cta", label: "Call to Action", type: "cta", defaultValue: "Book a call", maxLength: 40 },
+    ],
+  },
+  {
+    id: "business-promotion-card",
+    name: "Promotion Announcement",
+    pillar: "Promotions",
+    description: "For seasonal offers, launches, and limited-time business promotions.",
+    width: 1080,
+    height: 1350,
+    bgType: "photo-overlay",
+    layout: "bottom-text",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Label", type: "eyebrow", defaultValue: "LIMITED TIME", maxLength: 24 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "Summer Special", maxLength: 50 },
+      { id: "body", label: "Offer Details", type: "body", defaultValue: "Share the offer, who it is for, and why now is the right time to act.", maxLength: 180 },
+      { id: "cta", label: "Call to Action", type: "cta", defaultValue: "Claim your spot", maxLength: 40 },
+    ],
+  },
+  {
+    id: "business-testimonial-quote",
+    name: "Client Testimonial Quote",
+    pillar: "Testimonials",
+    description: "A clean quote-forward layout for trust-building client wins and reviews.",
+    width: 1080,
+    height: 1080,
+    bgType: "navy",
+    layout: "centered",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "CLIENT WIN", maxLength: 24 },
+      { id: "headline", label: "Quote", type: "headline", defaultValue: "Working with your team made this feel simple.", maxLength: 90 },
+      { id: "body", label: "Attribution", type: "body", defaultValue: "— Happy client, Austin TX", maxLength: 80 },
+    ],
+  },
+  {
+    id: "business-founder-note",
+    name: "Founder Note",
+    pillar: "Company Updates",
+    description: "For behind-the-scenes updates, values, and short founder messages.",
+    width: 1080,
+    height: 1080,
+    bgType: "photo-overlay",
+    layout: "centered",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Label", type: "eyebrow", defaultValue: "FROM THE FOUNDER", maxLength: 30 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "A quick note from our team", maxLength: 60 },
+      { id: "body", label: "Message", type: "body", defaultValue: "Say something human, useful, and brief about what is changing, shipping, or improving.", maxLength: 220 },
+    ],
+  },
+  {
+    id: "business-educational-tips",
+    name: "Educational Tips Card",
+    pillar: "Educational",
+    description: "A practical checklist-style post for teaching something fast.",
+    width: 1080,
+    height: 1080,
+    bgType: "ivory",
+    layout: "left-aligned",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "QUICK TIPS", maxLength: 24 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "3 things to fix before you post", maxLength: 70 },
+      { id: "list", label: "Tips (one per line)", type: "list", defaultValue: "Lead with one clear idea\nCut the extra sentence\nEnd with a direct next step" },
+      { id: "cta", label: "Call to Action", type: "cta", defaultValue: "Want help with the next one?", maxLength: 50 },
+    ],
+  },
+  {
+    id: "business-event-announcement",
+    name: "Event Announcement",
+    pillar: "Events",
+    description: "For workshops, open houses, networking events, and live sessions.",
+    width: 1080,
+    height: 1350,
+    bgType: "split",
+    layout: "split-header",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "date", label: "Event Date", type: "date", defaultValue: "JUNE 24, 2026", maxLength: 30 },
+      { id: "headline", label: "Event Name", type: "headline", defaultValue: "Live Q&A for first-time buyers", maxLength: 60 },
+      { id: "body", label: "Description", type: "body", defaultValue: "Tell people what it is, why it matters, and how to join.", maxLength: 180 },
+      { id: "location", label: "Location", type: "location", defaultValue: "ONLINE · FREE RSVP", maxLength: 40 },
+    ],
+  },
+  {
+    id: "business-case-study",
+    name: "Case Study Snapshot",
+    pillar: "Business Growth",
+    description: "A before/after style template for outcomes, wins, and proof.",
+    width: 1080,
+    height: 1080,
+    bgType: "split",
+    layout: "split-header",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "CASE STUDY", maxLength: 24 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "How we simplified the posting process", maxLength: 70 },
+      { id: "list", label: "Results (one per line)", type: "list", defaultValue: "Before: inconsistent posting\nAfter: weekly cadence in place\nResult: calmer, faster content workflow" },
+    ],
+  },
+  {
+    id: "business-team-intro",
+    name: "Team Introduction",
+    pillar: "Company Updates",
+    description: "For introducing staff, collaborators, or local location managers.",
+    width: 1080,
+    height: 1350,
+    bgType: "photo-overlay",
+    layout: "bottom-text",
+    hasPhotoSlot: true,
+    fields: [
+      { id: "eyebrow", label: "Label", type: "eyebrow", defaultValue: "MEET THE TEAM", maxLength: 24 },
+      { id: "headline", label: "Name / Role", type: "headline", defaultValue: "Jordan Smith · Client Success", maxLength: 60 },
+      { id: "body", label: "Intro", type: "body", defaultValue: "A short intro that makes this person feel human, credible, and approachable.", maxLength: 180 },
+    ],
+  },
+
 ];
