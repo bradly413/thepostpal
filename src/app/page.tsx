@@ -38,7 +38,7 @@ export default function AuthPage() {
       if (res.ok) {
         router.push("/dashboard");
       } else {
-        setError("Wrong username or password.");
+        setError("Wrong email or password.");
         setLoading(false);
       }
     } catch {
@@ -52,8 +52,14 @@ export default function AuthPage() {
     setLoading(true);
     setError("");
 
-    if (signupPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
+    if (signupPassword.length < 8) {
+      setError("Password must be at least 8 characters.");
+      setLoading(false);
+      return;
+    }
+
+    if (!/[a-zA-Z]/.test(signupPassword) || !/[0-9]/.test(signupPassword)) {
+      setError("Password must contain at least one letter and one number.");
       setLoading(false);
       return;
     }
@@ -70,14 +76,21 @@ export default function AuthPage() {
         }),
       });
 
+      const data = await res.json();
+
       if (res.ok) {
         localStorage.setItem(
           "postpal-user",
-          JSON.stringify({ firstName, lastName, email })
+          JSON.stringify({
+            firstName,
+            lastName,
+            email,
+            accountId: data.account?.id,
+            accountName: data.account?.name,
+          })
         );
         router.push("/onboarding");
       } else {
-        const data = await res.json();
         setError(data.error || "Something went wrong.");
         setLoading(false);
       }
@@ -129,15 +142,15 @@ export default function AuthPage() {
 
           {mode === "login" ? (
             <form onSubmit={handleLogin} className="space-y-3">
-              <FieldLabel htmlFor="username">Username</FieldLabel>
+              <FieldLabel htmlFor="username">Email</FieldLabel>
               <input
                 id="username"
-                type="text"
+                type="email"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="yourname"
-                aria-label="Username"
-                autoComplete="username"
+                placeholder="you@company.com"
+                aria-label="Email"
+                autoComplete="email"
                 spellCheck={false}
                 className={inputClass}
                 autoFocus
@@ -214,7 +227,7 @@ export default function AuthPage() {
                   type={showPassword ? "text" : "password"}
                   value={signupPassword}
                   onChange={(e) => setSignupPassword(e.target.value)}
-                  placeholder="At least 6 characters"
+                  placeholder="At least 8 characters with a number"
                   aria-label="Create password"
                   autoComplete="new-password"
                   className={inputClass}
