@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
+import { AuthEmailExistsError, registerUserAccount } from "@/lib/auth-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 
 export async function POST(request: NextRequest) {
@@ -42,14 +43,47 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid email address." }, { status: 400 });
   }
 
-  const token = await createSession();
-  const response = NextResponse.json({ success: true });
-  response.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
-    path: "/",
-  });
-  return response;
+  try {
+    const sessionUser = await registerUserAccount({ firstName, lastName, email, password });
+    const token = await createSession({
+      role: sessionUser.role,
+      sub: sessionUser.userId,
+      accountId: sessionUser.accountId,
+      accountName: sessionUser.accountName,
+      email: sessionUser.email,
+      firstName: sessionUser.firstName,
+      lastName: sessionUser.lastName,
+    });
+
+    const response = NextResponse.json({
+      success: true,
+      user: {
+        id: sessionUser.userId,
+        email: sessionUser.email,
+        firstName: sessionUser.firstName,
+        lastName: sessionUser.lastName,
+        role: sessionUser.role,
+      },
+      account: {
+        id: sessionUser.accountId,
+        name: sessionUser.accountName,
+      },
+    });
+
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    return response;
+  } catch (error) {
+    if (error instanceof AuthEmailExistsError) {
+      return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+
+    console.error("Signup failed:", error);
+    return NextResponse.json({ error: "Could not create your account right now." }, { status: 500 });
+  }
 }
