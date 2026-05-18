@@ -21,8 +21,8 @@ const jakarta = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "thepostpal | Real Estate Social Media",
-  description: "Create, customize, and schedule branded social media posts",
+  title: "Posterboy Social",
+  description: "Social media for people who hate social media.",
 };
 
 export default function RootLayout({
