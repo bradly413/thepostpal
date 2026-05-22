@@ -13,135 +13,127 @@ const DASHBOARD_SRC = "/images/posterboy-dashboard-zoom.png";
 const DASHBOARD_SRC_2X = "/images/posterboy-dashboard-zoom@2x.png";
 const DASHBOARD_WIDTH = 2048;
 const DASHBOARD_HEIGHT = 1258;
+
+const KICKER = "Inside posterboy";
 const HEADLINE =
   "Say goodbye to the newsfeed and complicated business suites.";
+const LEDE =
+  "A calm room for the work the algorithm can't do for you. Drafts in your voice, a calendar that already knows your week, posts that show up while you're somewhere else.";
 
-const ZOOM_IN_END = 0.42;
-const HOLD_END = 0.58;
+const STATS: { value: string; label: string }[] = [
+  { value: "3", label: "drafts in your voice" },
+  { value: "2", label: "scheduled this week" },
+  { value: "1", label: "already live" },
+];
 
-/** Scale iPad device to fit inside viewport — never full-bleed. */
-function confinedZoomScale(device: HTMLElement): number {
-  const w = device.offsetWidth || 1;
-  const h = device.offsetHeight || 1;
-  const padX = window.innerWidth * 0.07;
-  const padY = window.innerHeight * 0.14;
-  const fit = Math.min(
-    (window.innerWidth - padX * 2) / w,
-    (window.innerHeight - padY * 2) / h,
-  );
-  return Math.min(Math.max(fit, 1), 1.75);
-}
-
-function applyZoomProgress(
-  progress: number,
-  maxScale: number,
-  device: HTMLElement,
-  headline: HTMLHeadingElement | null,
-) {
-  let scale = 1;
-  let headlineOp = 1;
-  let headlineY = 0;
-
-  if (progress <= ZOOM_IN_END) {
-    const t = progress / ZOOM_IN_END;
-    scale = 1 + (maxScale - 1) * t;
-    headlineOp = 1 - t;
-    headlineY = -18 * t;
-  } else if (progress <= HOLD_END) {
-    scale = maxScale;
-    headlineOp = 0;
-    headlineY = -18;
-  } else {
-    const t = (progress - HOLD_END) / (1 - HOLD_END);
-    scale = maxScale + (1 - maxScale) * t;
-    headlineOp = t;
-    headlineY = -18 * (1 - t);
-  }
-
-  gsap.set(device, { scale, force3D: true });
-  if (headline) gsap.set(headline, { opacity: headlineOp, y: headlineY });
-}
+const ANNOTATIONS: {
+  className: string;
+  kicker: string;
+  title: string;
+  meta: string;
+  mark: "check" | "dot" | "arrow";
+}[] = [
+  {
+    className: "pb-dash-anno pb-dash-anno--tl",
+    kicker: "Draft",
+    title: "Saved in your voice",
+    meta: "2:14 PM",
+    mark: "check",
+  },
+  {
+    className: "pb-dash-anno pb-dash-anno--br",
+    kicker: "Sent",
+    title: "Instagram · Facebook",
+    meta: "Today, 8:00 AM",
+    mark: "arrow",
+  },
+  {
+    className: "pb-dash-anno pb-dash-anno--bl",
+    kicker: "Brand voice",
+    title: "Warm. Local. Considered.",
+    meta: "Updated this week",
+    mark: "dot",
+  },
+];
 
 /**
- * Sticky stage + scrubbed scale (no GSAP pin — avoids Lenis / pin-spacer glitches).
+ * Living workspace — editorial copy on the left, dashboard mockup on the right
+ * at modest scale, with a few quiet ambient annotations layered around it.
+ *
+ * No scroll-jacked zoom: replaced the 220vh sticky stage with a calm,
+ * single-viewport editorial layout. Motion is one staggered entrance on
+ * enter; nothing chases the scrollbar.
  */
 export default function DashboardZoomSection() {
   const sectionRef = useRef<HTMLElement>(null);
-  const deviceRef = useRef<HTMLDivElement>(null);
-  const headlineRef = useRef<HTMLHeadingElement>(null);
-  const maxScaleRef = useRef(1);
   const { ready, reducedMotion } = useMarketingScroll();
 
   useGSAP(
     () => {
       if (!ready) return;
       const section = sectionRef.current;
-      const device = deviceRef.current;
-      const headline = headlineRef.current;
-      if (!section || !device) return;
+      if (!section) return;
 
-      const syncMaxScale = () => {
-        maxScaleRef.current = confinedZoomScale(device);
-      };
-      syncMaxScale();
-
-      const onResize = () => {
-        syncMaxScale();
-        scheduleMarketingScrollRefresh(120);
-      };
-      window.addEventListener("resize", onResize);
-      ScrollTrigger.addEventListener("refreshInit", syncMaxScale);
-
-      gsap.set(device, { scale: 1, transformOrigin: "50% 50%", force3D: true });
+      const kicker = section.querySelector<HTMLElement>(".pb-dash-zoom-kicker");
+      const headline = section.querySelector<HTMLElement>(".pb-dash-zoom-headline");
+      const lede = section.querySelector<HTMLElement>(".pb-dash-zoom-lede");
+      const stats = section.querySelectorAll<HTMLElement>(".pb-dash-zoom-stat");
+      const device = section.querySelector<HTMLElement>(".pb-ipad-device");
+      const annos = section.querySelectorAll<HTMLElement>(".pb-dash-anno");
 
       if (reducedMotion) {
-        if (headline) gsap.set(headline, { opacity: 1, y: 0 });
-        applyZoomProgress(0, 1, device, headline);
-        return () => {
-          window.removeEventListener("resize", onResize);
-          ScrollTrigger.removeEventListener("refreshInit", syncMaxScale);
-        };
+        // Snap everything to its final state and bail — no motion.
+        const all: (HTMLElement | NodeListOf<HTMLElement>)[] = [
+          kicker, headline, lede, device, stats, annos,
+        ].filter(Boolean) as never;
+        all.forEach((el) => gsap.set(el, { opacity: 1, x: 0, y: 0, scale: 1 }));
+        return;
       }
 
-      // Initial state: both elements offscreen-below; entrance animation fades them in
-      // when the section enters the viewport, before the scrub-zoom takes over.
-      gsap.set(device, { scale: 1, opacity: 0, y: 48, transformOrigin: "50% 50%", force3D: true });
-      if (headline) gsap.set(headline, { opacity: 0, y: 32 });
+      // Initial state — slight rise, transparent.
+      gsap.set([kicker, headline, lede, ...Array.from(stats)].filter(Boolean), {
+        opacity: 0,
+        y: 24,
+      });
+      if (device) gsap.set(device, { opacity: 0, y: 40, scale: 0.985 });
+      gsap.set(Array.from(annos), { opacity: 0, y: 16 });
 
-      const enterTl = gsap.timeline({
+      const tl = gsap.timeline({
         defaults: { ease: "power3.out" },
         scrollTrigger: {
           trigger: section,
-          start: "top 82%",
+          start: "top 78%",
           toggleActions: "play none none reverse",
         },
       });
-      if (headline) {
-        enterTl.to(headline, { opacity: 1, y: 0, duration: 0.7 }, 0);
+
+      if (kicker) tl.to(kicker, { opacity: 1, y: 0, duration: 0.55 }, 0);
+      if (headline) tl.to(headline, { opacity: 1, y: 0, duration: 0.75 }, 0.08);
+      if (lede) tl.to(lede, { opacity: 1, y: 0, duration: 0.7 }, 0.2);
+      if (stats.length) {
+        tl.to(
+          stats,
+          { opacity: 1, y: 0, duration: 0.55, stagger: 0.07 },
+          0.3,
+        );
       }
-      enterTl.to(device, { opacity: 1, y: 0, duration: 0.9 }, 0.1);
+      if (device) {
+        tl.to(device, { opacity: 1, y: 0, scale: 1, duration: 0.95 }, 0.15);
+      }
+      if (annos.length) {
+        // Annotations land after the dashboard so they read as
+        // "settling onto" the workspace rather than racing it in.
+        tl.to(
+          annos,
+          { opacity: 1, y: 0, duration: 0.6, stagger: 0.14 },
+          0.6,
+        );
+      }
 
-      const st = ScrollTrigger.create({
-        trigger: section,
-        start: "top top",
-        end: "bottom bottom",
-        scrub: 0.75,
-        invalidateOnRefresh: true,
-        onUpdate: (self) => {
-          applyZoomProgress(self.progress, maxScaleRef.current, device, headline);
-        },
-      });
-
-      // Don't call applyZoomProgress at mount — it would overwrite the entrance
-      // animation's "from" state (opacity 0, y 48) with the natural progress-0 state
-      // (opacity 1, y 0) and the entrance would fire from the already-finished pose.
-      scheduleMarketingScrollRefresh(200);
+      scheduleMarketingScrollRefresh(180);
 
       return () => {
-        window.removeEventListener("resize", onResize);
-        ScrollTrigger.removeEventListener("refreshInit", syncMaxScale);
-        enterTl.kill();
-        st.kill();
+        tl.kill();
       };
     },
     { scope: sectionRef, dependencies: [ready, reducedMotion] },
@@ -152,30 +144,55 @@ export default function DashboardZoomSection() {
       ref={sectionRef}
       id="product"
       className="pb-dash-zoom"
-      aria-label="Posterboy dashboard on iPad"
+      aria-label="Inside Posterboy — a calm workspace for social posts"
     >
       <div className="pb-dash-zoom-stage">
-        <h2 ref={headlineRef} className="pb-dash-zoom-headline type-display">
-          {HEADLINE}
-        </h2>
+        <div className="pb-dash-zoom-copy">
+          <p className="pb-dash-zoom-kicker">{KICKER}</p>
+          <h2 className="pb-dash-zoom-headline type-display">{HEADLINE}</h2>
+          <p className="pb-dash-zoom-lede">{LEDE}</p>
+          <dl className="pb-dash-zoom-stats" aria-label="Your week at a glance">
+            {STATS.map((s) => (
+              <div key={s.label} className="pb-dash-zoom-stat">
+                <dt className="pb-dash-zoom-stat-value">{s.value}</dt>
+                <dd className="pb-dash-zoom-stat-label">{s.label}</dd>
+              </div>
+            ))}
+          </dl>
+        </div>
 
-        <div ref={deviceRef} className="pb-ipad-device">
-          <div className="pb-ipad-shell">
-            <div className="pb-ipad-screen">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={DASHBOARD_SRC}
-                srcSet={`${DASHBOARD_SRC} 1024w, ${DASHBOARD_SRC_2X} 2048w`}
-                sizes="(min-width: 960px) 960px, 88vw"
-                width={DASHBOARD_WIDTH}
-                height={DASHBOARD_HEIGHT}
-                alt="Posterboy dashboard on iPad"
-                loading="eager"
-                decoding="async"
-                fetchPriority="high"
-                onLoad={() => scheduleMarketingScrollRefresh(100)}
-              />
+        <div className="pb-dash-zoom-canvas">
+          <div className="pb-ipad-device">
+            <div className="pb-ipad-shell">
+              <div className="pb-ipad-screen">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={DASHBOARD_SRC}
+                  srcSet={`${DASHBOARD_SRC} 1024w, ${DASHBOARD_SRC_2X} 2048w`}
+                  sizes="(min-width: 1280px) 680px, (min-width: 960px) 56vw, 92vw"
+                  width={DASHBOARD_WIDTH}
+                  height={DASHBOARD_HEIGHT}
+                  alt="Posterboy workspace — drafts, brand voice, and schedule"
+                  loading="eager"
+                  decoding="async"
+                  fetchPriority="high"
+                  onLoad={() => scheduleMarketingScrollRefresh(100)}
+                />
+              </div>
             </div>
+
+            {ANNOTATIONS.map((a) => (
+              <div key={a.kicker + a.title} className={a.className} aria-hidden>
+                <span className={`pb-dash-anno-mark pb-dash-anno-mark--${a.mark}`}>
+                  {a.mark === "check" ? "✓" : a.mark === "arrow" ? "→" : "•"}
+                </span>
+                <div className="pb-dash-anno-text">
+                  <span className="pb-dash-anno-kicker">{a.kicker}</span>
+                  <span className="pb-dash-anno-title">{a.title}</span>
+                  <span className="pb-dash-anno-meta">{a.meta}</span>
+                </div>
+              </div>
+            ))}
           </div>
         </div>
       </div>
