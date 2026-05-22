@@ -16,13 +16,41 @@ const NAV = [
 export default function Navigation() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const { scrollToAnchor } = useMarketingScroll();
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 80);
+    let lastY = typeof window !== "undefined" ? window.scrollY : 0;
+    let ticking = false;
+    const HIDE_THRESHOLD = 280; // never hide before user has scrolled past hero a bit
+    const DELTA = 6; // ignore tiny scrolls / scroll jitter
+
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const diff = y - lastY;
+        setScrolled(y > 80);
+        if (open) {
+          setHidden(false);
+        } else if (y < HIDE_THRESHOLD) {
+          setHidden(false);
+        } else if (diff > DELTA) {
+          // scrolling down past threshold — hide
+          setHidden(true);
+        } else if (diff < -DELTA) {
+          // scrolling up — reveal
+          setHidden(false);
+        }
+        lastY = y;
+        ticking = false;
+      });
+    };
+
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+  }, [open]);
 
   const scrollTo = (href: string) => {
     scrollToAnchor(href);
@@ -42,8 +70,12 @@ export default function Navigation() {
           alignItems: "center",
           mixBlendMode: "difference",
           color: "#fff",
-          opacity: scrolled ? 0.85 : 1,
-          transition: "opacity 0.4s ease",
+          opacity: hidden ? 0 : scrolled ? 0.92 : 1,
+          transform: hidden ? "translateY(-110%)" : "translateY(0)",
+          pointerEvents: hidden ? "none" : "auto",
+          transition:
+            "transform 0.45s cubic-bezier(0.22, 1, 0.36, 1), opacity 0.35s ease",
+          willChange: "transform, opacity",
         }}
       >
         <PosterboyLogo

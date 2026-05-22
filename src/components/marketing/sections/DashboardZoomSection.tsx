@@ -93,15 +93,33 @@ export default function DashboardZoomSection() {
       ScrollTrigger.addEventListener("refreshInit", syncMaxScale);
 
       gsap.set(device, { scale: 1, transformOrigin: "50% 50%", force3D: true });
-      if (headline) gsap.set(headline, { opacity: 1, y: 0 });
 
       if (reducedMotion) {
+        if (headline) gsap.set(headline, { opacity: 1, y: 0 });
         applyZoomProgress(0, 1, device, headline);
         return () => {
           window.removeEventListener("resize", onResize);
           ScrollTrigger.removeEventListener("refreshInit", syncMaxScale);
         };
       }
+
+      // Initial state: both elements offscreen-below; entrance animation fades them in
+      // when the section enters the viewport, before the scrub-zoom takes over.
+      gsap.set(device, { scale: 1, opacity: 0, y: 48, transformOrigin: "50% 50%", force3D: true });
+      if (headline) gsap.set(headline, { opacity: 0, y: 32 });
+
+      const enterTl = gsap.timeline({
+        defaults: { ease: "power3.out" },
+        scrollTrigger: {
+          trigger: section,
+          start: "top 82%",
+          toggleActions: "play none none reverse",
+        },
+      });
+      if (headline) {
+        enterTl.to(headline, { opacity: 1, y: 0, duration: 0.7 }, 0);
+      }
+      enterTl.to(device, { opacity: 1, y: 0, duration: 0.9 }, 0.1);
 
       const st = ScrollTrigger.create({
         trigger: section,
@@ -114,12 +132,15 @@ export default function DashboardZoomSection() {
         },
       });
 
-      applyZoomProgress(st.progress, maxScaleRef.current, device, headline);
+      // Don't call applyZoomProgress at mount — it would overwrite the entrance
+      // animation's "from" state (opacity 0, y 48) with the natural progress-0 state
+      // (opacity 1, y 0) and the entrance would fire from the already-finished pose.
       scheduleMarketingScrollRefresh(200);
 
       return () => {
         window.removeEventListener("resize", onResize);
         ScrollTrigger.removeEventListener("refreshInit", syncMaxScale);
+        enterTl.kill();
         st.kill();
       };
     },
@@ -140,7 +161,6 @@ export default function DashboardZoomSection() {
 
         <div ref={deviceRef} className="pb-ipad-device">
           <div className="pb-ipad-shell">
-            <span className="pb-ipad-camera-pill" aria-hidden />
             <div className="pb-ipad-screen">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

@@ -665,8 +665,8 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: clamp(32px, 5vh, 64px);
-  padding: clamp(88px, 12vh, 112px) var(--px) clamp(28px, 5vh, 56px);
+  gap: clamp(64px, 9vh, 120px);
+  padding: clamp(88px, 12vh, 112px) var(--px) clamp(40px, 6vh, 72px);
   box-sizing: border-box;
   overflow: visible;
   margin: 0;
@@ -686,11 +686,11 @@
   pointer-events: none;
 }
 
-/* iPad Pro–style device frame (thin bezel, landscape) */
+/* Dashboard mockup — clean rounded card, no device chrome */
 .pb-marketing-site .pb-ipad-device {
   position: relative;
   z-index: 2;
-  width: min(960px, 88vw);
+  width: min(1040px, 92vw);
   transform-origin: 50% 50%;
   will-change: transform;
   backface-visibility: hidden;
@@ -699,22 +699,13 @@
 
 .pb-marketing-site .pb-ipad-shell {
   position: relative;
-  padding: 6px;
-  border-radius: 22px;
-  background: linear-gradient(
-    168deg,
-    #7a7a80 0%,
-    #525254 18%,
-    #353537 42%,
-    #232325 68%,
-    #18181a 100%
-  );
+  padding: 0;
+  border-radius: 18px;
+  background: transparent;
   box-shadow:
-    inset 0 0 0 1px rgba(255, 255, 255, 0.18),
-    inset 0 1px 2px rgba(255, 255, 255, 0.1),
-    0 1px 0 rgba(255, 255, 255, 0.06),
-    0 32px 72px -20px rgba(15, 15, 20, 0.42),
-    0 14px 32px -16px rgba(15, 15, 20, 0.18);
+    0 1px 0 rgba(255, 255, 255, 0.6) inset,
+    0 28px 60px -28px rgba(15, 15, 20, 0.35),
+    0 10px 24px -16px rgba(15, 15, 20, 0.18);
 }
 
 .pb-marketing-site .pb-ipad-shell::after {
@@ -722,34 +713,20 @@
   position: absolute;
   inset: 0;
   border-radius: inherit;
-  box-shadow: inset 0 0 0 0.5px rgba(0, 0, 0, 0.35);
+  box-shadow: inset 0 0 0 1px rgba(15, 15, 20, 0.06);
   pointer-events: none;
 }
 
-/* Face ID — vertical pill on short edge (landscape hold) */
+/* Camera pill no longer rendered, but keep selector inert in case markup lingers */
 .pb-marketing-site .pb-ipad-camera-pill {
-  position: absolute;
-  left: 3px;
-  top: 50%;
-  z-index: 3;
-  width: 3px;
-  height: 11px;
-  margin-top: -5px;
-  border-radius: 2px;
-  background: linear-gradient(180deg, #1a1a1c 0%, #0a0a0b 100%);
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.8),
-    inset 0 0 2px rgba(80, 80, 88, 0.35);
+  display: none;
 }
 
 .pb-marketing-site .pb-ipad-screen {
   position: relative;
-  border-radius: 12px;
+  border-radius: inherit;
   overflow: hidden;
-  background: #000;
-  box-shadow:
-    0 0 0 0.5px rgba(0, 0, 0, 0.9) inset,
-    0 0 24px rgba(0, 0, 0, 0.15) inset;
+  background: transparent;
 }
 
 .pb-marketing-site .pb-ipad-screen img {
@@ -767,19 +744,7 @@
   }
 
   .pb-marketing-site .pb-ipad-shell {
-    padding: 5px;
-    border-radius: 18px;
-  }
-
-  .pb-marketing-site .pb-ipad-screen {
-    border-radius: 10px;
-  }
-
-  .pb-marketing-site .pb-ipad-camera-pill {
-    left: 2px;
-    width: 2px;
-    height: 9px;
-    margin-top: -4px;
+    border-radius: 14px;
   }
 }
 
