@@ -1,0 +1,77 @@
+{
+  "accountSlug": "angie-nichols",
+  "packs": [
+    {
+      "name": "High Quality Social Media Mockup A",
+      "slug": "high-quality-social-media-mockup-a",
+      "description": "Four-scene social media mockup pack with PSD views and guide PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-04-28-04-01-22-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Mockup-only asset pack for presentation and preview rendering."
+    },
+    {
+      "name": "High Quality Social Media Mockup B",
+      "slug": "high-quality-social-media-mockup-b",
+      "description": "Alternate four-scene social media mockup pack with PSD views and guide PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-04-29-04-40-43-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Mockup-only asset pack for polished launch and showcase assets."
+    },
+    {
+      "name": "Business R11 Social Media",
+      "slug": "business-r11-social-media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-r11-social-media-2024-05-16-05-53-13-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Small business template source; likely best used as inspiration or a narrow single-template import."
+    },
+    {
+      "name": "Business R1 Social Media",
+      "slug": "business-r1-social-media",
+      "description": "Business social media source pack with Illustrator, EPS, and help PDF assets.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-r1-social-media-2024-05-16-05-56-18-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Compact business source pack with slightly broader format support than the other R-series files."
+    },
+    {
+      "name": "Business R32 Social Media",
+      "slug": "business-r32-social-media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-r32-social-media-2024-05-16-06-29-24-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Small business source pack; likely useful as a narrow variation rather than a hero template set."
+    },
+    {
+      "name": "Business R14 Social Media",
+      "slug": "business-r14-social-media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-r14-social-media-2024-05-16-06-02-30-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Small business source pack in the same family as the other R-series imports."
+    },
+    {
+      "name": "Baseball Social Media Banner Template",
+      "slug": "baseball-social-media-banner-template",
+      "description": "Cross-tool social banner pack with Photoshop, XD, Figma, and Sketch source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/social-media-2024-06-11-02-56-29-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Broader non-real-estate category import; useful for proving Posterboy can support sports and event-oriented clients too."
+    },
+    {
+      "name": "Business Corporate Social Media Post Canva",
+      "slug": "business-corporate-social-media-post-canva",
+      "description": "Six-slide business corporate carousel pack with PSD, AI, EPS, and Canva link support.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-corporate-social-media-post-canva-2025-12-11-20-26-24-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Strong candidate for broader business and professional-services template categories."
+    },
+    {
+      "name": "Business Sale Social Media Post",
+      "slug": "business-sale-social-media-post",
+      "description": "Six-post business sale pack with Illustrator and Photoshop source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-sale-social-media-post-2024-06-11-02-44-24-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Good candidate for promo, offer, and launch-oriented business content normalization."
+    }
+  ]
+}

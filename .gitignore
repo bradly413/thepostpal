@@ -40,3 +40,11 @@ yarn-error.log*
 *.tsbuildinfo
 next-env.d.ts
 .env*.local
+
+# editor / IDE local state
+.cursor/
+.claude/launch.json
+
+# scratch / temp work
+tmp-*/
+docs/CLAUDE-SESSION-HANDOFF-LIVE.md

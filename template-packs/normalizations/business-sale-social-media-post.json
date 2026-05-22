@@ -1,0 +1,47 @@
+{
+  "packSlug": "business-sale-social-media-post",
+  "packName": "Business Sale Social Media Post",
+  "status": "APP_READY",
+  "priority": "NOW",
+  "normalizationSummary": "Turn the sale-themed six-post set into reusable promotion, launch, and limited-time offer templates.",
+  "whyNow": "This pack has direct commercial value and is a strong fit for offers-and-launches content.",
+  "candidateTemplates": [
+    {
+      "id": "business-sale-announcement",
+      "name": "Business Sale Announcement",
+      "sourceVariant": "Posts 1-3",
+      "recommendedSlug": "business-sale-announcement",
+      "recommendedPillar": "Offers and Launches",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "photo-overlay",
+      "recommendedLayout": "centered",
+      "contentGoal": "Announce a sale, campaign, or time-sensitive business offer.",
+      "rationale": "High-frequency use case for many small businesses.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "offer", "label": "Offer", "type": "text", "required": true },
+        { "id": "end_date", "label": "End Date", "type": "date" },
+        { "id": "cta", "label": "Call to Action", "type": "cta", "required": true },
+        { "id": "website", "label": "Website", "type": "text" }
+      ]
+    },
+    {
+      "id": "business-sale-stat",
+      "name": "Business Sale Stat",
+      "sourceVariant": "Posts 4-6",
+      "recommendedSlug": "business-sale-stat",
+      "recommendedPillar": "Offers and Launches",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "split",
+      "recommendedLayout": "split-header",
+      "contentGoal": "Lead with a discount, percentage, or headline stat.",
+      "rationale": "Gives the library a more aggressive promo format alongside the standard announcement layout.",
+      "editableFields": [
+        { "id": "stat", "label": "Primary Stat", "type": "stat", "required": true },
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "body", "label": "Body", "type": "textarea" },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    }
+  ]
+}

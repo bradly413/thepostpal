@@ -1,0 +1,85 @@
+{
+  "queue": [
+    {
+      "packSlug": "business-corporate-social-media-post-canva",
+      "packName": "Business Corporate Social Media Post Canva",
+      "priority": "NOW",
+      "status": "APP_READY",
+      "lane": "template",
+      "recommendedAction": "Normalize into a six-slide business carousel set.",
+      "why": "Strong multi-slide business pack with obvious reusable SaaS and service-business applications."
+    },
+    {
+      "packSlug": "business-social-media-template",
+      "packName": "Business Social Media Template",
+      "priority": "NOW",
+      "status": "APP_READY",
+      "lane": "template",
+      "recommendedAction": "Normalize the strongest square business layouts into evergreen educational and promotional templates.",
+      "why": "Six clean variations and multiple source formats make it a high-leverage business starter set."
+    },
+    {
+      "packSlug": "business-sale-social-media-post",
+      "packName": "Business Sale Social Media Post",
+      "priority": "NOW",
+      "status": "APP_READY",
+      "lane": "template",
+      "recommendedAction": "Turn into offers, launch, and limited-time promotion templates.",
+      "why": "Direct conversion use case with clear value for small businesses and campaigns."
+    },
+    {
+      "packSlug": "market-value-social-media-post",
+      "packName": "Market Value Social Media Post",
+      "priority": "NOW",
+      "status": "APP_READY",
+      "lane": "template",
+      "recommendedAction": "Normalize into market insight and educational explainer templates.",
+      "why": "Multi-tool source pack with strong educational potential beyond real estate."
+    },
+    {
+      "packSlug": "real-estate-market-value-post",
+      "packName": "Real Estate Market Value Post",
+      "priority": "NOW",
+      "status": "APP_READY",
+      "lane": "template",
+      "recommendedAction": "Normalize into Market Clarity pillar templates for real-estate use.",
+      "why": "Highly aligned with the original Angie use case and an obvious early product fit."
+    },
+    {
+      "packSlug": "business-social-media-pack",
+      "packName": "Business Social Media Pack",
+      "priority": "NEXT",
+      "status": "PLANNED",
+      "lane": "template",
+      "recommendedAction": "Normalize selected Facebook, Instagram, and Pinterest variations after the core five packs.",
+      "why": "Useful cross-platform pack, but lower leverage than the stronger multi-layout template families."
+    },
+    {
+      "packSlug": "baseball-social-media-banner-template",
+      "packName": "Baseball Social Media Banner Template",
+      "priority": "NEXT",
+      "status": "PLANNED",
+      "lane": "reference",
+      "recommendedAction": "Use as proof that Posterboy can support broader industries after the core business categories are stable.",
+      "why": "Good category-expansion example, but not a core first-pass template family."
+    },
+    {
+      "packSlug": "high-quality-social-media-mockup-a",
+      "packName": "High Quality Social Media Mockup A",
+      "priority": "LATER",
+      "status": "PLANNED",
+      "lane": "mockup",
+      "recommendedAction": "Use for marketing presentation and polished preview rendering later.",
+      "why": "Mockup-only pack; useful for presentation, not customer-usable templates."
+    },
+    {
+      "packSlug": "business-r1-social-media",
+      "packName": "Business R1 Social Media",
+      "priority": "SKIP",
+      "status": "PLANNED",
+      "lane": "reference",
+      "recommendedAction": "Treat as inspiration unless later demand proves it worth normalizing.",
+      "why": "Too lightweight to be a flagship first-wave template."
+    }
+  ]
+}

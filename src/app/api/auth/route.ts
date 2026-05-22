@@ -29,19 +29,24 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Email and password required" }, { status: 400 });
   }
 
-  const sessionPayload = await authenticateUser(loginIdentifier, password);
-  if (!sessionPayload) {
-    return NextResponse.json({ error: "Wrong password" }, { status: 401 });
-  }
+  try {
+    const sessionPayload = await authenticateUser(loginIdentifier, password);
+    if (!sessionPayload) {
+      return NextResponse.json({ error: "Wrong password" }, { status: 401 });
+    }
 
-  const token = await createSession(sessionPayload);
-  const response = NextResponse.json({ success: true });
-  response.cookies.set("session", token, {
-    httpOnly: true,
-    secure: process.env.NODE_ENV === "production",
-    sameSite: "lax",
-    maxAge: 60 * 60 * 24 * 30,
-    path: "/",
-  });
-  return response;
+    const token = await createSession(sessionPayload);
+    const response = NextResponse.json({ success: true });
+    response.cookies.set("session", token, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 30,
+      path: "/",
+    });
+    return response;
+  } catch (error) {
+    console.error("Login failed:", error);
+    return NextResponse.json({ error: "Could not sign in right now." }, { status: 500 });
+  }
 }

@@ -1,16 +1,61 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
+import PosterboyLogo from "@/components/PosterboyLogo";
+import {
+  safeRedirectPath,
+  SIGNIN_NEXT_DEFAULT,
+  SIGNUP_NEXT_DEFAULT,
+} from "@/lib/safe-redirect";
+import { saveSelectedPlan } from "@/lib/plan-storage";
+import {
+  hasBrandBook,
+  isOnboardingComplete,
+} from "@/lib/onboarding-brand-sync";
 
 type Mode = "login" | "signup";
 
-export default function AuthPage() {
+export default function SignInPage() {
+  return (
+    <Suspense fallback={<div data-theme="light" className="min-h-dvh bg-bg" />}>
+      <SignInForm />
+    </Suspense>
+  );
+}
+
+function SignInForm() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const nextPath = safeRedirectPath(
+    searchParams.get("next"),
+    SIGNIN_NEXT_DEFAULT,
+  );
+
   const [mode, setMode] = useState<Mode>("login");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [showPassword, setShowPassword] = useState(false);
-  const router = useRouter();
+
+  useEffect(() => {
+    if (searchParams.get("mode") === "signup") {
+      setMode("signup");
+    }
+    saveSelectedPlan(searchParams.get("plan"));
+  }, [searchParams]);
+
+  function resolvePostAuthPath(): string {
+    if (
+      typeof window !== "undefined" &&
+      !isOnboardingComplete() &&
+      !hasBrandBook() &&
+      !localStorage.getItem("posterboy-organization")
+    ) {
+      return "/onboarding";
+    }
+    return nextPath;
+  }
 
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
@@ -35,10 +80,14 @@ export default function AuthPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ username, password }),
       });
+      const data = await res.json().catch(() => null);
       if (res.ok) {
-        router.push("/dashboard");
+        router.push(resolvePostAuthPath());
+      } else if (res.status >= 500) {
+        setError(data?.error || "Could not sign in right now.");
+        setLoading(false);
       } else {
-        setError("Wrong email or password.");
+        setError(data?.error || "Wrong email or password.");
         setLoading(false);
       }
     } catch {
@@ -89,7 +138,11 @@ export default function AuthPage() {
             accountName: data.account?.name,
           })
         );
-        router.push("/onboarding");
+        const afterSignup = safeRedirectPath(
+          searchParams.get("next"),
+          SIGNUP_NEXT_DEFAULT,
+        );
+        router.push(afterSignup);
       } else {
         setError(data.error || "Something went wrong.");
         setLoading(false);
@@ -107,11 +160,7 @@ export default function AuthPage() {
     <div data-theme="light" className="min-h-dvh w-full bg-bg text-text flex flex-col">
       {/* Header */}
       <header className="flex items-center justify-between px-6 sm:px-10 py-5 shrink-0">
-        <img
-          src="/logos/thepostpal-black.png"
-          alt="Posterboy Social"
-          className="h-7 w-auto object-contain"
-        />
+        <PosterboyLogo href="/" size="header" className="text-text" />
         <div className="flex items-center gap-2 text-[13px]">
           <span className="text-text-secondary">
             {mode === "login" ? "New here?" : "Already have an account?"}
@@ -131,26 +180,26 @@ export default function AuthPage() {
         <div className="w-full max-w-[400px]">
           <div className="mb-7 text-center">
             <h1 className="text-[28px] sm:text-[32px] font-bold text-text font-heading leading-[1.1] tracking-tight">
-              {mode === "login" ? "Welcome back" : "Create your account"}
+              {mode === "login" ? "Sign in" : "Create your account"}
             </h1>
             <p className="mt-2 text-[14px] text-text-secondary">
               {mode === "login"
-                ? "Sign in to post and move on."
-                : "Social media for people who hate social media."}
+                ? "Your week is probably drafted. Go approve it."
+                : "Create your account, then we'll set up your brand in a few minutes."}
             </p>
           </div>
 
           {mode === "login" ? (
             <form onSubmit={handleLogin} className="space-y-3">
-              <FieldLabel htmlFor="username">Email</FieldLabel>
+              <FieldLabel htmlFor="username">Email or username</FieldLabel>
               <input
                 id="username"
-                type="email"
+                type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
                 placeholder="you@company.com"
-                aria-label="Email"
-                autoComplete="email"
+                aria-label="Email or username"
+                autoComplete="username"
                 spellCheck={false}
                 className={inputClass}
                 autoFocus
@@ -243,7 +292,15 @@ export default function AuthPage() {
                 {loading ? "Creating account…" : "Create Account"}
               </button>
               <p className="pt-2 text-center text-[11px] text-text-secondary/70 leading-relaxed">
-                By creating an account you agree to our terms and acknowledge our privacy policy.
+                By creating an account you agree to our{" "}
+                <Link href="/terms" className="underline">
+                  terms
+                </Link>{" "}
+                and{" "}
+                <Link href="/privacy" className="underline">
+                  privacy policy
+                </Link>
+                .
               </p>
             </form>
           )}

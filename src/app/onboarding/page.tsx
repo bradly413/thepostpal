@@ -3,8 +3,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import gsap from "gsap";
+import OnboardingHeader from "@/components/onboarding/OnboardingHeader";
 import { generateBrandBook } from "@/lib/onboarding-agent";
 import type { BrandBook, OnboardingAnswers } from "@/lib/brand-book-schema";
+import "@/styles/onboarding.css";
 
 type Phase = "wizard" | "building" | "review";
 
@@ -496,7 +498,7 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
           style={{
             width: i === current ? 32 : i < current ? 20 : 12,
             background:
-              i <= current ? "var(--color-text)" : "var(--color-border)",
+              i <= current ? "var(--color-accent, #ee2532)" : "var(--color-border)",
             opacity: i <= current ? 1 : 0.7,
           }}
         />
@@ -507,8 +509,8 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 
 const CHAT_MESSAGES: Record<number, { role: "assistant"; text: string }[]> = {
   0: [
-    { role: "assistant", text: "Hey! I'm your brand assistant. 👋" },
-    { role: "assistant", text: "Let's start with the basics — your name, brokerage, and where you work. This helps me tailor everything to your market." },
+    { role: "assistant", text: "Hey — welcome to posterboy." },
+    { role: "assistant", text: "Let's start with the basics — your name, brokerage, and where you work. This helps us tailor your brand book to your market." },
     { role: "assistant", text: "Don't worry about getting it perfect — you can always update these later." },
   ],
   1: [
@@ -748,7 +750,7 @@ function WizardStep({
                 Let&apos;s build your brand
               </h1>
               <p className="text-text-secondary text-sm">
-                Tell us about yourself and we&apos;ll create a custom brand book with colors, fonts, and voice guidelines.
+                Tell us about yourself so posterboy can create social media posts you actually use.
               </p>
             </div>
             <div className="space-y-4">
@@ -766,7 +768,7 @@ function WizardStep({
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Brokerage
+                  Company
                 </label>
                 <input
                   type="text"
@@ -778,7 +780,7 @@ function WizardStep({
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Market area
+                  Location
                 </label>
                 <input
                   type="text"
@@ -965,20 +967,7 @@ function WizardStep({
 
   return (
     <div className="flex flex-col min-h-dvh bg-bg">
-      {/* Header */}
-      <header className="flex items-center justify-between px-6 py-5 shrink-0">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logos/thepostpal-black.png"
-            alt="thepostpal"
-            className="h-7 w-auto object-contain"
-          />
-        </div>
-        <div className="flex items-center gap-2 text-[13px]">
-          <span className="text-text-secondary">Already have an account?</span>
-          <a href="/" className="font-medium text-text underline-offset-4 hover:underline">Sign in</a>
-        </div>
-      </header>
+      <OnboardingHeader />
 
       {/* Content — centered single column */}
       <div className="flex-1 flex flex-col items-center px-4 sm:px-6 pt-8 sm:pt-12 pb-8">
@@ -1007,7 +996,7 @@ function WizardStep({
             <button
               onClick={onContinue}
               disabled={!canContinue}
-              className="px-6 py-3 rounded-full bg-text text-bg text-sm font-semibold hover:opacity-90 transition-all disabled:opacity-30 disabled:pointer-events-none shadow-sm"
+              className="px-6 py-3 rounded-full pb-onboarding-cta text-sm font-semibold transition-all disabled:pointer-events-none shadow-sm"
             >
               Continue
             </button>
@@ -1055,13 +1044,14 @@ function BuildingScreen({ onDone }: { onDone: () => void }) {
 
   return (
     <div className="flex flex-col h-dvh bg-bg overflow-hidden">
+      <OnboardingHeader showSignIn={false} />
       <div className="flex-1 flex items-center justify-center px-6">
         <div className="max-w-sm w-full text-center">
           <div className="relative mx-auto w-20 h-20 mb-8">
             <svg className="w-20 h-20 -rotate-90" viewBox="0 0 80 80">
               <circle cx="40" cy="40" r="36" fill="none" stroke="var(--color-border)" strokeWidth="3" />
               <circle
-                cx="40" cy="40" r="36" fill="none" stroke="var(--color-text)" strokeWidth="3"
+                cx="40" cy="40" r="36" fill="none" stroke="var(--color-accent, #ee2532)" strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 36}`}
                 strokeDashoffset={`${2 * Math.PI * 36 * (1 - progress / 100)}`}
@@ -1095,7 +1085,7 @@ function BuildingScreen({ onDone }: { onDone: () => void }) {
                 className="h-1 rounded-full transition-all duration-500"
                 style={{
                   width: i === currentStep ? 20 : 6,
-                  background: i <= currentStep ? "var(--color-text)" : "var(--color-border)",
+                  background: i <= currentStep ? "var(--color-accent, #ee2532)" : "var(--color-border)",
                 }}
               />
             ))}
@@ -1199,24 +1189,14 @@ function BrandReviewScreen({
 
   return (
     <div className="flex flex-col h-dvh bg-bg overflow-hidden">
-      <header className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
-        <div className="flex items-center gap-3">
-          <img
-            src="/logos/thepostpal-mark.png"
-            alt="thepostpal"
-            className="w-8 h-8 object-contain"
-          />
-          <div>
-            <p className="text-sm font-medium text-text">Brand Book Preview</p>
-            <p className="text-xs text-text-secondary">Review before we finalize</p>
-          </div>
-        </div>
-      </header>
+      <OnboardingHeader subtitle="Brand book preview" showSignIn={false} />
 
       <div className={`flex-1 overflow-y-auto px-4 py-8 transition-all duration-700 ${visible ? "opacity-100 translate-y-0" : "opacity-0 translate-y-6"}`}>
         <div className="max-w-lg mx-auto">
           <div className="text-center mb-8">
-            <p className="text-[10px] uppercase tracking-[0.25em] text-accent/60 mb-2">YOUR BRAND BOOK</p>
+            <p className="text-[10px] uppercase pb-onboarding-kicker font-semibold mb-2">
+              YOUR BRAND BOOK
+            </p>
             <h2 className="text-2xl font-heading font-semibold text-text mb-1">{identity.name}</h2>
             <p className="text-sm text-text-secondary">
               {identity.title}
@@ -1246,7 +1226,7 @@ function BrandReviewScreen({
             <button
               onClick={onApprove}
               disabled={saving}
-              className="w-full max-w-xs px-6 py-3.5 rounded-full bg-text text-bg font-semibold text-sm hover:opacity-90 transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:pointer-events-none shadow-sm"
+              className="w-full max-w-xs px-6 py-3.5 rounded-full pb-onboarding-cta font-semibold text-sm transition-all hover:scale-[1.02] active:scale-[0.98] disabled:pointer-events-none shadow-sm"
             >
               {saving ? (
                 <span className="inline-flex items-center gap-2">
@@ -1365,7 +1345,11 @@ export default function OnboardingPage() {
       if (stored) {
         const parsed = JSON.parse(stored);
         const name = [parsed.firstName, parsed.lastName].filter(Boolean).join(" ");
-        if (name) setFormData((p) => ({ ...p, name }));
+        setFormData((p) => ({
+          ...p,
+          ...(name ? { name } : {}),
+          ...(parsed.accountName && !p.brokerage ? { brokerage: parsed.accountName } : {}),
+        }));
       }
     } catch { /* ignore */ }
     setMounted(true);
@@ -1420,6 +1404,10 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       localStorage.setItem("postpal-brand-book", JSON.stringify(brandBook));
+      const { syncBrandBookToOrganization } = await import(
+        "@/lib/onboarding-brand-sync"
+      );
+      syncBrandBookToOrganization(brandBook);
       await new Promise((r) => setTimeout(r, 600));
       router.push("/dashboard");
     } catch {
@@ -1432,7 +1420,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div data-theme="light" className="min-h-dvh bg-bg text-text">
+    <div data-theme="light" className="pb-onboarding min-h-dvh bg-bg text-text">
       {phase === "building" ? (
         <BuildingScreen onDone={handleBuildComplete} />
       ) : phase === "review" && brandBook ? (

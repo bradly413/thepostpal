@@ -9,6 +9,8 @@ export interface Template {
   layout: "centered" | "left-aligned" | "bottom-text" | "split-header";
   hasPhotoSlot: boolean;
   preview?: string;
+  source?: "CORE" | "ENVATO_IMPORT";
+  templatePackSlug?: string;
   fields: TemplateField[];
 }
 
@@ -20,7 +22,7 @@ export interface TemplateField {
   maxLength?: number;
 }
 
-export const templates: Template[] = [
+export const coreTemplates: Template[] = [
   {
     id: "navy-text",
     name: "Market Clarity Card",
@@ -890,3 +892,132 @@ export const templates: Template[] = [
 
 
 ];
+
+type EnvatoTemplateSeed = {
+  slug: string;
+  name?: string;
+};
+
+const ENVATO_IMPORTED_TEMPLATE_SEEDS: EnvatoTemplateSeed[] = [
+  { slug: "baseball-social-media-banner-template" },
+  { slug: "business-corporate-social-media-post-canva" },
+  { slug: "business-r1-social-media" },
+  { slug: "business-r11-social-media" },
+  { slug: "business-r14-social-media" },
+  { slug: "business-r32-social-media" },
+  { slug: "business-sale-social-media-post" },
+  { slug: "business-social-media-pack" },
+  { slug: "business-social-media-post" },
+  { slug: "business-social-media-template" },
+  { slug: "high-quality-elegant-instagram-social-media-mockup" },
+  { slug: "high-quality-media-social-post-mockup" },
+  { slug: "high-quality-social-media-mockup" },
+  { slug: "high-quality-social-media-mockup-a" },
+  { slug: "high-quality-social-media-mockup-b" },
+  { slug: "luxury-real-estate-instagram-post" },
+  { slug: "luxury-real-estate-instagram-post-set" },
+  { slug: "market-value-social-media-post" },
+  { slug: "property-luxury-instagram-post-pack-a" },
+  { slug: "property-luxury-instagram-post-pack-b" },
+  { slug: "real-estate-instagram-post" },
+  { slug: "real-estate-market-value-post" },
+  { slug: "real-estate-postcard" },
+  { slug: "real-estate-x-luxury-living-instagram-post" },
+];
+
+function titleCaseFromSlug(slug: string) {
+  return slug
+    .split("-")
+    .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
+    .join(" ");
+}
+
+function inferEnvatoPillar(slug: string): string {
+  if (slug.includes("market")) return "Market Clarity";
+  if (slug.includes("luxury") || slug.includes("real-estate") || slug.includes("property")) {
+    return "Neighborhood / Lifestyle";
+  }
+  if (slug.includes("baseball")) return "Local Life";
+  if (slug.includes("mockup")) return "Stories / Reels";
+  if (slug.includes("sale")) return "Buyer / Seller Tips";
+  return "Buyer / Seller Tips";
+}
+
+function inferEnvatoBackground(slug: string): Template["bgType"] {
+  if (slug.includes("mockup")) return "photo-fullbleed";
+  if (slug.includes("market")) return "split";
+  if (slug.includes("postcard")) return "ivory";
+  if (slug.includes("luxury") || slug.includes("real-estate") || slug.includes("property")) {
+    return "photo-overlay";
+  }
+  if (slug.includes("business")) return "ivory";
+  return "photo-overlay";
+}
+
+function inferEnvatoLayout(bgType: Template["bgType"]): Template["layout"] {
+  if (bgType === "split") return "split-header";
+  if (bgType === "ivory") return "left-aligned";
+  if (bgType === "photo-fullbleed" || bgType === "photo-overlay") return "bottom-text";
+  return "centered";
+}
+
+function buildEnvatoFields(layout: Template["layout"]): TemplateField[] {
+  if (layout === "split-header") {
+    return [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "FEATURED THIS WEEK", maxLength: 30 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "What should we post next?", maxLength: 70 },
+      { id: "body", label: "Body", type: "body", defaultValue: "A calm update with one clear takeaway.", maxLength: 220 },
+      { id: "list", label: "Highlights", type: "list", defaultValue: "One useful fact\nOne local detail\nOne clear call-to-action" },
+    ];
+  }
+
+  if (layout === "left-aligned") {
+    return [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "POSTERBOY TEMPLATE", maxLength: 30 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "Built for people with actual jobs.", maxLength: 80 },
+      { id: "list", label: "Highlights", type: "list", defaultValue: "What changed\nWhy it matters\nWhat to do next" },
+      { id: "cta", label: "Call to Action", type: "cta", defaultValue: "Book now", maxLength: 40 },
+    ];
+  }
+
+  if (layout === "centered") {
+    return [
+      { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "FEATURED POST", maxLength: 30 },
+      { id: "headline", label: "Headline", type: "headline", defaultValue: "Your week is drafted.", maxLength: 70 },
+      { id: "body", label: "Body", type: "body", defaultValue: "Approve at your leisure.", maxLength: 180 },
+    ];
+  }
+
+  return [
+    { id: "eyebrow", label: "Category", type: "eyebrow", defaultValue: "FEATURED POST", maxLength: 30 },
+    { id: "headline", label: "Headline", type: "headline", defaultValue: "Your week is drafted.", maxLength: 70 },
+    { id: "body", label: "Body", type: "body", defaultValue: "Pick up where you left off and keep your brand showing up.", maxLength: 220 },
+    { id: "cta", label: "Call to Action", type: "cta", defaultValue: "Create new post", maxLength: 40 },
+  ];
+}
+
+function buildEnvatoTemplate(seed: EnvatoTemplateSeed): Template {
+  const displayName = seed.name || titleCaseFromSlug(seed.slug);
+  const bgType = inferEnvatoBackground(seed.slug);
+  const layout = inferEnvatoLayout(bgType);
+  const isStoryLike = seed.slug.includes("story");
+
+  return {
+    id: `envato-${seed.slug}`,
+    name: `${displayName} (Envato)`,
+    pillar: inferEnvatoPillar(seed.slug),
+    description: `Imported Envato source pack: ${displayName}.`,
+    width: 1080,
+    height: isStoryLike ? 1920 : 1080,
+    bgType,
+    layout,
+    hasPhotoSlot: true,
+    source: "ENVATO_IMPORT",
+    templatePackSlug: seed.slug,
+    fields: buildEnvatoFields(layout),
+  };
+}
+
+export const envatoTemplates: Template[] = ENVATO_IMPORTED_TEMPLATE_SEEDS.map(buildEnvatoTemplate);
+
+export const templates: Template[] = [...coreTemplates, ...envatoTemplates];

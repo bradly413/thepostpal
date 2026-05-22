@@ -1,0 +1,487 @@
+// posterboy data model — PostgreSQL via Prisma
+// Note: Organization is the billing parent; this maps to "Account" terminology in the location engineering brief.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DraftStatus {
+  draft
+  needs_review
+  approved
+  scheduled
+  published
+  skipped
+  needs_revision
+}
+
+enum PlanTier {
+  solo
+  shop
+  press
+  studio
+  house_account
+  brc_custom
+}
+
+enum SocialPlatform {
+  facebook
+  instagram
+  linkedin
+  tiktok
+  youtube
+  twitter
+}
+
+enum LocationStatus {
+  ACTIVE
+  PAUSED
+  ARCHIVED
+}
+
+enum LocationRole {
+  LOCATION_ADMIN
+  LOCATION_EDITOR
+  LOCATION_VIEWER
+}
+
+enum ApprovalStatus {
+  PENDING_REVIEW
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+}
+
+enum ApprovalAction {
+  SUBMITTED
+  APPROVED
+  CHANGES_REQUESTED
+  REJECTED
+  RESUBMITTED
+  AUTO_APPROVED
+  WITHDRAWN
+}
+
+model Organization {
+  id            String   @id @default(cuid())
+  name          String
+  businessType  String
+  website       String?
+  locationCount Int      @default(1)
+  plan          PlanTier @default(solo)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  locations         Location[]
+  users             User[]
+  issues            Issue[]
+  campaigns         Campaign[]
+  templates         Template[]
+  scheduledPosts    ScheduledPost[]
+  socialConnections SocialConnection[]
+  photoAssets       PhotoAsset[]
+  calendarEvents    CalendarEvent[]
+  knowledgeEntries  KnowledgeBaseEntry[]
+  subscriptions     Subscription[]
+  analytics         AnalyticsSnapshot[]
+}
+
+model User {
+  id             String       @id @default(cuid())
+  email          String       @unique
+  name           String?
+  role           String       @default("editor")
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  locationMemberships LocationMembership[]
+  submittedApprovals  PostApproval[]       @relation("SubmittedApprovals")
+  reviewedApprovals   PostApproval[]       @relation("ReviewedApprovals")
+  approvalEvents      ApprovalEvent[]
+
+  @@index([organizationId])
+}
+
+model Location {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  name   String
+  slug   String
+  status LocationStatus @default(ACTIVE)
+
+  brandPrimaryColor String?
+  brandAccentColor  String?
+  brandFontStack    String?
+  brandVoiceJson    Json?
+
+  city     String?
+  state    String?
+  country  String?
+  address  String?
+  timeZone String  @default("America/Chicago")
+
+  memberships       LocationMembership[]
+  socialConnections SocialConnection[]
+  scheduledPosts    ScheduledPost[]
+  photoAssets       PhotoAsset[]
+  calendarEvents    CalendarEvent[]
+  templates         Template[]
+  approvalRule      ApprovalRule?
+  postApprovals     PostApproval[]
+
+  brandKit          BrandKit?
+  brandVoice        BrandVoiceProfile?
+  drafts            Draft[]
+  posts             Post[]
+  issues            Issue[]
+  campaignLocations CampaignLocation[]
+  analytics         AnalyticsSnapshot[]
+  knowledgeEntries  KnowledgeBaseEntry[]
+
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+  archivedAt DateTime?
+
+  @@unique([organizationId, slug])
+  @@index([organizationId, status])
+}
+
+model LocationMembership {
+  id         String       @id @default(cuid())
+  locationId String
+  userId     String
+  location   Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  user       User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role       LocationRole
+
+  createdAt DateTime @default(now())
+
+  @@unique([locationId, userId])
+  @@index([userId])
+}
+
+model ApprovalRule {
+  id         String   @id @default(cuid())
+  locationId String   @unique
+  location   Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  requiresApproval   Boolean  @default(false)
+  reviewerUserIds    String[]
+  minApprovers       Int      @default(1)
+  autoApproveAfterMs Int?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model PostApproval {
+  id              String        @id @default(cuid())
+  scheduledPostId String        @unique
+  scheduledPost   ScheduledPost @relation(fields: [scheduledPostId], references: [id], onDelete: Cascade)
+  locationId      String
+  location        Location      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  status            ApprovalStatus @default(PENDING_REVIEW)
+  submittedByUserId String
+  submittedByUser   User           @relation("SubmittedApprovals", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  reviewedByUserId  String?
+  reviewedByUser    User?          @relation("ReviewedApprovals", fields: [reviewedByUserId], references: [id], onDelete: SetNull)
+  reviewedAt        DateTime?
+  reviewerNotes     String?
+
+  history ApprovalEvent[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([locationId, status])
+}
+
+model ApprovalEvent {
+  id             String         @id @default(cuid())
+  postApprovalId String
+  postApproval   PostApproval   @relation(fields: [postApprovalId], references: [id], onDelete: Cascade)
+  actorUserId    String
+  actorUser      User           @relation(fields: [actorUserId], references: [id], onDelete: Restrict)
+  action         ApprovalAction
+  notes          String?
+  createdAt      DateTime       @default(now())
+
+  @@index([postApprovalId, createdAt])
+}
+
+model BrandKit {
+  id             String   @id @default(cuid())
+  locationId     String   @unique
+  location       Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  logoUrl        String?
+  primaryColor   String?
+  secondaryColor String?
+  updatedAt      DateTime @updatedAt
+}
+
+model BrandVoiceProfile {
+  id               String   @id @default(cuid())
+  locationId       String   @unique
+  location         Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  tone             String[]
+  bannedPhrases    String[]
+  preferredPhrases String[]
+  audience         String?
+  services         String?
+  offers           String?
+  recurringThemes  String[]
+  updatedAt        DateTime @updatedAt
+}
+
+model SocialConnection {
+  id             String         @id @default(cuid())
+  organizationId String
+  organization   Organization   @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?      @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  platform       SocialPlatform
+  handle         String?
+  connected      Boolean        @default(false)
+  accessToken    String?
+  refreshToken   String?
+  expiresAt      DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  @@index([organizationId, platform])
+  @@index([locationId])
+}
+
+model ScheduledPost {
+  id             String           @id @default(cuid())
+  organizationId String
+  organization   Organization     @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?        @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  draftId        String?
+  draft          Draft?           @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  issueId        String?
+  issue          Issue?           @relation(fields: [issueId], references: [id], onDelete: SetNull)
+  copy           String
+  platforms      SocialPlatform[]
+  scheduledFor   DateTime?
+  status         DraftStatus      @default(draft)
+  note           String?
+  reviewerNotes  String?
+  createdAt      DateTime         @default(now())
+  updatedAt      DateTime         @updatedAt
+
+  approval      PostApproval?
+  dispatchItems DispatchItem[]
+
+  @@index([organizationId, status])
+  @@index([locationId, status])
+  @@index([scheduledFor])
+}
+
+model PhotoAsset {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  url            String
+  mimeType       String?
+  alt            String?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId])
+  @@index([locationId])
+}
+
+model CalendarEvent {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  title          String
+  description    String?
+  startsAt       DateTime
+  endsAt         DateTime?
+  createdAt      DateTime     @default(now())
+
+  @@index([organizationId, startsAt])
+  @@index([locationId, startsAt])
+}
+
+model KnowledgeBaseEntry {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  title          String
+  content        String
+  tags           String[]
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@index([organizationId])
+  @@index([locationId])
+}
+
+model Template {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  name           String
+  slug           String
+  description    String?
+  data           Json
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, slug])
+  @@index([locationId])
+}
+
+model Draft {
+  id            String           @id @default(cuid())
+  locationId    String
+  location      Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  issueId       String?
+  issue         Issue?           @relation(fields: [issueId], references: [id])
+  copy          String
+  platforms     SocialPlatform[]
+  scheduledDate DateTime?
+  scheduledTime String?
+  status        DraftStatus      @default(draft)
+  note          String?
+  reviewerNotes String?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  approvals      Approval[]
+  mediaAssets    MediaAsset[]
+  scheduledPosts ScheduledPost[]
+}
+
+model Post {
+  id          String           @id @default(cuid())
+  locationId  String
+  location    Location         @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  draftId     String?
+  copy        String
+  platforms   SocialPlatform[]
+  publishedAt DateTime?
+  status      DraftStatus      @default(published)
+  externalIds Json?
+  createdAt   DateTime         @default(now())
+}
+
+model Issue {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  title          String
+  weekStart      DateTime
+  weekEnd        DateTime
+  status         String       @default("open")
+  createdAt      DateTime     @default(now())
+
+  drafts         Draft[]
+  scheduledPosts ScheduledPost[]
+}
+
+model Approval {
+  id        String      @id @default(cuid())
+  draftId   String
+  draft     Draft       @relation(fields: [draftId], references: [id], onDelete: Cascade)
+  status    DraftStatus
+  reviewer  String?
+  notes     String?
+  timestamp DateTime    @default(now())
+}
+
+model DispatchItem {
+  id              String         @id @default(cuid())
+  scheduledPostId String?
+  scheduledPost   ScheduledPost? @relation(fields: [scheduledPostId], references: [id], onDelete: SetNull)
+  postId          String?
+  date            DateTime
+  time            String
+  status          DraftStatus
+  createdAt       DateTime       @default(now())
+}
+
+model Campaign {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  title          String
+  copy           String
+  createdAt      DateTime     @default(now())
+
+  locations CampaignLocation[]
+}
+
+model CampaignLocation {
+  id         String      @id @default(cuid())
+  campaignId String
+  campaign   Campaign    @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  locationId String
+  location   Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  draftId    String?
+  status     DraftStatus @default(draft)
+
+  @@unique([campaignId, locationId])
+}
+
+model MediaAsset {
+  id      String  @id @default(cuid())
+  draftId String?
+  draft   Draft?  @relation(fields: [draftId], references: [id], onDelete: SetNull)
+  url     String
+  type    String  @default("image")
+}
+
+model AnalyticsSnapshot {
+  id                  String       @id @default(cuid())
+  organizationId      String
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId          String?
+  location            Location?    @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  periodStart         DateTime
+  periodEnd           DateTime
+  postsApproved       Int          @default(0)
+  postsPublished      Int          @default(0)
+  consistencyScore    Float        @default(0)
+  topThemes           String[]
+  draftToApprovalRate Float        @default(0)
+  createdAt           DateTime     @default(now())
+
+  @@index([organizationId, periodStart])
+  @@index([locationId, periodStart])
+}
+
+model Subscription {
+  id               String       @id @default(cuid())
+  organizationId   String
+  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan             PlanTier
+  status           String       @default("active")
+  stripeCustomerId String?
+  createdAt        DateTime     @default(now())
+  updatedAt        DateTime     @updatedAt
+
+  @@unique([organizationId])
+}

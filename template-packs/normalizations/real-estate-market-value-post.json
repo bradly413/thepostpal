@@ -1,0 +1,46 @@
+{
+  "packSlug": "real-estate-market-value-post",
+  "packName": "Real Estate Market Value Post",
+  "status": "APP_READY",
+  "priority": "NOW",
+  "normalizationSummary": "Convert the real-estate market-value pack into Market Clarity templates aligned to the original Angie use case.",
+  "whyNow": "This is one of the cleanest immediate product fits for the current app and should become part of the first normalized real-estate set.",
+  "candidateTemplates": [
+    {
+      "id": "real-estate-market-clarity",
+      "name": "Real Estate Market Clarity",
+      "sourceVariant": "Artboards 1-3",
+      "recommendedSlug": "real-estate-market-clarity",
+      "recommendedPillar": "Market Clarity",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "navy",
+      "recommendedLayout": "centered",
+      "contentGoal": "Give buyers and sellers a clear, confidence-building market update.",
+      "rationale": "Very close to the original Angie positioning and easy to slot into the current product promise.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "body", "label": "Body", "type": "textarea", "required": true },
+        { "id": "stat", "label": "Featured Stat", "type": "stat" },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    },
+    {
+      "id": "home-value-education",
+      "name": "Home Value Education",
+      "sourceVariant": "Artboards 4-6",
+      "recommendedSlug": "home-value-education",
+      "recommendedPillar": "Buyer/Seller Tips",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "photo-overlay",
+      "recommendedLayout": "bottom-text",
+      "contentGoal": "Explain how pricing, home value, or seller preparation works in plain English.",
+      "rationale": "Adds an educational companion to the more insight-driven market-clarity post.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "list_items", "label": "Tips", "type": "list", "required": true },
+        { "id": "photo", "label": "Feature Image", "type": "image" },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    }
+  ]
+}

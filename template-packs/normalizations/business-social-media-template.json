@@ -1,0 +1,47 @@
+{
+  "packSlug": "business-social-media-template",
+  "packName": "Business Social Media Template",
+  "status": "APP_READY",
+  "priority": "NOW",
+  "normalizationSummary": "Use the six business layouts as the base for evergreen business promo and educational square posts.",
+  "whyNow": "This pack is one of the cleanest general-business sources in the library.",
+  "candidateTemplates": [
+    {
+      "id": "biz-promo-square",
+      "name": "Business Promo Square",
+      "sourceVariant": "01-03",
+      "recommendedSlug": "business-promo-square",
+      "recommendedPillar": "Business Promotion",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "photo-overlay",
+      "recommendedLayout": "bottom-text",
+      "contentGoal": "Promote an offer, service, or featured business message.",
+      "rationale": "Straightforward conversion template for many industries.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "body", "label": "Body", "type": "textarea" },
+        { "id": "cta", "label": "Call to Action", "type": "cta", "required": true },
+        { "id": "photo", "label": "Feature Image", "type": "image" },
+        { "id": "brand_name", "label": "Brand Name", "type": "text" }
+      ]
+    },
+    {
+      "id": "biz-education-square",
+      "name": "Business Education Square",
+      "sourceVariant": "04-06",
+      "recommendedSlug": "business-education-square",
+      "recommendedPillar": "Business Education",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "ivory",
+      "recommendedLayout": "centered",
+      "contentGoal": "Share a tip, explainer, or simple business lesson.",
+      "rationale": "Pairs well with Posterboy's simple, practical messaging direction.",
+      "editableFields": [
+        { "id": "eyebrow", "label": "Eyebrow", "type": "text" },
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "list_items", "label": "Key Points", "type": "list", "required": true },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    }
+  ]
+}

@@ -3,7 +3,7 @@ import { buildBrandPrompt } from "@/lib/brand-book-schema";
 import { angieNicholsBrandBook } from "@/lib/brand-books/angie-nichols";
 import { buildKnowledgeContext } from "@/lib/knowledge-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { templates } from "@/lib/templates";
+import { loadTemplateCatalog } from "@/lib/template-catalog";
 
 const brandContext = buildBrandPrompt(angieNicholsBrandBook);
 
@@ -37,7 +37,7 @@ When writing a platform-specific post (Instagram, Facebook, LinkedIn, Twitter), 
 
 This separator format helps the platform mockup extract and display your content correctly.`;
 
-function findMatchingTemplate(userMessage: string): string {
+function buildTemplateContext(userMessage: string, templates: Awaited<ReturnType<typeof loadTemplateCatalog>>): string {
   const lower = userMessage.toLowerCase();
   const matched: typeof templates = [];
 
@@ -101,7 +101,10 @@ export async function POST(req: Request) {
 
   const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
   const knowledgeContext = lastUserMsg ? buildKnowledgeContext(lastUserMsg.content) : "";
-  const templateContext = lastUserMsg ? findMatchingTemplate(lastUserMsg.content) : "";
+  const templateCatalog = await loadTemplateCatalog();
+  const templateContext = lastUserMsg
+    ? buildTemplateContext(lastUserMsg.content, templateCatalog)
+    : "";
 
   const client = new Anthropic({ apiKey });
 

@@ -1,0 +1,46 @@
+{
+  "packSlug": "market-value-social-media-post",
+  "packName": "Market Value Social Media Post",
+  "status": "APP_READY",
+  "priority": "NOW",
+  "normalizationSummary": "Use the multi-tool market-value pack to create educational and insight-driven templates that work inside and outside real estate.",
+  "whyNow": "One of the most versatile imports because it spans PSD, Canva, Figma, AI, and EPS source formats.",
+  "candidateTemplates": [
+    {
+      "id": "market-value-explainer",
+      "name": "Market Value Explainer",
+      "sourceVariant": "V1-V3",
+      "recommendedSlug": "market-value-explainer",
+      "recommendedPillar": "Business Education",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "ivory",
+      "recommendedLayout": "left-aligned",
+      "contentGoal": "Explain how value is determined in a simple, client-facing format.",
+      "rationale": "Good for advisors, brokers, consultants, and real-estate adjacent businesses.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "body", "label": "Body", "type": "textarea", "required": true },
+        { "id": "list_items", "label": "Key Factors", "type": "list" },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    },
+    {
+      "id": "market-value-checklist",
+      "name": "Market Value Checklist",
+      "sourceVariant": "V4-V6",
+      "recommendedSlug": "market-value-checklist",
+      "recommendedPillar": "Business Education",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "split",
+      "recommendedLayout": "split-header",
+      "contentGoal": "Turn a topic into a fast checklist or myth-vs-fact style post.",
+      "rationale": "Adds a highly reusable educational format to the generalized library.",
+      "editableFields": [
+        { "id": "eyebrow", "label": "Eyebrow", "type": "text" },
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "checklist", "label": "Checklist Items", "type": "list", "required": true },
+        { "id": "cta", "label": "Call to Action", "type": "cta" }
+      ]
+    }
+  ]
+}

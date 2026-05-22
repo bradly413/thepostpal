@@ -3,6 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { getMetaConnection, saveMetaConnection, clearMetaConnection, type MetaConnection } from "@/lib/meta-store";
+import { SITE_NAME } from "@/lib/site";
 
 export default function SettingsPage() {
   return (
@@ -13,7 +14,7 @@ export default function SettingsPage() {
 }
 
 function SettingsContent() {
-  useEffect(() => { document.title = "Settings | thepostpal"; }, []);
+  useEffect(() => { document.title = `Settings | ${SITE_NAME}`; }, []);
   const router = useRouter();
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
@@ -103,11 +104,12 @@ function SettingsContent() {
 
   function handleLogout() {
     document.cookie = "session=; path=/; max-age=0";
-    router.push("/");
+    router.push("/sign-in");
   }
 
   const tabs = [
     { id: "profile", label: "Profile" },
+    { id: "brand", label: "Brand voice" },
     { id: "account", label: "Account" },
     { id: "posting", label: "Posting" },
     { id: "notifications", label: "Notifications" },
@@ -181,6 +183,21 @@ function SettingsContent() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+
+          {activeTab === "brand" && (
+            <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6">
+              <h2 className="text-base font-bold text-text mb-3">Brand voice</h2>
+              <p className="text-sm text-text-secondary mb-5">
+                Tell posterboy how your business sounds. We use this to draft posts that sound less like posts.
+              </p>
+              <a
+                href="/dashboard/brand-intake"
+                className="inline-flex rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg"
+              >
+                Open brand intake
+              </a>
             </div>
           )}
 
@@ -388,14 +405,16 @@ function SettingsContent() {
           {activeTab === "reports" && (
             <div className="rounded-2xl bg-white/[0.04] backdrop-blur-xl border border-white/[0.08] p-6 shadow-[0_8px_32px_rgba(0,0,0,0.4),inset_0_1px_0_rgba(255,255,255,0.05)]">
               <h2 className="text-base font-bold text-text mb-3">Reports</h2>
-              <p className="text-sm text-text-secondary mb-5">Track your social media performance</p>
+              <p className="text-sm text-text-secondary mb-5">
+                Sample layout only — connect Meta for real insights on Facebook / Instagram pages.
+              </p>
               <div className="space-y-4">
                 <div className="grid grid-cols-2 gap-3">
                   {[
-                    { label: "Posts This Month", value: "24", change: "+8%" },
-                    { label: "Total Reach", value: "12.4K", change: "+15%" },
-                    { label: "Engagement Rate", value: "4.2%", change: "+0.3%" },
-                    { label: "Top Platform", value: "Instagram", change: "" },
+                    { label: "Posts This Month", value: "—", change: "" },
+                    { label: "Total Reach", value: "—", change: "" },
+                    { label: "Engagement Rate", value: "—", change: "" },
+                    { label: "Top Platform", value: "—", change: "" },
                   ].map((stat) => (
                     <div key={stat.label} className="rounded-xl bg-white/[0.03] backdrop-blur-md border border-white/[0.06] p-4 shadow-[0_2px_8px_rgba(0,0,0,0.2)]">
                       <p className="text-[10px] uppercase tracking-wider text-text-secondary/50">{stat.label}</p>

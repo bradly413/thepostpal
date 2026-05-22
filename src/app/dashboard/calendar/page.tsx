@@ -18,6 +18,7 @@ import {
 } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
 import { getMetaConnection } from "@/lib/meta-store";
+import { SITE_NAME } from "@/lib/site";
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -57,7 +58,7 @@ function formatDateKey(year: number, month: number, day: number): string {
 type ModalMode = "post" | "event" | "day-detail" | null;
 
 export default function CalendarPage() {
-  useEffect(() => { document.title = "Calendar | thepostpal"; }, []);
+  useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week">("month");
   const [posts, setPosts] = useState<ScheduledPost[]>([]);

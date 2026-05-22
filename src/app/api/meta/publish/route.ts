@@ -16,11 +16,38 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { platform, pageId, igAccountId, caption, imageUrl, scheduledTime } = body;
+    const {
+      platform,
+      pageId,
+      igAccountId,
+      caption,
+      imageUrl,
+      scheduledTime,
+      locationId,
+      pageToken: clientPageToken,
+    } = body;
 
-    const pageToken = process.env.META_PAGE_ACCESS_TOKEN;
+    if (!locationId || typeof locationId !== "string") {
+      return NextResponse.json({ error: "locationId is required" }, { status: 400 });
+    }
+
+    const pageToken =
+      typeof clientPageToken === "string" && clientPageToken.length > 0
+        ? clientPageToken
+        : process.env.META_PAGE_ACCESS_TOKEN;
+
     if (!pageToken || !pageId) {
-      return NextResponse.json({ error: "Not connected to Facebook" }, { status: 400 });
+      return NextResponse.json(
+        { error: "Not connected to Facebook. Connect in Settings, then try again." },
+        { status: 400 },
+      );
+    }
+
+    if (imageUrl && typeof imageUrl === "string" && imageUrl.startsWith("data:")) {
+      return NextResponse.json(
+        { error: "Upload the image first — Meta requires a public image URL." },
+        { status: 400 },
+      );
     }
 
     const results: { facebook?: unknown; instagram?: unknown } = {};

@@ -69,7 +69,7 @@ export default function FeedbackWidget() {
                 <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
                   <div>
                     <h3 className="text-sm font-semibold text-white">Send Feedback</h3>
-                    <p className="text-[11px] text-white/35 mt-0.5">Help us improve thepostpal</p>
+                    <p className="text-[11px] text-white/35 mt-0.5">Help us improve posterboy</p>
                   </div>
                   <button onClick={() => setOpen(false)} className="p-1 text-white/30 hover:text-white transition-colors">
                     <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>

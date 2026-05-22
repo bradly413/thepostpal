@@ -1,0 +1,69 @@
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/db";
+import { requireAuthContext } from "@/lib/api-auth";
+import { resolveAccess } from "@/lib/authz";
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireAuthContext();
+    const locationId = request.nextUrl.searchParams.get("locationId");
+    const location = request.nextUrl.searchParams.get("location");
+
+    if (!locationId && location !== "all") {
+      return NextResponse.json({ error: "locationId is required" }, { status: 400 });
+    }
+
+    if (location === "all") {
+      const memberships = await db.locationMembership.findMany({
+        where: { userId: auth.userId, location: { organizationId: auth.organizationId } },
+        select: { locationId: true },
+      });
+      const ids = memberships.map((m) => m.locationId);
+      const posts = await db.scheduledPost.findMany({
+        where: { organizationId: auth.organizationId, locationId: { in: ids } },
+        orderBy: { createdAt: "desc" },
+      });
+      return NextResponse.json({ posts });
+    }
+
+    const access = await resolveAccess(auth.userId, locationId!);
+    if (!access.hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const posts = await db.scheduledPost.findMany({
+      where: { organizationId: auth.organizationId, locationId: locationId! },
+      orderBy: { createdAt: "desc" },
+    });
+
+    return NextResponse.json({ posts });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
+
+export async function POST(request: NextRequest) {
+  try {
+    const auth = await requireAuthContext();
+    const body = await request.json();
+
+    const locationId = typeof body.locationId === "string" ? body.locationId : "";
+    if (!locationId) return NextResponse.json({ error: "locationId is required" }, { status: 400 });
+
+    const access = await resolveAccess(auth.userId, locationId);
+    if (!access.hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+
+    const post = await db.scheduledPost.create({
+      data: {
+        organizationId: auth.organizationId,
+        locationId,
+        copy: typeof body.copy === "string" ? body.copy : "",
+        platforms: Array.isArray(body.platforms) ? body.platforms : [],
+        scheduledFor: body.scheduledFor ? new Date(body.scheduledFor) : null,
+        status: "draft",
+      },
+    });
+
+    return NextResponse.json({ post }, { status: 201 });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}

@@ -6,6 +6,8 @@ import PageTransition from "./PageTransition";
 import FeedbackWidget from "./FeedbackWidget";
 import { useState, useEffect, useRef } from "react";
 
+import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
+
 interface NavItem {
   label: string;
   icon: string;
@@ -14,23 +16,18 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { label: "Dashboard", icon: "dashboard", href: "/dashboard" },
-  { label: "Templates", icon: "templates", href: "/dashboard/templates" },
-  { label: "Calendar", icon: "calendar", href: "/dashboard/calendar" },
-  { label: "Photos", icon: "photos", href: "/dashboard/photos" },
-  { label: "Videos", icon: "videos", href: "/dashboard/videos" },
+  { label: "Home", icon: "dashboard", href: "/dashboard" },
+  { label: "Create", icon: "editor", href: "/dashboard/studio" },
+  { label: "Week", icon: "calendar", href: "/dashboard/dispatch" },
+  { label: "Content", icon: "drafts", href: "/dashboard/drafts" },
+  { label: "Issues", icon: "issues", href: "/dashboard/issues" },
 ];
 
 const EXTRA_NAV: NavItem[] = [
-  { label: "AI Assistant", icon: "ai", href: "/dashboard/ai-assistant" },
-  { label: "Create Image", icon: "create-image", href: "/dashboard/create-image" },
-  { label: "Create Video", icon: "create-video", href: "/dashboard/create-video" },
-  { label: "My Brand", icon: "brand", href: "/dashboard/brand" },
-  { label: "Facebook", icon: "facebook", href: "/dashboard/facebook" },
-  { label: "Instagram", icon: "instagram", href: "/dashboard/instagram" },
-  { label: "Vimeo", icon: "vimeo", href: "https://vimeo.com", external: true },
+  { label: "Analytics", icon: "reports", href: "/dashboard/analytics" },
+  { label: "Channels", icon: "organization", href: "/dashboard/organization" },
+  { label: "Copy editor", icon: "brand", href: "/dashboard/editor" },
   { label: "Settings", icon: "settings", href: "/dashboard/settings" },
-  { label: "Feedback", icon: "feedback", href: "/dashboard/feedback" },
 ];
 
 const ALL_NAV: NavItem[] = [...NAV, ...EXTRA_NAV];
@@ -38,6 +35,14 @@ const NAV_ITEM_H = 36;
 
 function SidebarIcon({ type }: { type: string }) {
   const props = { width: 18, height: 18, fill: "none", viewBox: "0 0 24 24", stroke: "currentColor", strokeWidth: 1.5, "aria-hidden": true as const };
+  if (type === "drafts")
+    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M19.5 14.25v-2.625a3.375 3.375 0 00-3.375-3.375h-1.5A1.125 1.125 0 0113.5 7.125v-1.5a3.375 3.375 0 00-3.375-3.375H8.25m0 12.75h7.5m-7.5 3H12M10.5 2.25H5.625c-.621 0-1.125.504-1.125 1.125v17.25c0 .621.504 1.125 1.125 1.125h12.75c.621 0 1.125-.504 1.125-1.125V11.25a9 9 0 00-9-9z" /></svg>;
+  if (type === "editor")
+    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" /></svg>;
+  if (type === "issues")
+    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 7.5h1.5m-1.5 3h1.5m-7.5 3h7.5m-7.5 3h7.5m3-9h3.375c.621 0 1.125.504 1.125 1.125V18a2.25 2.25 0 01-2.25 2.25M16.5 7.5V18a2.25 2.25 0 002.25 2.25M16.5 7.5V4.875c0-.621-.504-1.125-1.125-1.125H4.125C3.504 3.75 3 4.254 3 4.875V18a2.25 2.25 0 002.25 2.25h13.5M6 7.5h3v3H6v-3z" /></svg>;
+  if (type === "organization")
+    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 21h19.5m-18-18v18m10.5-18v18m6-13.5V21M6.75 6.75h.75m-.75 3h.75m-.75 3h.75m3-6h.75m-.75 3h.75m-.75 3h.75M6.75 21v-3.375c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21M3 3h12m-.75 4.5H21m-3.75 3.75h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008zm0 3h.008v.008h-.008v-.008z" /></svg>;
   if (type === "dashboard")
     return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z" /></svg>;
   if (type === "templates")
@@ -48,10 +53,8 @@ function SidebarIcon({ type }: { type: string }) {
     return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456zM16.894 20.567L16.5 21.75l-.394-1.183a2.25 2.25 0 00-1.423-1.423L13.5 18.75l1.183-.394a2.25 2.25 0 001.423-1.423l.394-1.183.394 1.183a2.25 2.25 0 001.423 1.423l1.183.394-1.183.394a2.25 2.25 0 00-1.423 1.423z" /></svg>;
   if (type === "knowledge")
     return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6.042A8.967 8.967 0 006 3.75c-1.052 0-2.062.18-3 .512v14.25A8.987 8.987 0 016 18c2.305 0 4.408.867 6 2.292m0-14.25a8.966 8.966 0 016-2.292c1.052 0 2.062.18 3 .512v14.25A8.987 8.987 0 0018 18a8.967 8.967 0 00-6 2.292m0-14.25v14.25" /></svg>;
-  if (type === "create-image")
-    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21zm14.25-15.75h.008v.008h-.008V5.25z" /></svg>;
-  if (type === "create-video")
-    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="m15.75 10.5 4.72-4.72a.75.75 0 0 1 1.28.53v11.38a.75.75 0 0 1-1.28.53l-4.72-4.72M4.5 18.75h9a2.25 2.25 0 0 0 2.25-2.25v-9a2.25 2.25 0 0 0-2.25-2.25h-9A2.25 2.25 0 0 0 2.25 7.5v9a2.25 2.25 0 0 0 2.25 2.25z" /></svg>;
+  if (type === "studio")
+    return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09z" /><path strokeLinecap="round" strokeLinejoin="round" d="M18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25z" /></svg>;
   if (type === "brand")
     return <svg {...props}><path strokeLinecap="round" strokeLinejoin="round" d="M9.53 16.122a3 3 0 00-5.78 1.128 2.25 2.25 0 01-2.4 2.245 4.5 4.5 0 008.4-2.245c0-.399-.078-.78-.22-1.128zm0 0a15.998 15.998 0 003.388-1.62m-5.043-.025a15.994 15.994 0 011.622-3.395m3.42 3.42a15.995 15.995 0 004.764-4.648l3.876-5.814a1.151 1.151 0 00-1.597-1.597L14.146 6.32a15.996 15.996 0 00-4.649 4.763m3.42 3.42a6.776 6.776 0 00-3.42-3.42" /></svg>;
   if (type === "facebook")
@@ -108,6 +111,27 @@ export default function DashboardShell({ children }: { children: React.ReactNode
     localStorage.setItem("theme", theme);
   }, [theme]);
 
+  useEffect(() => {
+    const html = document.documentElement;
+    const { body } = document;
+    const prev = {
+      htmlOverflow: html.style.overflow,
+      bodyOverflow: body.style.overflow,
+      htmlHeight: html.style.height,
+      bodyHeight: body.style.height,
+    };
+    html.style.overflow = "hidden";
+    body.style.overflow = "hidden";
+    html.style.height = "100%";
+    body.style.height = "100%";
+    return () => {
+      html.style.overflow = prev.htmlOverflow;
+      body.style.overflow = prev.bodyOverflow;
+      html.style.height = prev.htmlHeight;
+      body.style.height = prev.bodyHeight;
+    };
+  }, []);
+
   function toggleCollapsed() {
     const next = !collapsed;
     setCollapsed(next);
@@ -117,13 +141,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   function handleLogout() {
     document.cookie = "session=; path=/; max-age=0";
-    router.push("/");
+    router.push("/sign-in");
   }
 
   function isActive(href: string) {
     if (href === "/dashboard") return pathname === "/dashboard";
     return pathname.startsWith(href);
   }
+
+  const isBentoHome =
+    pathname === "/dashboard" || pathname === "/dashboard/studio";
 
   const activeIdx = ALL_NAV.findIndex((item) => isActive(item.href));
   const highlightIdx = hoverIdx ?? activeIdx;
@@ -138,8 +165,30 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   const navWidth = collapsed ? 72 : 240;
 
+  if (isBentoHome) {
+    return (
+      <div className="flex h-screen overflow-hidden bg-[#f5f4f1]">
+        <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black">
+          Skip to content
+        </a>
+        <main id="main-content" className="flex-1 min-h-0 overflow-hidden">
+          <PageTransition>
+            <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+              <p className="shrink-0 px-4 py-2 text-center text-[11px] tracking-wide bg-amber-50 text-amber-950 border-b border-amber-200/80">
+                Beta — workflow data stays in this browser. Connect Meta in Settings to publish.
+              </p>
+              <div className="ds-scroll-pane flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-8">
+                {children}
+              </div>
+            </div>
+          </PageTransition>
+        </main>
+      </div>
+    );
+  }
+
   return (
-    <div className="ds-shell flex h-screen overflow-hidden bg-[#0c0c0e]">
+    <div className="ds-shell flex h-dvh max-h-dvh min-h-0 overflow-hidden bg-[#080808]">
       <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black">Skip to content</a>
       <style>{`
         .ds-nav {
@@ -203,7 +252,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         }
         .ds-nav-content::-webkit-scrollbar-thumb {
           border-radius: 99px;
-          background-color: rgba(212,168,83,0.3);
+          background-color: rgba(182,75,58,0.25);
         }
         .ds-nav-item {
           position: relative;
@@ -245,7 +294,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           right: 0;
           width: calc(100% - 12px);
           height: ${navItemH}px;
-          background: #0c0c0e;
+          background: #080808;
           border-radius: 14px 0 0 14px;
           transition: top 0.25s cubic-bezier(0.4, 0, 0.2, 1);
           z-index: 0;
@@ -331,13 +380,13 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           width: 32px;
           height: 32px;
           border-radius: 10px;
-          background: rgba(212,168,83,0.15);
+          background: rgba(182,75,58,0.1);
           display: flex;
           align-items: center;
           justify-content: center;
           font-size: 11px;
           font-weight: 700;
-          color: #D4A853;
+          color: #B64B3A;
           flex-shrink: 0;
           transition: margin 0.25s;
         }
@@ -367,7 +416,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <button onClick={() => setMobileNav(true)} aria-label="Open navigation menu" className="p-1 text-white/60">
           <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6.75h16.5M3.75 12h16.5m-16.5 5.25h16.5" /></svg>
         </button>
-        <span className="ml-3 text-sm font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>Posterboy</span>
+        <span className="ml-3 text-sm font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>posterboy</span>
       </div>
 
       {/* Mobile drawer overlay */}
@@ -380,7 +429,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between p-4">
-              <span className="text-lg font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>Posterboy</span>
+              <span className="text-lg font-semibold text-white/80" style={{ fontFamily: "'Playfair Display', serif" }}>posterboy</span>
               <button onClick={() => setMobileNav(false)} aria-label="Close navigation menu" className="p-1 text-white/40">
                 <svg width="20" height="20" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -404,7 +453,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                 </svg>
-                Logout
+                {MICROCOPY.logout}
               </button>
             </nav>
           </div>
@@ -416,7 +465,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <div className="relative flex items-center shrink-0" style={{ height: 80, padding: "0 8px" }}>
           {!collapsed && (
             <div className="flex-1 overflow-hidden" style={{ transition: "opacity 0.8s" }}>
-              <img src={theme === "dark" ? "/logos/thepostpal-white.png" : "/logos/thepostpal-black.png"} alt="Posterboy Social" className="opacity-90" style={{ width: "118%", maxWidth: "none", marginLeft: "-6%", marginTop: "-4px" }} />
+              <img src={theme === "dark" ? "/logos/posterboy-logo-dark.png" : "/logos/posterboy-logo-light.png"} alt="posterboy" className="opacity-90" style={{ width: "80%", maxWidth: "none", marginLeft: "4px" }} />
             </div>
           )}
           <button
@@ -537,7 +586,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
                 <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 9V5.25A2.25 2.25 0 0013.5 3h-6a2.25 2.25 0 00-2.25 2.25v13.5A2.25 2.25 0 007.5 21h6a2.25 2.25 0 002.25-2.25V15m3 0l3-3m0 0l-3-3m3 3H9" />
                 </svg>
-                Logout
+                {MICROCOPY.logout}
               </button>
             </div>
           )}
@@ -545,12 +594,21 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       </div>
 
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main id="main-content" className="flex-1 flex flex-col overflow-y-auto ds-main">
-          <PageTransition>{children}</PageTransition>
+        <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden ds-main">
+          <PageTransition>
+            <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
+              <p className="shrink-0 px-4 py-2 text-center text-[11px] tracking-wide bg-amber-50 text-amber-950 border-b border-amber-200/80">
+                Beta — workflow data stays in this browser. Connect Meta in Settings to publish.
+              </p>
+              <div className="ds-scroll-pane flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-8">
+                {children}
+              </div>
+            </div>
+          </PageTransition>
         </main>
         {!pathname.startsWith("/dashboard/editor") && (
           <footer className="shrink-0 py-1 pr-4 text-right">
-            <p className="text-[10px] text-text-secondary/30 tracking-wide">&copy; 2026 Bradly Robert Creative LLC. All rights reserved. Posterboy Social™ is a trademark of Bradly Robert Creative LLC.</p>
+            <p className="text-[10px] text-text-secondary/30 tracking-wide">&copy; 2026 Bradly Robert Creative LLC. All rights reserved.</p>
           </footer>
         )}
       </div>

@@ -2,7 +2,7 @@
 
 import { use, useState, useRef, useCallback, useEffect } from "react";
 import Link from "next/link";
-import { templates } from "@/lib/templates";
+import { templates as staticTemplates, type Template } from "@/lib/templates";
 import { toPng } from "html-to-image";
 import TemplateCanvas from "@/components/TemplateCanvas";
 import { getMetaConnection } from "@/lib/meta-store";
@@ -21,6 +21,15 @@ const CAPTION_SUGGESTIONS = [
   "Price improvement! Don't miss this opportunity — schedule a tour today 🏠",
   "Another beautiful listing hitting the market! Swipe for more photos →",
 ];
+
+function buildInitialFields(template: Template | undefined): Record<string, string> {
+  if (!template) return {};
+  const initialValues: Record<string, string> = {};
+  for (const field of template.fields) {
+    initialValues[field.id] = field.defaultValue;
+  }
+  return initialValues;
+}
 
 function useCanvasScale(template: { width: number; height: number } | undefined) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -51,17 +60,13 @@ export default function EditorPage({
   params: Promise<{ templateId: string }>;
 }) {
   const { templateId } = use(params);
-  const template = templates.find((t) => t.id === templateId);
+  const [template, setTemplate] = useState<Template | undefined>(() =>
+    staticTemplates.find((item) => item.id === templateId)
+  );
+  const [templateResolved, setTemplateResolved] = useState(false);
   const canvasRef = useRef<HTMLDivElement>(null);
-
-  const [fields, setFields] = useState<Record<string, string>>(() => {
-    if (!template) return {};
-    const init: Record<string, string> = {};
-    for (const f of template.fields) {
-      init[f.id] = f.defaultValue;
-    }
-    return init;
-  });
+  const [fieldsTemplateId, setFieldsTemplateId] = useState(template?.id || "");
+  const [fields, setFields] = useState<Record<string, string>>(() => buildInitialFields(template));
 
   const [photo, setPhoto] = useState<string | null>(null);
   const [photoPos, setPhotoPos] = useState({ x: 50, y: 50 });
@@ -85,6 +90,41 @@ export default function EditorPage({
   const [aiError, setAiError] = useState<string | null>(null);
   const [captionSuggIdx, setCaptionSuggIdx] = useState(0);
   const [captionSuggFade, setCaptionSuggFade] = useState(true);
+
+  useEffect(() => {
+    let isActive = true;
+    async function loadCatalogTemplate() {
+      try {
+        const res = await fetch("/api/templates/catalog", { cache: "no-store" });
+        if (!res.ok) {
+          if (isActive) setTemplateResolved(true);
+          return;
+        }
+        const payload = await res.json() as { templates?: Template[] };
+        const runtimeCatalog = Array.isArray(payload.templates) ? payload.templates : [];
+        const nextTemplate =
+          runtimeCatalog.find((item) => item.id === templateId) ||
+          staticTemplates.find((item) => item.id === templateId);
+        if (!isActive) return;
+        setTemplate(nextTemplate);
+        setTemplateResolved(true);
+      } catch {
+        if (!isActive) return;
+        setTemplate(staticTemplates.find((item) => item.id === templateId));
+        setTemplateResolved(true);
+      }
+    }
+    void loadCatalogTemplate();
+    return () => { isActive = false; };
+  }, [templateId]);
+
+  useEffect(() => {
+    if (!template) return;
+    if (fieldsTemplateId === template.id) return;
+    setFields(buildInitialFields(template));
+    setFieldsTemplateId(template.id);
+  }, [template, fieldsTemplateId]);
+
   useEffect(() => {
     if (caption) return;
     const interval = setInterval(() => {
@@ -197,17 +237,19 @@ export default function EditorPage({
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error || "Image upload failed");
 
+      const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
+      const imageUrl = uploadData.url.startsWith("http")
+        ? uploadData.url
+        : `${window.location.origin}${uploadData.url}`;
+      const payload = await buildMetaPublishPayload({
+        platform: publishPlatform,
+        caption,
+        imageUrl,
+      });
       const res = await fetch("/api/meta/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: publishPlatform,
-          pageId: meta.pageId,
-          pageToken: meta.pageToken,
-          igAccountId: meta.igAccountId,
-          caption,
-          imageUrl: uploadData.url,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Publish failed");
@@ -245,18 +287,20 @@ export default function EditorPage({
       const uploadData = await uploadRes.json();
       if (!uploadRes.ok) throw new Error(uploadData.error || "Image upload failed");
 
+      const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
+      const imageUrl = uploadData.url.startsWith("http")
+        ? uploadData.url
+        : `${window.location.origin}${uploadData.url}`;
+      const payload = await buildMetaPublishPayload({
+        platform: schedulePlatform,
+        caption,
+        imageUrl,
+        scheduledTime: unixTime,
+      });
       const res = await fetch("/api/meta/publish", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          platform: schedulePlatform,
-          pageId: meta.pageId,
-          pageToken: meta.pageToken,
-          igAccountId: meta.igAccountId,
-          caption,
-          imageUrl: uploadData.url,
-          scheduledTime: unixTime,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scheduling failed");
@@ -283,6 +327,14 @@ export default function EditorPage({
   }
 
   if (!template) {
+    if (!templateResolved) {
+      return (
+        <div className="flex flex-1 items-center justify-center bg-bg">
+          <p className="text-text-secondary">Loading template…</p>
+        </div>
+      );
+    }
+
     return (
       <div className="flex flex-1 items-center justify-center bg-bg">
         <p className="text-text-secondary">Template not found.</p>

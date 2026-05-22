@@ -4,6 +4,7 @@ import { exchangeCode, getLongLivedToken, getPages, getInstagramAccount } from "
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
+  const locationId = req.nextUrl.searchParams.get("locationId");
 
   if (error || !code) {
     const msg = req.nextUrl.searchParams.get("error_description") || "Authorization denied";
@@ -36,6 +37,7 @@ export async function GET(req: NextRequest) {
       pageName: page.name,
       pageId: page.id,
       igAccountId: igId || null,
+      locationId: locationId || null,
       connectedAt: new Date().toISOString(),
     };
 

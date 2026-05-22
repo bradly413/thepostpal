@@ -7,6 +7,7 @@ import { templates } from "@/lib/templates";
 import SocialMockup, { type Platform } from "@/components/SocialMockup";
 import { detectPlatform, extractCaption, extractHashtags, stripHashtagsFromCaption } from "@/lib/social-detect";
 import { pickMockupImage } from "@/lib/mockup-library";
+import { SITE_NAME } from "@/lib/site";
 
 type Message = {
   id: string;
@@ -66,7 +67,7 @@ export default function AIAssistantPage() {
 }
 
 function AIAssistantInner() {
-  useEffect(() => { document.title = "AI Assistant | thepostpal"; }, []);
+  useEffect(() => { document.title = `AI Assistant | ${SITE_NAME}`; }, []);
   const searchParams = useSearchParams();
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");

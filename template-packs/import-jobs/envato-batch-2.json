@@ -1,0 +1,61 @@
+{
+  "accountSlug": "angie-nichols",
+  "packs": [
+    {
+      "name": "Market Value Social Media Post",
+      "slug": "market-value-social-media-post",
+      "description": "Cross-format market value pack with PSD, Canva, Figma, AI, and EPS source options.",
+      "sourcePath": "/Users/bradnichols/Downloads/market-value-social-media-post-2025-10-17-22-31-55-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "General market-value content pack with multi-tool source support; good bridge between real estate and broader business education content."
+    },
+    {
+      "name": "Business Social Media Pack",
+      "slug": "business-social-media-pack",
+      "description": "Business-oriented pack with Facebook, Instagram, and Pinterest PSD layouts.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-social-media-pack-2024-05-16-05-07-47-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Multi-platform business pack; useful for non-real-estate service brands and generic social starter kits."
+    },
+    {
+      "name": "High Quality Media Social Post Mockup",
+      "slug": "high-quality-media-social-post-mockup",
+      "description": "Presentation mockup pack with four PSD social post mockup scenes and instruction PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/high-quality-media-social-post-mockup-2026-03-06-14-31-58-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Mockup-only asset pack for showcasing finished designs in portfolio, marketing, or template previews."
+    },
+    {
+      "name": "Business Social Media Template",
+      "slug": "business-social-media-template",
+      "description": "Six-layout business template pack with PSD, AI, and EPS source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-social-media-template-2025-06-10-23-22-24-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Strong reusable business pack with multiple formats; good candidate for broader Posterboy starter categories."
+    },
+    {
+      "name": "Business Social Media Post",
+      "slug": "business-social-media-post",
+      "description": "Compact business social post pack with Illustrator, EPS, and PDF help file assets.",
+      "sourcePath": "/Users/bradnichols/Downloads/business-social-media-post-2024-06-11-03-11-54-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Small source pack; likely better as inspiration or a lightweight import candidate than a flagship template set."
+    },
+    {
+      "name": "High Quality Elegant Instagram Social Media Mockup",
+      "slug": "high-quality-elegant-instagram-social-media-mockup",
+      "description": "Elegant Instagram mockup pack with three PSD scenes and a help file.",
+      "sourcePath": "/Users/bradnichols/Downloads/high-quality-elegant-instagram-social-media-mockup-2026-03-23-05-36-29-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Mockup-only asset pack suited for polished preview rendering and launch or marketing presentation."
+    },
+    {
+      "name": "High Quality Social Media Mockup",
+      "slug": "high-quality-social-media-mockup",
+      "description": "Four-scene social media mockup pack with PSD sources and guide PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-05-04-08-50-11-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "General-purpose mockup pack for presenting finished templates, campaign previews, and product visuals."
+    }
+  ]
+}

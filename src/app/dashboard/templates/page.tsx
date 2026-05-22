@@ -2,9 +2,9 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState, useEffect, Suspense } from "react";
+import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
-import { templates } from "@/lib/templates";
+import { templates as staticTemplates, type Template } from "@/lib/templates";
 
 const bgPreview: Record<string, string> = {
   navy: "bg-navy",
@@ -56,18 +56,20 @@ const PREFERRED_PILLAR_ORDER = [
   "Events",
 ];
 
-const discoveredPillars = Array.from(new Set(templates.map((t) => t.pillar)));
+function buildPillarModel(templateCatalog: Template[]) {
+  const discoveredPillars = Array.from(new Set(templateCatalog.map((t) => t.pillar)));
+  const orderedPillars = [
+    ...PREFERRED_PILLAR_ORDER.filter((pillar) => discoveredPillars.includes(pillar)),
+    ...discoveredPillars.filter((pillar) => !PREFERRED_PILLAR_ORDER.includes(pillar)).sort(),
+  ];
 
-const orderedPillars = [
-  ...PREFERRED_PILLAR_ORDER.filter((pillar) => discoveredPillars.includes(pillar)),
-  ...discoveredPillars.filter((pillar) => !PREFERRED_PILLAR_ORDER.includes(pillar)).sort(),
-];
-
-const PILLARS = ["All", ...orderedPillars];
-
-const groupedTemplates = orderedPillars
-  .map((pillar) => ({ pillar, items: templates.filter((t) => t.pillar === pillar) }))
-  .filter((g) => g.items.length > 0);
+  return {
+    pillars: ["All", ...orderedPillars],
+    groupedTemplates: orderedPillars
+      .map((pillar) => ({ pillar, items: templateCatalog.filter((t) => t.pillar === pillar) }))
+      .filter((group) => group.items.length > 0),
+  };
+}
 
 export default function TemplatesPage() {
   return (
@@ -81,11 +83,41 @@ function TemplatesContent() {
   useEffect(() => { document.title = "Templates — Posterboy Social"; }, []);
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
-  const [filter, setFilter] = useState(PILLARS.includes(initialPillar) ? initialPillar : "All");
+  const [templateCatalog, setTemplateCatalog] = useState<Template[]>(staticTemplates);
+  const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
+  const [didInitFilter, setDidInitFilter] = useState(false);
 
-  const filtered = templates.filter((t) => {
+  useEffect(() => {
+    let isActive = true;
+    async function loadCatalog() {
+      try {
+        const res = await fetch("/api/templates/catalog", { cache: "no-store" });
+        if (!res.ok) return;
+        const data = await res.json() as { templates?: Template[] };
+        if (!isActive || !Array.isArray(data.templates)) return;
+        setTemplateCatalog(data.templates);
+      } catch {
+        // Keep static fallback if catalog endpoint is unavailable.
+      }
+    }
+    void loadCatalog();
+    return () => { isActive = false; };
+  }, []);
+
+  const { pillars, groupedTemplates } = useMemo(
+    () => buildPillarModel(templateCatalog),
+    [templateCatalog]
+  );
+
+  useEffect(() => {
+    if (didInitFilter) return;
+    setFilter(pillars.includes(initialPillar) ? initialPillar : "All");
+    setDidInitFilter(true);
+  }, [didInitFilter, initialPillar, pillars]);
+
+  const filtered = templateCatalog.filter((t) => {
     const matchesPillar = filter === "All" || t.pillar === filter;
     const matchesSearch = !search || t.name.toLowerCase().includes(search.toLowerCase()) || t.description.toLowerCase().includes(search.toLowerCase());
     return matchesPillar && matchesSearch;
@@ -103,7 +135,7 @@ function TemplatesContent() {
           <p className="text-sm text-text-secondary mt-1">Browse and customize your social media templates</p>
         </div>
         <Link
-          href={`/dashboard/editor/${templates[0]?.id}`}
+          href={`/dashboard/editor/${templateCatalog[0]?.id}`}
           className="flex items-center gap-1.5 rounded-full bg-accent text-white px-4 py-2 text-xs font-medium hover:bg-accent/85 shadow-sm hover:shadow-md transition-all self-start"
         >
           <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -153,7 +185,7 @@ function TemplatesContent() {
 
       <div className="relative mb-6">
         <div className="flex gap-2 overflow-x-auto pb-3" style={{ scrollbarWidth: "none" }}>
-          {PILLARS.map((p) => (
+          {pillars.map((p) => (
             <button
               key={p}
               onClick={() => setFilter(p)}

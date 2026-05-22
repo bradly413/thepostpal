@@ -1,0 +1,2900 @@
+{
+  "packs": [
+    {
+      "id": "882f5b00-02c1-4a99-bdcd-cb8990f71296",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-sale-social-media-post",
+      "name": "Business Sale Social Media Post",
+      "description": "Six-post business sale pack with Illustrator and Photoshop source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-sale-social-media-post/source/business-sale-social-media-post-2024-06-11-02-44-24-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 15,
+          "extensionCounts": {
+            "ai": 6,
+            "psd": 6,
+            "txt": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Business Sale Social Media Post/AI/",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 1.ai",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 2.ai",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 3.ai",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 4.ai",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 5.ai",
+            "Business Sale Social Media Post/AI/Business Sale Socmed Post 6.ai",
+            "Business Sale Social Media Post/PSD/",
+            "Business Sale Social Media Post/PSD/Business Sale Socmed Post 1.psd",
+            "Business Sale Social Media Post/PSD/Business Sale Socmed Post 2.psd",
+            "Business Sale Social Media Post/PSD/Business Sale Socmed Post 3.psd",
+            "Business Sale Social Media Post/PSD/Business Sale Socmed Post 4.psd"
+          ]
+        },
+        "notes": "Good candidate for promo, offer, and launch-oriented business content normalization."
+      },
+      "importedAt": "2026-05-21T22:31:41.564Z",
+      "createdAt": "2026-05-21T22:31:41.564Z",
+      "updatedAt": "2026-05-21T22:31:41.564Z",
+      "files": [
+        {
+          "id": "3911e02b-a980-4ddc-9024-dd6540af1265",
+          "templatePackId": "882f5b00-02c1-4a99-bdcd-cb8990f71296",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-sale-social-media-post/source/business-sale-social-media-post-2024-06-11-02-44-24-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-sale-social-media-post-2024-06-11-02-44-24-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 4869760,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-sale-social-media-post-2024-06-11-02-44-24-utc.zip",
+            "zipInspection": {
+              "entryCount": 15,
+              "extensionCounts": {
+                "ai": 6,
+                "psd": 6,
+                "txt": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Business Sale Social Media Post/AI/",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 1.ai",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 2.ai",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 3.ai",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 4.ai",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 5.ai",
+                "Business Sale Social Media Post/AI/Business Sale Socmed Post 6.ai",
+                "Business Sale Social Media Post/PSD/",
+                "Business Sale Social Media Post/PSD/Business Sale Socmed Post 1.psd",
+                "Business Sale Social Media Post/PSD/Business Sale Socmed Post 2.psd",
+                "Business Sale Social Media Post/PSD/Business Sale Socmed Post 3.psd",
+                "Business Sale Social Media Post/PSD/Business Sale Socmed Post 4.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.566Z",
+          "updatedAt": "2026-05-21T22:31:41.566Z"
+        },
+        {
+          "id": "fa960b4b-30c0-4269-8659-172497f87b83",
+          "templatePackId": "882f5b00-02c1-4a99-bdcd-cb8990f71296",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-sale-social-media-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 4415,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.566Z",
+          "updatedAt": "2026-05-21T22:31:41.566Z"
+        }
+      ]
+    },
+    {
+      "id": "9ecc5351-0a69-49a9-aa58-5f3e2b21f818",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-corporate-social-media-post-canva",
+      "name": "Business Corporate Social Media Post Canva",
+      "description": "Six-slide business corporate carousel pack with PSD, AI, EPS, and Canva link support.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-corporate-social-media-post-canva/source/business-corporate-social-media-post-canva-2025-12-11-20-26-24-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 20,
+          "extensionCounts": {
+            "ai": 6,
+            "txt": 2,
+            "eps": 6,
+            "psd": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": true,
+          "sampleEntries": [
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_1.ai",
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_2.ai",
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_3.ai",
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_4.ai",
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_5.ai",
+            "AI/Carousel_Business Corporate_251120 - No Pic_Slide_6.ai",
+            "Canva Link.txt",
+            "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_1.eps",
+            "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_2.eps",
+            "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_3.eps",
+            "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_4.eps",
+            "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_5.eps"
+          ]
+        },
+        "notes": "Strong candidate for broader business and professional-services template categories."
+      },
+      "importedAt": "2026-05-21T22:31:41.561Z",
+      "createdAt": "2026-05-21T22:31:41.561Z",
+      "updatedAt": "2026-05-21T22:31:41.561Z",
+      "files": [
+        {
+          "id": "f05325f2-29e1-43b5-9557-dc33fc80c008",
+          "templatePackId": "9ecc5351-0a69-49a9-aa58-5f3e2b21f818",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-corporate-social-media-post-canva/source/business-corporate-social-media-post-canva-2025-12-11-20-26-24-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-corporate-social-media-post-canva-2025-12-11-20-26-24-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 5946172,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-corporate-social-media-post-canva-2025-12-11-20-26-24-utc.zip",
+            "zipInspection": {
+              "entryCount": 20,
+              "extensionCounts": {
+                "ai": 6,
+                "txt": 2,
+                "eps": 6,
+                "psd": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": true,
+              "sampleEntries": [
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_1.ai",
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_2.ai",
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_3.ai",
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_4.ai",
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_5.ai",
+                "AI/Carousel_Business Corporate_251120 - No Pic_Slide_6.ai",
+                "Canva Link.txt",
+                "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_1.eps",
+                "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_2.eps",
+                "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_3.eps",
+                "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_4.eps",
+                "EPS/Carousel_Business Corporate_251120 - No Pic_Slide_5.eps"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.564Z",
+          "updatedAt": "2026-05-21T22:31:41.564Z"
+        },
+        {
+          "id": "8f33a1f8-43f5-4614-b244-913ba1957611",
+          "templatePackId": "9ecc5351-0a69-49a9-aa58-5f3e2b21f818",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-corporate-social-media-post-canva/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 4396,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.564Z",
+          "updatedAt": "2026-05-21T22:31:41.564Z"
+        }
+      ]
+    },
+    {
+      "id": "61f10d4a-475f-4edd-9f76-6510d1020a23",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "baseball-social-media-banner-template",
+      "name": "Baseball Social Media Banner Template",
+      "description": "Cross-tool social banner pack with Photoshop, XD, Figma, and Sketch source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/baseball-social-media-banner-template/source/social-media-2024-06-11-02-56-29-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 9,
+          "extensionCounts": {
+            "psd": 1,
+            "xd": 1,
+            "fig": 1,
+            "txt": 1,
+            "sketch": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": true,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Adobe Photoshop/",
+            "Adobe Photoshop/Baseball_Social Media Banner Template.psd",
+            "Adobe XD/",
+            "Adobe XD/Baseball_Social Media Banner Template.xd",
+            "Figma/",
+            "Figma/Baseball_Social Media Banner Template.fig",
+            "fonts.txt",
+            "Sketch/",
+            "Sketch/Baseball_Social Media Banner Template.sketch"
+          ]
+        },
+        "notes": "Broader non-real-estate category import; useful for proving Posterboy can support sports and event-oriented clients too."
+      },
+      "importedAt": "2026-05-21T22:31:41.559Z",
+      "createdAt": "2026-05-21T22:31:41.559Z",
+      "updatedAt": "2026-05-21T22:31:41.559Z",
+      "files": [
+        {
+          "id": "a3ba0ab2-5310-4db6-8d51-351ea1bf9db7",
+          "templatePackId": "61f10d4a-475f-4edd-9f76-6510d1020a23",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/baseball-social-media-banner-template/source/social-media-2024-06-11-02-56-29-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "social-media-2024-06-11-02-56-29-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 2995388,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/social-media-2024-06-11-02-56-29-utc.zip",
+            "zipInspection": {
+              "entryCount": 9,
+              "extensionCounts": {
+                "psd": 1,
+                "xd": 1,
+                "fig": 1,
+                "txt": 1,
+                "sketch": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": true,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Adobe Photoshop/",
+                "Adobe Photoshop/Baseball_Social Media Banner Template.psd",
+                "Adobe XD/",
+                "Adobe XD/Baseball_Social Media Banner Template.xd",
+                "Figma/",
+                "Figma/Baseball_Social Media Banner Template.fig",
+                "fonts.txt",
+                "Sketch/",
+                "Sketch/Baseball_Social Media Banner Template.sketch"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.561Z",
+          "updatedAt": "2026-05-21T22:31:41.561Z"
+        },
+        {
+          "id": "ce13db09-d53d-4bba-89c5-48473e99f901",
+          "templatePackId": "61f10d4a-475f-4edd-9f76-6510d1020a23",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/baseball-social-media-banner-template/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3452,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.561Z",
+          "updatedAt": "2026-05-21T22:31:41.561Z"
+        }
+      ]
+    },
+    {
+      "id": "4f7e24f5-5107-4e8b-a5ed-3f4b21a1901c",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-r14-social-media",
+      "name": "Business R14 Social Media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-r14-social-media/source/business-r14-social-media-2024-05-16-06-02-30-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 2,
+          "extensionCounts": {
+            "pdf": 1,
+            "ai": 1
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "help file.pdf",
+            "Social Media.ai"
+          ]
+        },
+        "notes": "Small business source pack in the same family as the other R-series imports."
+      },
+      "importedAt": "2026-05-21T22:31:41.556Z",
+      "createdAt": "2026-05-21T22:31:41.556Z",
+      "updatedAt": "2026-05-21T22:31:41.556Z",
+      "files": [
+        {
+          "id": "47820759-283b-4c32-b1eb-42c44382c9d5",
+          "templatePackId": "4f7e24f5-5107-4e8b-a5ed-3f4b21a1901c",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r14-social-media/source/business-r14-social-media-2024-05-16-06-02-30-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-r14-social-media-2024-05-16-06-02-30-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 9637522,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-r14-social-media-2024-05-16-06-02-30-utc.zip",
+            "zipInspection": {
+              "entryCount": 2,
+              "extensionCounts": {
+                "pdf": 1,
+                "ai": 1
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "help file.pdf",
+                "Social Media.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.559Z",
+          "updatedAt": "2026-05-21T22:31:41.559Z"
+        },
+        {
+          "id": "14055dff-5d51-41e0-9fc9-88dc06554aa8",
+          "templatePackId": "4f7e24f5-5107-4e8b-a5ed-3f4b21a1901c",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r14-social-media/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2646,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.559Z",
+          "updatedAt": "2026-05-21T22:31:41.559Z"
+        }
+      ]
+    },
+    {
+      "id": "78c9d1dd-7a6e-4739-ada0-690c294c3428",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-r32-social-media",
+      "name": "Business R32 Social Media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-r32-social-media/source/business-r32-social-media-2024-05-16-06-29-24-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 2,
+          "extensionCounts": {
+            "pdf": 1,
+            "ai": 1
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "help file.pdf",
+            "Social Media.ai"
+          ]
+        },
+        "notes": "Small business source pack; likely useful as a narrow variation rather than a hero template set."
+      },
+      "importedAt": "2026-05-21T22:31:41.554Z",
+      "createdAt": "2026-05-21T22:31:41.554Z",
+      "updatedAt": "2026-05-21T22:31:41.554Z",
+      "files": [
+        {
+          "id": "79512ced-38cb-42fb-a107-3ef5568519ac",
+          "templatePackId": "78c9d1dd-7a6e-4739-ada0-690c294c3428",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r32-social-media/source/business-r32-social-media-2024-05-16-06-29-24-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-r32-social-media-2024-05-16-06-29-24-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 2105007,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-r32-social-media-2024-05-16-06-29-24-utc.zip",
+            "zipInspection": {
+              "entryCount": 2,
+              "extensionCounts": {
+                "pdf": 1,
+                "ai": 1
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "help file.pdf",
+                "Social Media.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.556Z",
+          "updatedAt": "2026-05-21T22:31:41.556Z"
+        },
+        {
+          "id": "74c085ee-5cd6-4db6-a9f6-0b8d49270df7",
+          "templatePackId": "78c9d1dd-7a6e-4739-ada0-690c294c3428",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r32-social-media/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2666,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.556Z",
+          "updatedAt": "2026-05-21T22:31:41.556Z"
+        }
+      ]
+    },
+    {
+      "id": "5bd22b66-6c7b-4f88-8c4c-9e73c5fa6b0c",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-r1-social-media",
+      "name": "Business R1 Social Media",
+      "description": "Business social media source pack with Illustrator, EPS, and help PDF assets.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-r1-social-media/source/business-r1-social-media-2024-05-16-05-56-18-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 3,
+          "extensionCounts": {
+            "pdf": 1,
+            "ai": 1,
+            "eps": 1
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "help file.pdf",
+            "Social Media.ai",
+            "Social Media.eps"
+          ]
+        },
+        "notes": "Compact business source pack with slightly broader format support than the other R-series files."
+      },
+      "importedAt": "2026-05-21T22:31:41.552Z",
+      "createdAt": "2026-05-21T22:31:41.552Z",
+      "updatedAt": "2026-05-21T22:31:41.552Z",
+      "files": [
+        {
+          "id": "db990720-9467-495a-ac5e-267df76db333",
+          "templatePackId": "5bd22b66-6c7b-4f88-8c4c-9e73c5fa6b0c",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r1-social-media/source/business-r1-social-media-2024-05-16-05-56-18-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-r1-social-media-2024-05-16-05-56-18-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 9983106,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-r1-social-media-2024-05-16-05-56-18-utc.zip",
+            "zipInspection": {
+              "entryCount": 3,
+              "extensionCounts": {
+                "pdf": 1,
+                "ai": 1,
+                "eps": 1
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "help file.pdf",
+                "Social Media.ai",
+                "Social Media.eps"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.554Z",
+          "updatedAt": "2026-05-21T22:31:41.554Z"
+        },
+        {
+          "id": "a636703d-0f96-4b72-aeeb-1772e50171b1",
+          "templatePackId": "5bd22b66-6c7b-4f88-8c4c-9e73c5fa6b0c",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r1-social-media/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2752,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.554Z",
+          "updatedAt": "2026-05-21T22:31:41.554Z"
+        }
+      ]
+    },
+    {
+      "id": "a98cb6d8-0d3f-4dda-b5a6-a6f5b4ffba47",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-r11-social-media",
+      "name": "Business R11 Social Media",
+      "description": "Lightweight business social media source pack with Illustrator file and help PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-r11-social-media/source/business-r11-social-media-2024-05-16-05-53-13-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 2,
+          "extensionCounts": {
+            "pdf": 1,
+            "ai": 1
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "help file.pdf",
+            "Social Media.ai"
+          ]
+        },
+        "notes": "Small business template source; likely best used as inspiration or a narrow single-template import."
+      },
+      "importedAt": "2026-05-21T22:31:41.549Z",
+      "createdAt": "2026-05-21T22:31:41.549Z",
+      "updatedAt": "2026-05-21T22:31:41.549Z",
+      "files": [
+        {
+          "id": "c0467a66-07de-4f8e-a9ab-60eaa5333a8c",
+          "templatePackId": "a98cb6d8-0d3f-4dda-b5a6-a6f5b4ffba47",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r11-social-media/source/business-r11-social-media-2024-05-16-05-53-13-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-r11-social-media-2024-05-16-05-53-13-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 8073599,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-r11-social-media-2024-05-16-05-53-13-utc.zip",
+            "zipInspection": {
+              "entryCount": 2,
+              "extensionCounts": {
+                "pdf": 1,
+                "ai": 1
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "help file.pdf",
+                "Social Media.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.551Z",
+          "updatedAt": "2026-05-21T22:31:41.551Z"
+        },
+        {
+          "id": "b921e35b-002b-48b2-8012-491e19996aca",
+          "templatePackId": "a98cb6d8-0d3f-4dda-b5a6-a6f5b4ffba47",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-r11-social-media/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2669,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.551Z",
+          "updatedAt": "2026-05-21T22:31:41.551Z"
+        }
+      ]
+    },
+    {
+      "id": "c90e438e-2f8b-404a-b440-d6caa2a2a53c",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "high-quality-social-media-mockup-b",
+      "name": "High Quality Social Media Mockup B",
+      "description": "Alternate four-scene social media mockup pack with PSD views and guide PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/high-quality-social-media-mockup-b/source/high-quality-social-media-mockup-2026-04-29-04-40-43-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 6,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 4
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "SOCIAL MEDIA MOCKUP/",
+            "SOCIAL MEDIA MOCKUP/Guide.pdf",
+            "SOCIAL MEDIA MOCKUP/[view 1.psd",
+            "SOCIAL MEDIA MOCKUP/[view 2.psd",
+            "SOCIAL MEDIA MOCKUP/[view 3.psd",
+            "SOCIAL MEDIA MOCKUP/[view 4.psd"
+          ]
+        },
+        "notes": "Mockup-only asset pack for polished launch and showcase assets."
+      },
+      "importedAt": "2026-05-21T22:31:41.547Z",
+      "createdAt": "2026-05-21T22:31:41.547Z",
+      "updatedAt": "2026-05-21T22:31:41.547Z",
+      "files": [
+        {
+          "id": "8ce2fdc1-3d89-4357-84fc-7f05947a81d4",
+          "templatePackId": "c90e438e-2f8b-404a-b440-d6caa2a2a53c",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup-b/source/high-quality-social-media-mockup-2026-04-29-04-40-43-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "high-quality-social-media-mockup-2026-04-29-04-40-43-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 550406754,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-04-29-04-40-43-utc.zip",
+            "zipInspection": {
+              "entryCount": 6,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 4
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "SOCIAL MEDIA MOCKUP/",
+                "SOCIAL MEDIA MOCKUP/Guide.pdf",
+                "SOCIAL MEDIA MOCKUP/[view 1.psd",
+                "SOCIAL MEDIA MOCKUP/[view 2.psd",
+                "SOCIAL MEDIA MOCKUP/[view 3.psd",
+                "SOCIAL MEDIA MOCKUP/[view 4.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.549Z",
+          "updatedAt": "2026-05-21T22:31:41.549Z"
+        },
+        {
+          "id": "6d6ff216-b60c-4095-88fc-afe36a194b7e",
+          "templatePackId": "c90e438e-2f8b-404a-b440-d6caa2a2a53c",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup-b/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3097,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.549Z",
+          "updatedAt": "2026-05-21T22:31:41.549Z"
+        }
+      ]
+    },
+    {
+      "id": "bc8a7968-8d89-4983-88f9-a5a927bfd1a4",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "high-quality-social-media-mockup-a",
+      "name": "High Quality Social Media Mockup A",
+      "description": "Four-scene social media mockup pack with PSD views and guide PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/high-quality-social-media-mockup-a/source/high-quality-social-media-mockup-2026-04-28-04-01-22-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 6,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 4
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Social Media Mockup/",
+            "Social Media Mockup/Guide.pdf",
+            "Social Media Mockup/View 1.psd",
+            "Social Media Mockup/View 2.psd",
+            "Social Media Mockup/View 3.psd",
+            "Social Media Mockup/View 4.psd"
+          ]
+        },
+        "notes": "Mockup-only asset pack for presentation and preview rendering."
+      },
+      "importedAt": "2026-05-21T22:31:41.541Z",
+      "createdAt": "2026-05-21T22:31:41.541Z",
+      "updatedAt": "2026-05-21T22:31:41.541Z",
+      "files": [
+        {
+          "id": "013247e5-e6bb-4d51-abd8-e106383e4d92",
+          "templatePackId": "bc8a7968-8d89-4983-88f9-a5a927bfd1a4",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup-a/source/high-quality-social-media-mockup-2026-04-28-04-01-22-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "high-quality-social-media-mockup-2026-04-28-04-01-22-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 439863690,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-04-28-04-01-22-utc.zip",
+            "zipInspection": {
+              "entryCount": 6,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 4
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Social Media Mockup/",
+                "Social Media Mockup/Guide.pdf",
+                "Social Media Mockup/View 1.psd",
+                "Social Media Mockup/View 2.psd",
+                "Social Media Mockup/View 3.psd",
+                "Social Media Mockup/View 4.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.546Z",
+          "updatedAt": "2026-05-21T22:31:41.546Z"
+        },
+        {
+          "id": "40512519-e2d8-4c74-9b70-f4886ebdad0b",
+          "templatePackId": "bc8a7968-8d89-4983-88f9-a5a927bfd1a4",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup-a/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3078,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.547Z",
+          "updatedAt": "2026-05-21T22:31:41.547Z"
+        }
+      ]
+    },
+    {
+      "id": "32266dad-83cf-4784-a0a8-016224924c7d",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "high-quality-social-media-mockup",
+      "name": "High Quality Social Media Mockup",
+      "description": "Four-scene social media mockup pack with PSD sources and guide PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/high-quality-social-media-mockup/source/high-quality-social-media-mockup-2026-05-04-08-50-11-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 6,
+          "extensionCounts": {
+            "psd": 4,
+            "pdf": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "PSD/",
+            "PSD/1.psd",
+            "PSD/2.psd",
+            "PSD/3.psd",
+            "PSD/4.psd",
+            "PSD/Guide.pdf"
+          ]
+        },
+        "notes": "General-purpose mockup pack for presenting finished templates, campaign previews, and product visuals."
+      },
+      "importedAt": "2026-05-21T22:31:41.200Z",
+      "createdAt": "2026-05-21T22:31:41.200Z",
+      "updatedAt": "2026-05-21T22:31:41.200Z",
+      "files": [
+        {
+          "id": "d193cf8b-6ef9-4e52-8519-0165df224b74",
+          "templatePackId": "32266dad-83cf-4784-a0a8-016224924c7d",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup/source/high-quality-social-media-mockup-2026-05-04-08-50-11-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "high-quality-social-media-mockup-2026-05-04-08-50-11-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 654600325,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/high-quality-social-media-mockup-2026-05-04-08-50-11-utc.zip",
+            "zipInspection": {
+              "entryCount": 6,
+              "extensionCounts": {
+                "psd": 4,
+                "pdf": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "PSD/",
+                "PSD/1.psd",
+                "PSD/2.psd",
+                "PSD/3.psd",
+                "PSD/4.psd",
+                "PSD/Guide.pdf"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.203Z",
+          "updatedAt": "2026-05-21T22:31:41.203Z"
+        },
+        {
+          "id": "ef63a49b-a351-4f26-b151-67bc1d318e40",
+          "templatePackId": "32266dad-83cf-4784-a0a8-016224924c7d",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-social-media-mockup/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2880,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.203Z",
+          "updatedAt": "2026-05-21T22:31:41.203Z"
+        }
+      ]
+    },
+    {
+      "id": "b685916d-c2f9-4b49-9138-64196479a24f",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "high-quality-elegant-instagram-social-media-mockup",
+      "name": "High Quality Elegant Instagram Social Media Mockup",
+      "description": "Elegant Instagram mockup pack with three PSD scenes and a help file.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/high-quality-elegant-instagram-social-media-mockup/source/high-quality-elegant-instagram-social-media-mockup-2026-03-23-05-36-29-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 4,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 3
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Helpfile.pdf",
+            "PSD 1.psd",
+            "PSD 2.psd",
+            "PSD 3.psd"
+          ]
+        },
+        "notes": "Mockup-only asset pack suited for polished preview rendering and launch or marketing presentation."
+      },
+      "importedAt": "2026-05-21T22:31:41.198Z",
+      "createdAt": "2026-05-21T22:31:41.198Z",
+      "updatedAt": "2026-05-21T22:31:41.198Z",
+      "files": [
+        {
+          "id": "d61d6bbe-d4b2-4a23-8b49-eadcfbe9927b",
+          "templatePackId": "b685916d-c2f9-4b49-9138-64196479a24f",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-elegant-instagram-social-media-mockup/source/high-quality-elegant-instagram-social-media-mockup-2026-03-23-05-36-29-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "high-quality-elegant-instagram-social-media-mockup-2026-03-23-05-36-29-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 122340780,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/high-quality-elegant-instagram-social-media-mockup-2026-03-23-05-36-29-utc.zip",
+            "zipInspection": {
+              "entryCount": 4,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 3
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Helpfile.pdf",
+                "PSD 1.psd",
+                "PSD 2.psd",
+                "PSD 3.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.200Z",
+          "updatedAt": "2026-05-21T22:31:41.200Z"
+        },
+        {
+          "id": "19214e91-c255-4d78-90d8-355f7d5e636f",
+          "templatePackId": "b685916d-c2f9-4b49-9138-64196479a24f",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-elegant-instagram-social-media-mockup/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2937,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.200Z",
+          "updatedAt": "2026-05-21T22:31:41.200Z"
+        }
+      ]
+    },
+    {
+      "id": "8c53caee-da76-4b62-8738-17df73e05d02",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-social-media-post",
+      "name": "Business Social Media Post",
+      "description": "Compact business social post pack with Illustrator, EPS, and PDF help file assets.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-social-media-post/source/business-social-media-post-2024-06-11-03-11-54-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 3,
+          "extensionCounts": {
+            "ai": 1,
+            "eps": 1,
+            "pdf": 1
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "1.ai",
+            "2.eps",
+            "3.help file.pdf"
+          ]
+        },
+        "notes": "Small source pack; likely better as inspiration or a lightweight import candidate than a flagship template set."
+      },
+      "importedAt": "2026-05-21T22:31:41.196Z",
+      "createdAt": "2026-05-21T22:31:41.196Z",
+      "updatedAt": "2026-05-21T22:31:41.196Z",
+      "files": [
+        {
+          "id": "67147d1e-da7f-4348-80d6-6832d6d2a708",
+          "templatePackId": "8c53caee-da76-4b62-8738-17df73e05d02",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-post/source/business-social-media-post-2024-06-11-03-11-54-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-social-media-post-2024-06-11-03-11-54-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 12871070,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-social-media-post-2024-06-11-03-11-54-utc.zip",
+            "zipInspection": {
+              "entryCount": 3,
+              "extensionCounts": {
+                "ai": 1,
+                "eps": 1,
+                "pdf": 1
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "1.ai",
+                "2.eps",
+                "3.help file.pdf"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.198Z",
+          "updatedAt": "2026-05-21T22:31:41.198Z"
+        },
+        {
+          "id": "8ce59094-a21b-470d-8e37-d6ab4c9bd6ab",
+          "templatePackId": "8c53caee-da76-4b62-8738-17df73e05d02",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2749,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.198Z",
+          "updatedAt": "2026-05-21T22:31:41.198Z"
+        }
+      ]
+    },
+    {
+      "id": "dbc6199e-f2a4-4eca-91f2-1163c3fed55c",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-social-media-template",
+      "name": "Business Social Media Template",
+      "description": "Six-layout business template pack with PSD, AI, and EPS source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-social-media-template/source/business-social-media-template-2025-06-10-23-22-24-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 22,
+          "extensionCounts": {
+            "psd": 6,
+            "txt": 1,
+            "ai": 6,
+            "eps": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "PSD/",
+            "PSD/Social Media Template - Business-01.psd",
+            "PSD/Social Media Template - Business-02.psd",
+            "PSD/Social Media Template - Business-03.psd",
+            "PSD/Social Media Template - Business-04.psd",
+            "PSD/Social Media Template - Business-05.psd",
+            "PSD/Social Media Template - Business-06.psd",
+            "Read Me.txt",
+            "AI/",
+            "AI/Social Media Template - Business-01.ai",
+            "AI/Social Media Template - Business-02.ai",
+            "AI/Social Media Template - Business-03.ai"
+          ]
+        },
+        "notes": "Strong reusable business pack with multiple formats; good candidate for broader Posterboy starter categories."
+      },
+      "importedAt": "2026-05-21T22:31:41.193Z",
+      "createdAt": "2026-05-21T22:31:41.193Z",
+      "updatedAt": "2026-05-21T22:31:41.193Z",
+      "files": [
+        {
+          "id": "f5d592c5-8b47-456c-b592-fd7f5994a7e0",
+          "templatePackId": "dbc6199e-f2a4-4eca-91f2-1163c3fed55c",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-template/source/business-social-media-template-2025-06-10-23-22-24-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-social-media-template-2025-06-10-23-22-24-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 5162584,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-social-media-template-2025-06-10-23-22-24-utc.zip",
+            "zipInspection": {
+              "entryCount": 22,
+              "extensionCounts": {
+                "psd": 6,
+                "txt": 1,
+                "ai": 6,
+                "eps": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "PSD/",
+                "PSD/Social Media Template - Business-01.psd",
+                "PSD/Social Media Template - Business-02.psd",
+                "PSD/Social Media Template - Business-03.psd",
+                "PSD/Social Media Template - Business-04.psd",
+                "PSD/Social Media Template - Business-05.psd",
+                "PSD/Social Media Template - Business-06.psd",
+                "Read Me.txt",
+                "AI/",
+                "AI/Social Media Template - Business-01.ai",
+                "AI/Social Media Template - Business-02.ai",
+                "AI/Social Media Template - Business-03.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.195Z",
+          "updatedAt": "2026-05-21T22:31:41.195Z"
+        },
+        {
+          "id": "84846a5c-fa3d-4f58-96b5-e0df902428ca",
+          "templatePackId": "dbc6199e-f2a4-4eca-91f2-1163c3fed55c",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-template/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3807,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.196Z",
+          "updatedAt": "2026-05-21T22:31:41.196Z"
+        }
+      ]
+    },
+    {
+      "id": "6266a873-d350-4360-9126-8da03bfc7d0e",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "high-quality-media-social-post-mockup",
+      "name": "High Quality Media Social Post Mockup",
+      "description": "Presentation mockup pack with four PSD social post mockup scenes and instruction PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/high-quality-media-social-post-mockup/source/high-quality-media-social-post-mockup-2026-03-06-14-31-58-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 6,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 4
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "PSD/",
+            "PSD/Guide Instruction.pdf",
+            "PSD/MEDIA SOCIAL POST 02.psd",
+            "PSD/MEDIA SOCIAL POST 03.psd",
+            "PSD/MEDIA SOCIAL POST 04.psd",
+            "PSD/MEDIA SOCIAL POST.psd"
+          ]
+        },
+        "notes": "Mockup-only asset pack for showcasing finished designs in portfolio, marketing, or template previews."
+      },
+      "importedAt": "2026-05-21T22:31:41.190Z",
+      "createdAt": "2026-05-21T22:31:41.190Z",
+      "updatedAt": "2026-05-21T22:31:41.190Z",
+      "files": [
+        {
+          "id": "4261646b-df49-4e1d-82f6-36e5f1d4117e",
+          "templatePackId": "6266a873-d350-4360-9126-8da03bfc7d0e",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-media-social-post-mockup/source/high-quality-media-social-post-mockup-2026-03-06-14-31-58-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "high-quality-media-social-post-mockup-2026-03-06-14-31-58-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 218979615,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/high-quality-media-social-post-mockup-2026-03-06-14-31-58-utc.zip",
+            "zipInspection": {
+              "entryCount": 6,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 4
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "PSD/",
+                "PSD/Guide Instruction.pdf",
+                "PSD/MEDIA SOCIAL POST 02.psd",
+                "PSD/MEDIA SOCIAL POST 03.psd",
+                "PSD/MEDIA SOCIAL POST 04.psd",
+                "PSD/MEDIA SOCIAL POST.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.192Z",
+          "updatedAt": "2026-05-21T22:31:41.192Z"
+        },
+        {
+          "id": "439129a3-2376-4795-a6a3-37dadf903216",
+          "templatePackId": "6266a873-d350-4360-9126-8da03bfc7d0e",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/high-quality-media-social-post-mockup/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3107,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.193Z",
+          "updatedAt": "2026-05-21T22:31:41.193Z"
+        }
+      ]
+    },
+    {
+      "id": "bc68f930-71b2-498d-917c-571ad53c5e99",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "business-social-media-pack",
+      "name": "Business Social Media Pack",
+      "description": "Business-oriented pack with Facebook, Instagram, and Pinterest PSD layouts.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/business-social-media-pack/source/business-social-media-pack-2024-05-16-05-07-47-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 4,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 3
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "documentation Social Media.pdf",
+            "Facebook.psd",
+            "Instagram.psd",
+            "Pinterest.psd"
+          ]
+        },
+        "notes": "Multi-platform business pack; useful for non-real-estate service brands and generic social starter kits."
+      },
+      "importedAt": "2026-05-21T22:31:41.187Z",
+      "createdAt": "2026-05-21T22:31:41.187Z",
+      "updatedAt": "2026-05-21T22:31:41.187Z",
+      "files": [
+        {
+          "id": "95896e18-6335-4022-900a-f4eb5481d74c",
+          "templatePackId": "bc68f930-71b2-498d-917c-571ad53c5e99",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-pack/source/business-social-media-pack-2024-05-16-05-07-47-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "business-social-media-pack-2024-05-16-05-07-47-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 1613611,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/business-social-media-pack-2024-05-16-05-07-47-utc.zip",
+            "zipInspection": {
+              "entryCount": 4,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 3
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "documentation Social Media.pdf",
+                "Facebook.psd",
+                "Instagram.psd",
+                "Pinterest.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.190Z",
+          "updatedAt": "2026-05-21T22:31:41.190Z"
+        },
+        {
+          "id": "7664a68d-356d-46a6-865c-b6021d93ceb2",
+          "templatePackId": "bc68f930-71b2-498d-917c-571ad53c5e99",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/business-social-media-pack/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2814,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.190Z",
+          "updatedAt": "2026-05-21T22:31:41.190Z"
+        }
+      ]
+    },
+    {
+      "id": "fd5e3b4e-70a6-42ac-8bd0-7b8052da6302",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "market-value-social-media-post",
+      "name": "Market Value Social Media Post",
+      "description": "Cross-format market value pack with PSD, Canva, Figma, AI, and EPS source options.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/market-value-social-media-post/source/market-value-social-media-post-2025-10-17-22-31-55-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 30,
+          "extensionCounts": {
+            "none": 3,
+            "pdf": 2,
+            "psd": 6,
+            "fig": 1,
+            "ai": 6,
+            "eps": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": true,
+          "hasCanva": true,
+          "sampleEntries": [
+            "Market Value Social Media Post/",
+            "Market Value Social Media Post/.DS_Store",
+            "Market Value Social Media Post/PSD/",
+            "Market Value Social Media Post/Canva/",
+            "Market Value Social Media Post/Figma/",
+            "Market Value Social Media Post/AI/",
+            "Market Value Social Media Post/EPS/",
+            "Market Value Social Media Post/Font Link.pdf",
+            "Market Value Social Media Post/PSD/.DS_Store",
+            "Market Value Social Media Post/PSD/V4.psd",
+            "Market Value Social Media Post/PSD/V5.psd",
+            "Market Value Social Media Post/PSD/V6.psd"
+          ]
+        },
+        "notes": "General market-value content pack with multi-tool source support; good bridge between real estate and broader business education content."
+      },
+      "importedAt": "2026-05-21T22:31:41.182Z",
+      "createdAt": "2026-05-21T22:31:41.182Z",
+      "updatedAt": "2026-05-21T22:31:41.182Z",
+      "files": [
+        {
+          "id": "0177f5db-8354-4afd-8a8d-bb7209c07acc",
+          "templatePackId": "fd5e3b4e-70a6-42ac-8bd0-7b8052da6302",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/market-value-social-media-post/source/market-value-social-media-post-2025-10-17-22-31-55-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "market-value-social-media-post-2025-10-17-22-31-55-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 2956788,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/market-value-social-media-post-2025-10-17-22-31-55-utc.zip",
+            "zipInspection": {
+              "entryCount": 30,
+              "extensionCounts": {
+                "none": 3,
+                "pdf": 2,
+                "psd": 6,
+                "fig": 1,
+                "ai": 6,
+                "eps": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": true,
+              "hasCanva": true,
+              "sampleEntries": [
+                "Market Value Social Media Post/",
+                "Market Value Social Media Post/.DS_Store",
+                "Market Value Social Media Post/PSD/",
+                "Market Value Social Media Post/Canva/",
+                "Market Value Social Media Post/Figma/",
+                "Market Value Social Media Post/AI/",
+                "Market Value Social Media Post/EPS/",
+                "Market Value Social Media Post/Font Link.pdf",
+                "Market Value Social Media Post/PSD/.DS_Store",
+                "Market Value Social Media Post/PSD/V4.psd",
+                "Market Value Social Media Post/PSD/V5.psd",
+                "Market Value Social Media Post/PSD/V6.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:41.187Z",
+          "updatedAt": "2026-05-21T22:31:41.187Z"
+        },
+        {
+          "id": "1e89c9b5-4351-4631-ac12-81c1fe1385e6",
+          "templatePackId": "fd5e3b4e-70a6-42ac-8bd0-7b8052da6302",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/market-value-social-media-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 4048,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:41.187Z",
+          "updatedAt": "2026-05-21T22:31:41.187Z"
+        }
+      ]
+    },
+    {
+      "id": "8a047bd9-29da-40c8-ab0b-e5903de28299",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "real-estate-market-value-post",
+      "name": "Real Estate Market Value Post",
+      "description": "Market-value themed post set with six PSD artboards and font reference PDF.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/real-estate-market-value-post/source/real-estate-market-value-post-2025-09-24-23-45-13-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 8,
+          "extensionCounts": {
+            "pdf": 1,
+            "psd": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Font Link.pdf",
+            "Post/",
+            "Post/Real Estate Instagram PostArtboard 1.psd",
+            "Post/Real Estate Instagram PostArtboard 2.psd",
+            "Post/Real Estate Instagram PostArtboard 3.psd",
+            "Post/Real Estate Instagram PostArtboard 4.psd",
+            "Post/Real Estate Instagram PostArtboard 5.psd",
+            "Post/Real Estate Instagram PostArtboard 6.psd"
+          ]
+        },
+        "notes": "Strong candidate for Market Clarity pillar normalization."
+      },
+      "importedAt": "2026-05-21T22:31:40.792Z",
+      "createdAt": "2026-05-21T22:31:40.792Z",
+      "updatedAt": "2026-05-21T22:31:40.792Z",
+      "files": [
+        {
+          "id": "ef10bee4-0c2e-4809-89f4-1af658770fa3",
+          "templatePackId": "8a047bd9-29da-40c8-ab0b-e5903de28299",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-market-value-post/source/real-estate-market-value-post-2025-09-24-23-45-13-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-market-value-post-2025-09-24-23-45-13-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 11407948,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-market-value-post-2025-09-24-23-45-13-utc.zip",
+            "zipInspection": {
+              "entryCount": 8,
+              "extensionCounts": {
+                "pdf": 1,
+                "psd": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Font Link.pdf",
+                "Post/",
+                "Post/Real Estate Instagram PostArtboard 1.psd",
+                "Post/Real Estate Instagram PostArtboard 2.psd",
+                "Post/Real Estate Instagram PostArtboard 3.psd",
+                "Post/Real Estate Instagram PostArtboard 4.psd",
+                "Post/Real Estate Instagram PostArtboard 5.psd",
+                "Post/Real Estate Instagram PostArtboard 6.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.794Z",
+          "updatedAt": "2026-05-21T22:31:40.794Z"
+        },
+        {
+          "id": "9888592b-9923-4c1e-91bd-5d467fd96071",
+          "templatePackId": "8a047bd9-29da-40c8-ab0b-e5903de28299",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-market-value-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3344,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.794Z",
+          "updatedAt": "2026-05-21T22:31:40.794Z"
+        }
+      ]
+    },
+    {
+      "id": "ced0abca-7ba7-451f-b71e-91cac85c50fb",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "luxury-real-estate-instagram-post-set",
+      "name": "Luxury Real Estate Instagram Post Set",
+      "description": "Six-post luxury Instagram pack with PSD, AI, and EPS variants.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/luxury-real-estate-instagram-post-set/source/luxury-real-estate-instagram-post-set-2025-07-10-02-45-17-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 22,
+          "extensionCounts": {
+            "psd": 6,
+            "txt": 1,
+            "ai": 6,
+            "eps": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "psd/",
+            "psd/Real Estate Luxury Instagram Post-01.psd",
+            "psd/Real Estate Luxury Instagram Post-02.psd",
+            "psd/Real Estate Luxury Instagram Post-03.psd",
+            "psd/Real Estate Luxury Instagram Post-04.psd",
+            "psd/Real Estate Luxury Instagram Post-05.psd",
+            "psd/Real Estate Luxury Instagram Post-06.psd",
+            "Readme.txt",
+            "ai/",
+            "ai/Real Estate Luxury Instagram Post-01.ai",
+            "ai/Real Estate Luxury Instagram Post-02.ai",
+            "ai/Real Estate Luxury Instagram Post-03.ai"
+          ]
+        },
+        "notes": "Includes readme and multiple source formats."
+      },
+      "importedAt": "2026-05-21T22:31:40.789Z",
+      "createdAt": "2026-05-21T22:31:40.789Z",
+      "updatedAt": "2026-05-21T22:31:40.789Z",
+      "files": [
+        {
+          "id": "9753c719-0d53-4ea1-b8da-e0935185a4de",
+          "templatePackId": "ced0abca-7ba7-451f-b71e-91cac85c50fb",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/luxury-real-estate-instagram-post-set/source/luxury-real-estate-instagram-post-set-2025-07-10-02-45-17-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "luxury-real-estate-instagram-post-set-2025-07-10-02-45-17-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 6543138,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/luxury-real-estate-instagram-post-set-2025-07-10-02-45-17-utc.zip",
+            "zipInspection": {
+              "entryCount": 22,
+              "extensionCounts": {
+                "psd": 6,
+                "txt": 1,
+                "ai": 6,
+                "eps": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "psd/",
+                "psd/Real Estate Luxury Instagram Post-01.psd",
+                "psd/Real Estate Luxury Instagram Post-02.psd",
+                "psd/Real Estate Luxury Instagram Post-03.psd",
+                "psd/Real Estate Luxury Instagram Post-04.psd",
+                "psd/Real Estate Luxury Instagram Post-05.psd",
+                "psd/Real Estate Luxury Instagram Post-06.psd",
+                "Readme.txt",
+                "ai/",
+                "ai/Real Estate Luxury Instagram Post-01.ai",
+                "ai/Real Estate Luxury Instagram Post-02.ai",
+                "ai/Real Estate Luxury Instagram Post-03.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.792Z",
+          "updatedAt": "2026-05-21T22:31:40.792Z"
+        },
+        {
+          "id": "13966b63-0ab7-4619-8c82-b619842a2374",
+          "templatePackId": "ced0abca-7ba7-451f-b71e-91cac85c50fb",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/luxury-real-estate-instagram-post-set/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3807,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.792Z",
+          "updatedAt": "2026-05-21T22:31:40.792Z"
+        }
+      ]
+    },
+    {
+      "id": "d7b0a87c-efd2-41ae-ade8-207f238b40e6",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "real-estate-x-luxury-living-instagram-post",
+      "name": "Real Estate x Luxury Living Instagram Post",
+      "description": "Luxury-living themed Instagram pack with PSD, AI, and EPS source groups.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/real-estate-x-luxury-living-instagram-post/source/real-estate-x-luxury-living-instagram-post-2026-02-20-22-53-16-utc.zip",
+        "previewAssigned": true,
+        "zipInspection": {
+          "entryCount": 23,
+          "extensionCounts": {
+            "txt": 1,
+            "psd": 6,
+            "ai": 6,
+            "eps": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Real Estate x Luxury Living - Instagram Post/",
+            "Real Estate x Luxury Living - Instagram Post/PSD/",
+            "Real Estate x Luxury Living - Instagram Post/info.txt",
+            "Real Estate x Luxury Living - Instagram Post/AI/",
+            "Real Estate x Luxury Living - Instagram Post/EPS/",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 3.psd",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 2.psd",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 5.psd",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 4.psd",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 6.psd",
+            "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living.psd",
+            "Real Estate x Luxury Living - Instagram Post/AI/Real Estate x Luxury Living 5.ai"
+          ]
+        },
+        "notes": "Preview assigned from supplied mobile mockup AVIF."
+      },
+      "importedAt": "2026-05-21T22:31:40.787Z",
+      "createdAt": "2026-05-21T22:31:40.787Z",
+      "updatedAt": "2026-05-21T22:31:40.787Z",
+      "files": [
+        {
+          "id": "760daa4f-68b3-4417-af83-5bb2ba4787ec",
+          "templatePackId": "d7b0a87c-efd2-41ae-ade8-207f238b40e6",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-x-luxury-living-instagram-post/source/real-estate-x-luxury-living-instagram-post-2026-02-20-22-53-16-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-x-luxury-living-instagram-post-2026-02-20-22-53-16-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 22960294,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-x-luxury-living-instagram-post-2026-02-20-22-53-16-utc.zip",
+            "zipInspection": {
+              "entryCount": 23,
+              "extensionCounts": {
+                "txt": 1,
+                "psd": 6,
+                "ai": 6,
+                "eps": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Real Estate x Luxury Living - Instagram Post/",
+                "Real Estate x Luxury Living - Instagram Post/PSD/",
+                "Real Estate x Luxury Living - Instagram Post/info.txt",
+                "Real Estate x Luxury Living - Instagram Post/AI/",
+                "Real Estate x Luxury Living - Instagram Post/EPS/",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 3.psd",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 2.psd",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 5.psd",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 4.psd",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living 6.psd",
+                "Real Estate x Luxury Living - Instagram Post/PSD/Real Estate x Luxury Living.psd",
+                "Real Estate x Luxury Living - Instagram Post/AI/Real Estate x Luxury Living 5.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.789Z",
+          "updatedAt": "2026-05-21T22:31:40.789Z"
+        },
+        {
+          "id": "7c611381-d288-4ae9-b390-40bccc201496",
+          "templatePackId": "d7b0a87c-efd2-41ae-ade8-207f238b40e6",
+          "templateId": null,
+          "role": "PREVIEW",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-x-luxury-living-instagram-post/preview/mobile-mockup-2-o.avif",
+          "publicUrl": null,
+          "originalFilename": "mobile-mockup-2-o.avif",
+          "mimeType": "image/avif",
+          "sizeBytes": 73477,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/mobile-mockup-2-o.avif"
+          },
+          "createdAt": "2026-05-21T22:31:40.789Z",
+          "updatedAt": "2026-05-21T22:31:40.789Z"
+        },
+        {
+          "id": "28ac7ed9-332b-4be4-bc58-00124f3ce7e4",
+          "templatePackId": "d7b0a87c-efd2-41ae-ade8-207f238b40e6",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-x-luxury-living-instagram-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 5476,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.789Z",
+          "updatedAt": "2026-05-21T22:31:40.789Z"
+        }
+      ]
+    },
+    {
+      "id": "dc7c027f-b57d-48c7-b47a-c550a590e27e",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "luxury-real-estate-instagram-post",
+      "name": "Luxury Real Estate Instagram Post",
+      "description": "Luxury real estate Instagram pack with PSD, Figma, and Canva source references.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/luxury-real-estate-instagram-post/source/luxury-real-estate-instagram-post-2026-04-30-18-57-23-utc.zip",
+        "previewAssigned": true,
+        "zipInspection": {
+          "entryCount": 12,
+          "extensionCounts": {
+            "pdf": 2,
+            "fig": 1,
+            "psd": 6
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": true,
+          "hasCanva": true,
+          "sampleEntries": [
+            "Readme.pdf",
+            "Canva/",
+            "Canva/Canva Template Link.pdf",
+            "Figma/",
+            "Figma/Luxury Real Estate Instagram Post.fig",
+            "Psd/",
+            "Psd/Luxury Real Estate Instagram Post - 01.psd",
+            "Psd/Luxury Real Estate Instagram Post - 02.psd",
+            "Psd/Luxury Real Estate Instagram Post - 03.psd",
+            "Psd/Luxury Real Estate Instagram Post - 04.psd",
+            "Psd/Luxury Real Estate Instagram Post - 05.psd",
+            "Psd/Luxury Real Estate Instagram Post - 06.psd"
+          ]
+        },
+        "notes": "Preview assigned from supplied AVIF mockup."
+      },
+      "importedAt": "2026-05-21T22:31:40.784Z",
+      "createdAt": "2026-05-21T22:31:40.784Z",
+      "updatedAt": "2026-05-21T22:31:40.784Z",
+      "files": [
+        {
+          "id": "99327ad9-40d9-4c5a-9ff9-6ce6ee3128af",
+          "templatePackId": "dc7c027f-b57d-48c7-b47a-c550a590e27e",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/luxury-real-estate-instagram-post/source/luxury-real-estate-instagram-post-2026-04-30-18-57-23-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "luxury-real-estate-instagram-post-2026-04-30-18-57-23-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 13737653,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/luxury-real-estate-instagram-post-2026-04-30-18-57-23-utc.zip",
+            "zipInspection": {
+              "entryCount": 12,
+              "extensionCounts": {
+                "pdf": 2,
+                "fig": 1,
+                "psd": 6
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": true,
+              "hasCanva": true,
+              "sampleEntries": [
+                "Readme.pdf",
+                "Canva/",
+                "Canva/Canva Template Link.pdf",
+                "Figma/",
+                "Figma/Luxury Real Estate Instagram Post.fig",
+                "Psd/",
+                "Psd/Luxury Real Estate Instagram Post - 01.psd",
+                "Psd/Luxury Real Estate Instagram Post - 02.psd",
+                "Psd/Luxury Real Estate Instagram Post - 03.psd",
+                "Psd/Luxury Real Estate Instagram Post - 04.psd",
+                "Psd/Luxury Real Estate Instagram Post - 05.psd",
+                "Psd/Luxury Real Estate Instagram Post - 06.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.786Z",
+          "updatedAt": "2026-05-21T22:31:40.786Z"
+        },
+        {
+          "id": "2d8710c7-137d-437f-bb7b-5c97c4cfd825",
+          "templatePackId": "dc7c027f-b57d-48c7-b47a-c550a590e27e",
+          "templateId": null,
+          "role": "PREVIEW",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/luxury-real-estate-instagram-post/preview/5e933225-61d0-4bef-b6c7-4c78e028953a.avif",
+          "publicUrl": null,
+          "originalFilename": "5e933225-61d0-4bef-b6c7-4c78e028953a.avif",
+          "mimeType": "image/avif",
+          "sizeBytes": 91342,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/5e933225-61d0-4bef-b6c7-4c78e028953a.avif"
+          },
+          "createdAt": "2026-05-21T22:31:40.786Z",
+          "updatedAt": "2026-05-21T22:31:40.786Z"
+        },
+        {
+          "id": "a7a8a463-7424-4e6c-984c-af43e0232386",
+          "templatePackId": "dc7c027f-b57d-48c7-b47a-c550a590e27e",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/luxury-real-estate-instagram-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 4534,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.787Z",
+          "updatedAt": "2026-05-21T22:31:40.787Z"
+        }
+      ]
+    },
+    {
+      "id": "3a5520cd-fd37-4fa7-84b9-7652abb01643",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "real-estate-instagram-post",
+      "name": "Real Estate Instagram Post",
+      "description": "Six-post Instagram pack with Illustrator and EPS source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/real-estate-instagram-post/source/real-estate-instagram-post-2025-01-08-00-51-00-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 19,
+          "extensionCounts": {
+            "ai": 6,
+            "eps": 6,
+            "txt": 3
+          },
+          "hasPhotoshop": false,
+          "hasIllustrator": true,
+          "hasEps": true,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Mainfiles/",
+            "Mainfiles/(AI) Adobe Illustrator/",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-01.ai",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-02.ai",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-03.ai",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-04.ai",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-05.ai",
+            "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-06.ai",
+            "Mainfiles/(EPS) Adobe Illustrator/",
+            "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-01.eps",
+            "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-02.eps",
+            "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-03.eps"
+          ]
+        },
+        "notes": "Illustrator/EPS pack with documentation and font help files."
+      },
+      "importedAt": "2026-05-21T22:31:40.781Z",
+      "createdAt": "2026-05-21T22:31:40.781Z",
+      "updatedAt": "2026-05-21T22:31:40.781Z",
+      "files": [
+        {
+          "id": "22f0a69d-ab7f-40c2-a21f-3b5bc4a7e06d",
+          "templatePackId": "3a5520cd-fd37-4fa7-84b9-7652abb01643",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-instagram-post/source/real-estate-instagram-post-2025-01-08-00-51-00-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-instagram-post-2025-01-08-00-51-00-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 8124213,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-instagram-post-2025-01-08-00-51-00-utc.zip",
+            "zipInspection": {
+              "entryCount": 19,
+              "extensionCounts": {
+                "ai": 6,
+                "eps": 6,
+                "txt": 3
+              },
+              "hasPhotoshop": false,
+              "hasIllustrator": true,
+              "hasEps": true,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Mainfiles/",
+                "Mainfiles/(AI) Adobe Illustrator/",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-01.ai",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-02.ai",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-03.ai",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-04.ai",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-05.ai",
+                "Mainfiles/(AI) Adobe Illustrator/Real Estate Instagram Post-06.ai",
+                "Mainfiles/(EPS) Adobe Illustrator/",
+                "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-01.eps",
+                "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-02.eps",
+                "Mainfiles/(EPS) Adobe Illustrator/Real Estate Instagram Post-03.eps"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.784Z",
+          "updatedAt": "2026-05-21T22:31:40.784Z"
+        },
+        {
+          "id": "10188b8b-973c-4a70-b904-82af728d41da",
+          "templatePackId": "3a5520cd-fd37-4fa7-84b9-7652abb01643",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-instagram-post/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 4219,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.784Z",
+          "updatedAt": "2026-05-21T22:31:40.784Z"
+        }
+      ]
+    },
+    {
+      "id": "a300bbd7-a4e0-448e-af07-a0153aa7a5ab",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "real-estate-postcard",
+      "name": "Real Estate Postcard",
+      "description": "Front-and-back postcard source pack for direct-mail or print handout use.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/real-estate-postcard/source/real-estate-postcard-2026-03-25-16-16-48-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 3,
+          "extensionCounts": {
+            "psd": 2,
+            "txt": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": false,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "PSD/Front.psd",
+            "Purchasing-Information.txt",
+            "PSD/Back.psd"
+          ]
+        },
+        "notes": "Contains front and back PSD files plus purchasing information."
+      },
+      "importedAt": "2026-05-21T22:31:40.779Z",
+      "createdAt": "2026-05-21T22:31:40.779Z",
+      "updatedAt": "2026-05-21T22:31:40.779Z",
+      "files": [
+        {
+          "id": "326351d5-fc37-42c8-9071-7103ddf36a58",
+          "templatePackId": "a300bbd7-a4e0-448e-af07-a0153aa7a5ab",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-postcard/source/real-estate-postcard-2026-03-25-16-16-48-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-postcard-2026-03-25-16-16-48-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 6868652,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-postcard-2026-03-25-16-16-48-utc.zip",
+            "zipInspection": {
+              "entryCount": 3,
+              "extensionCounts": {
+                "psd": 2,
+                "txt": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": false,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "PSD/Front.psd",
+                "Purchasing-Information.txt",
+                "PSD/Back.psd"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.781Z",
+          "updatedAt": "2026-05-21T22:31:40.781Z"
+        },
+        {
+          "id": "37ace38a-26ca-4220-8f0f-923ebc049153",
+          "templatePackId": "a300bbd7-a4e0-448e-af07-a0153aa7a5ab",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/real-estate-postcard/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 2660,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.781Z",
+          "updatedAt": "2026-05-21T22:31:40.781Z"
+        }
+      ]
+    },
+    {
+      "id": "65b86e6b-7970-40a5-a013-19192452c49c",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "property-luxury-instagram-post-pack-b",
+      "name": "Property Luxury Instagram Post Template Pack B",
+      "description": "Alternate five-post luxury real estate Instagram pack with Photoshop and Illustrator source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/property-luxury-instagram-post-pack-b/source/real-estate-2024-06-11-02-30-52-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 10,
+          "extensionCounts": {
+            "txt": 1,
+            "psd": 5,
+            "ai": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Item/",
+            "Item/Adobe Photoshop/",
+            "Item/Fonts.txt",
+            "Item/Adobe Illustrator/",
+            "Item/Adobe Photoshop/1.psd",
+            "Item/Adobe Photoshop/3.psd",
+            "Item/Adobe Photoshop/2.psd",
+            "Item/Adobe Photoshop/5.psd",
+            "Item/Adobe Photoshop/4.psd",
+            "Item/Adobe Illustrator/Property - Luxury - Instagram Post Template.ai"
+          ]
+        },
+        "notes": "Imported from local Downloads staging set."
+      },
+      "importedAt": "2026-05-21T22:31:40.776Z",
+      "createdAt": "2026-05-21T22:31:40.776Z",
+      "updatedAt": "2026-05-21T22:31:40.776Z",
+      "files": [
+        {
+          "id": "df9a3b11-dbb6-47bc-aa00-d4f8f073abb2",
+          "templatePackId": "65b86e6b-7970-40a5-a013-19192452c49c",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/property-luxury-instagram-post-pack-b/source/real-estate-2024-06-11-02-30-52-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-2024-06-11-02-30-52-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 1104795,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-2024-06-11-02-30-52-utc.zip",
+            "zipInspection": {
+              "entryCount": 10,
+              "extensionCounts": {
+                "txt": 1,
+                "psd": 5,
+                "ai": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Item/",
+                "Item/Adobe Photoshop/",
+                "Item/Fonts.txt",
+                "Item/Adobe Illustrator/",
+                "Item/Adobe Photoshop/1.psd",
+                "Item/Adobe Photoshop/3.psd",
+                "Item/Adobe Photoshop/2.psd",
+                "Item/Adobe Photoshop/5.psd",
+                "Item/Adobe Photoshop/4.psd",
+                "Item/Adobe Illustrator/Property - Luxury - Instagram Post Template.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.778Z",
+          "updatedAt": "2026-05-21T22:31:40.778Z"
+        },
+        {
+          "id": "3f026cad-8a46-4c86-a602-ca897f569514",
+          "templatePackId": "65b86e6b-7970-40a5-a013-19192452c49c",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/property-luxury-instagram-post-pack-b/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3362,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.779Z",
+          "updatedAt": "2026-05-21T22:31:40.779Z"
+        }
+      ]
+    },
+    {
+      "id": "24e14eb4-2f3a-4d67-b5ec-40051a68ac70",
+      "accountId": null,
+      "accountSlug": "angie-nichols",
+      "importedByUserId": null,
+      "scope": "ACCOUNT",
+      "provider": "ENVATO",
+      "status": "READY",
+      "slug": "property-luxury-instagram-post-pack-a",
+      "name": "Property Luxury Instagram Post Template Pack A",
+      "description": "Five-post luxury real estate Instagram pack with Photoshop and Illustrator source files.",
+      "vendorName": "Envato",
+      "externalPackId": null,
+      "sourceUrl": null,
+      "purchaseUrl": null,
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "licenseReference": null,
+      "licenseOwner": null,
+      "licenseMetadata": null,
+      "metadata": {
+        "sourceArchive": "template-packs/imports/envato/property-luxury-instagram-post-pack-a/source/real-estate-2024-06-11-03-23-13-utc.zip",
+        "previewAssigned": false,
+        "zipInspection": {
+          "entryCount": 10,
+          "extensionCounts": {
+            "txt": 1,
+            "psd": 5,
+            "ai": 1
+          },
+          "hasPhotoshop": true,
+          "hasIllustrator": true,
+          "hasEps": false,
+          "hasFigma": false,
+          "hasCanva": false,
+          "sampleEntries": [
+            "Item/",
+            "Item/Adobe Photoshop/",
+            "Item/Fonts.txt",
+            "Item/Adobe Illustrator/",
+            "Item/Adobe Photoshop/1.psd",
+            "Item/Adobe Photoshop/3.psd",
+            "Item/Adobe Photoshop/2.psd",
+            "Item/Adobe Photoshop/5.psd",
+            "Item/Adobe Photoshop/4.psd",
+            "Item/Adobe Illustrator/Property - Luxury - Instagram Post Template.ai"
+          ]
+        },
+        "notes": "Imported from local Downloads staging set."
+      },
+      "importedAt": "2026-05-21T22:31:40.771Z",
+      "createdAt": "2026-05-21T22:31:40.771Z",
+      "updatedAt": "2026-05-21T22:31:40.771Z",
+      "files": [
+        {
+          "id": "9a10134c-4efd-484a-bd2c-e10e4d823f74",
+          "templatePackId": "24e14eb4-2f3a-4d67-b5ec-40051a68ac70",
+          "templateId": null,
+          "role": "SOURCE",
+          "format": "ZIP",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/property-luxury-instagram-post-pack-a/source/real-estate-2024-06-11-03-23-13-utc.zip",
+          "publicUrl": null,
+          "originalFilename": "real-estate-2024-06-11-03-23-13-utc.zip",
+          "mimeType": "application/zip",
+          "sizeBytes": 1398606,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "importedFrom": "/Users/bradnichols/Downloads/real-estate-2024-06-11-03-23-13-utc.zip",
+            "zipInspection": {
+              "entryCount": 10,
+              "extensionCounts": {
+                "txt": 1,
+                "psd": 5,
+                "ai": 1
+              },
+              "hasPhotoshop": true,
+              "hasIllustrator": true,
+              "hasEps": false,
+              "hasFigma": false,
+              "hasCanva": false,
+              "sampleEntries": [
+                "Item/",
+                "Item/Adobe Photoshop/",
+                "Item/Fonts.txt",
+                "Item/Adobe Illustrator/",
+                "Item/Adobe Photoshop/1.psd",
+                "Item/Adobe Photoshop/3.psd",
+                "Item/Adobe Photoshop/2.psd",
+                "Item/Adobe Photoshop/5.psd",
+                "Item/Adobe Photoshop/4.psd",
+                "Item/Adobe Illustrator/Property - Luxury - Instagram Post Template.ai"
+              ]
+            }
+          },
+          "createdAt": "2026-05-21T22:31:40.775Z",
+          "updatedAt": "2026-05-21T22:31:40.775Z"
+        },
+        {
+          "id": "489cfa67-33aa-4446-983a-5defd368f607",
+          "templatePackId": "24e14eb4-2f3a-4d67-b5ec-40051a68ac70",
+          "templateId": null,
+          "role": "MANIFEST",
+          "format": "OTHER",
+          "storageProvider": "OTHER",
+          "storageKey": "template-packs/imports/envato/property-luxury-instagram-post-pack-a/manifest/import-manifest.json",
+          "publicUrl": null,
+          "originalFilename": "import-manifest.json",
+          "mimeType": "application/octet-stream",
+          "sizeBytes": 3352,
+          "checksumSha256": null,
+          "width": null,
+          "height": null,
+          "isPublic": false,
+          "metadata": {
+            "generatedBy": "scripts/import-template-packs.mjs"
+          },
+          "createdAt": "2026-05-21T22:31:40.776Z",
+          "updatedAt": "2026-05-21T22:31:40.776Z"
+        }
+      ]
+    }
+  ]
+}

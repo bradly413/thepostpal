@@ -1,0 +1,71 @@
+{
+  "accountSlug": "angie-nichols",
+  "packs": [
+    {
+      "name": "Property Luxury Instagram Post Template Pack A",
+      "slug": "property-luxury-instagram-post-pack-a",
+      "description": "Five-post luxury real estate Instagram pack with Photoshop and Illustrator source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-2024-06-11-03-23-13-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Imported from local Downloads staging set."
+    },
+    {
+      "name": "Property Luxury Instagram Post Template Pack B",
+      "slug": "property-luxury-instagram-post-pack-b",
+      "description": "Alternate five-post luxury real estate Instagram pack with Photoshop and Illustrator source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-2024-06-11-02-30-52-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Imported from local Downloads staging set."
+    },
+    {
+      "name": "Real Estate Postcard",
+      "slug": "real-estate-postcard",
+      "description": "Front-and-back postcard source pack for direct-mail or print handout use.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-postcard-2026-03-25-16-16-48-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Contains front and back PSD files plus purchasing information."
+    },
+    {
+      "name": "Real Estate Instagram Post",
+      "slug": "real-estate-instagram-post",
+      "description": "Six-post Instagram pack with Illustrator and EPS source files.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-instagram-post-2025-01-08-00-51-00-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Illustrator/EPS pack with documentation and font help files."
+    },
+    {
+      "name": "Luxury Real Estate Instagram Post",
+      "slug": "luxury-real-estate-instagram-post",
+      "description": "Luxury real estate Instagram pack with PSD, Figma, and Canva source references.",
+      "sourcePath": "/Users/bradnichols/Downloads/luxury-real-estate-instagram-post-2026-04-30-18-57-23-utc.zip",
+      "previewPath": "/Users/bradnichols/Downloads/5e933225-61d0-4bef-b6c7-4c78e028953a.avif",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Preview assigned from supplied AVIF mockup."
+    },
+    {
+      "name": "Real Estate x Luxury Living Instagram Post",
+      "slug": "real-estate-x-luxury-living-instagram-post",
+      "description": "Luxury-living themed Instagram pack with PSD, AI, and EPS source groups.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-x-luxury-living-instagram-post-2026-02-20-22-53-16-utc.zip",
+      "previewPath": "/Users/bradnichols/Downloads/mobile-mockup-2-o.avif",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Preview assigned from supplied mobile mockup AVIF."
+    },
+    {
+      "name": "Luxury Real Estate Instagram Post Set",
+      "slug": "luxury-real-estate-instagram-post-set",
+      "description": "Six-post luxury Instagram pack with PSD, AI, and EPS variants.",
+      "sourcePath": "/Users/bradnichols/Downloads/luxury-real-estate-instagram-post-set-2025-07-10-02-45-17-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Includes readme and multiple source formats."
+    },
+    {
+      "name": "Real Estate Market Value Post",
+      "slug": "real-estate-market-value-post",
+      "description": "Market-value themed post set with six PSD artboards and font reference PDF.",
+      "sourcePath": "/Users/bradnichols/Downloads/real-estate-market-value-post-2025-09-24-23-45-13-utc.zip",
+      "licenseProvider": "ENVATO_ELEMENTS",
+      "notes": "Strong candidate for Market Clarity pillar normalization."
+    }
+  ]
+}

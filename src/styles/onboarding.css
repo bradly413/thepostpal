@@ -1,0 +1,27 @@
+/* posterboy onboarding — light portal-adjacent theme */
+.pb-onboarding {
+  --color-accent: #ee2532;
+  --color-accent-cyan: #ee2532;
+}
+
+.pb-onboarding .pb-onboarding-cta {
+  background: #ee2532;
+  color: #fff;
+}
+
+.pb-onboarding .pb-onboarding-cta:hover {
+  background: #d61f2c;
+}
+
+.pb-onboarding .pb-onboarding-cta:disabled {
+  opacity: 0.35;
+}
+
+.pb-onboarding .pb-onboarding-progress-active {
+  background: #ee2532;
+}
+
+.pb-onboarding .pb-onboarding-kicker {
+  color: #ee2532;
+  letter-spacing: 0.2em;
+}

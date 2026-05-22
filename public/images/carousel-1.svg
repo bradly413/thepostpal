@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="600" viewBox="0 0 900 600" role="img" aria-label="Carousel 01 placeholder">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#F7F4EE"/>
+      <stop offset="55%" stop-color="#E8E3D9"/>
+      <stop offset="100%" stop-color="#D4CEC2"/>
+    </linearGradient>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="#080808" stroke-opacity="0.04" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="900" height="600" fill="url(#bg)"/>
+  <rect width="900" height="600" fill="url(#grid)"/>
+  <rect x="48" y="48" width="804" height="504" rx="20" fill="none" stroke="#6F7A68" stroke-opacity="0.25" stroke-width="2" stroke-dasharray="8 10"/>
+  <circle cx="120" cy="120" r="56" fill="#6F7A68" fill-opacity="0.12"/>
+  <rect x="200" y="200" width="500" height="200" rx="12" fill="#080808" fill-opacity="0.06"/>
+  <text x="450" y="290" text-anchor="middle" font-family="Georgia, 'Times New Roman', serif" font-size="42" fill="#080808" fill-opacity="0.85">Carousel 01</text>
+  <text x="450" y="340" text-anchor="middle" font-family="system-ui, sans-serif" font-size="16" letter-spacing="0.14em" fill="#6F7A68" text-transform="uppercase">Placeholder</text>
+  <text x="450" y="520" text-anchor="middle" font-family="system-ui, sans-serif" font-size="13" letter-spacing="0.2em" fill="#B64B3A" fill-opacity="0.7">IMAGE PLACEHOLDER</text>
+</svg>

@@ -13,6 +13,7 @@ import type {
   VoiceTrait,
   Tagline,
 } from "@/lib/brand-book-schema";
+import { SITE_NAME } from "@/lib/site";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -55,7 +56,7 @@ export default function BrandPage() {
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
-    document.title = "My Brand | thepostpal";
+    document.title = `My Brand | ${SITE_NAME}`;
     try {
       const stored = localStorage.getItem("postpal-brand-book");
       if (stored) setBook(JSON.parse(stored));

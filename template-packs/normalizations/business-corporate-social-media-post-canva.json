@@ -1,0 +1,50 @@
+{
+  "packSlug": "business-corporate-social-media-post-canva",
+  "packName": "Business Corporate Social Media Post Canva",
+  "status": "APP_READY",
+  "priority": "NOW",
+  "normalizationSummary": "Convert the six-slide corporate carousel into reusable business education, service explainer, and company positioning templates.",
+  "whyNow": "This is one of the strongest imported business packs and should become a flagship non-real-estate template family.",
+  "candidateTemplates": [
+    {
+      "id": "corp-carousel-educational",
+      "name": "Corporate Carousel Educational",
+      "sourceVariant": "Slides 1-6",
+      "recommendedSlug": "corporate-carousel-educational",
+      "recommendedPillar": "Business Education",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "split",
+      "recommendedLayout": "split-header",
+      "contentGoal": "Teach a topic over multiple slides in a polished corporate format.",
+      "rationale": "Broadly reusable for consultants, agencies, service brands, and B2B businesses.",
+      "editableFields": [
+        { "id": "eyebrow", "label": "Eyebrow", "type": "text", "required": true },
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "subheadline", "label": "Subheadline", "type": "textarea" },
+        { "id": "slide_points", "label": "Slide Points", "type": "list", "required": true },
+        { "id": "cta", "label": "Call to Action", "type": "cta" },
+        { "id": "brand_name", "label": "Brand Name", "type": "text" }
+      ],
+      "notes": "Treat as a carousel family rather than a single-slide post."
+    },
+    {
+      "id": "corp-carousel-services",
+      "name": "Corporate Carousel Services",
+      "sourceVariant": "Slides 1-6",
+      "recommendedSlug": "corporate-carousel-services",
+      "recommendedPillar": "Business Promotion",
+      "recommendedDimensions": "1080x1080",
+      "recommendedBackgroundType": "photo-overlay",
+      "recommendedLayout": "left-aligned",
+      "contentGoal": "Showcase services, process, differentiators, or package details.",
+      "rationale": "Easy fit for small business sales and service education.",
+      "editableFields": [
+        { "id": "headline", "label": "Headline", "type": "text", "required": true },
+        { "id": "service_items", "label": "Service Items", "type": "list", "required": true },
+        { "id": "body", "label": "Body", "type": "textarea" },
+        { "id": "cta", "label": "Call to Action", "type": "cta" },
+        { "id": "website", "label": "Website", "type": "text" }
+      ]
+    }
+  ]
+}
