@@ -28,83 +28,6 @@ export interface SynthesizedVoice {
   traits: { name: string; description: string }[];
 }
 
-// JSON Schema sent to Claude via output_config — guarantees valid
-// JSON response (no markdown fences, no prose) matching this shape.
-const VOICE_SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    hero: {
-      type: "string",
-      description:
-        "One sentence describing how this brand sounds — specific to them, not generic.",
-    },
-    weSay: {
-      type: "array",
-      minItems: 3,
-      maxItems: 5,
-      items: { type: "string" },
-      description:
-        "3–5 plausible posts in their voice. Match the rhythm, vocabulary, and energy from the user's writing samples.",
-    },
-    weDontSay: {
-      type: "array",
-      minItems: 3,
-      maxItems: 5,
-      items: { type: "string" },
-      description:
-        "3–5 lines that would feel off-brand. Pull from the anti-voice examples if provided.",
-    },
-    always: {
-      type: "string",
-      description: "One sentence — voice rules they always follow.",
-    },
-    sometimes: {
-      type: "string",
-      description: "One sentence — selective moves they sometimes make.",
-    },
-    never: {
-      type: "string",
-      description: "One sentence — what they avoid.",
-    },
-    italicRule: {
-      type: "string",
-      description: "One sentence on emphasis use; can be simple.",
-    },
-    traits: {
-      type: "array",
-      minItems: 3,
-      maxItems: 3,
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          name: {
-            type: "string",
-            description: "Trait name (1–4 words). Specific, not generic.",
-          },
-          description: {
-            type: "string",
-            description: "One sentence describing the trait.",
-          },
-        },
-        required: ["name", "description"],
-      },
-      description: "Exactly 3 voice traits, specific and earned from the samples.",
-    },
-  },
-  required: [
-    "hero",
-    "weSay",
-    "weDontSay",
-    "always",
-    "sometimes",
-    "never",
-    "italicRule",
-    "traits",
-  ],
-} as const;
-
 // ── System prompt — kept long-static for future prompt caching ─
 
 const VOICE_SYNTHESIS_SYSTEM = `You are a brand voice analyst. Given a small set of writing samples and a brief, extract the underlying voice and return a structured voice profile.
@@ -121,8 +44,25 @@ Take the user's actual writing samples, personality preferences, industry contex
 - Voice traits should be specific and earned — never generic ("professional", "trustworthy"). Look at the samples; what's actually distinctive about how they write?
 - If no samples are provided, derive voice from personality traits + industry + mission. Be honest that you're working from less material — keep traits and rules tighter, fewer claims.
 
-## Output
-Return JSON matching the schema. No prose outside the JSON.`;
+## Output format
+Return ONLY a single JSON object. No markdown code fences. No prose before or after. Match this exact shape:
+
+{
+  "hero": "<one sentence describing how this brand sounds, specific to them>",
+  "weSay": ["<3 to 5 plausible posts in their voice>"],
+  "weDontSay": ["<3 to 5 lines that would feel off-brand>"],
+  "always": "<one sentence — voice rules they always follow>",
+  "sometimes": "<one sentence — selective moves they make>",
+  "never": "<one sentence — what they avoid>",
+  "italicRule": "<one sentence about emphasis use, can be simple>",
+  "traits": [
+    {"name": "<1–4 word name, specific not generic>", "description": "<one sentence>"},
+    {"name": "...", "description": "..."},
+    {"name": "...", "description": "..."}
+  ]
+}
+
+Exactly 3 entries in traits. Arrays use double quotes. Do not include trailing commas. Do not wrap in markdown code fences.`;
 
 // ── Input + caller-facing API ─────────────────────────────────
 
@@ -220,6 +160,8 @@ export async function synthesizeVoice(
   // 2–4s wait during onboarding, smart enough to match real voice samples.
   // System prompt gets cache_control as future-proofing (won't fire below
   // ~2k tokens but adds zero cost and starts caching if the prompt grows).
+  // No output_config — relying on JSON-in-prompt + manual validation so we
+  // don't depend on SDK-version-specific structured-output API support.
   const response = await client.messages.create({
     model: "claude-sonnet-4-6",
     max_tokens: 1500,
@@ -231,24 +173,23 @@ export async function synthesizeVoice(
       },
     ],
     messages: [{ role: "user", content: buildUserPayload(input) }],
-    // Structured output — guarantees valid JSON matching VOICE_SCHEMA.
-    output_config: {
-      format: {
-        type: "json_schema",
-        name: "brand_voice_profile",
-        schema: VOICE_SCHEMA,
-      },
-    },
-  } as Anthropic.MessageCreateParamsNonStreaming);
+  });
 
   const block = response.content.find((b) => b.type === "text");
   if (!block || block.type !== "text") {
     throw new Error("Voice synthesis returned no text content");
   }
 
+  // Strip markdown code fences if the model added them despite instructions.
+  const cleaned = block.text
+    .trim()
+    .replace(/^```(?:json)?\s*/i, "")
+    .replace(/\s*```$/i, "")
+    .trim();
+
   let parsed: unknown;
   try {
-    parsed = JSON.parse(block.text);
+    parsed = JSON.parse(cleaned);
   } catch (err) {
     throw new Error(
       `Voice synthesis returned invalid JSON: ${
