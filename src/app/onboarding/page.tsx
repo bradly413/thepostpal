@@ -1410,10 +1410,33 @@ export default function OnboardingPage() {
     if (step > 0) setStep((s) => s - 1);
   }, [step]);
 
-  const handleBuildComplete = useCallback(() => {
+  const handleBuildComplete = useCallback(async () => {
     const answers = answersRef.current;
     if (!answers) return;
     const userId = `user-${Date.now()}`;
+
+    // Try the server endpoint first — it can do Claude-synthesized voice
+    // when the user provided samples or a mission. Falls back to the
+    // local deterministic generator if the API is unreachable (offline
+    // demo, network blip, missing ANTHROPIC_API_KEY in dev).
+    try {
+      const res = await fetch("/api/brand-book/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ userId, answers }),
+      });
+      if (res.ok) {
+        const data = (await res.json()) as { brandBook?: BrandBook };
+        if (data.brandBook) {
+          setBrandBook(data.brandBook);
+          setPhase("review");
+          return;
+        }
+      }
+    } catch {
+      // fall through to local generation
+    }
+
     const book = generateBrandBook(userId, answers);
     setBrandBook(book);
     setPhase("review");

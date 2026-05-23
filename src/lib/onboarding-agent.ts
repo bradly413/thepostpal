@@ -8,6 +8,11 @@ import type {
   PhotographyStyle,
   PostTemplate,
 } from "./brand-book-schema";
+import {
+  INDUSTRY_BY_ID,
+  type IndustryDef,
+  type IndustryId,
+} from "./industries";
 
 // ─────────────────────────────────────────────────────────────
 //  Onboarding Steps
@@ -560,25 +565,185 @@ function buildPhotography(answers: OnboardingAnswers): PhotographyStyle {
 
 // ─────────────────────────────────────────────────────────────
 //  Generate a complete brand book from onboarding answers
+//
+//  Phase 3: industry-aware. When `answers.industry` matches a known
+//  IndustryId (src/lib/industries.ts), the post templates, pillars,
+//  photography, and typography samples are seeded from that vertical's
+//  IndustryDef instead of the legacy realtor-coded helpers.
+//
+//  Phase 3: voice-injectable. Callers (the /api/brand-book/generate
+//  route) can pre-synthesize a BrandVoice with Claude and pass it via
+//  `options.voice`. When absent, falls back to the deterministic
+//  buildVoice() lookup.
 // ─────────────────────────────────────────────────────────────
+
+export interface GenerateBrandBookOptions {
+  /** Pre-synthesized voice (typically from voice-synthesis.ts → Claude). */
+  voice?: BrandVoice;
+}
+
+function resolveIndustry(answers: OnboardingAnswers): IndustryDef | null {
+  if (!answers.industry) return null;
+  // answers.industry is loosely typed (string at intake); narrow if it
+  // matches a known IndustryId. Free-text industries fall through to null
+  // and the legacy path takes over.
+  const def = INDUSTRY_BY_ID[answers.industry as IndustryId];
+  return def ?? null;
+}
+
+function resolveTitle(
+  answers: OnboardingAnswers,
+  industry: IndustryDef | null,
+): string {
+  if (answers.profession && answers.profession.trim()) {
+    return answers.profession.trim();
+  }
+  if (industry) return industry.defaultProfessionTitle;
+  return "Owner";
+}
+
+function expandPostTemplates(
+  industry: IndustryDef,
+  answers: OnboardingAnswers,
+): PostTemplate[] {
+  const handle =
+    answers.social || `@${answers.name.toLowerCase().replace(/\s+/g, "")}`;
+  return industry.postTemplateSkeletons.map((skeleton) => ({
+    name: skeleton.name,
+    surface: skeleton.surface,
+    kicker: skeleton.kicker,
+    headlinePattern: skeleton.headlinePattern,
+    accentWord: skeleton.accentWord,
+    footerLeft: (skeleton.footerLeftPattern ?? answers.location).replace(
+      "[Location]",
+      answers.location,
+    ),
+    footerRight: (skeleton.footerRightPattern ?? handle).replace(
+      "[@handle]",
+      handle,
+    ),
+    stamp: skeleton.stampPattern,
+  }));
+}
+
+function buildTypographyScale(
+  typography: BrandTypography,
+  answers: OnboardingAnswers,
+  industry: IndustryDef | null,
+) {
+  const market = answers.markets[0] || answers.location;
+  const voiceLine =
+    industry?.voiceExampleLine ?? "What you make. Where you make it.";
+  // Industry-aware scale samples — replaces the hardcoded realtor copy.
+  // The display sample uses the industry's signature voice line; body
+  // samples stay generic enough to work for any vertical.
+  return [
+    {
+      name: "Display 01",
+      face: "display" as const,
+      size: "64px",
+      weight: "500",
+      tracking: typography.display.letterSpacing,
+      sample: voiceLine,
+    },
+    {
+      name: "Display 02",
+      face: "display" as const,
+      size: "44px",
+      weight: "500",
+      tracking: typography.display.letterSpacing,
+      sample: "Your week, already scheduled.",
+    },
+    {
+      name: "Heading",
+      face: "display" as const,
+      size: "28px",
+      weight: "500",
+      tracking: "-2.5%",
+      sample: market ? `Posting from ${market}.` : "Posting consistently.",
+    },
+    {
+      name: "Body L",
+      face: "body" as const,
+      size: "16px",
+      weight: "400",
+      tracking: typography.body.letterSpacing,
+      sample:
+        "Drafts in your voice. A calendar that already knows your week. Posts that show up while you're somewhere else.",
+    },
+    {
+      name: "Body M",
+      face: "body" as const,
+      size: "13px",
+      weight: "400",
+      tracking: "0%",
+      sample: "Schedule across every channel from one queue.",
+    },
+  ];
+}
+
+function buildGlance(
+  answers: OnboardingAnswers,
+  industry: IndustryDef | null,
+  title: string,
+  voice: BrandVoice,
+): BrandBook["glance"] {
+  const name = answers.name.split(" ")[0];
+  const company = answers.brokerage;
+  const traitsLine = answers.personalityTraits.length
+    ? `Known for being ${answers.personalityTraits
+        .slice(0, 3)
+        .join(", ")
+        .toLowerCase()}.`
+    : "";
+  const businessNoun = industry ? industry.shortLabel.toLowerCase() : "business";
+  const companyClause = company ? ` (${company})` : "";
+
+  return {
+    story: `${answers.name} is ${title.toLowerCase().startsWith("a") || title.toLowerCase().startsWith("e") || title.toLowerCase().startsWith("i") || title.toLowerCase().startsWith("o") || title.toLowerCase().startsWith("u") ? "an" : "a"} ${title}${companyClause} in ${answers.location} who believes social media shouldn't be the hard part. ${traitsLine} The brand is built around one idea: you handle the work, posterboy handles the posts.`,
+    whatItIs: `A ${answers.personalityTraits[0]?.toLowerCase() || "considered"} ${businessNoun} presence in ${answers.location}.`,
+    howItWorks: `${name} posts consistently, on-brand, without spending hours on social media — because posterboy handles it.`,
+    whoItsFor: answers.targetClient,
+    howWeSound: voice.hero.split("—")[0].trim() + ".",
+  };
+}
 
 export function generateBrandBook(
   userId: string,
   answers: OnboardingAnswers,
+  options: GenerateBrandBookOptions = {},
 ): BrandBook {
   const now = new Date().toISOString();
+  const industry = resolveIndustry(answers);
+  const title = resolveTitle(answers, industry);
+
   const palette = answers.brandColors?.length
     ? inferPaletteFromColors(answers.brandColors, answers)
     : pickPalette(answers);
 
   const typography = pickFonts(answers);
-  typography.scale = [
-    { name: "Display 01", face: "display", size: "64px", weight: "500", tracking: typography.display.letterSpacing, sample: `A home in ${answers.markets[0] || answers.location}.` },
-    { name: "Display 02", face: "display", size: "44px", weight: "500", tracking: typography.display.letterSpacing, sample: "Your week, already scheduled." },
-    { name: "Heading", face: "display", size: "28px", weight: "500", tracking: "-2.5%", sample: "Open house, Saturday at eleven." },
-    { name: "Body L", face: "body", size: "16px", weight: "400", tracking: typography.body.letterSpacing, sample: "Three bedrooms, two baths, and a kitchen that catches the morning sun." },
-    { name: "Body M", face: "body", size: "13px", weight: "400", tracking: "0%", sample: "Schedule across every channel from one queue." },
-  ];
+  typography.scale = buildTypographyScale(typography, answers, industry);
+
+  // Voice: pre-synthesized (Claude) if provided, otherwise the
+  // deterministic 4-archetype lookup. Both produce the same shape.
+  const voice = options.voice ?? buildVoice(answers);
+
+  // Industry-aware post templates / pillars / photography when we have
+  // a typed IndustryDef; otherwise fall back to the legacy realtor-derived
+  // builders (which still work for free-text "industry" values, just
+  // realtor-flavored).
+  const postTemplates = industry
+    ? expandPostTemplates(industry, answers)
+    : buildPostTemplates(answers);
+  const pillars: ContentPillar[] = industry
+    ? industry.defaultPillars.map((p) => ({ ...p }))
+    : buildPillars(answers);
+  const photography = industry
+    ? {
+        description: industry.photography.description,
+        principles: industry.photography.principles.map((p) => ({ ...p })),
+      }
+    : buildPhotography(answers);
 
   const name = answers.name.split(" ")[0];
 
@@ -591,8 +756,9 @@ export function generateBrandBook(
 
     identity: {
       name: answers.name,
-      title: "Realtor",
+      title,
       brokerage: answers.brokerage,
+      company: answers.brokerage,
       location: answers.location,
       markets: answers.markets,
       phone: answers.phone,
@@ -602,24 +768,26 @@ export function generateBrandBook(
       target: answers.targetClient,
       experience: answers.experience,
       headshot: answers.headshot,
+      industry: industry?.id,
+      profession: answers.profession,
+      mission: answers.mission,
     },
 
-    glance: {
-      story: `${answers.name} is a real estate agent in ${answers.location} who believes social media shouldn't be the hard part. ${answers.personalityTraits.length ? `Known for being ${answers.personalityTraits.slice(0, 3).join(", ").toLowerCase()}.` : ""} The brand is built around one idea: you handle the houses, your postpal handles the posts.`,
-      whatItIs: `A ${answers.personalityTraits[0]?.toLowerCase() || "trusted"} real estate presence in ${answers.location}.`,
-      howItWorks: `${name} posts consistently, on-brand, without spending hours on social media — because the postpal handles it.`,
-      whoItsFor: answers.targetClient,
-      howWeSound: buildVoice(answers).hero.split("—")[0].trim() + ".",
-    },
+    glance: buildGlance(answers, industry, title, voice),
 
     mark: {
       variants: answers.logo
         ? [
-            { label: "Primary · Uploaded", url: answers.logo, surface: "light" as const },
+            {
+              label: "Primary · Uploaded",
+              url: answers.logo,
+              surface: "light" as const,
+            },
           ]
         : [],
       minSizePx: 120,
-      clearSpace: "Maintain at minimum one cap-height of clear space on all four sides.",
+      clearSpace:
+        "Maintain at minimum one cap-height of clear space on all four sides.",
       donts: [
         "Don't stretch or compress the logo",
         "Don't rotate the logo",
@@ -630,22 +798,34 @@ export function generateBrandBook(
 
     palette,
     typography,
-    voice: buildVoice(answers),
+    voice,
     applications: {
-      postTemplates: buildPostTemplates(answers),
+      postTemplates,
       onboardingChat: {
-        agentName: "your postpal",
-        greeting: `Hey ${name} — I'm your postpal. Let's set up your brand together.`,
+        agentName: "your posterboy",
+        greeting: `Hey ${name} — I'm your posterboy. Let's set up your brand together.`,
         sampleExchange: [
-          { role: "agent", text: `Hey ${name} — I'm your postpal. Let's set up your brand together.` },
-          { role: "agent", text: "First, what's your name and the area you sell in?" },
-          { role: "user", text: `${answers.name}. ${answers.markets[0] || answers.location}.` },
-          { role: "agent", text: "Drop your logo and any brand colours — I'll learn the look." },
+          {
+            role: "agent",
+            text: `Hey ${name} — I'm your posterboy. Let's set up your brand together.`,
+          },
+          {
+            role: "agent",
+            text: "First, what's your name, your business, and what area you work in?",
+          },
+          {
+            role: "user",
+            text: `${answers.name}. ${answers.markets[0] || answers.location}.`,
+          },
+          {
+            role: "agent",
+            text: "Drop your logo and any brand colours — I'll learn the look.",
+          },
         ],
       },
     },
-    photography: buildPhotography(answers),
-    pillars: buildPillars(answers),
+    photography,
+    pillars,
     colophon: {
       version: "1.0",
       issuedDate: now.split("T")[0],
