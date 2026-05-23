@@ -135,10 +135,23 @@ export interface BrandColophon {
 
 // ── Agent Identity ──────────────────────────────────────────
 
+import type { IndustryId } from "@/lib/industries";
+
 export interface AgentIdentity {
   name: string;
+  /**
+   * Display title (e.g. "Realtor", "Pastry Chef", "Personal Trainer").
+   * Legacy: was hardcoded to "Realtor" by the generator. New code sets
+   * this from OnboardingAnswers.profession when available.
+   */
   title: string;
+  /**
+   * Legacy alias for `company`. Kept for backward compat with existing
+   * brand books in localStorage. New code reads `company ?? brokerage`.
+   */
   brokerage?: string;
+  /** Preferred over `brokerage` going forward — vertical-agnostic. */
+  company?: string;
   location: string;
   markets: string[];
   phone?: string;
@@ -148,6 +161,14 @@ export interface AgentIdentity {
   target: string;
   experience?: string;
   headshot?: string;
+
+  // ── New (Phase 1 — onboarding generalization) ─────────────
+  /** Selected industry vertical from the taxonomy in src/lib/industries.ts. */
+  industry?: IndustryId;
+  /** Free-text profession label, typed by the user. */
+  profession?: string;
+  /** 1–2 sentence "why we do this" — feeds glance.story + voice.hero. */
+  mission?: string;
 }
 
 // ── Photography ─────────────────────────────────────────────
@@ -234,10 +255,21 @@ export interface OnboardingAnswers {
   tonePreference: "warm" | "professional" | "playful" | "authoritative";
   contentFocus: string[];
 
-  // NEW (beta): free-text industry label so the wizard isn't realtor-only.
-  // Generator still hardcodes `identity.title = "Realtor"` today — proper
-  // generalization is tracked in docs/onboarding-generalization-plan.md.
+  // ── Phase 1 (post-beta refactor) ──────────────────────────
+  // Loose at intake (wizard may free-text "salon" before the picker step
+  // exists); generator narrows to IndustryId when building AgentIdentity.
+  // Accepts IndustryId values from src/lib/industries.ts when typed.
   industry?: string;
+  /** Free-text profession label ("Realtor", "Pastry Chef"). */
+  profession?: string;
+  /** 1–2 sentence "why we do this", in the user's own words. */
+  mission?: string;
+  /** 1–3 short writing samples — feeds Phase 3 voice synthesis. */
+  voiceSamples?: string[];
+  /** ≤3 examples of voice they DON'T want to sound like (text snippets). */
+  antiVoice?: string[];
+  /** ≤3 URLs or @handles they admire visually (optional v1 reference only). */
+  visualRefs?: string[];
 }
 
 // ═══════════════════════════════════════════════════════════
