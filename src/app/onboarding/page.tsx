@@ -21,14 +21,17 @@ const BUILD_STEPS = [
 ];
 
 const CONTENT_FOCUS_OPTIONS = [
-  { id: "listings", label: "Listings", icon: "🏠" },
-  { id: "market-updates", label: "Market Updates", icon: "📊" },
-  { id: "sold", label: "Sold Announcements", icon: "🎉" },
-  { id: "neighborhood", label: "Neighborhood Spotlights", icon: "🏘️" },
-  { id: "tips", label: "Buyer/Seller Tips", icon: "💡" },
-  { id: "open-house", label: "Open Houses", icon: "🚪" },
-  { id: "testimonials", label: "Client Testimonials", icon: "⭐" },
-  { id: "community", label: "Community Events", icon: "🤝" },
+  { id: "offerings", label: "Offerings & Products", icon: "🛍️" },
+  { id: "behind-scenes", label: "Behind the Scenes", icon: "🎬" },
+  { id: "tips", label: "Tips & How-To", icon: "💡" },
+  { id: "customer-stories", label: "Customer Stories", icon: "⭐" },
+  { id: "team", label: "Team & People", icon: "👥" },
+  { id: "industry-updates", label: "Industry Updates", icon: "📊" },
+  { id: "events", label: "Events", icon: "🎟️" },
+  { id: "community", label: "Community", icon: "🤝" },
+  { id: "listings", label: "Listings (real estate)", icon: "🏠" },
+  { id: "sold", label: "Sold / Closings (real estate)", icon: "🎉" },
+  { id: "other", label: "Other", icon: "✦" },
 ];
 
 const PLATFORM_OPTIONS = [
@@ -96,14 +99,16 @@ const PERSONALITY_DIMENSIONS = [
 const PERSONALITY_OPTIONS = PERSONALITY_DIMENSIONS.flatMap((d) => d.traits);
 
 const TARGET_OPTIONS = [
-  { id: "first-time", label: "First-Time Buyers" },
-  { id: "luxury", label: "Luxury" },
-  { id: "investors", label: "Investors" },
-  { id: "downsizers", label: "Downsizers" },
-  { id: "relocation", label: "Relocation" },
+  { id: "local-customers", label: "Local Customers" },
   { id: "families", label: "Families" },
-  { id: "new-construction", label: "New Construction" },
-  { id: "commercial", label: "Commercial" },
+  { id: "professionals", label: "Working Professionals" },
+  { id: "small-business", label: "Small Business Owners" },
+  { id: "first-time", label: "First-Time Buyers" },
+  { id: "luxury", label: "Luxury / Premium" },
+  { id: "investors", label: "Investors" },
+  { id: "tourists", label: "Tourists / Visitors" },
+  { id: "online", label: "Online Customers" },
+  { id: "other", label: "Other" },
 ];
 
 const BRAND_COLORS = [
@@ -477,7 +482,7 @@ function FontPairingCards({
                 fontSize: "12px",
               }}
             >
-              Every property tells a story. We help you find the one that becomes yours.
+              What you make. Where you make it. Why it matters.
             </p>
           </button>
         );
@@ -510,22 +515,22 @@ function StepIndicator({ current, total }: { current: number; total: number }) {
 const CHAT_MESSAGES: Record<number, { role: "assistant"; text: string }[]> = {
   0: [
     { role: "assistant", text: "Hey — welcome to posterboy." },
-    { role: "assistant", text: "Let's start with the basics — your name, brokerage, and where you work. This helps us tailor your brand book to your market." },
+    { role: "assistant", text: "Let's start with the basics — your name, your business, what kind of work you do, and where you do it. This helps us tailor your brand book to who you are." },
     { role: "assistant", text: "Don't worry about getting it perfect — you can always update these later." },
   ],
   1: [
-    { role: "assistant", text: "Now let's talk about your ideal clients." },
-    { role: "assistant", text: "Who do you love working with most? First-time buyers who need hand-holding? Luxury clients who expect white-glove service? Investors who want data?" },
-    { role: "assistant", text: "Pick as many as you want — this shapes the tone of your brand." },
+    { role: "assistant", text: "Now let's talk about your ideal customer." },
+    { role: "assistant", text: "Who do you love working with most? Pick the ones that feel right — you can mix as many as you want." },
+    { role: "assistant", text: "This shapes the tone of your brand. Don't overthink it." },
   ],
   2: [
     { role: "assistant", text: "What kind of content gets you excited?" },
-    { role: "assistant", text: "Think about what you'd actually want to post every week. Listings and sold announcements? Market updates that show you know your stuff? Tips that help your audience?" },
+    { role: "assistant", text: "Think about what you'd actually want to post every week. Behind-the-scenes? Tips and how-tos? Customer stories? Team moments?" },
     { role: "assistant", text: "I'll build your content calendar around these pillars." },
   ],
   3: [
     { role: "assistant", text: "Where does your audience hang out?" },
-    { role: "assistant", text: "Instagram is great for visual storytelling. Facebook for community. LinkedIn for credibility. TikTok if you want to reach younger buyers." },
+    { role: "assistant", text: "Instagram is great for visual storytelling. Facebook for community. LinkedIn for credibility. TikTok if your audience skews younger." },
     { role: "assistant", text: "I'll optimize your templates for each platform you pick." },
   ],
   4: [
@@ -536,7 +541,7 @@ const CHAT_MESSAGES: Record<number, { role: "assistant"; text: string }[]> = {
   5: [
     { role: "assistant", text: "Time to choose your fonts — this shapes how people feel before they read a word. ✍️" },
     { role: "assistant", text: "Great typography pairs contrast with harmony: a distinctive display font for headlines with a clean body font for readability. Serif + sans-serif is the classic power move." },
-    { role: "assistant", text: "For real estate, your title font is your first impression — it appears on every listing, every ad, every social post. The body font handles the details, so it needs to be effortlessly readable at any size." },
+    { role: "assistant", text: "Your title font is your first impression — it shows up on every post, every page, every ad. The body font handles the details, so it needs to be effortlessly readable at any size." },
     { role: "assistant", text: "Pick the pairing that feels most like your brand. Trust your gut — if it looks like you, it probably is." },
   ],
   6: [
@@ -750,7 +755,7 @@ function WizardStep({
                 Let&apos;s build your brand
               </h1>
               <p className="text-text-secondary text-sm">
-                Tell us about yourself so posterboy can create social media posts you actually use.
+                Tell us about yourself so posterboy can create social media posts that actually sound like you.
               </p>
             </div>
             <div className="space-y-4">
@@ -768,13 +773,25 @@ function WizardStep({
               </div>
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">
-                  Company
+                  Business
                 </label>
                 <input
                   type="text"
                   value={formData.brokerage}
                   onChange={(e) => setFormData((p) => ({ ...p, brokerage: e.target.value }))}
-                  placeholder="Compass, RE/MAX, Keller Williams..."
+                  placeholder="Acme Studio, RE/MAX, Coastal Coffee..."
+                  className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  What kind of business?
+                </label>
+                <input
+                  type="text"
+                  value={formData.industry}
+                  onChange={(e) => setFormData((p) => ({ ...p, industry: e.target.value }))}
+                  placeholder="Real estate, restaurant, salon, coaching, retail..."
                   className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors"
                 />
               </div>
@@ -786,7 +803,7 @@ function WizardStep({
                   type="text"
                   value={formData.location}
                   onChange={(e) => setFormData((p) => ({ ...p, location: e.target.value }))}
-                  placeholder="Denver Metro, Austin TX, Bay Area..."
+                  placeholder="St. Louis, Brooklyn NY, your neighborhood..."
                   className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors"
                 />
               </div>
@@ -1257,6 +1274,7 @@ function BrandReviewScreen({
 interface FormData {
   name: string;
   brokerage: string;
+  industry: string;
   location: string;
   targetClient: string[];
   contentFocus: string[];
@@ -1298,14 +1316,15 @@ function formToAnswers(form: FormData): OnboardingAnswers {
   const primaryTrait = form.personality[0] || "warm";
 
   return {
-    name: form.name || "Agent",
+    name: form.name || "Owner",
     brokerage: form.brokerage || undefined,
+    industry: form.industry?.trim() || undefined,
     location: form.location || "Local Area",
     markets: form.location ? [form.location] : ["Local"],
     targetClient: form.targetClient
       .map((id) => TARGET_OPTIONS.find((o) => o.id === id)?.label)
       .filter(Boolean)
-      .join(", ") || "Home buyers and sellers",
+      .join(", ") || "Local customers",
     personalityTraits: form.personality
       .map((id) => PERSONALITY_OPTIONS.find((o) => o.id === id)?.label)
       .filter((x): x is string => !!x),
@@ -1330,6 +1349,7 @@ export default function OnboardingPage() {
   const [formData, setFormData] = useState<FormData>({
     name: "",
     brokerage: "",
+    industry: "",
     location: "",
     targetClient: [],
     contentFocus: [],

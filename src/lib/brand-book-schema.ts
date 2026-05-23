@@ -233,6 +233,11 @@ export interface OnboardingAnswers {
   // Preferences
   tonePreference: "warm" | "professional" | "playful" | "authoritative";
   contentFocus: string[];
+
+  // NEW (beta): free-text industry label so the wizard isn't realtor-only.
+  // Generator still hardcodes `identity.title = "Realtor"` today — proper
+  // generalization is tracked in docs/onboarding-generalization-plan.md.
+  industry?: string;
 }
 
 // ═══════════════════════════════════════════════════════════
