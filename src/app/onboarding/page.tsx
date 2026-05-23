@@ -6,6 +6,12 @@ import gsap from "gsap";
 import OnboardingHeader from "@/components/onboarding/OnboardingHeader";
 import { generateBrandBook } from "@/lib/onboarding-agent";
 import type { BrandBook, OnboardingAnswers } from "@/lib/brand-book-schema";
+import {
+  INDUSTRIES,
+  getIndustry,
+  type IndustryDef,
+  type IndustryId,
+} from "@/lib/industries";
 import "@/styles/onboarding.css";
 
 type Phase = "wizard" | "building" | "review";
@@ -491,7 +497,8 @@ function FontPairingCards({
   );
 }
 
-const TOTAL_STEPS = 7;
+const TOTAL_STEPS = 8;
+const VOICE_SAMPLE_MIN_CHARS = 40;
 
 function StepIndicator({ current, total }: { current: number; total: number }) {
   return (
@@ -549,6 +556,12 @@ const CHAT_MESSAGES: Record<number, { role: "assistant"; text: string }[]> = {
     { role: "assistant", text: "Based on brand psychology, there are 5 personality dimensions: Sincerity, Excitement, Competence, Sophistication, and Ruggedness. Pick 3–5 traits that feel most like you — you can mix across dimensions." },
     { role: "assistant", text: "Think of these traits as filters for everything you do — your posts, your replies, even your policies. The more consistent you are, the more people will trust you because they know what to expect." },
     { role: "assistant", text: "Don't try to appeal to everyone. Those little quirks that make you different? That's exactly what makes your brand memorable." },
+  ],
+  7: [
+    { role: "assistant", text: "Last step — and the most important one. Show me how you actually write." },
+    { role: "assistant", text: "Paste 1–3 short samples. A post you've written, an email to a customer, a text message, a quote that sounds like you. Anything 40+ characters works." },
+    { role: "assistant", text: "I'll match your real rhythm, vocabulary, and energy — not generic marketing voice. The more honest the samples, the better your brand book sounds like you." },
+    { role: "assistant", text: "If something specific makes you cringe (corporate-speak, salesy language, a phrase you've sworn off), drop it in the anti-voice box. I'll make sure we never sound like that." },
   ],
 };
 
@@ -682,6 +695,83 @@ function OnboardingChat({ step, formData }: { step: number; formData: FormData }
   );
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Industry picker — 12 verticals + "Other" (free text fallback)
+//  Phase 5: replaces the free-text industry input on step 0.
+// ─────────────────────────────────────────────────────────────
+
+function IndustryPicker({
+  selected,
+  isCustom,
+  customValue,
+  onSelectIndustry,
+  onSelectOther,
+  onCustomChange,
+}: {
+  selected: string;
+  isCustom: boolean;
+  customValue: string;
+  onSelectIndustry: (id: IndustryId) => void;
+  onSelectOther: () => void;
+  onCustomChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-3">
+      <div className="grid grid-cols-2 gap-2">
+        {INDUSTRIES.filter((i) => i.id !== "other-general").map((i) => {
+          const active = !isCustom && selected === i.id;
+          return (
+            <button
+              key={i.id}
+              type="button"
+              onClick={() => onSelectIndustry(i.id)}
+              className={`
+                text-left px-3 py-2.5 rounded-xl border text-sm transition-all
+                ${
+                  active
+                    ? "bg-accent/15 border-accent/40 text-text"
+                    : "bg-elevated border-border text-text-secondary hover:border-accent/20 hover:text-text"
+                }
+              `}
+            >
+              <div className="font-medium">{i.shortLabel}</div>
+              <div className="text-[10px] text-text-secondary/70 mt-0.5 leading-snug">
+                {i.description}
+              </div>
+            </button>
+          );
+        })}
+        <button
+          type="button"
+          onClick={onSelectOther}
+          className={`
+            text-left px-3 py-2.5 rounded-xl border text-sm transition-all col-span-2
+            ${
+              isCustom
+                ? "bg-accent/15 border-accent/40 text-text"
+                : "bg-elevated border-border text-text-secondary hover:border-accent/20 hover:text-text"
+            }
+          `}
+        >
+          <div className="font-medium">Other / doesn&apos;t fit above</div>
+          <div className="text-[10px] text-text-secondary/70 mt-0.5 leading-snug">
+            Tell us in your own words — we&apos;ll generalize.
+          </div>
+        </button>
+      </div>
+      {isCustom && (
+        <input
+          type="text"
+          value={customValue}
+          onChange={(e) => onCustomChange(e.target.value)}
+          placeholder="What kind of business is it?"
+          className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors"
+        />
+      )}
+    </div>
+  );
+}
+
 function PillSelector({
   options,
   selected,
@@ -758,7 +848,7 @@ function WizardStep({
                 Tell us about yourself so posterboy can create social media posts that actually sound like you.
               </p>
             </div>
-            <div className="space-y-4">
+            <div className="space-y-5">
               <div>
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">
                   Your name
@@ -787,12 +877,50 @@ function WizardStep({
                 <label className="block text-xs font-medium text-text-secondary mb-1.5">
                   What kind of business?
                 </label>
-                <input
-                  type="text"
-                  value={formData.industry}
-                  onChange={(e) => setFormData((p) => ({ ...p, industry: e.target.value }))}
-                  placeholder="Real estate, restaurant, salon, coaching, retail..."
-                  className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors"
+                <IndustryPicker
+                  selected={formData.industry}
+                  isCustom={formData.industryIsCustom}
+                  customValue={formData.industryIsCustom ? formData.industry : ""}
+                  onSelectIndustry={(id) =>
+                    setFormData((p) => {
+                      // Clear target+content selections when industry changes
+                      // so stale pill IDs (which live in a different option set)
+                      // don't leak into the next steps.
+                      const industryChanged = p.industry !== id || p.industryIsCustom;
+                      return {
+                        ...p,
+                        industry: id,
+                        industryIsCustom: false,
+                        targetClient: industryChanged ? [] : p.targetClient,
+                        contentFocus: industryChanged ? [] : p.contentFocus,
+                      };
+                    })
+                  }
+                  onSelectOther={() =>
+                    setFormData((p) => ({
+                      ...p,
+                      industry: p.industryIsCustom ? p.industry : "",
+                      industryIsCustom: true,
+                      targetClient: [],
+                      contentFocus: [],
+                    }))
+                  }
+                  onCustomChange={(value) =>
+                    setFormData((p) => ({ ...p, industry: value }))
+                  }
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                  Why do you do this?{" "}
+                  <span className="text-text-secondary/50 font-normal">(optional)</span>
+                </label>
+                <textarea
+                  value={formData.mission}
+                  onChange={(e) => setFormData((p) => ({ ...p, mission: e.target.value }))}
+                  placeholder="1–2 sentences in your own words. This anchors how your brand sounds."
+                  rows={2}
+                  className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors resize-y"
                 />
               </div>
               <div>
@@ -811,27 +939,43 @@ function WizardStep({
           </div>
         );
 
-      case 1:
+      case 1: {
+        // Industry-aware pills: when a known IndustryId is picked, use that
+        // vertical's clientArchetypes; otherwise fall back to the generic
+        // TARGET_OPTIONS (also used for "Other" / no-industry-picked path).
+        const industryDef: IndustryDef | null = formData.industryIsCustom
+          ? null
+          : getIndustry(formData.industry) ?? null;
+        const options = industryDef ? industryDef.clientArchetypes : TARGET_OPTIONS;
         return (
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-heading font-bold text-text mb-2">
-                Who&apos;s your ideal client?
+                Who&apos;s your ideal customer?
               </h1>
               <p className="text-text-secondary text-sm">
-                Select all that apply. We&apos;ll tailor your content to resonate with them.
+                {industryDef
+                  ? `Suggestions tailored for ${industryDef.shortLabel}. Pick the ones that feel right.`
+                  : "Select all that apply. We'll tailor your content to resonate with them."}
               </p>
             </div>
             <PillSelector
-              options={TARGET_OPTIONS}
+              options={options}
               selected={formData.targetClient}
               onToggle={(id) => toggle("targetClient", id)}
               showIcons={false}
             />
           </div>
         );
+      }
 
-      case 2:
+      case 2: {
+        const industryDef: IndustryDef | null = formData.industryIsCustom
+          ? null
+          : getIndustry(formData.industry) ?? null;
+        const options = industryDef
+          ? industryDef.contentFocus
+          : CONTENT_FOCUS_OPTIONS;
         return (
           <div className="space-y-6">
             <div>
@@ -839,16 +983,19 @@ function WizardStep({
                 What content do you want to post?
               </h1>
               <p className="text-text-secondary text-sm">
-                Pick the types of content that matter most to your business.
+                {industryDef
+                  ? `Common content for ${industryDef.shortLabel}. Pick what matters most to you.`
+                  : "Pick the types of content that matter most to your business."}
               </p>
             </div>
             <PillSelector
-              options={CONTENT_FOCUS_OPTIONS}
+              options={options}
               selected={formData.contentFocus}
               onToggle={(id) => toggle("contentFocus", id)}
             />
           </div>
         );
+      }
 
       case 3:
         return (
@@ -976,6 +1123,106 @@ function WizardStep({
             )}
           </div>
         );
+
+      case 7: {
+        // Voice samples step — the highest-leverage input in the wizard.
+        // At least one sample ≥ VOICE_SAMPLE_MIN_CHARS unlocks Continue
+        // (handled by canContinue). The synthesizer in voice-synthesis.ts
+        // pulls vocabulary, rhythm, and energy directly from these.
+        const sampleCounts = formData.voiceSamples.map((s) => s.trim().length);
+        const validSamples = sampleCounts.filter(
+          (n) => n >= VOICE_SAMPLE_MIN_CHARS,
+        ).length;
+        return (
+          <div className="space-y-5">
+            <div>
+              <h1 className="text-2xl font-heading font-bold text-text mb-1">
+                Show me how you write
+              </h1>
+              <p className="text-text-secondary text-sm">
+                Paste 1–3 short samples — a post, an email to a customer, a
+                quote, a text. I&apos;ll match your rhythm and vocabulary,
+                not generic marketing voice.
+              </p>
+            </div>
+            <div className="space-y-3">
+              {formData.voiceSamples.map((sample, i) => {
+                const len = sampleCounts[i];
+                const ok = len >= VOICE_SAMPLE_MIN_CHARS;
+                return (
+                  <div key={i}>
+                    <div className="flex items-baseline justify-between mb-1.5">
+                      <label className="text-xs font-medium text-text-secondary">
+                        Sample {i + 1}
+                        {i > 0 && (
+                          <span className="text-text-secondary/50 font-normal">
+                            {" "}
+                            (optional)
+                          </span>
+                        )}
+                      </label>
+                      <span
+                        className={`text-[10px] ${
+                          ok
+                            ? "text-success/80"
+                            : len > 0
+                              ? "text-text-secondary/60"
+                              : "text-text-secondary/30"
+                        }`}
+                      >
+                        {len === 0
+                          ? `${VOICE_SAMPLE_MIN_CHARS}+ chars`
+                          : ok
+                            ? `${len} chars ✓`
+                            : `${len} / ${VOICE_SAMPLE_MIN_CHARS}`}
+                      </span>
+                    </div>
+                    <textarea
+                      value={sample}
+                      onChange={(e) =>
+                        setFormData((p) => {
+                          const next = [...p.voiceSamples];
+                          next[i] = e.target.value;
+                          return { ...p, voiceSamples: next };
+                        })
+                      }
+                      placeholder={
+                        i === 0
+                          ? "Paste anything you've written that sounds like you — a real post, an email, a text. 40+ characters."
+                          : "Another sample if you have one."
+                      }
+                      rows={3}
+                      className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors resize-y"
+                    />
+                  </div>
+                );
+              })}
+            </div>
+            <div className="pt-2 border-t border-border">
+              <label className="block text-xs font-medium text-text-secondary mb-1.5">
+                Anything you DON&apos;T want to sound like?{" "}
+                <span className="text-text-secondary/50 font-normal">
+                  (optional)
+                </span>
+              </label>
+              <textarea
+                value={formData.antiVoice}
+                onChange={(e) =>
+                  setFormData((p) => ({ ...p, antiVoice: e.target.value }))
+                }
+                placeholder="Examples of off-brand voice. One per line. (Corporate-speak, salesy hype, a phrase you've sworn off…)"
+                rows={3}
+                className="w-full px-4 py-3 rounded-xl bg-elevated border border-border text-sm text-text placeholder:text-text-secondary/40 focus:border-accent/50 focus:outline-none focus:ring-1 focus:ring-accent/20 transition-colors resize-y"
+              />
+            </div>
+            <p className="text-[11px] text-text-secondary/50">
+              {validSamples === 0
+                ? `At least one sample of ${VOICE_SAMPLE_MIN_CHARS}+ characters required.`
+                : `${validSamples} sample${validSamples > 1 ? "s" : ""} ready — the AI will match your voice.`}
+            </p>
+          </div>
+        );
+      }
 
       default:
         return null;
@@ -1274,14 +1521,18 @@ function BrandReviewScreen({
 interface FormData {
   name: string;
   brokerage: string;
-  industry: string;
+  industry: string; // IndustryId when picked from taxonomy; free text when "other"
+  industryIsCustom: boolean; // true when user picked "Other" → industry is free text
   location: string;
+  mission: string;
   targetClient: string[];
   contentFocus: string[];
   platforms: string[];
   primaryColor: string;
   fontPairing: string;
   personality: string[];
+  voiceSamples: string[]; // length 3, may contain empty strings
+  antiVoice: string;
 }
 
 function formToAnswers(form: FormData): OnboardingAnswers {
@@ -1315,25 +1566,55 @@ function formToAnswers(form: FormData): OnboardingAnswers {
 
   const primaryTrait = form.personality[0] || "warm";
 
+  // Resolve target-client + content-focus labels from the active option set.
+  // When the user picked a known industry, pills came from IndustryDef; otherwise
+  // they came from the generic TARGET_OPTIONS / CONTENT_FOCUS_OPTIONS lists.
+  const industryDef = form.industryIsCustom
+    ? null
+    : getIndustry(form.industry) ?? null;
+
+  const targetOptions = industryDef
+    ? industryDef.clientArchetypes
+    : TARGET_OPTIONS;
+  const contentOptions = industryDef
+    ? industryDef.contentFocus
+    : CONTENT_FOCUS_OPTIONS;
+
+  const voiceSamples = form.voiceSamples
+    .map((s) => s.trim())
+    .filter((s) => s.length >= VOICE_SAMPLE_MIN_CHARS);
+
+  const antiVoiceList = form.antiVoice.trim()
+    ? form.antiVoice
+        .split(/\n+/)
+        .map((s) => s.trim())
+        .filter(Boolean)
+    : undefined;
+
   return {
     name: form.name || "Owner",
     brokerage: form.brokerage || undefined,
     industry: form.industry?.trim() || undefined,
+    profession: industryDef?.defaultProfessionTitle,
+    mission: form.mission.trim() || undefined,
     location: form.location || "Local Area",
     markets: form.location ? [form.location] : ["Local"],
-    targetClient: form.targetClient
-      .map((id) => TARGET_OPTIONS.find((o) => o.id === id)?.label)
-      .filter(Boolean)
-      .join(", ") || "Local customers",
+    targetClient:
+      form.targetClient
+        .map((id) => targetOptions.find((o) => o.id === id)?.label)
+        .filter(Boolean)
+        .join(", ") || "Local customers",
     personalityTraits: form.personality
       .map((id) => PERSONALITY_OPTIONS.find((o) => o.id === id)?.label)
       .filter((x): x is string => !!x),
     tonePreference: toneMap[primaryTrait] || "warm",
     contentFocus: form.contentFocus
-      .map((id) => CONTENT_FOCUS_OPTIONS.find((o) => o.id === id)?.label)
+      .map((id) => contentOptions.find((o) => o.id === id)?.label)
       .filter((x): x is string => !!x),
     brandColors: form.primaryColor ? [form.primaryColor] : undefined,
     fontPairing: form.fontPairing || undefined,
+    voiceSamples: voiceSamples.length > 0 ? voiceSamples : undefined,
+    antiVoice: antiVoiceList,
   };
 }
 
@@ -1350,13 +1631,17 @@ export default function OnboardingPage() {
     name: "",
     brokerage: "",
     industry: "",
+    industryIsCustom: false,
     location: "",
+    mission: "",
     targetClient: [],
     contentFocus: [],
     platforms: [],
     primaryColor: "",
     fontPairing: "",
     personality: [],
+    voiceSamples: ["", "", ""],
+    antiVoice: "",
   });
 
   useEffect(() => {
@@ -1391,6 +1676,15 @@ export default function OnboardingPage() {
         return formData.fontPairing.length > 0;
       case 6:
         return formData.personality.length > 0;
+      case 7:
+        // At least one voice sample must clear the minimum length so the
+        // synthesis call has something to ground on. If they're going to
+        // skip, they can leave all three blank — canContinue stays false
+        // until they enter one, which is the nudge we want for Phase 5
+        // to actually exercise the voice synthesis path.
+        return formData.voiceSamples.some(
+          (s) => s.trim().length >= VOICE_SAMPLE_MIN_CHARS,
+        );
       default:
         return true;
     }
