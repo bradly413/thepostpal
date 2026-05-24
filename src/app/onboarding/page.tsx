@@ -1741,6 +1741,20 @@ export default function OnboardingPage() {
     setSaving(true);
     try {
       localStorage.setItem("postpal-brand-book", JSON.stringify(brandBook));
+      // Persist the answers too — needed by the post-onboarding "refresh
+      // voice from your Instagram" flow (/api/brand-book/refresh-voice
+      // takes the same voice-relevant subset). Without this, refreshing
+      // would force the user to re-fill the wizard.
+      if (answersRef.current) {
+        try {
+          localStorage.setItem(
+            "postpal-onboarding-answers",
+            JSON.stringify(answersRef.current),
+          );
+        } catch {
+          /* localStorage quota; non-fatal */
+        }
+      }
       const { syncBrandBookToOrganization } = await import(
         "@/lib/onboarding-brand-sync"
       );

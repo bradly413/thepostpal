@@ -136,3 +136,70 @@ export async function getScheduledPosts(pageId: string, pageToken: string) {
   if (!res.ok) throw new Error(`Failed to fetch scheduled posts: ${await res.text()}`);
   return res.json();
 }
+
+// ─────────────────────────────────────────────────────────────
+//  Voice-sample harvesting — read-only fetch of post captions
+//  used by /api/meta/voice-samples to feed the brand-book
+//  voice synthesizer with the user's actual writing history.
+// ─────────────────────────────────────────────────────────────
+
+export interface RecentPost {
+  /** Caption / message body — empty string if the post is photo-only with no text. */
+  text: string;
+  /** ISO 8601 timestamp from Graph API. */
+  createdAt: string;
+}
+
+/**
+ * Fetch the most recent published Instagram media captions for an IG Business
+ * or Creator account. Requires `instagram_basic` scope (already in SCOPES).
+ * Returns captions newest-first, filtered to those with non-empty text.
+ */
+export async function getInstagramMedia(
+  igAccountId: string,
+  pageToken: string,
+  limit = 25,
+): Promise<RecentPost[]> {
+  const url = `${GRAPH}/${igAccountId}/media?fields=caption,timestamp,media_type&limit=${limit}&access_token=${pageToken}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Instagram media: ${await res.text()}`);
+  }
+  const json = (await res.json()) as {
+    data?: Array<{ caption?: string; timestamp?: string; media_type?: string }>;
+  };
+  const items = json.data ?? [];
+  return items
+    .map((m) => ({
+      text: typeof m.caption === "string" ? m.caption.trim() : "",
+      createdAt: m.timestamp || "",
+    }))
+    .filter((p) => p.text.length > 0);
+}
+
+/**
+ * Fetch the most recent published Facebook page posts. Requires
+ * `pages_read_engagement` scope (already in SCOPES). Returns post
+ * messages newest-first, filtered to those with non-empty text.
+ */
+export async function getFacebookPagePosts(
+  pageId: string,
+  pageToken: string,
+  limit = 25,
+): Promise<RecentPost[]> {
+  const url = `${GRAPH}/${pageId}/posts?fields=message,created_time&limit=${limit}&access_token=${pageToken}`;
+  const res = await fetch(url);
+  if (!res.ok) {
+    throw new Error(`Failed to fetch Facebook posts: ${await res.text()}`);
+  }
+  const json = (await res.json()) as {
+    data?: Array<{ message?: string; created_time?: string }>;
+  };
+  const items = json.data ?? [];
+  return items
+    .map((m) => ({
+      text: typeof m.message === "string" ? m.message.trim() : "",
+      createdAt: m.created_time || "",
+    }))
+    .filter((p) => p.text.length > 0);
+}
