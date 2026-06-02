@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
 import { AuthEmailExistsError, registerUserAccount } from "@/lib/auth-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { ensureTenantProvisioned } from "@/lib/tenant-provisioning";
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -45,9 +46,11 @@ export async function POST(request: NextRequest) {
 
   try {
     const sessionUser = await registerUserAccount({ firstName, lastName, email, password });
+    await ensureTenantProvisioned(sessionUser);
     const token = await createSession({
       role: sessionUser.role,
       sub: sessionUser.userId,
+      tenantId: sessionUser.accountId,
       accountId: sessionUser.accountId,
       accountName: sessionUser.accountName,
       email: sessionUser.email,

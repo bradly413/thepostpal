@@ -7,11 +7,13 @@ export interface SessionPayload extends JWTPayload {
   role: string;
   legacy?: boolean;
   sub?: string;
+  tenantId?: string;
   accountId?: string;
   accountName?: string;
   email?: string;
   firstName?: string;
   lastName?: string;
+  isSuperadmin?: boolean;
 }
 
 function getSecret() {
@@ -27,6 +29,15 @@ function getCredentials() {
   const username = process.env.PORTAL_USERNAME || "demo";
   const pw = process.env.PORTAL_PASSWORD || "demo123";
   return { username, password: pw };
+}
+
+function isSuperadminEmail(email?: string): boolean {
+  if (!email) return false;
+  const allowList = (process.env.POSTERBOY_SUPERADMIN_EMAILS || "")
+    .split(",")
+    .map((entry) => entry.trim().toLowerCase())
+    .filter(Boolean);
+  return allowList.includes(email.trim().toLowerCase());
 }
 
 async function verifyLegacyCredentials(identifier: string, password: string): Promise<boolean> {
@@ -45,16 +56,33 @@ export async function authenticateUser(identifier: string, password: string): Pr
     return {
       role: persistedUser.role,
       sub: persistedUser.userId,
+      tenantId: persistedUser.accountId,
       accountId: persistedUser.accountId,
       accountName: persistedUser.accountName,
       email: persistedUser.email,
       firstName: persistedUser.firstName,
       lastName: persistedUser.lastName,
+      isSuperadmin: isSuperadminEmail(persistedUser.email),
     };
   }
 
   if (await verifyLegacyCredentials(identifier, password)) {
-    return { role: "admin", legacy: true };
+    // Demo/portal login is now DB-backed: return a stable identity (fixed IDs
+    // so the same demo org/user persists across logins) and intentionally omit
+    // `legacy` so the auth route runs ensureTenantProvisioned() — this creates
+    // the demo Organization + User + a default "Main location" and lets the
+    // RLS-scoped dashboard endpoints work for the demo account.
+    return {
+      role: "admin",
+      sub: "demo-user",
+      tenantId: "demo-org",
+      accountId: "demo-org",
+      accountName: "Demo Workspace",
+      email: "demo@posterboysocial.com",
+      firstName: "Demo",
+      lastName: "User",
+      isSuperadmin: false,
+    };
   }
 
   return null;

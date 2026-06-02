@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, createSession } from "@/lib/auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { ensureTenantProvisioned } from "@/lib/tenant-provisioning";
 
 export async function POST(request: NextRequest) {
   const origin = request.headers.get("origin");
@@ -33,6 +34,23 @@ export async function POST(request: NextRequest) {
     const sessionPayload = await authenticateUser(loginIdentifier, password);
     if (!sessionPayload) {
       return NextResponse.json({ error: "Wrong password" }, { status: 401 });
+    }
+
+    if (!sessionPayload.legacy && sessionPayload.sub && sessionPayload.accountId && sessionPayload.email) {
+      await ensureTenantProvisioned({
+        userId: sessionPayload.sub,
+        accountId: sessionPayload.accountId,
+        accountName: sessionPayload.accountName || "Posterboy Social Workspace",
+        email: sessionPayload.email,
+        firstName: sessionPayload.firstName || "",
+        lastName: sessionPayload.lastName || "",
+        role:
+          sessionPayload.role === "owner" ||
+          sessionPayload.role === "admin" ||
+          sessionPayload.role === "member"
+            ? sessionPayload.role
+            : "member",
+      });
     }
 
     const token = await createSession(sessionPayload);

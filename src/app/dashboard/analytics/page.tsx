@@ -38,7 +38,7 @@ export default function AnalyticsPage() {
       <div className="pb-app-header flex flex-wrap items-start gap-4">
         <div className="flex-1">
           <h1>Workflow metrics</h1>
-          <p>Draft and approval counts from this browser — not Meta reach (beta).</p>
+          <p>Draft and approval activity — not Meta reach.</p>
         </div>
         <LocationSwitcher />
       </div>
