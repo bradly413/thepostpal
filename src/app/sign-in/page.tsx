@@ -9,7 +9,7 @@ import {
   SIGNIN_NEXT_DEFAULT,
   SIGNUP_NEXT_DEFAULT,
 } from "@/lib/safe-redirect";
-import { saveSelectedPlan } from "@/lib/plan-storage";
+import { getSelectedPlan, saveSelectedPlan } from "@/lib/plan-storage";
 import {
   hasBrandBook,
   isOnboardingComplete,
@@ -122,6 +122,7 @@ function SignInForm() {
           lastName,
           email,
           password: signupPassword,
+          plan: getSelectedPlan(),
         }),
       });
 

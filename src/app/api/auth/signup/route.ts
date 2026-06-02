@@ -22,7 +22,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { firstName, lastName, email, password } = await request.json();
+  const { firstName, lastName, email, password, plan } = await request.json();
 
   if (
     !firstName || !lastName || !email || !password ||
@@ -46,7 +46,10 @@ export async function POST(request: NextRequest) {
 
   try {
     const sessionUser = await registerUserAccount({ firstName, lastName, email, password });
-    await ensureTenantProvisioned(sessionUser);
+    await ensureTenantProvisioned(
+      sessionUser,
+      typeof plan === "string" ? plan : null,
+    );
     const token = await createSession({
       role: sessionUser.role,
       sub: sessionUser.userId,

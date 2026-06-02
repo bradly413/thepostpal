@@ -1,8 +1,12 @@
 import "server-only";
 
-import { Prisma } from "@prisma/client";
+import { Prisma, type PlanTier } from "@prisma/client";
 import { db } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth-store";
+import {
+  normalizePricingTierId,
+  pricingTierToOrganizationPlan,
+} from "@/lib/pricing";
 
 function deriveWorkspaceLabel(accountName: string): string {
   return accountName.replace(/\s+workspace$/i, "").trim() || "Main location";
@@ -26,7 +30,17 @@ function mapUserRole(role: SessionUser["role"]): string {
   return "member";
 }
 
-export async function ensureTenantProvisioned(user: SessionUser): Promise<void> {
+function resolveProvisionPlan(selectedPlan?: string | null): PlanTier {
+  const tier = normalizePricingTierId(selectedPlan) ?? "solo";
+  return pricingTierToOrganizationPlan(tier) ?? "solo";
+}
+
+export async function ensureTenantProvisioned(
+  user: SessionUser,
+  selectedPlan?: string | null,
+): Promise<void> {
+  const plan = resolveProvisionPlan(selectedPlan);
+
   await db.$transaction(async (tx) => {
     await tx.organization.upsert({
       where: { id: user.accountId },
@@ -38,7 +52,7 @@ export async function ensureTenantProvisioned(user: SessionUser): Promise<void> 
         name: user.accountName,
         businessType: "business",
         locationCount: 1,
-        plan: "solo",
+        plan,
       },
     });
 
