@@ -25,7 +25,6 @@ import {
   Move,
   RotateCw,
   SlidersHorizontal,
-  Frame as FrameIcon,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -354,13 +353,7 @@ export default function PosterboyStudio() {
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            <div className="post-select">
-              <div className="dim-chip dim-chip--static">
-                <FrameIcon size={15} />
-                <span className="post-label">Post</span>
-                <span className="post-meta">{platform.label} · {platform.w} × {platform.h}</span>
-              </div>
-            </div>
+            <div />
             <div className="top-toggles">
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
               <button className={theme === "grid" ? "active" : ""} onClick={() => setTheme("grid")}><LayoutGrid size={16} /></button>
@@ -389,16 +382,20 @@ export default function PosterboyStudio() {
             </div>
 
             {PLATFORMS.map((p, i) => (
-              <button
-                key={p.id}
-                type="button"
-                className={`rail-ico${platformIdx === i ? " active" : ""}`}
-                onClick={() => setPlatformIdx(i)}
-                aria-pressed={platformIdx === i}
-                title={`${p.label} · ${p.w} × ${p.h}`}
-              >
-                <PlatformIcon type={p.id} />
-              </button>
+              <div className="rail-item" key={p.id}>
+                <button
+                  type="button"
+                  className={`rail-ico${platformIdx === i ? " active" : ""}`}
+                  onClick={() => setPlatformIdx(i)}
+                  aria-pressed={platformIdx === i}
+                  title={`${p.label} · ${p.w} × ${p.h}`}
+                >
+                  <PlatformIcon type={p.id} />
+                </button>
+                {platformIdx === i && (
+                  <span className="rail-ico-label">{p.label} · {p.w} × {p.h}</span>
+                )}
+              </div>
             ))}
 
             <button
@@ -964,7 +961,24 @@ function StudioStyles() {
     color: #fff;
   }.pb-studio .tool-rail .rail-ico.active svg, .pb-studio .tool-rail .rail-ico.open svg {
     filter: drop-shadow(0 0 5px rgba(255,255,255,0.95)) drop-shadow(0 0 11px rgba(255,255,255,0.7)) drop-shadow(0 0 1px rgba(0,0,0,0.35));
-  }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; transition: filter 0.2s ease; }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
+  }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; transition: filter 0.2s ease; }.pb-studio .tool-rail .rail-ico-label {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #fff;
+    text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 11px rgba(255,255,255,0.65), 0 0 2px rgba(0,0,0,0.5);
+    pointer-events: none;
+    z-index: 19;
+    animation: pbsLabelIn 0.22s ease;
+  }@keyframes pbsLabelIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-5px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
     width: 20px;
     height: 1px;
     background: rgba(15,15,20,0.12);
