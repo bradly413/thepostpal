@@ -85,8 +85,9 @@ export async function POST(req: Request) {
     );
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  const anthropicKey = process.env.ANTHROPIC_API_KEY;
+  const geminiKey = process.env.GEMINI_API_KEY;
+  if (!anthropicKey && !geminiKey) {
     return Response.json(
       { error: "AI service not configured" },
       { status: 500 }
@@ -105,25 +106,54 @@ export async function POST(req: Request) {
   const templateContext = lastUserMsg
     ? buildTemplateContext(lastUserMsg.content, templateCatalog)
     : "";
-
-  const client = new Anthropic({ apiKey });
+  const systemPrompt = SYSTEM_PROMPT + knowledgeContext + templateContext;
+  const chat = messages.filter(
+    (m: { role: string }) => m.role === "user" || m.role === "assistant",
+  );
 
   try {
-    const response = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1500,
-      system: SYSTEM_PROMPT + knowledgeContext + templateContext,
-      messages: messages
-        .filter((m: { role: string }) => m.role === "user" || m.role === "assistant")
-        .map((m: { role: string; content: string }) => ({
+    // Prefer Claude (brand voice); fall back to Gemini when Anthropic
+    // isn't configured so captions / chat still generate.
+    if (anthropicKey) {
+      const client = new Anthropic({ apiKey: anthropicKey });
+      const response = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: chat.map((m: { role: string; content: string }) => ({
           role: m.role as "user" | "assistant",
           content: m.content,
         })),
-    });
+      });
+      const text =
+        response.content[0].type === "text" ? response.content[0].text : "";
+      return Response.json({ message: text });
+    }
 
-    const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
-
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey! },
+        body: JSON.stringify({
+          systemInstruction: { parts: [{ text: systemPrompt }] },
+          contents: chat.map((m: { role: string; content: string }) => ({
+            role: m.role === "assistant" ? "model" : "user",
+            parts: [{ text: m.content }],
+          })),
+          generationConfig: { maxOutputTokens: 1500 },
+        }),
+      },
+    );
+    const data = await res.json();
+    if (!res.ok) {
+      return Response.json(
+        { error: data?.error?.message || "AI request failed" },
+        { status: res.status },
+      );
+    }
+    const parts = data?.candidates?.[0]?.content?.parts || [];
+    const text = parts.map((p: { text?: string }) => p.text || "").join("");
     return Response.json({ message: text });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown error";
