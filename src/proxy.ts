@@ -26,6 +26,7 @@ const PUBLIC_PREFIXES = [
   "/brand/",
   "/videos/",
   "/api/auth",
+  "/api/webhooks",
 ];
 
 function isPublicPath(pathname: string): boolean {
