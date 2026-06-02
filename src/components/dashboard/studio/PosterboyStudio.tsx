@@ -117,10 +117,13 @@ export default function PosterboyStudio() {
   // preserving the post's aspect ratio (both dims as % so they transition).
   const platform = PLATFORMS[platformIdx];
   const frameRatio = platform.w / platform.h;
-  const frameSize =
+  // Size the frame to the post's aspect ratio (no fixed square stage) so
+  // every format fills its box consistently — landscape boards stay wide,
+  // portrait stays tall — and centers in the space above the prompt.
+  const frameWrapStyle =
     frameRatio >= 1
-      ? { width: "100%", height: `${(100 / frameRatio).toFixed(2)}%` }
-      : { width: `${(frameRatio * 100).toFixed(2)}%`, height: "100%" };
+      ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "58%" }
+      : { height: "min(58%, 560px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
 
   // Generation choreography — staged status text + warm color emergence.
   const statusText =
@@ -396,7 +399,10 @@ export default function PosterboyStudio() {
             </button>
           </div>
 
-          <div className={`frame-wrap${showTemplate ? " as-post" : ""}`}>
+          <div
+            className={`frame-wrap${showTemplate ? " as-post" : ""}`}
+            style={showTemplate ? undefined : frameWrapStyle}
+          >
             {showTemplate && (
               <div className="ptpl-head">
                 <span className="ptpl-avatar" />
@@ -406,7 +412,7 @@ export default function PosterboyStudio() {
             )}
             <div
               className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}
-              style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : frameSize}
+              style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : { width: "100%", height: "100%" }}
             >
               <div className="emerge" style={{ opacity: emergeOpacity }} />
               <div className="preview" style={previewStyle} />
@@ -1033,15 +1039,13 @@ function StudioStyles() {
   }.pb-studio /* The glowing magic frame */
   .frame-wrap {
     position: absolute;
-    top: 50%;
+    top: calc((100% - 132px) / 2);
     left: 50%;
-    transform: translate(-50%, -54%);
-    width: 56%;
-    max-width: 600px;
-    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
     z-index: 10;
     display: grid;
     place-items: center;
+    transition: width 0.5s cubic-bezier(0.65, 0, 0.35, 1), height 0.5s cubic-bezier(0.65, 0, 0.35, 1);
   }.pb-studio /* Glow spill behind the frame */
   .frame-wrap::before {
     content: '';
@@ -1288,6 +1292,7 @@ function StudioStyles() {
     max-width: 380px;
     height: auto;
     max-height: 94%;
+    top: 50%;
     transform: translate(-50%, -55%);
     display: flex;
     flex-direction: column;
