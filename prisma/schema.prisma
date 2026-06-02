@@ -477,14 +477,17 @@ model AnalyticsSnapshot {
 }
 
 model Subscription {
-  id               String       @id @default(cuid())
-  organizationId   String
-  organization     Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
-  plan             PlanTier
-  status           String       @default("active")
-  stripeCustomerId String?
-  createdAt        DateTime     @default(now())
-  updatedAt        DateTime     @updatedAt
+  id                     String       @id @default(cuid())
+  organizationId         String
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   PlanTier
+  status                 String       @default("active")
+  stripeCustomerId       String?
+  stripeSubscriptionId   String?      @unique
+  stripeLocationItemId   String?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
 
   @@unique([organizationId])
+  @@index([stripeCustomerId])
 }

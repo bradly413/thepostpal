@@ -1558,3 +1558,42 @@
   text-shadow: 0 1px 3px rgba(0, 0, 0, 0.55);
   line-height: 1;
 }
+
+/* Landing — pricing + footer mobile rhythm (June 2026) */
+@media (max-width: 640px) {
+  .pb-marketing-site #pricing {
+    padding-top: clamp(56px, 10vh, 88px) !important;
+    padding-bottom: clamp(48px, 8vh, 72px) !important;
+  }
+
+  .pb-marketing-site #pricing .price-card {
+    gap: 1.15em !important;
+    padding: clamp(22px, 5vw, 28px) !important;
+    border-radius: 20px !important;
+  }
+
+  .pb-marketing-site #pricing .price-card ul li {
+    padding: 0.45em 0 !important;
+  }
+
+  .pb-marketing-site #pricing .neu-btn {
+    min-height: 44px;
+    font-size: 14px;
+  }
+
+  .pb-marketing-site #footer {
+    padding-top: clamp(40px, 8vh, 64px) !important;
+    padding-bottom: clamp(20px, 4vh, 32px) !important;
+  }
+
+  .pb-marketing-site #footer p.type-caption {
+    font-size: 12px !important;
+    line-height: 1.55 !important;
+    max-width: 100% !important;
+  }
+
+  .pb-marketing-site #footer a.type-caption {
+    margin-bottom: 0.65em !important;
+    font-size: 12px !important;
+  }
+}
