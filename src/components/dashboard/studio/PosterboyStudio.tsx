@@ -20,6 +20,11 @@ import {
   Heart,
   MessageCircle,
   Bookmark,
+  Crop,
+  Maximize2,
+  Move,
+  RotateCw,
+  SlidersHorizontal,
   Frame as FrameIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -518,16 +523,6 @@ export default function PosterboyStudio() {
                 <div className="ptpl-time">5 days ago</div>
               </div>
             )}
-            {genState === "done" && !showTemplate && (
-              <button
-                type="button"
-                className="confirm-check"
-                onClick={confirmToTemplate}
-                aria-label="Confirm — preview as post"
-              >
-                <Check size={20} strokeWidth={2.5} />
-              </button>
-            )}
             {showTemplate && (
               <button
                 type="button"
@@ -539,6 +534,27 @@ export default function PosterboyStudio() {
               </button>
             )}
           </div>
+
+          {/* Image edit tools — right of the image, mirrors the left rail */}
+          {genState === "done" && !showTemplate && (
+            <div className="tool-rail edit-rail">
+              <button type="button" className="rail-ico" title="Crop"><Crop size={19} /></button>
+              <button type="button" className="rail-ico" title="Scale"><Maximize2 size={19} /></button>
+              <button type="button" className="rail-ico" title="Move"><Move size={19} /></button>
+              <button type="button" className="rail-ico" title="Rotate"><RotateCw size={19} /></button>
+              <button type="button" className="rail-ico" title="Adjust"><SlidersHorizontal size={19} /></button>
+              <span className="rail-div" />
+              <button
+                type="button"
+                className="rail-ico rail-confirm"
+                onClick={confirmToTemplate}
+                title="Confirm — preview as post"
+                aria-label="Confirm — preview as post"
+              >
+                <Check size={19} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
 
           {error ? (
             <div className="studio-error">
@@ -930,7 +946,7 @@ function StudioStyles() {
   }.pb-studio .tool-rail .rail-publish:not(:disabled) {
     color: #fff;
     background: var(--ink);
-  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .tool-rail .rail-pop {
+  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail .rail-pop {
     position: absolute;
     left: calc(100% + 12px);
     top: 50%;
