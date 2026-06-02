@@ -64,10 +64,8 @@ type GenState = "idle" | "generating" | "done";
 
 export default function PosterboyStudio() {
   const [platformIdx, setPlatformIdx] = useState(0);
-  const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "grid">("light");
   const [postType, setPostType] = useState<PostType>("photo");
-  const [channels, setChannels] = useState<Set<string>>(new Set(["instagram"]));
   const [when, setWhen] = useState<WhenOption>("now");
   const [prompt, setPrompt] = useState("");
   const [genState, setGenState] = useState<GenState>("idle");
@@ -84,7 +82,6 @@ export default function PosterboyStudio() {
   const [edit, setEdit] = useState(EDIT_DEFAULT);
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const postSelectRef = useRef<HTMLDivElement>(null);
   const toolRailRef = useRef<HTMLDivElement>(null);
   const editRailRef = useRef<HTMLDivElement>(null);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -92,18 +89,6 @@ export default function PosterboyStudio() {
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
   }, []);
-
-  // Close the post-format menu on outside click.
-  useEffect(() => {
-    if (!formatMenuOpen) return;
-    const onDocClick = (e: MouseEvent) => {
-      if (!postSelectRef.current?.contains(e.target as Node)) {
-        setFormatMenuOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", onDocClick);
-    return () => document.removeEventListener("mousedown", onDocClick);
-  }, [formatMenuOpen]);
 
   // Close the tool-rail popover on outside click.
   useEffect(() => {
@@ -161,13 +146,6 @@ export default function PosterboyStudio() {
   useEffect(() => () => {
     if (genTimer.current) clearInterval(genTimer.current);
   }, []);
-
-  const toggleChannel = (id: string) =>
-    setChannels((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
 
   const generate = async () => {
     if (!prompt.trim() || genState === "generating") {
@@ -311,17 +289,16 @@ export default function PosterboyStudio() {
       inputRef.current?.focus();
       return;
     }
-    const platform =
-      channels.has("instagram") && channels.has("facebook")
-        ? "both"
-        : channels.has("instagram")
-          ? "instagram"
-          : "facebook";
+    const target = platform.id === "facebook" ? "facebook" : platform.id === "instagram" ? "instagram" : null;
+    if (!target) {
+      setError(`Direct publishing to ${platform.label} isn't available yet — it posts to Instagram or Facebook.`);
+      return;
+    }
 
     try {
       const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
       const payload = await buildMetaPublishPayload({
-        platform,
+        platform: target,
         caption: prompt.trim() || "Posted with Posterboy Studio",
         imageUrl: generatedUrl,
       });
@@ -377,38 +354,12 @@ export default function PosterboyStudio() {
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            <div className="post-select" ref={postSelectRef}>
-              <button
-                type="button"
-                className={`dim-chip${formatMenuOpen ? " open" : ""}`}
-                onClick={() => setFormatMenuOpen((o) => !o)}
-                aria-haspopup="listbox"
-                aria-expanded={formatMenuOpen}
-              >
+            <div className="post-select">
+              <div className="dim-chip dim-chip--static">
                 <FrameIcon size={15} />
                 <span className="post-label">Post</span>
                 <span className="post-meta">{platform.label} · {platform.w} × {platform.h}</span>
-                <ChevronDown className="chev" size={14} />
-              </button>
-              {formatMenuOpen && (
-                <ul className="post-menu" role="listbox">
-                  {PLATFORMS.map((p, i) => (
-                    <li key={p.id} role="option" aria-selected={i === platformIdx}>
-                      <button
-                        type="button"
-                        className={`post-option${i === platformIdx ? " active" : ""}`}
-                        onClick={() => {
-                          setPlatformIdx(i);
-                          setFormatMenuOpen(false);
-                        }}
-                      >
-                        <span className="po-name">{p.label}</span>
-                        <span className="po-dim">{p.w} × {p.h}</span>
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
+              </div>
             </div>
             <div className="top-toggles">
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
@@ -437,24 +388,18 @@ export default function PosterboyStudio() {
               )}
             </div>
 
-            <button
-              type="button"
-              className={`rail-ico${channels.has("instagram") ? " active" : ""}`}
-              onClick={() => toggleChannel("instagram")}
-              aria-pressed={channels.has("instagram")}
-              title="Instagram"
-            >
-              <ChannelIcon type="instagram" />
-            </button>
-            <button
-              type="button"
-              className={`rail-ico${channels.has("facebook") ? " active" : ""}`}
-              onClick={() => toggleChannel("facebook")}
-              aria-pressed={channels.has("facebook")}
-              title="Facebook"
-            >
-              <ChannelIcon type="facebook" />
-            </button>
+            {PLATFORMS.map((p, i) => (
+              <button
+                key={p.id}
+                type="button"
+                className={`rail-ico${platformIdx === i ? " active" : ""}`}
+                onClick={() => setPlatformIdx(i)}
+                aria-pressed={platformIdx === i}
+                title={`${p.label} · ${p.w} × ${p.h}`}
+              >
+                <PlatformIcon type={p.id} />
+              </button>
+            ))}
 
             <button
               type="button"
@@ -660,7 +605,7 @@ export default function PosterboyStudio() {
   );
 }
 
-function ChannelIcon({ type }: { type: "instagram" | "facebook" }) {
+function PlatformIcon({ type }: { type: string }) {
   if (type === "instagram") {
     return (
       <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
@@ -670,9 +615,31 @@ function ChannelIcon({ type }: { type: "instagram" | "facebook" }) {
       </svg>
     );
   }
+  if (type === "facebook") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (type === "x") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.65l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+      </svg>
+    );
+  }
+  if (type === "linkedin") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+        <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0Z" />
+      </svg>
+    );
+  }
+  // tiktok
   return (
-    <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-      <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+      <path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.2v12.93a2.59 2.59 0 0 1-2.59 2.5 2.59 2.59 0 0 1 0-5.18c.27 0 .52.04.77.12V9.91a5.85 5.85 0 0 0-.77-.05 5.8 5.8 0 1 0 5.8 5.8V9.01a7.5 7.5 0 0 0 4.38 1.4V7.2a4.28 4.28 0 0 1-3.33-1.38Z" />
     </svg>
   );
 }
@@ -928,7 +895,7 @@ function StudioStyles() {
     color: var(--ink);
     cursor: pointer;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip .post-label { font-weight: 600; }.pb-studio .dim-chip .post-meta { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }.pb-studio .dim-chip .chev { color: var(--muted); transition: transform 0.2s ease; }.pb-studio .dim-chip.open .chev { transform: rotate(180deg); }.pb-studio .post-select { position: relative; }.pb-studio .post-menu {
+  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip--static { cursor: default; }.pb-studio .dim-chip .post-label { font-weight: 600; }.pb-studio .dim-chip .post-meta { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }.pb-studio .dim-chip .chev { color: var(--muted); transition: transform 0.2s ease; }.pb-studio .dim-chip.open .chev { transform: rotate(180deg); }.pb-studio .post-select { position: relative; }.pb-studio .post-menu {
     position: absolute;
     top: calc(100% + 8px);
     left: 0;
