@@ -5,7 +5,7 @@ import Link from "next/link";
 import { templates as staticTemplates, type Template } from "@/lib/templates";
 import { toPng } from "html-to-image";
 import TemplateCanvas from "@/components/TemplateCanvas";
-import { getMetaConnection } from "@/lib/meta-store";
+import { useMetaConnection } from "@/lib/use-meta-connection";
 import { createDashboardPost } from "@/lib/dashboard-api";
 import {
   platformsFromCalendarPlatform,
@@ -142,7 +142,7 @@ export default function EditorPage({
     return () => clearInterval(interval);
   }, [caption]);
 
-  const meta = typeof window !== "undefined" ? getMetaConnection() : null;
+  const { meta } = useMetaConnection();
   const { containerRef, scale } = useCanvasScale(template);
 
   const [, setPhotosTick] = useState(0);

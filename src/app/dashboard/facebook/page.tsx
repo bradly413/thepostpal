@@ -4,7 +4,8 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import type { ScheduledPost } from "@/lib/schedule-store";
 import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
-import { getMetaConnection } from "@/lib/meta-store";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
 interface PageInsights {
   name?: string;
@@ -31,16 +32,15 @@ export default function FacebookPage() {
   const [pageData, setPageData] = useState<PageInsights | null>(null);
   const [fbPosts, setFbPosts] = useState<FBPost[]>([]);
   const [loading, setLoading] = useState(true);
-  const meta = typeof window !== "undefined" ? getMetaConnection() : null;
+  const { meta } = useMetaConnection();
 
   useEffect(() => {
-    if (!meta?.connected) {
+    const locationId = getStoredActiveLocationId();
+    if (!meta?.connected || !locationId) {
       setLoading(false);
       return;
     }
-    fetch(
-      `/api/meta/insights?pageId=${meta.pageId}&pageToken=${meta.pageToken}${meta.igAccountId ? `&igAccountId=${meta.igAccountId}` : ""}`
-    )
+    fetch(`/api/meta/insights?locationId=${encodeURIComponent(locationId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.page) setPageData(data.page);
@@ -48,7 +48,7 @@ export default function FacebookPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [meta?.connected, meta?.pageId, meta?.pageToken, meta?.igAccountId]);
+  }, [meta?.connected]);
 
   const scheduled = posts.filter((p) => p.status === "scheduled");
   const published = posts.filter((p) => p.status === "published");

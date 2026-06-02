@@ -5,7 +5,8 @@ import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
 import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
-import { getMetaConnection } from "@/lib/meta-store";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { buildMetaPublishPayload } from "@/lib/meta-publish-payload";
 import { SITE_NAME } from "@/lib/site";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
@@ -106,7 +107,7 @@ export default function CalendarPage() {
   const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
 
-  const meta = typeof window !== "undefined" ? getMetaConnection() : null;
+  const { meta } = useMetaConnection();
   const features = usePlanFeatures();
   const { locationId } = useActiveLocation();
   const loadPosts = useCallback(async () => {
@@ -298,17 +299,16 @@ export default function CalendarPage() {
         const scheduledAt = new Date(`${selectedDate}T${formTime}`);
         const unixTime = Math.floor(scheduledAt.getTime() / 1000);
 
+        const payload = await buildMetaPublishPayload({
+          platform: formPlatform,
+          caption: formCaption,
+          imageUrl: "",
+          scheduledTime: unixTime,
+        });
         const res = await fetch("/api/meta/publish", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            platform: formPlatform,
-            pageId: meta.pageId,
-            pageToken: meta.pageToken,
-            igAccountId: meta.igAccountId,
-            caption: formCaption,
-            scheduledTime: unixTime,
-          }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Scheduling failed");

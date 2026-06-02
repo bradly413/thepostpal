@@ -1,6 +1,7 @@
 "use client";
 
 import type { DraftStatus, SocialPlatform } from "@/lib/posterboy-types";
+import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 
 export interface DashboardApiErrorShape {
   error?: string;
@@ -145,6 +146,26 @@ export async function submitDashboardPost(id: string): Promise<void> {
   await apiRequest(`/api/posts/${id}/submit-for-approval`, {
     method: "POST",
   });
+}
+
+// ── Meta (Facebook / Instagram bundle per location) ─────────
+
+export async function fetchDashboardMetaConnection(
+  locationId: string,
+): Promise<MetaConnectionPublic | null> {
+  const data = await apiRequest<{ connection: MetaConnectionPublic | null }>(
+    `/api/social-connections/meta?locationId=${encodeURIComponent(locationId)}`,
+  );
+  return data.connection;
+}
+
+export async function disconnectDashboardMetaConnection(
+  locationId: string,
+): Promise<void> {
+  await apiRequest(
+    `/api/social-connections/meta?locationId=${encodeURIComponent(locationId)}`,
+    { method: "DELETE" },
+  );
 }
 
 // ── Photos ──────────────────────────────────────────────────

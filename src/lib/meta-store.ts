@@ -1,29 +1,22 @@
-const STORAGE_KEY = "meta-connection";
+/**
+ * @deprecated Use `useMetaConnection()` and `/api/social-connections/meta` instead.
+ * Tokens are stored on `SocialConnection` rows, not in localStorage.
+ */
+export type { MetaConnectionPublic as MetaConnection } from "@/lib/meta-connection-types";
 
-export interface MetaConnection {
-  connected: boolean;
-  pageName: string;
-  pageId: string;
-  pageToken: string;
-  igAccountId: string | null;
-  connectedAt: string;
-}
-
-export function getMetaConnection(): MetaConnection | null {
-  if (typeof window === "undefined") return null;
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) return null;
-    return JSON.parse(raw);
-  } catch {
-    return null;
+export function getMetaConnection(): null {
+  if (typeof window !== "undefined") {
+    console.warn("getMetaConnection() is deprecated — use useMetaConnection() instead.");
   }
+  return null;
 }
 
-export function saveMetaConnection(data: MetaConnection) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+export function saveMetaConnection(): void {
+  console.warn("saveMetaConnection() is deprecated — Meta connections persist via OAuth callback.");
 }
 
-export function clearMetaConnection() {
-  localStorage.removeItem(STORAGE_KEY);
+export function clearMetaConnection(): void {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem("meta-connection");
+  }
 }
