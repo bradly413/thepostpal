@@ -1210,6 +1210,8 @@
   max-width: 1100px;
   margin: 0 auto;
   gap: 0;
+  border-top: 1px solid var(--newsprint);
+  border-left: 1px solid var(--newsprint);
 }
 
 .pb-marketing-site .pb-cal-day {
@@ -1220,6 +1222,8 @@
   font-size: clamp(11px, 1.35vw, 15px);
   line-height: 1;
   box-sizing: border-box;
+  border-right: 1px solid var(--newsprint);
+  border-bottom: 1px solid var(--newsprint);
 }
 
 .pb-marketing-site .pb-cal-day--blank {
