@@ -6,7 +6,12 @@ import { templates as staticTemplates, type Template } from "@/lib/templates";
 import { toPng } from "html-to-image";
 import TemplateCanvas from "@/components/TemplateCanvas";
 import { getMetaConnection } from "@/lib/meta-store";
-import { addScheduledPost } from "@/lib/schedule-store";
+import { createDashboardPost } from "@/lib/dashboard-api";
+import {
+  platformsFromCalendarPlatform,
+  scheduledForIso,
+} from "@/lib/scheduled-post-mappers";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { getUserPhotos, saveUserPhoto, BRAND_PHOTOS, type StoredPhoto } from "@/lib/photo-store";
 
 const CAPTION_SUGGESTIONS = [
@@ -305,16 +310,18 @@ export default function EditorPage({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scheduling failed");
 
-      addScheduledPost({
-        templateId: template!.id,
-        templateName: template!.name,
-        platform: schedulePlatform,
-        date: scheduleDate,
-        time: scheduleTime,
-        caption,
-        status: "scheduled",
-        pillar: template!.pillar,
-      });
+      const locationId = getStoredActiveLocationId();
+      if (locationId) {
+        await createDashboardPost({
+          locationId,
+          copy: caption,
+          platforms: platformsFromCalendarPlatform(schedulePlatform),
+          scheduledFor: scheduledForIso(scheduleDate, scheduleTime),
+          status: "scheduled",
+          templateId: template!.id,
+          pillar: template!.pillar,
+        });
+      }
 
       setPublishResult({ type: "success", message: `Scheduled for ${scheduledAt.toLocaleDateString()} at ${scheduledAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` });
       setShowSchedule(false);

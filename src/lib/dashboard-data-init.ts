@@ -1,4 +1,3 @@
-import { seedDemoDrafts } from "./drafts-store";
 import { getOrganization, seedDemoOrganization } from "./organization-store";
 import {
   getStoredBrandBook,
@@ -18,5 +17,4 @@ export function ensureDashboardData(): void {
     }
   }
 
-  seedDemoDrafts();
 }

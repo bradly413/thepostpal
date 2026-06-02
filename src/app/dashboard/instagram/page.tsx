@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getScheduledPosts, type ScheduledPost } from "@/lib/schedule-store";
+import type { ScheduledPost } from "@/lib/schedule-store";
+import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
 import { getMetaConnection } from "@/lib/meta-store";
 
 interface IGProfile {
@@ -26,19 +27,14 @@ interface IGMedia {
 }
 
 export default function InstagramPage() {
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const { posts: allPosts } = useDashboardScheduledPosts();
+  const posts = allPosts.filter(
+    (p) => p.platform === "instagram" || p.platform === "both",
+  );
   const [profile, setProfile] = useState<IGProfile | null>(null);
   const [media, setMedia] = useState<IGMedia[]>([]);
   const [loading, setLoading] = useState(true);
   const meta = typeof window !== "undefined" ? getMetaConnection() : null;
-
-  useEffect(() => {
-    setPosts(
-      getScheduledPosts().filter(
-        (p) => p.platform === "instagram" || p.platform === "both"
-      )
-    );
-  }, []);
 
   useEffect(() => {
     if (!meta?.connected || !meta.igAccountId) {

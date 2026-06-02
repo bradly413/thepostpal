@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getScheduledPosts, type ScheduledPost } from "@/lib/schedule-store";
+import type { ScheduledPost } from "@/lib/schedule-store";
+import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
 import { getMetaConnection } from "@/lib/meta-store";
 
 interface PageInsights {
@@ -23,19 +24,14 @@ interface FBPost {
 }
 
 export default function FacebookPage() {
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const { posts: allPosts } = useDashboardScheduledPosts();
+  const posts = allPosts.filter(
+    (p) => p.platform === "facebook" || p.platform === "both",
+  );
   const [pageData, setPageData] = useState<PageInsights | null>(null);
   const [fbPosts, setFbPosts] = useState<FBPost[]>([]);
   const [loading, setLoading] = useState(true);
   const meta = typeof window !== "undefined" ? getMetaConnection() : null;
-
-  useEffect(() => {
-    setPosts(
-      getScheduledPosts().filter(
-        (p) => p.platform === "facebook" || p.platform === "both"
-      )
-    );
-  }, []);
 
   useEffect(() => {
     if (!meta?.connected) {
