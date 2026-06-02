@@ -1,11 +1,14 @@
+import { Prisma, PrismaClient } from "@prisma/client";
 import { db } from "@/lib/db";
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
 
 function subItemIdForAccount(accountId: string, productKey: string): string {
   return `${accountId}:${productKey}`;
 }
 
-export async function syncLocationBilling(accountId: string) {
-  const activeCount = await db.location.count({
+export async function syncLocationBilling(accountId: string, client: DbClient = db) {
+  const activeCount = await client.location.count({
     where: { organizationId: accountId, status: "ACTIVE" },
   });
   const billableCount = Math.max(0, activeCount - 3);
@@ -30,4 +33,3 @@ export async function syncLocationBilling(accountId: string) {
     prorationBehavior: "create_prorations",
   };
 }
-

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { withTenantDb } from "@/lib/db";
 import { resolveAccess } from "@/lib/authz";
 import { loadApprovalByScheduledPostId, applyAndPersistTransition } from "@/lib/post-approval-service";
 
@@ -11,24 +12,26 @@ export async function POST(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const auth = await requireAuthContext();
-    const approval = await loadApprovalByScheduledPostId(id, auth.organizationId);
-    if (!approval) return NextResponse.json({ error: "Approval not found" }, { status: 404 });
+    return await withTenantDb(auth, async (tx) => {
+      const approval = await loadApprovalByScheduledPostId(id, auth.tenantId, tx);
+      if (!approval) return NextResponse.json({ error: "Approval not found" }, { status: 404 });
 
-    const access = await resolveAccess(auth.userId, approval.locationId);
-    if (!access.hasAccess || !access.canApprove) {
-      return NextResponse.json({ error: "Reviewer access required" }, { status: 403 });
-    }
+      const access = await resolveAccess(auth.userId, approval.locationId, tx);
+      if (!access.hasAccess || !access.canApprove) {
+        return NextResponse.json({ error: "Reviewer access required" }, { status: 403 });
+      }
 
-    const result = await applyAndPersistTransition(approval.id, auth.userId, {
-      type: "reject",
-      actorUserId: auth.userId,
+      const result = await applyAndPersistTransition(approval.id, auth.userId, {
+        type: "reject",
+        actorUserId: auth.userId,
+      }, tx);
+
+      if (!result.ok) {
+        return NextResponse.json({ error: result.reason }, { status: 409 });
+      }
+
+      return NextResponse.json({ approval: result.approval });
     });
-
-    if (!result.ok) {
-      return NextResponse.json({ error: result.reason }, { status: 409 });
-    }
-
-    return NextResponse.json({ approval: result.approval });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

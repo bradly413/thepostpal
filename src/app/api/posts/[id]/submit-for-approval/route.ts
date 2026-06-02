@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 
@@ -11,64 +11,65 @@ export async function POST(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const auth = await requireAuthContext();
-
-    const post = await db.scheduledPost.findFirst({
-      where: { id, organizationId: auth.organizationId },
-      include: { location: { include: { approvalRule: true } } },
-    });
-
-    if (!post) {
-      return NextResponse.json({ error: "Post not found" }, { status: 404 });
-    }
-
-    if (!post.locationId || !post.location) {
-      return NextResponse.json({ error: "Post location is required" }, { status: 400 });
-    }
-
-    const access = await resolveAccess(auth.userId, post.locationId);
-    if (!access.hasAccess) {
-      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
-    }
-
-    const requiresApproval = post.location.approvalRule?.requiresApproval ?? false;
-    if (!requiresApproval) {
-      const scheduled = await db.scheduledPost.update({
-        where: { id: post.id },
-        data: { status: "scheduled" },
+    return await withTenantDb(auth, async (tx) => {
+      const post = await tx.scheduledPost.findFirst({
+        where: { id, organizationId: auth.tenantId },
+        include: { location: { include: { approvalRule: true } } },
       });
-      return NextResponse.json({ post: scheduled, status: "SCHEDULED" });
-    }
 
-    const approval = await db.postApproval.upsert({
-      where: { scheduledPostId: post.id },
-      create: {
-        scheduledPostId: post.id,
-        locationId: post.locationId,
-        status: "PENDING_REVIEW",
-        submittedByUserId: auth.userId,
-      },
-      update: {
-        status: "PENDING_REVIEW",
-        submittedByUserId: auth.userId,
-        reviewedByUserId: null,
-        reviewedAt: null,
-      },
+      if (!post) {
+        return NextResponse.json({ error: "Post not found" }, { status: 404 });
+      }
+
+      if (!post.locationId || !post.location) {
+        return NextResponse.json({ error: "Post location is required" }, { status: 400 });
+      }
+
+      const access = await resolveAccess(auth.userId, post.locationId, tx);
+      if (!access.hasAccess) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
+
+      const requiresApproval = post.location.approvalRule?.requiresApproval ?? false;
+      if (!requiresApproval) {
+        const scheduled = await tx.scheduledPost.update({
+          where: { id: post.id },
+          data: { status: "scheduled" },
+        });
+        return NextResponse.json({ post: scheduled, status: "SCHEDULED" });
+      }
+
+      const approval = await tx.postApproval.upsert({
+        where: { scheduledPostId: post.id },
+        create: {
+          scheduledPostId: post.id,
+          locationId: post.locationId,
+          status: "PENDING_REVIEW",
+          submittedByUserId: auth.userId,
+        },
+        update: {
+          status: "PENDING_REVIEW",
+          submittedByUserId: auth.userId,
+          reviewedByUserId: null,
+          reviewedAt: null,
+        },
+      });
+
+      await tx.approvalEvent.create({
+        data: {
+          postApprovalId: approval.id,
+          actorUserId: auth.userId,
+          action: "SUBMITTED",
+        },
+      });
+
+      await tx.scheduledPost.update({
+        where: { id: post.id },
+        data: { status: "needs_review" },
+      });
+
+      return NextResponse.json({ approval, status: "PENDING_REVIEW" });
     });
-
-    await db.approvalEvent.create({
-      data: {
-        postApprovalId: approval.id,
-        actorUserId: auth.userId,
-        action: "SUBMITTED",
-      },
-    });
-
-    await db.scheduledPost.update({
-      where: { id: post.id },
-      data: { status: "needs_review" },
-    });
-
-    return NextResponse.json({ approval, status: "PENDING_REVIEW" });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

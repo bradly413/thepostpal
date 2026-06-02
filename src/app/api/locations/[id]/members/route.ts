@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { LocationRole } from "@prisma/client";
-import { db } from "@/lib/db";
+import { withTenantDb } from "@/lib/db";
+import { requireAuthContext } from "@/lib/api-auth";
 import { requireLocationAccess } from "@/lib/location-api";
 
 interface Params {
@@ -18,13 +19,16 @@ function normalizeRole(input: unknown): LocationRole | null {
 export async function GET(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR" });
-    const members = await db.locationMembership.findMany({
-      where: { locationId: id },
-      include: { user: { select: { id: true, email: true, name: true, role: true } } },
-      orderBy: { createdAt: "asc" },
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR", dbClient: tx });
+      const members = await tx.locationMembership.findMany({
+        where: { locationId: id },
+        include: { user: { select: { id: true, email: true, name: true, role: true } } },
+        orderBy: { createdAt: "asc" },
+      });
+      return NextResponse.json({ members });
     });
-    return NextResponse.json({ members });
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -33,39 +37,42 @@ export async function GET(_: NextRequest, { params }: Params) {
 export async function POST(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    const { auth } = await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN" });
-    const body = await request.json();
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN", dbClient: tx });
+      const body = await request.json();
 
-    const userId = typeof body.userId === "string" ? body.userId : "";
-    const role = normalizeRole(body.role);
+      const userId = typeof body.userId === "string" ? body.userId : "";
+      const role = normalizeRole(body.role);
 
-    if (!userId || !role) {
-      return NextResponse.json({ error: "userId and valid role are required" }, { status: 400 });
-    }
+      if (!userId || !role) {
+        return NextResponse.json({ error: "userId and valid role are required" }, { status: 400 });
+      }
 
-    const user = await db.user.findFirst({ where: { id: userId, organizationId: auth.organizationId } });
-    if (!user) {
-      return NextResponse.json({ error: "User not found in account" }, { status: 404 });
-    }
+      const user = await tx.user.findFirst({ where: { id: userId, organizationId: auth.tenantId } });
+      if (!user) {
+        return NextResponse.json({ error: "User not found in account" }, { status: 404 });
+      }
 
-    const membership = await db.locationMembership.upsert({
-      where: {
-        locationId_userId: {
+      const membership = await tx.locationMembership.upsert({
+        where: {
+          locationId_userId: {
+            locationId: id,
+            userId,
+          },
+        },
+        create: {
           locationId: id,
           userId,
+          role,
         },
-      },
-      create: {
-        locationId: id,
-        userId,
-        role,
-      },
-      update: {
-        role,
-      },
-    });
+        update: {
+          role,
+        },
+      });
 
-    return NextResponse.json({ membership }, { status: 201 });
+      return NextResponse.json({ membership }, { status: 201 });
+    });
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

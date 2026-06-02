@@ -311,6 +311,7 @@ model CalendarEvent {
   location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
   title          String
   description    String?
+  type           String?
   startsAt       DateTime
   endsAt         DateTime?
   createdAt      DateTime     @default(now())

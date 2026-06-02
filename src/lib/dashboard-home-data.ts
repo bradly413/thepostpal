@@ -1,14 +1,11 @@
 import {
-  countByStatus,
-  getDrafts,
-  getDraftsByStatus,
-  getDraftsNeedingReview,
-  getScheduledDrafts,
-} from "@/lib/drafts-store";
-import { getActiveLocation, getOrganization } from "@/lib/organization-store";
-import { seedDemoIssues } from "@/lib/issues-store";
-import { ensureDashboardData } from "@/lib/dashboard-data-init";
-import type { Draft, DraftStatus } from "@/lib/posterboy-types";
+  fetchDashboardLocations,
+  fetchDashboardPosts,
+  type DashboardLocationRecord,
+  type DashboardPostRecord,
+} from "@/lib/dashboard-api";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
+import type { DraftStatus } from "@/lib/posterboy-types";
 
 const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",
@@ -31,9 +28,9 @@ export interface DashboardHomeSnapshot {
   userInitials: string;
   brandVoiceLine: string;
   brandVoiceSub: string;
-  nextUp: Draft | null;
+  nextUp: DashboardPostRecord | null;
   nextUpImage: string;
-  recentPosts: Draft[];
+  recentPosts: DashboardPostRecord[];
   pendingCount: number;
   scheduledCount: number;
   hoursSaved: number;
@@ -63,16 +60,15 @@ function formatWeekRange(weekDates: string[]): string {
   return `${fmt(start)} – ${fmt(end)}`;
 }
 
-function countDraftsOnDate(drafts: Draft[], date: string): number {
-  return drafts.filter(
-    (d) => d.scheduledDate === date && OVERVIEW_STATUSES.includes(d.status),
+function countPostsOnDate(posts: DashboardPostRecord[], date: string): number {
+  return posts.filter(
+    (d) => d.scheduledFor?.slice(0, 10) === date && OVERVIEW_STATUSES.includes(d.status),
   ).length;
 }
 
-function buildWeeklyOverview(locationId?: string): DashboardWeeklyOverview {
+function buildWeeklyOverview(posts: DashboardPostRecord[]): DashboardWeeklyOverview {
   const weekDates = getWeekDateStrings();
-  const drafts = getDrafts().filter((d) => !locationId || d.locationId === locationId);
-  const countsPerDay = weekDates.map((date) => countDraftsOnDate(drafts, date));
+  const countsPerDay = weekDates.map((date) => countPostsOnDate(posts, date));
   const max = Math.max(1, ...countsPerDay);
   const barHeights = countsPerDay.map((c) =>
     c === 0 ? 26 : Math.max(30, Math.round((c / max) * 100)),
@@ -88,7 +84,7 @@ function buildWeeklyOverview(locationId?: string): DashboardWeeklyOverview {
     date.setDate(prevMon.getDate() + i);
     return date.toISOString().slice(0, 10);
   });
-  const prevCount = prevWeekDates.reduce((sum, date) => sum + countDraftsOnDate(drafts, date), 0);
+  const prevCount = prevWeekDates.reduce((sum, date) => sum + countPostsOnDate(posts, date), 0);
 
   let engagementLabel = "—";
   let engagementPositive = false;
@@ -111,32 +107,74 @@ function buildWeeklyOverview(locationId?: string): DashboardWeeklyOverview {
   };
 }
 
-function formatScheduleLabel(draft: Draft): string {
-  if (!draft.scheduledDate) return "Unscheduled";
-  const d = new Date(`${draft.scheduledDate}T12:00:00`);
+function formatScheduleLabel(draft: DashboardPostRecord): string {
+  if (!draft.scheduledFor) return "Unscheduled";
+  const d = new Date(draft.scheduledFor);
   const date = d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  const time = draft.scheduledTime ?? "";
-  return `Scheduled for ${date}${time ? ` at ${time}` : ""}`;
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `Scheduled for ${date} at ${time}`;
 }
 
-function formatShortDate(draft: Draft): string {
-  if (!draft.scheduledDate) return "Recently";
-  const d = new Date(`${draft.scheduledDate}T12:00:00`);
+function formatShortDate(draft: DashboardPostRecord): string {
+  if (!draft.scheduledFor) return "Recently";
+  const d = new Date(draft.scheduledFor);
   return d.toLocaleDateString("en-US", { month: "short", day: "numeric" });
 }
 
-export function loadDashboardHomeSnapshot(): DashboardHomeSnapshot {
-  ensureDashboardData();
-  seedDemoIssues();
+function countByStatus(posts: DashboardPostRecord[]): Record<DraftStatus, number> {
+  return posts.reduce<Record<DraftStatus, number>>(
+    (acc, post) => {
+      acc[post.status] += 1;
+      return acc;
+    },
+    {
+      draft: 0,
+      needs_review: 0,
+      approved: 0,
+      scheduled: 0,
+      published: 0,
+      skipped: 0,
+      needs_revision: 0,
+    },
+  );
+}
 
-  const loc = getActiveLocation();
-  const org = getOrganization();
-  const locationId = loc?.id;
-  const counts = countByStatus(locationId);
-  const pending = getDraftsNeedingReview(locationId);
-  const scheduled = getScheduledDrafts(locationId);
-  const approved = getDraftsByStatus("approved", locationId);
-  const published = getDraftsByStatus("published", locationId);
+function pickCurrentLocation(locations: DashboardLocationRecord[]): DashboardLocationRecord | null {
+  const stored = getStoredActiveLocationId();
+  if (stored) {
+    const match = locations.find((location) => location.id === stored);
+    if (match) return match;
+  }
+  return locations[0] ?? null;
+}
+
+function readStoredUser(): { firstName?: string; lastName?: string; accountName?: string } | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = window.localStorage.getItem("postpal-user");
+    return raw ? JSON.parse(raw) as { firstName?: string; lastName?: string; accountName?: string } : null;
+  } catch {
+    return null;
+  }
+}
+
+export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot> {
+  const [locations, posts] = await Promise.all([
+    fetchDashboardLocations(),
+    fetchDashboardPosts(),
+  ]);
+
+  const currentLocation = pickCurrentLocation(locations);
+  const scopedPosts = currentLocation
+    ? posts.filter((post) => post.locationId === currentLocation.id)
+    : posts;
+  const counts = countByStatus(scopedPosts);
+  const pending = scopedPosts.filter((post) => post.status === "needs_review" || post.status === "needs_revision");
+  const scheduled = scopedPosts.filter(
+    (post) => (post.status === "scheduled" || post.status === "approved") && post.scheduledFor,
+  );
+  const approved = scopedPosts.filter((post) => post.status === "approved");
+  const published = scopedPosts.filter((post) => post.status === "published");
 
   const nextUp = scheduled[0] ?? approved[0] ?? pending[0] ?? null;
 
@@ -147,7 +185,7 @@ export function loadDashboardHomeSnapshot(): DashboardHomeSnapshot {
           .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
           .slice(0, 3);
 
-  const toneParts = loc?.brandVoice?.tone ?? [];
+  const toneParts = currentLocation?.brandVoiceJson?.tone ?? [];
   const brandVoiceLine =
     toneParts.length > 0
       ? toneParts.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(". ") + "."
@@ -155,14 +193,12 @@ export function loadDashboardHomeSnapshot(): DashboardHomeSnapshot {
 
   const totalHandled = counts.approved + counts.scheduled + counts.published;
   const hoursSaved = Math.max(1, Math.min(14, totalHandled * 2 + pending.length));
-
-  const userName = org?.name ?? loc?.name ?? "Your business";
-  const userRole =
-    org?.businessType === "realtor"
-      ? "Realtor"
-      : org?.businessType
-        ? org.businessType.charAt(0).toUpperCase() + org.businessType.slice(1)
-        : "Owner";
+  const storedUser = readStoredUser();
+  const userName =
+    storedUser?.accountName ??
+    currentLocation?.name ??
+    "Your workspace";
+  const userRole = currentLocation ? "Workspace" : "Owner";
 
   return {
     userName,
@@ -182,7 +218,7 @@ export function loadDashboardHomeSnapshot(): DashboardHomeSnapshot {
     scheduledCount: scheduled.length,
     hoursSaved,
     everythingInSync: pending.length === 0,
-    weeklyOverview: buildWeeklyOverview(locationId),
+    weeklyOverview: buildWeeklyOverview(scopedPosts),
   };
 }
 
