@@ -2,24 +2,76 @@
 
 import { useEffect, useState } from "react";
 import {
-  getLocations,
-  getActiveLocationId,
-  setActiveLocationId,
-} from "@/lib/organization-store";
+  fetchDashboardLocations,
+  formatDashboardApiMessage,
+  type DashboardLocationRecord,
+} from "@/lib/dashboard-api";
+import {
+  getStoredActiveLocationId,
+  setStoredActiveLocationId,
+} from "@/lib/dashboard-browser-state";
 
-export default function LocationSwitcher() {
-  const [locations, setLocations] = useState<{ id: string; name: string }[]>([]);
-  const [activeId, setActiveId] = useState<string | null>(null);
+interface LocationSwitcherProps {
+  value?: string | null;
+  onChange?: (locationId: string) => void;
+}
+
+export default function LocationSwitcher({ value, onChange }: LocationSwitcherProps) {
+  const [locations, setLocations] = useState<DashboardLocationRecord[]>([]);
+  const [activeId, setActiveId] = useState<string | null>(value ?? null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    function load() {
-      setLocations(getLocations());
-      setActiveId(getActiveLocationId());
+    let cancelled = false;
+
+    async function load() {
+      try {
+        setLoading(true);
+        setError(null);
+        const nextLocations = await fetchDashboardLocations();
+        if (cancelled) return;
+        setLocations(nextLocations);
+
+        const preferred = value ?? getStoredActiveLocationId() ?? nextLocations[0]?.id ?? null;
+        if (preferred) {
+          setActiveId(preferred);
+          setStoredActiveLocationId(preferred);
+          onChange?.(preferred);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setError(formatDashboardApiMessage(err, "Could not load locations."));
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
     }
+
     load();
-    window.addEventListener("org-updated", load);
-    return () => window.removeEventListener("org-updated", load);
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [onChange, value]);
+
+  useEffect(() => {
+    if (value !== undefined) {
+      setActiveId(value);
+    }
+  }, [value]);
+
+  if (loading) {
+    return (
+      <div className="pb-location-switcher">
+        <div className="h-10 w-[180px] animate-pulse rounded-full border border-black/10 bg-black/[0.04]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <div className="text-xs text-[#8f6a64]">{error}</div>;
+  }
 
   if (locations.length <= 1) return null;
 
@@ -29,8 +81,9 @@ export default function LocationSwitcher() {
       <select
         value={activeId ?? locations[0]?.id ?? ""}
         onChange={(e) => {
-          setActiveLocationId(e.target.value);
+          setStoredActiveLocationId(e.target.value);
           setActiveId(e.target.value);
+          onChange?.(e.target.value);
         }}
         className="pb-location-select"
       >
