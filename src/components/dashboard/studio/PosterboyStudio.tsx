@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
@@ -89,10 +89,24 @@ export default function PosterboyStudio() {
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const frameWrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
+  }, []);
+
+  // Track the canvas size so the board can be sized in exact pixels — both
+  // width and height then animate smoothly between platform aspect ratios.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const measure = () => setCanvasSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   // Close the post-type / tools popover on outside click (lives in the
@@ -168,13 +182,27 @@ export default function PosterboyStudio() {
   // preserving the post's aspect ratio (both dims as % so they transition).
   const platform = PLATFORMS[platformIdx];
   const frameRatio = platform.w / platform.h;
-  // Size the frame to the post's aspect ratio (no fixed square stage) so
-  // every format fills its box consistently — landscape boards stay wide,
-  // portrait stays tall — and centers in the space above the prompt.
-  const frameWrapStyle =
-    frameRatio >= 1
-      ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "58%" }
-      : { height: "min(58%, 560px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
+  // Size the board to the post's aspect ratio in exact pixels (computed from
+  // the measured canvas) so both width and height transition smoothly between
+  // platforms; landscape stays wide, portrait stays tall, centered above the
+  // prompt. Falls back to aspect-ratio sizing before the first measurement.
+  const frameWrapStyle: CSSProperties = (() => {
+    const { w: cw, h: ch } = canvasSize;
+    if (!cw || !ch) {
+      return frameRatio >= 1
+        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "58%" }
+        : { height: "min(58%, 560px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
+    }
+    const fitW = Math.min(cw * 0.58, 600);
+    const fitH = Math.min(ch * 0.58, 560);
+    let w = fitW;
+    let h = fitW / frameRatio;
+    if (h > fitH) {
+      h = fitH;
+      w = fitH * frameRatio;
+    }
+    return { width: `${Math.round(w)}px`, height: `${Math.round(h)}px` };
+  })();
 
   // Generation choreography — staged status text + warm color emergence.
   const statusText =
@@ -406,7 +434,7 @@ export default function PosterboyStudio() {
         </aside>
 
         {/* CANVAS */}
-        <main className="canvas">
+        <main className="canvas" ref={canvasRef}>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
 
