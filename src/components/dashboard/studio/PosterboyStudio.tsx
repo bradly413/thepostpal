@@ -1179,14 +1179,53 @@ function StudioStyles() {
     background: rgba(255,255,255,0.09);
     backdrop-filter: blur(22px) saturate(150%);
     -webkit-backdrop-filter: blur(22px) saturate(150%);
-    border: 1px solid rgba(255,255,255,0.22);
-    box-shadow: 0 22px 60px rgba(0,0,0,0.45);
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow:
+      0 22px 60px rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 0 0 1px rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.92);
     font-size: 13px;
-    animation: pbsCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+    animation: pbsCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
   }@keyframes pbsCardIn {
     from { opacity: 0; transform: translateY(12px) scale(0.97); }
     to { opacity: 1; transform: translateY(0) scale(1); }
+  }@property --ptpl-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }.pb-studio .post-template .ptpl-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    z-index: 7;
+    background: conic-gradient(from var(--ptpl-angle), transparent 0deg, transparent 285deg, rgba(255,255,255,0.35) 320deg, rgba(255,255,255,0.95) 350deg, rgba(255,255,255,0.4) 358deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: pbsBorderTrace 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
+  }@keyframes pbsBorderTrace {
+    0% { --ptpl-angle: 0deg; opacity: 1; }
+    78% { opacity: 1; }
+    100% { --ptpl-angle: 360deg; opacity: 0; }
+  }.pb-studio .post-template .ptpl-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 6;
+    background: linear-gradient(118deg, transparent 30%, rgba(255,255,255,0.45) 43%, rgba(255,255,255,0.1) 50%, transparent 60%);
+    opacity: 0.1;
+    animation: pbsGlassSheen 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+  }@keyframes pbsGlassSheen {
+    0% { opacity: 0; transform: translateX(-45%); }
+    55% { opacity: 0.5; }
+    100% { opacity: 0.1; transform: translateX(0); }
   }.pb-studio .ptpl-head {
     display: flex;
     align-items: center;
