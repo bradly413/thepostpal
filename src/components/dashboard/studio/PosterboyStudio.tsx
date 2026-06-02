@@ -80,9 +80,13 @@ export default function PosterboyStudio() {
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
   const [activeTool, setActiveTool] = useState<null | "type" | "tools">(null);
+  const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
+  const [edit, setEdit] = useState(EDIT_DEFAULT);
+  const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const postSelectRef = useRef<HTMLDivElement>(null);
   const toolRailRef = useRef<HTMLDivElement>(null);
+  const editRailRef = useRef<HTMLDivElement>(null);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -111,6 +115,16 @@ export default function PosterboyStudio() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [activeTool]);
 
+  // Close the edit-rail popover on outside click.
+  useEffect(() => {
+    if (!activeEdit) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!editRailRef.current?.contains(e.target as Node)) setActiveEdit(null);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [activeEdit]);
+
   // Selected platform + the frame size that fits a square stage while
   // preserving the post's aspect ratio (both dims as % so they transition).
   const platform = PLATFORMS[platformIdx];
@@ -136,6 +150,13 @@ export default function PosterboyStudio() {
       ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
       : 0;
 
+  // Image edit transforms — applied to the preview, carry into the post mockup.
+  const previewStyle = {
+    ...(genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : {}),
+    transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+    filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+  };
+
   // Clear the progress timer if the component unmounts mid-generation.
   useEffect(() => () => {
     if (genTimer.current) clearInterval(genTimer.current);
@@ -160,6 +181,8 @@ export default function PosterboyStudio() {
     setCaptionState("idle");
     setCaptionText("");
     setCaptionTags("");
+    setEdit(EDIT_DEFAULT);
+    setActiveEdit(null);
 
     // Simulated diffusion progress: climbs quickly, eases as it nears the
     // cap, then snaps to 100% when the real image arrives.
@@ -487,10 +510,7 @@ export default function PosterboyStudio() {
               style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : frameSize}
             >
               <div className="emerge" style={{ opacity: emergeOpacity }} />
-              <div
-                className="preview"
-                style={genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : undefined}
-              />
+              <div className="preview" style={previewStyle} />
               {genState === "generating" && (
                 <div className="gen-progress">{Math.round(progress)}%</div>
               )}
@@ -537,12 +557,56 @@ export default function PosterboyStudio() {
 
           {/* Image edit tools — right of the image, mirrors the left rail */}
           {genState === "done" && !showTemplate && (
-            <div className="tool-rail edit-rail">
-              <button type="button" className="rail-ico" title="Crop"><Crop size={19} /></button>
-              <button type="button" className="rail-ico" title="Scale"><Maximize2 size={19} /></button>
-              <button type="button" className="rail-ico" title="Move"><Move size={19} /></button>
-              <button type="button" className="rail-ico" title="Rotate"><RotateCw size={19} /></button>
-              <button type="button" className="rail-ico" title="Adjust"><SlidersHorizontal size={19} /></button>
+            <div className="tool-rail edit-rail" ref={editRailRef}>
+              <button type="button" className="rail-ico" title="Crop (coming soon)" disabled><Crop size={19} /></button>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "scale" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "scale" ? null : "scale"))} title="Scale"><Maximize2 size={19} /></button>
+                {activeEdit === "scale" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Zoom</span><span className="edit-val">{Math.round(edit.scale * 100)}%</span></div>
+                    <input type="range" min={50} max={300} value={Math.round(edit.scale * 100)} onChange={(e) => setEdit((s) => ({ ...s, scale: Number(e.target.value) / 100 }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "move" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "move" ? null : "move"))} title="Move"><Move size={19} /></button>
+                {activeEdit === "move" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Horizontal</span><span className="edit-val">{edit.x}%</span></div>
+                    <input type="range" min={-50} max={50} value={edit.x} onChange={(e) => setEdit((s) => ({ ...s, x: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Vertical</span><span className="edit-val">{edit.y}%</span></div>
+                    <input type="range" min={-50} max={50} value={edit.y} onChange={(e) => setEdit((s) => ({ ...s, y: Number(e.target.value) }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "rotate" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "rotate" ? null : "rotate"))} title="Rotate"><RotateCw size={19} /></button>
+                {activeEdit === "rotate" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Rotate</span><span className="edit-val">{edit.rotate}°</span></div>
+                    <input type="range" min={-180} max={180} value={edit.rotate} onChange={(e) => setEdit((s) => ({ ...s, rotate: Number(e.target.value) }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "adjust" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "adjust" ? null : "adjust"))} title="Adjust"><SlidersHorizontal size={19} /></button>
+                {activeEdit === "adjust" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Brightness</span><span className="edit-val">{edit.brightness}%</span></div>
+                    <input type="range" min={50} max={150} value={edit.brightness} onChange={(e) => setEdit((s) => ({ ...s, brightness: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Contrast</span><span className="edit-val">{edit.contrast}%</span></div>
+                    <input type="range" min={50} max={150} value={edit.contrast} onChange={(e) => setEdit((s) => ({ ...s, contrast: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Saturation</span><span className="edit-val">{edit.saturate}%</span></div>
+                    <input type="range" min={0} max={200} value={edit.saturate} onChange={(e) => setEdit((s) => ({ ...s, saturate: Number(e.target.value) }))} />
+                    <button type="button" className="edit-reset" onClick={() => setEdit(EDIT_DEFAULT)}>Reset all</button>
+                  </div>
+                )}
+              </div>
+
               <span className="rail-div" />
               <button
                 type="button"
@@ -946,7 +1010,7 @@ function StudioStyles() {
   }.pb-studio .tool-rail .rail-publish:not(:disabled) {
     color: #fff;
     background: var(--ink);
-  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail .rail-pop {
+  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail.edit-rail .rail-pop { left: auto; right: calc(100% + 12px); }.pb-studio .edit-pop { padding: 12px; min-width: 190px; }.pb-studio .edit-pop .edit-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink); font-weight: 500; padding: 0 2px; }.pb-studio .edit-pop .edit-row:not(:first-child) { margin-top: 9px; }.pb-studio .edit-pop .edit-val { color: var(--muted); font-variant-numeric: tabular-nums; }.pb-studio .edit-pop input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--line-2); border-radius: 4px; margin: 5px 0 2px; cursor: pointer; }.pb-studio .edit-pop input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }.pb-studio .edit-pop input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: var(--ink); cursor: pointer; }.pb-studio .edit-pop .edit-reset { display: block; margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; color: var(--muted); background: rgba(0,0,0,0.05); }.pb-studio .edit-pop .edit-reset:hover { background: rgba(0,0,0,0.09); color: var(--ink); }.pb-studio .tool-rail .rail-pop {
     position: absolute;
     left: calc(100% + 12px);
     top: 50%;
