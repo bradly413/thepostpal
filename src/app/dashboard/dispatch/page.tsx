@@ -4,10 +4,13 @@ import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
-import { getDrafts, getScheduledDrafts } from "@/lib/drafts-store";
-import { ensureDashboardData } from "@/lib/dashboard-data-init";
-import { getActiveLocation } from "@/lib/organization-store";
-import type { Draft } from "@/lib/posterboy-types";
+import { useActiveLocation } from "@/lib/use-active-location";
+import {
+  fetchDashboardPosts,
+  formatDashboardApiMessage,
+} from "@/lib/dashboard-api";
+import { splitScheduledFor } from "@/lib/scheduled-post-mappers";
+import type { Draft, DraftStatus } from "@/lib/posterboy-types";
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
@@ -25,35 +28,58 @@ function getWeekDates(): string[] {
   });
 }
 
-export default function DispatchPage() {
-  const [byDate, setByDate] = useState<Record<string, Draft[]>>({});
+function toDispatchDraft(
+  post: Awaited<ReturnType<typeof fetchDashboardPosts>>[number],
+): Draft {
+  const { date, time } = splitScheduledFor(post.scheduledFor);
+  return {
+    id: post.id,
+    locationId: post.locationId || "",
+    copy: post.copy,
+    platforms: post.platforms,
+    scheduledDate: date || undefined,
+    scheduledTime: time,
+    status: post.status as DraftStatus,
+    note: post.note || undefined,
+    reviewerNotes: post.reviewerNotes || undefined,
+    createdAt: post.createdAt,
+    updatedAt: post.updatedAt,
+  };
+}
 
-  const load = useCallback(() => {
-    ensureDashboardData();
-    const loc = getActiveLocation();
-    const scheduled = getScheduledDrafts(loc?.id);
-    const approved = getDrafts().filter(
-      (d) =>
-        (d.status === "approved" || d.status === "scheduled") &&
-        d.scheduledDate &&
-        (!loc?.id || d.locationId === loc.id),
-    );
-    const all = [...scheduled, ...approved.filter((d) => !scheduled.find((s) => s.id === d.id))];
-    const map: Record<string, Draft[]> = {};
-    getWeekDates().forEach((date) => {
-      map[date] = all.filter((d) => d.scheduledDate === date);
-    });
-    setByDate(map);
-  }, []);
+export default function DispatchPage() {
+  const { locationId } = useActiveLocation();
+  const [byDate, setByDate] = useState<Record<string, Draft[]>>({});
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async () => {
+    if (!locationId) {
+      setByDate({});
+      return;
+    }
+    try {
+      setError(null);
+      const posts = await fetchDashboardPosts(locationId);
+      const scheduled = posts.filter(
+        (p) =>
+          p.status === "scheduled" ||
+          p.status === "approved" ||
+          p.status === "published",
+      );
+      const map: Record<string, Draft[]> = {};
+      getWeekDates().forEach((date) => {
+        map[date] = scheduled
+          .map(toDispatchDraft)
+          .filter((d) => d.scheduledDate === date);
+      });
+      setByDate(map);
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, "Could not load dispatch."));
+    }
+  }, [locationId]);
 
   useEffect(() => {
-    load();
-    window.addEventListener("drafts-updated", load);
-    window.addEventListener("org-updated", load);
-    return () => {
-      window.removeEventListener("drafts-updated", load);
-      window.removeEventListener("org-updated", load);
-    };
+    void load();
   }, [load]);
 
   const weekDates = getWeekDates();
@@ -68,6 +94,8 @@ export default function DispatchPage() {
         </div>
         <LocationSwitcher />
       </div>
+
+      {error && <p className="text-sm text-danger mb-4">{error}</p>}
 
       {!hasAny ? (
         <div className="pb-empty">{MICROCOPY.emptyDispatch}</div>
@@ -93,7 +121,7 @@ export default function DispatchPage() {
                         </div>
                       </div>
                       <div className="pb-draft-actions">
-                        <Link href={`/dashboard/editor?draft=${draft.id}`}>Edit</Link>
+                        <Link href={`/dashboard/calendar`}>Calendar</Link>
                         <Link href={`/dashboard/drafts`}>Review</Link>
                       </div>
                     </article>

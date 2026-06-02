@@ -3,6 +3,16 @@ import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 
+const VALID_STATUSES = new Set([
+  "draft",
+  "needs_review",
+  "approved",
+  "scheduled",
+  "published",
+  "skipped",
+  "needs_revision",
+]);
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
@@ -54,6 +64,11 @@ export async function POST(request: NextRequest) {
       const access = await resolveAccess(auth.userId, locationId, tx);
       if (!access.hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
 
+      const requestedStatus =
+        typeof body.status === "string" && VALID_STATUSES.has(body.status)
+          ? body.status
+          : "draft";
+
       const post = await tx.scheduledPost.create({
         data: {
           organizationId: auth.tenantId,
@@ -61,7 +76,10 @@ export async function POST(request: NextRequest) {
           copy: typeof body.copy === "string" ? body.copy : "",
           platforms: Array.isArray(body.platforms) ? body.platforms : [],
           scheduledFor: body.scheduledFor ? new Date(body.scheduledFor) : null,
-          status: "draft",
+          status: requestedStatus,
+          templateId:
+            typeof body.templateId === "string" ? body.templateId : null,
+          pillar: typeof body.pillar === "string" ? body.pillar : null,
         },
       });
 

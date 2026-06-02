@@ -83,6 +83,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
               : body.scheduledFor
                 ? new Date(body.scheduledFor)
                 : undefined,
+          templateId:
+            body.templateId === null
+              ? null
+              : typeof body.templateId === "string"
+                ? body.templateId
+                : undefined,
+          pillar:
+            body.pillar === null
+              ? null
+              : typeof body.pillar === "string"
+                ? body.pillar
+                : undefined,
           note: typeof body.note === "string" ? body.note : undefined,
           reviewerNotes:
             body.reviewerNotes === null

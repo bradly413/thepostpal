@@ -275,6 +275,8 @@ model ScheduledPost {
   platforms      SocialPlatform[]
   scheduledFor   DateTime?
   status         DraftStatus      @default(draft)
+  templateId     String?
+  pillar         String?
   note           String?
   reviewerNotes  String?
   createdAt      DateTime         @default(now())

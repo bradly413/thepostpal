@@ -2,13 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { templates } from "@/lib/templates";
-import {
-  getScheduledPosts,
-  addScheduledPost,
-  deleteScheduledPost,
-  updateScheduledPost,
-  type ScheduledPost,
-} from "@/lib/schedule-store";
+import { type ScheduledPost } from "@/lib/schedule-store";
 import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
 import { getMetaConnection } from "@/lib/meta-store";
@@ -19,15 +13,22 @@ import {
   createDashboardCalendarEvent,
   updateDashboardCalendarEvent,
   deleteDashboardCalendarEvent,
+  fetchDashboardPosts,
+  createDashboardPost,
+  updateDashboardPost,
+  deleteDashboardPost,
+  formatDashboardApiMessage,
   type DashboardCalendarEventRecord,
 } from "@/lib/dashboard-api";
+import {
+  mapCalendarPostToCreateInput,
+  mapRecordToCalendarPost,
+} from "@/lib/scheduled-post-mappers";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 
 // Adapt a live calendar record into the local CalendarEvent view shape the
-// grid + modals already render. Calendar EVENTS are DB-backed; scheduled POSTS
-// remain on the local schedule-store this pass (the DB ScheduledPost model has
-// no templateId/pillar columns — migrating them is a flagged follow-up).
+// grid + modals already render.
 function recordToEvent(r: DashboardCalendarEventRecord): CalendarEvent {
   const d = new Date(r.startsAt);
   const allDay = d.getHours() === 0 && d.getMinutes() === 0;
@@ -108,14 +109,22 @@ export default function CalendarPage() {
   const meta = typeof window !== "undefined" ? getMetaConnection() : null;
   const features = usePlanFeatures();
   const { locationId } = useActiveLocation();
-  const refreshPosts = useCallback(() => setPosts(getScheduledPosts()), []);
+  const loadPosts = useCallback(async () => {
+    if (!locationId) {
+      setPosts([]);
+      return;
+    }
+    try {
+      const records = await fetchDashboardPosts(locationId);
+      setPosts(records.map(mapRecordToCalendarPost));
+    } catch {
+      // Keep grid stable on transient errors.
+    }
+  }, [locationId]);
 
-  // Scheduled posts: still local (template/pillar metadata has no DB column yet).
   useEffect(() => {
-    refreshPosts();
-    window.addEventListener("schedule-updated", refreshPosts);
-    return () => window.removeEventListener("schedule-updated", refreshPosts);
-  }, [refreshPosts]);
+    void loadPosts();
+  }, [loadPosts]);
 
   // Calendar events: live, location-scoped.
   const loadEvents = useCallback(async () => {
@@ -252,6 +261,8 @@ export default function CalendarPage() {
   }
 
   async function handleSavePost() {
+    if (!locationId) return;
+
     const tmpl = templates.find((t) => t.id === formTemplate);
     const postData = {
       templateId: formTemplate,
@@ -264,10 +275,20 @@ export default function CalendarPage() {
       pillar: tmpl?.pillar || "",
     };
 
-    if (editingPost) {
-      updateScheduledPost(editingPost.id, postData);
-    } else {
-      addScheduledPost(postData);
+    try {
+      const payload = mapCalendarPostToCreateInput(postData, locationId);
+      if (editingPost) {
+        await updateDashboardPost(editingPost.id, payload);
+      } else {
+        await createDashboardPost(payload);
+      }
+      await loadPosts();
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: formatDashboardApiMessage(err, "Could not save this post."),
+      });
+      return;
     }
 
     if (formStatus === "scheduled" && meta?.connected && !editingPost) {
@@ -304,10 +325,17 @@ export default function CalendarPage() {
     setModalMode(null);
   }
 
-  function handleDeletePost() {
-    if (editingPost && window.confirm("Delete this post?")) {
-      deleteScheduledPost(editingPost.id);
+  async function handleDeletePost() {
+    if (!editingPost || !window.confirm("Delete this post?")) return;
+    try {
+      await deleteDashboardPost(editingPost.id);
+      await loadPosts();
       setModalMode(null);
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: formatDashboardApiMessage(err, "Could not delete this post."),
+      });
     }
   }
 

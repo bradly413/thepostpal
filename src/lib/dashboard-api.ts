@@ -45,6 +45,8 @@ export interface DashboardPostRecord {
   platforms: SocialPlatform[];
   scheduledFor: string | null;
   status: DraftStatus;
+  templateId?: string | null;
+  pillar?: string | null;
   note?: string | null;
   reviewerNotes?: string | null;
   createdAt: string;
@@ -99,11 +101,18 @@ export async function fetchDashboardPost(id: string): Promise<DashboardPostRecor
   return data.post;
 }
 
+export async function deleteDashboardPost(id: string): Promise<void> {
+  await apiRequest(`/api/posts/${id}`, { method: "DELETE" });
+}
+
 export async function createDashboardPost(input: {
   locationId: string;
   copy: string;
   platforms: SocialPlatform[];
   scheduledFor?: string | null;
+  status?: DraftStatus;
+  templateId?: string | null;
+  pillar?: string | null;
 }): Promise<DashboardPostRecord> {
   const data = await apiRequest<{ post: DashboardPostRecord }>("/api/posts", {
     method: "POST",
@@ -119,6 +128,8 @@ export async function updateDashboardPost(
     platforms: SocialPlatform[];
     scheduledFor: string | null;
     status: DraftStatus;
+    templateId: string | null;
+    pillar: string | null;
     note: string | null;
     reviewerNotes: string | null;
   }>,
