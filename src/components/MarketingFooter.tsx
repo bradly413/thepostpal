@@ -24,9 +24,9 @@ export default function MarketingFooter() {
             <Link href="/for/multi-location">Multi-location</Link>
           </div>
           <div>
-            <p className="pb-footer-heading">Premium</p>
-            <Link href="/pricing#studio">Studio</Link>
-            <Link href="/pricing#house-account">House Account</Link>
+            <p className="pb-footer-heading">Plans</p>
+            <Link href="/pricing#solo">Solo</Link>
+            <Link href="/pricing#command">Command</Link>
             <Link href="/pricing#brc-custom">BRC Custom</Link>
           </div>
         </div>

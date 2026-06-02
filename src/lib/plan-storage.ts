@@ -1,29 +1,24 @@
-import type { PricingTierId } from "./pricing";
+import {
+  normalizePricingTierId,
+  type PricingTierId,
+} from "./pricing";
 
 const PLAN_KEY = "posterboy-selected-plan";
 
-const VALID_PLANS = new Set<PricingTierId>([
-  "good",
-  "better",
-  "best",
-  "teams",
-  "house-account",
-  "brc-custom",
-]);
-
 export function saveSelectedPlan(plan: string | null | undefined): void {
   if (typeof window === "undefined" || !plan) return;
-  if (!VALID_PLANS.has(plan as PricingTierId)) return;
-  localStorage.setItem(PLAN_KEY, plan);
+  const normalized = normalizePricingTierId(plan);
+  if (!normalized) return;
+  localStorage.setItem(PLAN_KEY, normalized);
 }
 
 export function getSelectedPlan(): PricingTierId | null {
   if (typeof window === "undefined") return null;
   const raw = localStorage.getItem(PLAN_KEY);
-  if (!raw || !VALID_PLANS.has(raw as PricingTierId)) return null;
-  return raw as PricingTierId;
+  return normalizePricingTierId(raw);
 }
 
 export function clearSelectedPlan(): void {
+  if (typeof window === "undefined") return;
   localStorage.removeItem(PLAN_KEY);
 }

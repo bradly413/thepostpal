@@ -6,7 +6,8 @@ import { CORE } from "@/lib/posterboy-copy";
 
 export const metadata = {
   title: "Pricing | posterboy",
-  description: "Good, Better, Best — and Teams, House Account, BRC Custom for businesses that want more.",
+  description:
+    "Solo and Command — premium social publishing for operators and multi-location brands. BRC Custom for done-with-you brand systems.",
 };
 
 export default function PricingPage() {
@@ -26,21 +27,21 @@ export default function PricingPage() {
       <section className="pb-hero pb-reveal" style={{ paddingBottom: "2rem" }}>
         <h1 className="pb-hero-in">Pricing</h1>
         <p className="pb-hero-sub pb-hero-in">
-          Low-friction plans for businesses that need to show up. Premium tiers for businesses that want the week handled.
+          Two self-serve tiers for premium operators and multi-location brands. BRC Custom when you want the system built with you.
         </p>
       </section>
 
       <section className="pb-section pb-reveal">
-        <p className="pb-pricing-tier-label">Public plans</p>
-        <h2 className="pb-display">Enough to get started</h2>
+        <p className="pb-pricing-tier-label">Self-serve</p>
+        <h2 className="pb-display">Solo and Command</h2>
         <PricingCards tiers={getPublicTiers()} />
       </section>
 
       <section className="pb-section pb-reveal">
-        <p className="pb-pricing-tier-label">Premium</p>
+        <p className="pb-pricing-tier-label">Services</p>
         <h2 className="pb-display">When software is not quite enough</h2>
         <p style={{ maxWidth: "48ch", marginTop: "0.75rem" }}>
-          Higher ARPU, fewer dashboards. Teams, House Account, and BRC Custom for businesses that want help, not homework.
+          BRC Custom for brand books, portals, and quarterly content through Bradly Robert Creative.
         </p>
         <PricingCards tiers={getPremiumTiers()} showTierLabel />
       </section>
@@ -48,7 +49,7 @@ export default function PricingPage() {
       <section className="pb-section pb-section-narrow pb-reveal" style={{ textAlign: "center", paddingBottom: "5rem" }}>
         <h2>{CORE.weekDrafted}</h2>
         <p style={{ marginTop: "1rem" }}>
-          <Link href="/sign-in" className="pb-btn-primary" style={{ display: "inline-flex" }}>
+          <Link href="/sign-in?mode=signup&next=%2Fonboarding&plan=solo" className="pb-btn-primary" style={{ display: "inline-flex" }}>
             Try posterboy
           </Link>
         </p>

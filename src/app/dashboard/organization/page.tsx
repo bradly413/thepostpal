@@ -92,10 +92,10 @@ export default function OrganizationPage() {
       </form>
 
       <section className="pb-proof-card">
-        <h3 className="pb-display">House Account</h3>
+        <h3 className="pb-display">Command</h3>
         <p className="mt-2">{GROWTH.oneBrandManyLocations} {GROWTH.noFreelancingCaption}</p>
-        <Link href="/pricing#house-account" className="pb-btn-secondary inline-flex mt-4 text-sm">
-          Open a House Account
+        <Link href="/pricing#command" className="pb-btn-secondary inline-flex mt-4 text-sm">
+          View Command pricing
         </Link>
       </section>
     </div>

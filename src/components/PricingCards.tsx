@@ -26,6 +26,11 @@ export default function PricingCards({ tiers, showTierLabel }: PricingCardsProps
             {tier.priceNote && <span>{tier.priceNote}</span>}
           </p>
           <p className="pb-pricing-desc">{tier.description}</p>
+          {tier.annualPriceNote && (
+            <p className="pb-pricing-desc" style={{ opacity: 0.85 }}>
+              {tier.annualPriceNote}
+            </p>
+          )}
           <p className="pb-pricing-best">
             <span>Best for</span> {tier.bestFor}
           </p>
