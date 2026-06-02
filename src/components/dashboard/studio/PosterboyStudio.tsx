@@ -83,17 +83,21 @@ export default function PosterboyStudio() {
   const inputRef = useRef<HTMLInputElement>(null);
   const toolRailRef = useRef<HTMLDivElement>(null);
   const editRailRef = useRef<HTMLDivElement>(null);
+  const promptToolsRef = useRef<HTMLDivElement>(null);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
   }, []);
 
-  // Close the tool-rail popover on outside click.
+  // Close the post-type / tools popover on outside click (lives in the
+  // right rail and the prompt bar respectively).
   useEffect(() => {
     if (!activeTool) return;
     const onDocClick = (e: MouseEvent) => {
-      if (!toolRailRef.current?.contains(e.target as Node)) setActiveTool(null);
+      const n = e.target as Node;
+      if (editRailRef.current?.contains(n) || promptToolsRef.current?.contains(n)) return;
+      setActiveTool(null);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
@@ -362,25 +366,6 @@ export default function PosterboyStudio() {
 
           {/* Minimal control rail — left of the image */}
           <div className="tool-rail" ref={toolRailRef}>
-            <div className="rail-item">
-              <button
-                type="button"
-                className={`rail-ico${activeTool === "type" ? " open" : ""}`}
-                onClick={() => setActiveTool((t) => (t === "type" ? null : "type"))}
-                title="Post type"
-                aria-label={`Post type: ${postType}`}
-              >
-                {postType === "photo" ? <ImageIcon size={19} /> : postType === "update" ? <AlignLeft size={19} /> : <Tag size={19} />}
-              </button>
-              {activeTool === "type" && (
-                <div className="rail-pop">
-                  <button className={postType === "photo" ? "active" : ""} onClick={() => { setPostType("photo"); setActiveTool(null); }}><ImageIcon size={15} /><span>Photo</span></button>
-                  <button className={postType === "update" ? "active" : ""} onClick={() => { setPostType("update"); setActiveTool(null); }}><AlignLeft size={15} /><span>Update</span></button>
-                  <button className={postType === "offer" ? "active" : ""} onClick={() => { setPostType("offer"); setActiveTool(null); }}><Tag size={15} /><span>Offer</span></button>
-                </div>
-              )}
-            </div>
-
             {PLATFORMS.map((p, i) => (
               <div className="rail-item" key={p.id}>
                 <button
@@ -397,34 +382,6 @@ export default function PosterboyStudio() {
                 )}
               </div>
             ))}
-
-            <button
-              type="button"
-              className="rail-ico"
-              onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
-              title={when === "now" ? "Post now" : "Scheduled"}
-            >
-              {when === "now" ? <Zap size={19} /> : <Calendar size={19} />}
-            </button>
-
-            <div className="rail-item">
-              <button
-                type="button"
-                className={`rail-ico${activeTool === "tools" ? " open" : ""}`}
-                onClick={() => setActiveTool((t) => (t === "tools" ? null : "tools"))}
-                title="Tools"
-              >
-                <Sparkles size={19} />
-              </button>
-              {activeTool === "tools" && (
-                <div className="rail-pop">
-                  <button><span>AI enhance</span><span className="pro-tag">PRO</span></button>
-                  <button><span>Background remover</span><span className="pro-tag">PRO</span></button>
-                  <button><span>Caption assist</span></button>
-                  <button><span>Brand kit</span></button>
-                </div>
-              )}
-            </div>
 
             <span className="rail-div" />
 
@@ -500,6 +457,25 @@ export default function PosterboyStudio() {
           {/* Image edit tools — right of the image, mirrors the left rail */}
           {genState === "done" && !showTemplate && (
             <div className="tool-rail edit-rail" ref={editRailRef}>
+              <div className="rail-item">
+                <button
+                  type="button"
+                  className={`rail-ico${activeTool === "type" ? " open" : ""}`}
+                  onClick={() => { setActiveEdit(null); setActiveTool((t) => (t === "type" ? null : "type")); }}
+                  data-tooltrigger
+                  title="Post type"
+                  aria-label={`Post type: ${postType}`}
+                >
+                  {postType === "photo" ? <ImageIcon size={19} /> : postType === "update" ? <AlignLeft size={19} /> : <Tag size={19} />}
+                </button>
+                {activeTool === "type" && (
+                  <div className="rail-pop">
+                    <button className={postType === "photo" ? "active" : ""} onClick={() => { setPostType("photo"); setActiveTool(null); }}><ImageIcon size={15} /><span>Photo</span></button>
+                    <button className={postType === "update" ? "active" : ""} onClick={() => { setPostType("update"); setActiveTool(null); }}><AlignLeft size={15} /><span>Update</span></button>
+                    <button className={postType === "offer" ? "active" : ""} onClick={() => { setPostType("offer"); setActiveTool(null); }}><Tag size={15} /><span>Offer</span></button>
+                  </div>
+                )}
+              </div>
               <button type="button" className="rail-ico" title="Crop (coming soon)" disabled><Crop size={19} /></button>
 
               <div className="rail-item">
@@ -577,6 +553,15 @@ export default function PosterboyStudio() {
           )}
 
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
+            <button
+              type="button"
+              className="pb-util"
+              onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
+              title={when === "now" ? "Post now" : "Scheduled"}
+              aria-label={when === "now" ? "Post now" : "Scheduled"}
+            >
+              {when === "now" ? <Zap size={18} /> : <Calendar size={18} />}
+            </button>
             <input
               ref={inputRef}
               value={prompt}
@@ -585,6 +570,25 @@ export default function PosterboyStudio() {
               placeholder="Type in your prompt"
               disabled={genState === "generating"}
             />
+            <div className="pb-tool" ref={promptToolsRef}>
+              {activeTool === "tools" && (
+                <div className="pb-tools-pop">
+                  <button><span>AI enhance</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Background remover</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Caption assist</span></button>
+                  <button><span>Brand kit</span></button>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`pb-util${activeTool === "tools" ? " active" : ""}`}
+                onClick={() => { setActiveEdit(null); setActiveTool((t) => (t === "tools" ? null : "tools")); }}
+                data-tooltrigger
+                title="Tools"
+              >
+                <Sparkles size={18} />
+              </button>
+            </div>
             <button
               type="button"
               className="magic-wand"
@@ -1455,6 +1459,51 @@ function StudioStyles() {
   }.pb-studio .gen-dots i:nth-child(2) { animation-delay: 0.2s; }.pb-studio .gen-dots i:nth-child(3) { animation-delay: 0.4s; }@keyframes pbsDot {
     0%, 100% { opacity: 0.3; }
     50% { opacity: 1; }
+  }.pb-studio .prompt-bar .pb-util {
+    width: 38px;
+    height: 38px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: var(--ink-2);
+    transition: background 0.15s ease, color 0.15s ease;
+  }.pb-studio .prompt-bar .pb-util:hover { background: rgba(0,0,0,0.05); }.pb-studio .prompt-bar .pb-util.active { color: var(--ink); background: rgba(0,0,0,0.07); }.pb-studio .prompt-bar .pb-util svg { width: 18px; height: 18px; }.pb-studio .prompt-bar .pb-tool { position: relative; display: flex; flex: none; }.pb-studio .pb-tools-pop {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    min-width: 190px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 14px;
+    box-shadow: 0 14px 38px rgba(0,0,0,0.2);
+    z-index: 30;
+    animation: pbsPopUp 0.16s ease;
+  }@keyframes pbsPopUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }.pb-studio .pb-tools-pop button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .pb-tools-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .pb-tools-pop .pro-tag {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted-2);
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    padding: 1px 5px;
   }.pb-studio .prompt-bar input {
     flex: 1;
     background: transparent;
