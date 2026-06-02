@@ -1387,7 +1387,7 @@ function StudioStyles() {
   }.pb-studio .frame-wrap.as-post .frame {
     width: 100% !important;
     height: auto !important;
-    max-height: min(46vh, 430px);
+    max-height: min(42vh, 400px);
     flex: none;
     border: none;
     border-radius: 0;
@@ -1414,7 +1414,7 @@ function StudioStyles() {
     display: flex;
     align-items: center;
     padding: 11px 12px 2px;
-  }.pb-studio .ptpl-act-left { display: inline-flex; align-items: center; gap: 15px; }.pb-studio .ptpl-actions svg { display: block; }.pb-studio .ptpl-like { color: #ed4956; }.pb-studio .ptpl-dots { display: inline-flex; gap: 4px; margin: 0 auto; }.pb-studio .ptpl-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.45); }.pb-studio .ptpl-dots i:first-child { background: #5aa7ff; }.pb-studio .ptpl-likes { font-weight: 600; padding: 4px 12px 3px; }.pb-studio .ptpl-caption { padding: 0 12px; line-height: 1.45; }.pb-studio .ptpl-cname { font-weight: 600; }.pb-studio .ptpl-tags { color: #7cc0ff; }.pb-studio .ptpl-comments { padding: 6px 12px 0; color: rgba(255,255,255,0.55); }.pb-studio .ptpl-time { padding: 5px 12px 0; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.45); }.pb-studio .ptpl-caption-skel { display: block; margin-top: 6px; }.pb-studio .ptpl-caption-skel span {
+  }.pb-studio .ptpl-act-left { display: inline-flex; align-items: center; gap: 15px; }.pb-studio .ptpl-actions svg { display: block; }.pb-studio .ptpl-like { color: #ed4956; }.pb-studio .ptpl-dots { display: inline-flex; gap: 4px; margin: 0 auto; }.pb-studio .ptpl-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.45); }.pb-studio .ptpl-dots i:first-child { background: #5aa7ff; }.pb-studio .ptpl-likes { font-weight: 600; padding: 4px 12px 3px; }.pb-studio .ptpl-caption { padding: 0 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }.pb-studio .ptpl-cname { font-weight: 600; }.pb-studio .ptpl-tags { color: #7cc0ff; }.pb-studio .ptpl-comments { padding: 6px 12px 0; color: rgba(255,255,255,0.55); }.pb-studio .ptpl-time { padding: 5px 12px 0; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.45); }.pb-studio .ptpl-caption-skel { display: block; margin-top: 6px; }.pb-studio .ptpl-caption-skel span {
     display: block;
     height: 8px;
     margin-bottom: 6px;
