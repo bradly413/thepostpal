@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import {
   Sparkles,
   Calendar,
@@ -46,6 +48,8 @@ import Link from "next/link";
  * Wiring TODOs marked inline (generate -> /api/generate, publish -> /api/publish).
  */
 
+gsap.registerPlugin(useGSAP);
+
 // Post target per platform, with the recommended feed-post pixel size.
 // `genAspect` is forwarded to the image API (mapped to a supported ratio);
 // `w`/`h` drive the morphing canvas frame.
@@ -84,6 +88,7 @@ export default function PosterboyStudio() {
   const toolRailRef = useRef<HTMLDivElement>(null);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
+  const frameWrapRef = useRef<HTMLDivElement>(null);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -112,6 +117,52 @@ export default function PosterboyStudio() {
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [activeEdit]);
+
+  // Illuminated glass-frame entrance: a luminous border traces around the
+  // existing image, a diagonal sheen sweeps, then the post chrome reveals.
+  useGSAP(
+    () => {
+      const card = frameWrapRef.current;
+      if (!card || !showTemplate || genState !== "done") return;
+      const border = card.querySelector<HTMLElement>(".glass-border");
+      const sheen = card.querySelector<HTMLElement>(".glass-sheen");
+      const chrome = card.querySelectorAll(".ptpl-head, .ptpl-foot");
+      const angle = { v: 0 };
+
+      const tl = gsap.timeline();
+      tl.from(card, { autoAlpha: 0, duration: 0.4, ease: "power2.out" }, 0);
+
+      if (border) {
+        gsap.set(border, { autoAlpha: 1 });
+        tl.to(
+          angle,
+          {
+            v: 360,
+            duration: 1.15,
+            ease: "power2.inOut",
+            onUpdate: () => card.style.setProperty("--glass-angle", `${angle.v}deg`),
+          },
+          0,
+        ).to(border, { autoAlpha: 0, duration: 0.45, ease: "power2.out" }, ">-0.25");
+      }
+
+      if (sheen) {
+        tl.fromTo(
+          sheen,
+          { xPercent: -135, autoAlpha: 0 },
+          { xPercent: 135, autoAlpha: 0.55, duration: 1.05, ease: "power1.inOut" },
+          0.12,
+        ).to(sheen, { autoAlpha: 0.12, duration: 0.35, ease: "power1.out" }, ">-0.05");
+      }
+
+      tl.from(
+        chrome,
+        { autoAlpha: 0, y: 12, duration: 0.5, stagger: 0.1, ease: "power2.out" },
+        0.3,
+      );
+    },
+    { dependencies: [showTemplate, genState], scope: frameWrapRef },
+  );
 
   // Selected platform + the frame size that fits a square stage while
   // preserving the post's aspect ratio (both dims as % so they transition).
@@ -400,9 +451,12 @@ export default function PosterboyStudio() {
           </div>
 
           <div
+            ref={frameWrapRef}
             className={`frame-wrap${showTemplate ? " as-post" : ""}`}
             style={showTemplate ? undefined : frameWrapStyle}
           >
+            {showTemplate && <div className="glass-border" aria-hidden="true" />}
+            {showTemplate && <div className="glass-sheen" aria-hidden="true" />}
             {showTemplate && (
               <div className="ptpl-head">
                 <span className="ptpl-avatar" />
@@ -1291,9 +1345,9 @@ function StudioStyles() {
     width: min(360px, 58%);
     max-width: 380px;
     height: auto;
-    max-height: 94%;
-    top: 50%;
-    transform: translate(-50%, -55%);
+    max-height: calc(100% - 150px);
+    top: calc((100% - 132px) / 2);
+    transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
     place-items: stretch;
@@ -1303,45 +1357,37 @@ function StudioStyles() {
     background: rgba(26,26,32,0.5);
     backdrop-filter: blur(22px) saturate(150%);
     -webkit-backdrop-filter: blur(22px) saturate(150%);
-    border: 1px solid rgba(255,255,255,0.4);
+    border: 1px solid rgba(255,255,255,0.42);
     box-shadow:
       0 22px 60px rgba(0,0,0,0.42),
-      inset 0 1px 0 rgba(255,255,255,0.45),
-      inset 0 0 0 1px rgba(255,255,255,0.08);
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 0 0 1px rgba(255,255,255,0.1);
     color: rgba(255,255,255,0.94);
     font-size: 13px;
-    animation: pbsPostIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }@keyframes pbsPostIn {
-    from { opacity: 0; transform: translate(-50%, -52%) scale(0.97); }
-    to { opacity: 1; transform: translate(-50%, -55%) scale(1); }
-  }.pb-studio .frame-wrap.as-post::before {
-    content: '';
+  }.pb-studio .frame-wrap.as-post .glass-border {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     padding: 1.5px;
     pointer-events: none;
     z-index: 7;
-    background: conic-gradient(from var(--ptpl-angle), transparent 0deg, transparent 285deg, rgba(255,255,255,0.35) 320deg, rgba(255,255,255,0.95) 350deg, rgba(255,255,255,0.4) 358deg, transparent 360deg);
+    background: conic-gradient(from var(--glass-angle, 0deg), transparent 0deg, transparent 280deg, rgba(255,255,255,0.4) 318deg, rgba(255,255,255,1) 350deg, rgba(255,255,255,0.45) 358deg, transparent 360deg);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask-composite: exclude;
-    animation: pbsBorderTrace 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
-  }.pb-studio .frame-wrap.as-post::after {
-    content: '';
+  }.pb-studio .frame-wrap.as-post .glass-sheen {
     position: absolute;
     inset: 0;
     border-radius: inherit;
     pointer-events: none;
     z-index: 6;
-    background: linear-gradient(118deg, transparent 30%, rgba(255,255,255,0.4) 43%, rgba(255,255,255,0.1) 50%, transparent 60%);
-    opacity: 0.1;
-    animation: pbsGlassSheen 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+    opacity: 0;
+    background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.55) 49%, rgba(255,255,255,0.12) 53%, transparent 64%);
   }.pb-studio .frame-wrap.as-post .frame {
     width: 100% !important;
     height: auto !important;
-    max-height: 52vh;
+    max-height: min(46vh, 430px);
     flex: none;
     border: none;
     border-radius: 0;
