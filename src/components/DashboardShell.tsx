@@ -178,7 +178,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black">
           Skip to content
         </a>
-        <main id="main-content" className="flex-1 min-h-0 overflow-hidden">
+        <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <PageTransition>
             <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
               <div className="ds-scroll-pane flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-8">
