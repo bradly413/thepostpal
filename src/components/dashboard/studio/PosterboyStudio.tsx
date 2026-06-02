@@ -959,17 +959,12 @@ function StudioStyles() {
     color: var(--muted);
     background: transparent;
     transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
-  }.pb-studio .tool-rail .rail-ico:hover {
-    color: var(--ink);
-    background: rgba(255,255,255,0.4);
-    backdrop-filter: blur(10px);
-    -webkit-backdrop-filter: blur(10px);
-  }.pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open {
-    background: rgba(255,255,255,0.55);
-    backdrop-filter: blur(12px) saturate(150%);
-    -webkit-backdrop-filter: blur(12px) saturate(150%);
-    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7), 0 4px 14px rgba(0,0,0,0.08);
-  }.pb-studio .tool-rail .rail-ico.open { color: var(--ink); }.pb-studio .tool-rail .rail-ico.active { color: var(--red); }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
+  }.pb-studio .tool-rail .rail-ico:hover { color: var(--ink-2); }.pb-studio .tool-rail .rail-ico:hover svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }.pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open {
+    background: transparent;
+    color: #fff;
+  }.pb-studio .tool-rail .rail-ico.active svg, .pb-studio .tool-rail .rail-ico.open svg {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.95)) drop-shadow(0 0 11px rgba(255,255,255,0.7)) drop-shadow(0 0 1px rgba(0,0,0,0.35));
+  }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; transition: filter 0.2s ease; }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
     width: 20px;
     height: 1px;
     background: rgba(15,15,20,0.12);
