@@ -469,10 +469,17 @@ export default function PosterboyStudio() {
             </button>
           </div>
 
-          <div className="frame-wrap">
+          <div className={`frame-wrap${showTemplate ? " as-post" : ""}`}>
+            {showTemplate && (
+              <div className="ptpl-head">
+                <span className="ptpl-avatar" />
+                <span className="ptpl-name">User Name</span>
+                <span className="ptpl-more">···</span>
+              </div>
+            )}
             <div
               className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}
-              style={frameSize}
+              style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : frameSize}
             >
               <div className="emerge" style={{ opacity: emergeOpacity }} />
               <div
@@ -484,39 +491,16 @@ export default function PosterboyStudio() {
               )}
               {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
             </div>
-            {genState === "done" && !showTemplate && (
-              <button
-                type="button"
-                className="confirm-check"
-                onClick={confirmToTemplate}
-                aria-label="Confirm — preview as post"
-              >
-                <Check size={20} strokeWidth={2.5} />
-              </button>
-            )}
-          </div>
-
-          {showTemplate && generatedUrl && (
-            <div className="post-template" role="dialog" aria-label="Post preview">
-              <div className="ptpl-blobs" aria-hidden="true" />
-              <div className="ptpl-card">
-                <div className="ptpl-head">
-                  <span className="ptpl-avatar" />
-                  <span className="ptpl-name">User Name</span>
-                  <span className="ptpl-more">···</span>
-                </div>
-                <div
-                  className="ptpl-media"
-                  style={{ backgroundImage: `url('${generatedUrl}')`, aspectRatio: `${platform.w} / ${platform.h}` }}
-                />
+            {showTemplate && (
+              <div className="ptpl-foot">
                 <div className="ptpl-actions">
                   <span className="ptpl-act-left">
-                    <Heart size={22} className="ptpl-like" fill="currentColor" />
-                    <MessageCircle size={22} />
-                    <Send size={22} />
+                    <Heart size={20} className="ptpl-like" fill="currentColor" />
+                    <MessageCircle size={20} />
+                    <Send size={20} />
                   </span>
                   <span className="ptpl-dots"><i /><i /><i /></span>
-                  <Bookmark size={22} className="ptpl-bm" />
+                  <Bookmark size={20} className="ptpl-bm" />
                 </div>
                 <div className="ptpl-likes">9,311 likes</div>
                 <div className="ptpl-caption">
@@ -533,6 +517,18 @@ export default function PosterboyStudio() {
                 <div className="ptpl-comments">View all 987 comments</div>
                 <div className="ptpl-time">5 days ago</div>
               </div>
+            )}
+            {genState === "done" && !showTemplate && (
+              <button
+                type="button"
+                className="confirm-check"
+                onClick={confirmToTemplate}
+                aria-label="Confirm — preview as post"
+              >
+                <Check size={20} strokeWidth={2.5} />
+              </button>
+            )}
+            {showTemplate && (
               <button
                 type="button"
                 className="ptpl-close"
@@ -541,8 +537,8 @@ export default function PosterboyStudio() {
               >
                 ×
               </button>
-            </div>
-          )}
+            )}
+          </div>
 
           {error ? (
             <div className="studio-error">
@@ -1226,7 +1222,68 @@ function StudioStyles() {
     0% { opacity: 0; transform: translateX(-45%); }
     55% { opacity: 0.5; }
     100% { opacity: 0.1; transform: translateX(0); }
-  }.pb-studio .ptpl-head {
+  }.pb-studio .frame-wrap.as-post {
+    aspect-ratio: auto;
+    width: min(360px, 58%);
+    max-width: 380px;
+    height: auto;
+    max-height: 94%;
+    transform: translate(-50%, -55%);
+    display: flex;
+    flex-direction: column;
+    place-items: stretch;
+    overflow: hidden;
+    border-radius: 18px;
+    padding-bottom: 12px;
+    background: rgba(26,26,32,0.5);
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow:
+      0 22px 60px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.45),
+      inset 0 0 0 1px rgba(255,255,255,0.08);
+    color: rgba(255,255,255,0.94);
+    font-size: 13px;
+    animation: pbsPostIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }@keyframes pbsPostIn {
+    from { opacity: 0; transform: translate(-50%, -52%) scale(0.97); }
+    to { opacity: 1; transform: translate(-50%, -55%) scale(1); }
+  }.pb-studio .frame-wrap.as-post::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    z-index: 7;
+    background: conic-gradient(from var(--ptpl-angle), transparent 0deg, transparent 285deg, rgba(255,255,255,0.35) 320deg, rgba(255,255,255,0.95) 350deg, rgba(255,255,255,0.4) 358deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: pbsBorderTrace 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
+  }.pb-studio .frame-wrap.as-post::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 6;
+    background: linear-gradient(118deg, transparent 30%, rgba(255,255,255,0.4) 43%, rgba(255,255,255,0.1) 50%, transparent 60%);
+    opacity: 0.1;
+    animation: pbsGlassSheen 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+  }.pb-studio .frame-wrap.as-post .frame {
+    width: 100% !important;
+    height: auto !important;
+    max-height: 52vh;
+    flex: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+    background: #161616;
+  }.pb-studio .frame-wrap.as-post .frame .preview { transition: none; }.pb-studio .frame-wrap.as-post .ptpl-close { z-index: 8; top: 12px; right: 12px; }.pb-studio .ptpl-foot { position: relative; z-index: 2; padding-top: 2px; }.pb-studio .ptpl-head {
     display: flex;
     align-items: center;
     gap: 9px;
