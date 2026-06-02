@@ -1035,7 +1035,7 @@ function StudioStyles() {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -57%);
+    transform: translate(-50%, -54%);
     width: 56%;
     max-width: 600px;
     aspect-ratio: 1;
@@ -1393,7 +1393,7 @@ function StudioStyles() {
   }.pb-studio .ptpl-close:hover { background: rgba(255,255,255,0.26); }.pb-studio /* Prompt bar — glass morphism */
   .prompt-bar {
     position: absolute;
-    bottom: 36px;
+    bottom: 56px;
     left: 50%;
     transform: translateX(-50%);
     width: min(680px, 78%);
