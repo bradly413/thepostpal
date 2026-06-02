@@ -17,6 +17,9 @@ import {
   Wand2,
   Send,
   Check,
+  Heart,
+  MessageCircle,
+  Bookmark,
   Frame as FrameIcon,
 } from "lucide-react";
 import Link from "next/link";
@@ -66,8 +69,16 @@ export default function PosterboyStudio() {
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
+  const [progress, setProgress] = useState(0);
+  const [showTemplate, setShowTemplate] = useState(false);
+  const [captionState, setCaptionState] = useState<"idle" | "loading" | "done">("idle");
+  const [captionText, setCaptionText] = useState("");
+  const [captionTags, setCaptionTags] = useState("");
+  const [activeTool, setActiveTool] = useState<null | "type" | "tools">(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const postSelectRef = useRef<HTMLDivElement>(null);
+  const toolRailRef = useRef<HTMLDivElement>(null);
+  const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
@@ -85,6 +96,16 @@ export default function PosterboyStudio() {
     return () => document.removeEventListener("mousedown", onDocClick);
   }, [formatMenuOpen]);
 
+  // Close the tool-rail popover on outside click.
+  useEffect(() => {
+    if (!activeTool) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!toolRailRef.current?.contains(e.target as Node)) setActiveTool(null);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [activeTool]);
+
   // Selected platform + the frame size that fits a square stage while
   // preserving the post's aspect ratio (both dims as % so they transition).
   const platform = PLATFORMS[platformIdx];
@@ -93,6 +114,27 @@ export default function PosterboyStudio() {
     frameRatio >= 1
       ? { width: "100%", height: `${(100 / frameRatio).toFixed(2)}%` }
       : { width: `${(frameRatio * 100).toFixed(2)}%`, height: "100%" };
+
+  // Generation choreography — staged status text + warm color emergence.
+  const statusText =
+    genState !== "generating"
+      ? ""
+      : progress < 8
+        ? "Thinking…"
+        : progress < 28
+          ? "Analyzing the request…"
+          : progress < 99
+            ? "Generating…"
+            : "Finishing…";
+  const emergeOpacity =
+    genState === "generating"
+      ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
+      : 0;
+
+  // Clear the progress timer if the component unmounts mid-generation.
+  useEffect(() => () => {
+    if (genTimer.current) clearInterval(genTimer.current);
+  }, []);
 
   const toggleChannel = (id: string) =>
     setChannels((prev) => {
@@ -108,6 +150,37 @@ export default function PosterboyStudio() {
     }
     setGenState("generating");
     setError("");
+    setProgress(0);
+    setShowTemplate(false);
+    setCaptionState("idle");
+    setCaptionText("");
+    setCaptionTags("");
+
+    // Simulated diffusion progress: climbs quickly, eases as it nears the
+    // cap, then snaps to 100% when the real image arrives.
+    if (genTimer.current) clearInterval(genTimer.current);
+    genTimer.current = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 92) return p;
+        const inc =
+          p < 30 ? 4 + Math.random() * 5 : p < 70 ? 1.6 + Math.random() * 2.6 : 0.5 + Math.random() * 1.2;
+        return Math.min(92, p + inc);
+      });
+    }, 240);
+    const stopTimer = () => {
+      if (genTimer.current) {
+        clearInterval(genTimer.current);
+        genTimer.current = null;
+      }
+    };
+    // Keep the "thinking → analyzing" choreography perceptible even when the
+    // request resolves (or fails) instantly.
+    const startedAt = Date.now();
+    const holdFloor = async () => {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 1600) await new Promise((r) => setTimeout(r, 1600 - elapsed));
+    };
+
     const savedPrompt = prompt.trim();
     try {
       const res = await fetch("/api/generate-image", {
@@ -120,6 +193,9 @@ export default function PosterboyStudio() {
       });
       const data = await res.json();
       if (!res.ok || data.error) {
+        await holdFloor();
+        stopTimer();
+        setProgress(0);
         const msg = data.error || "Generation failed";
         setError(
           msg.includes("not configured")
@@ -129,12 +205,77 @@ export default function PosterboyStudio() {
         setGenState("idle");
         return;
       }
+      await holdFloor();
+      stopTimer();
+      setProgress(100);
       setGeneratedUrl(data.image);
       setGenState("done");
     } catch {
+      await holdFloor();
+      stopTimer();
+      setProgress(0);
       setError("Network error. Please try again.");
       setGenState("idle");
     }
+  };
+
+  // Parse the /api/ai response into a caption body + a hashtag string.
+  const parseCaption = (raw: string): { body: string; tags: string } => {
+    const text = (raw || "").trim();
+    const fenced = text.match(/---\s*([\s\S]*?)\s*---/);
+    let body = (fenced ? fenced[1] : text).trim();
+    const hashLine = text.match(/\*\*Hashtags:\*\*\s*([^\n]*)/i);
+    let tags = hashLine ? hashLine[1].trim() : "";
+    body = body.replace(/\*\*Hashtags:\*\*[\s\S]*$/i, "").replace(/^---|---$/g, "").trim();
+    if (!tags) {
+      const inline = body.match(/(#\S+(?:\s+#\S+)*)\s*$/);
+      if (inline) {
+        tags = inline[1].trim();
+        body = body.slice(0, inline.index).trim();
+      }
+    }
+    return { body, tags };
+  };
+
+  const generateCaption = async () => {
+    setCaptionState("loading");
+    setCaptionText("");
+    setCaptionTags("");
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `Write a short, engaging ${platform.label} caption (1–2 sentences) for a post featuring this image: "${prompt.trim() || "a brand image"}". Then add 4–6 relevant hashtags.`,
+            },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error || !data.message) {
+        setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
+        setCaptionTags("#posterboy");
+        setCaptionState("done");
+        return;
+      }
+      const { body, tags } = parseCaption(data.message);
+      setCaptionText(body || "Lorem ipsum dolor sit amet, consectetur adipiscing.");
+      setCaptionTags(tags);
+      setCaptionState("done");
+    } catch {
+      setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
+      setCaptionTags("#posterboy");
+      setCaptionState("done");
+    }
+  };
+
+  const confirmToTemplate = () => {
+    if (genState !== "done" || !generatedUrl) return;
+    setShowTemplate(true);
+    void generateCaption();
   };
 
   const publish = async () => {
@@ -247,18 +388,161 @@ export default function PosterboyStudio() {
             </div>
           </div>
 
+          {/* Minimal control rail — left of the image */}
+          <div className="tool-rail" ref={toolRailRef}>
+            <div className="rail-item">
+              <button
+                type="button"
+                className={`rail-ico${activeTool === "type" ? " open" : ""}`}
+                onClick={() => setActiveTool((t) => (t === "type" ? null : "type"))}
+                title="Post type"
+                aria-label={`Post type: ${postType}`}
+              >
+                {postType === "photo" ? <ImageIcon size={19} /> : postType === "update" ? <AlignLeft size={19} /> : <Tag size={19} />}
+              </button>
+              {activeTool === "type" && (
+                <div className="rail-pop">
+                  <button className={postType === "photo" ? "active" : ""} onClick={() => { setPostType("photo"); setActiveTool(null); }}><ImageIcon size={15} /><span>Photo</span></button>
+                  <button className={postType === "update" ? "active" : ""} onClick={() => { setPostType("update"); setActiveTool(null); }}><AlignLeft size={15} /><span>Update</span></button>
+                  <button className={postType === "offer" ? "active" : ""} onClick={() => { setPostType("offer"); setActiveTool(null); }}><Tag size={15} /><span>Offer</span></button>
+                </div>
+              )}
+            </div>
+
+            <button
+              type="button"
+              className={`rail-ico${channels.has("instagram") ? " active" : ""}`}
+              onClick={() => toggleChannel("instagram")}
+              aria-pressed={channels.has("instagram")}
+              title="Instagram"
+            >
+              <ChannelIcon type="instagram" />
+            </button>
+            <button
+              type="button"
+              className={`rail-ico${channels.has("facebook") ? " active" : ""}`}
+              onClick={() => toggleChannel("facebook")}
+              aria-pressed={channels.has("facebook")}
+              title="Facebook"
+            >
+              <ChannelIcon type="facebook" />
+            </button>
+
+            <button
+              type="button"
+              className="rail-ico"
+              onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
+              title={when === "now" ? "Post now" : "Scheduled"}
+            >
+              {when === "now" ? <Zap size={19} /> : <Calendar size={19} />}
+            </button>
+
+            <div className="rail-item">
+              <button
+                type="button"
+                className={`rail-ico${activeTool === "tools" ? " open" : ""}`}
+                onClick={() => setActiveTool((t) => (t === "tools" ? null : "tools"))}
+                title="Tools"
+              >
+                <Sparkles size={19} />
+              </button>
+              {activeTool === "tools" && (
+                <div className="rail-pop">
+                  <button><span>AI enhance</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Background remover</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Caption assist</span></button>
+                  <button><span>Brand kit</span></button>
+                </div>
+              )}
+            </div>
+
+            <span className="rail-div" />
+
+            <button
+              type="button"
+              className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
+              onClick={() => void publish()}
+              disabled={genState !== "done" || !generatedUrl}
+              title={publishState === "published" ? "Published" : "Publish"}
+            >
+              {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
+            </button>
+          </div>
+
           <div className="frame-wrap">
             <div
               className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}
               style={frameSize}
             >
+              <div className="emerge" style={{ opacity: emergeOpacity }} />
               <div
                 className="preview"
                 style={genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : undefined}
               />
+              {genState === "generating" && (
+                <div className="gen-progress">{Math.round(progress)}%</div>
+              )}
               {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
             </div>
+            {genState === "done" && !showTemplate && (
+              <button
+                type="button"
+                className="confirm-check"
+                onClick={confirmToTemplate}
+                aria-label="Confirm — preview as post"
+              >
+                <Check size={20} strokeWidth={2.5} />
+              </button>
+            )}
           </div>
+
+          {showTemplate && generatedUrl && (
+            <div className="post-template" role="dialog" aria-label="Post preview">
+              <div className="ptpl-blobs" aria-hidden="true" />
+              <div className="ptpl-card">
+                <div className="ptpl-head">
+                  <span className="ptpl-avatar" />
+                  <span className="ptpl-name">User Name</span>
+                  <span className="ptpl-more">···</span>
+                </div>
+                <div
+                  className="ptpl-media"
+                  style={{ backgroundImage: `url('${generatedUrl}')`, aspectRatio: `${platform.w} / ${platform.h}` }}
+                />
+                <div className="ptpl-actions">
+                  <span className="ptpl-act-left">
+                    <Heart size={22} className="ptpl-like" fill="currentColor" />
+                    <MessageCircle size={22} />
+                    <Send size={22} />
+                  </span>
+                  <span className="ptpl-dots"><i /><i /><i /></span>
+                  <Bookmark size={22} className="ptpl-bm" />
+                </div>
+                <div className="ptpl-likes">9,311 likes</div>
+                <div className="ptpl-caption">
+                  <span className="ptpl-cname">User Name</span>{" "}
+                  {captionState === "loading" ? (
+                    <span className="ptpl-caption-skel"><span /><span /><span /></span>
+                  ) : (
+                    <>
+                      {captionText}
+                      {captionTags && <span className="ptpl-tags"> {captionTags}</span>}
+                    </>
+                  )}
+                </div>
+                <div className="ptpl-comments">View all 987 comments</div>
+                <div className="ptpl-time">5 days ago</div>
+              </div>
+              <button
+                type="button"
+                className="ptpl-close"
+                onClick={() => setShowTemplate(false)}
+                aria-label="Close preview"
+              >
+                ×
+              </button>
+            </div>
+          )}
 
           {error ? (
             <div className="studio-error">
@@ -267,7 +551,14 @@ export default function PosterboyStudio() {
             </div>
           ) : null}
 
-          <div className="prompt-bar">
+          {genState === "generating" && (
+            <div className="gen-status">
+              <span className="gen-dots"><i /><i /><i /></span>
+              <span>{statusText}</span>
+            </div>
+          )}
+
+          <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
             <input
               ref={inputRef}
               value={prompt}
@@ -288,58 +579,6 @@ export default function PosterboyStudio() {
           </div>
         </main>
 
-        {/* RIGHT RAIL / CONTROL BAR */}
-        <aside className="right-rail">
-          <div className="rail-section">
-            <div className="rail-label">Post type</div>
-            <div className="post-type">
-              <button className={postType === "photo" ? "active" : ""} onClick={() => setPostType("photo")}><ImageIcon size={14} />Photo</button>
-              <button className={postType === "update" ? "active" : ""} onClick={() => setPostType("update")}><AlignLeft size={14} />Update</button>
-              <button className={postType === "offer" ? "active" : ""} onClick={() => setPostType("offer")}><Tag size={14} />Offer</button>
-            </div>
-          </div>
-
-          <div className="rail-section">
-            <div className="rail-label">Channels</div>
-            <button type="button" className={`list-row${channels.has("instagram") ? " active" : ""}`} onClick={() => toggleChannel("instagram")}>
-              <ChannelIcon type="instagram" /><span className="lbl">Instagram</span><span className="check" />
-            </button>
-            <button type="button" className={`list-row${channels.has("facebook") ? " active" : ""}`} onClick={() => toggleChannel("facebook")}>
-              <ChannelIcon type="facebook" /><span className="lbl">Facebook</span><span className="check" />
-            </button>
-          </div>
-
-          <div className="rail-section">
-            <div className="rail-label">When</div>
-            <button className={`list-row${when === "now" ? " active" : ""}`} onClick={() => setWhen("now")}>
-              <Zap className="icon" size={16} /><span className="lbl">Now</span><span className="check" />
-            </button>
-            <button className={`list-row${when === "schedule" ? " active" : ""}`} onClick={() => setWhen("schedule")}>
-              <Calendar className="icon" size={16} /><span className="lbl">Schedule</span><span className="check" />
-            </button>
-          </div>
-
-          <div className="rail-section tools">
-            <button className="tool-row"><span className="label">Image tools</span><ChevronRight size={14} /></button>
-            <button className="tool-row"><span className="label">AI enhance</span><span className="pro-tag">PRO</span></button>
-            <button className="tool-row"><span className="label">Caption assist</span><ChevronRight size={14} /></button>
-            <button className="tool-row"><span className="label">Background remover</span><span className="pro-tag">PRO</span></button>
-            <button className="tool-row"><span className="label">Brand kit</span><ChevronRight size={14} /></button>
-          </div>
-
-          <div className="rail-actions">
-            <Link href="/dashboard/dispatch" className="btn-outline"><Calendar size={15} />Schedule</Link>
-            <button
-              type="button"
-              className={`btn-publish${publishState === "published" ? " published" : ""}`}
-              onClick={() => void publish()}
-              disabled={genState !== "done" || !generatedUrl}
-              style={publishState === "published" ? { background: "#1aa260" } : undefined}
-            >
-              {publishState === "published" ? (<><Check size={15} strokeWidth={2.5} />Published</>) : (<><Send size={15} />Publish</>)}
-            </button>
-          </div>
-        </aside>
       </div>
     </div>
   );
@@ -395,10 +634,10 @@ function StudioStyles() {
     height: 100%;
   }.pb-studio button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }.pb-studio button:disabled { cursor: not-allowed; opacity: 0.45; }.pb-studio input { font-family: inherit; }.pb-studio input:disabled { opacity: 0.6; }.pb-studio a.btn-outline { text-decoration: none; color: inherit; }.pb-studio .app {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr) 320px;
-    grid-template-areas: "sidebar canvas rail";
-    gap: 16px;
-    padding: 16px;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-areas: "sidebar canvas";
+    gap: 18px;
+    padding: 18px;
     min-height: 100%;
     height: 100%;
     max-width: 1700px;
@@ -657,14 +896,92 @@ function StudioStyles() {
     border-radius: 8px;
     color: var(--ink-2);
     transition: background 0.15s ease;
-  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio /* The glowing magic frame */
+  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio /* Minimal control rail — left of the image */
+  .tool-rail {
+    position: absolute;
+    left: 26px;
+    top: 50%;
+    transform: translateY(-54%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 18;
+  }.pb-studio .tool-rail .rail-item { position: relative; display: flex; }.pb-studio .tool-rail .rail-ico {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: var(--muted);
+    background: transparent;
+    transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  }.pb-studio .tool-rail .rail-ico:hover {
+    color: var(--ink);
+    background: rgba(255,255,255,0.4);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }.pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open {
+    background: rgba(255,255,255,0.55);
+    backdrop-filter: blur(12px) saturate(150%);
+    -webkit-backdrop-filter: blur(12px) saturate(150%);
+    box-shadow: inset 0 0 0 1px rgba(255,255,255,0.7), 0 4px 14px rgba(0,0,0,0.08);
+  }.pb-studio .tool-rail .rail-ico.open { color: var(--ink); }.pb-studio .tool-rail .rail-ico.active { color: var(--red); }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
+    width: 20px;
+    height: 1px;
+    background: rgba(15,15,20,0.12);
+    margin: 7px 0;
+  }.pb-studio .tool-rail .rail-publish:not(:disabled) {
+    color: #fff;
+    background: var(--ink);
+  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .tool-rail .rail-pop {
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 188px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 14px;
+    box-shadow: 0 14px 38px rgba(0,0,0,0.18);
+    z-index: 20;
+    animation: pbsPopIn 0.16s ease;
+  }@keyframes pbsPopIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-6px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }.pb-studio .tool-rail .rail-pop button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .tool-rail .rail-pop button svg { width: 15px; height: 15px; color: var(--muted); }.pb-studio .tool-rail .rail-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .tool-rail .rail-pop button.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .tool-rail .rail-pop button.active svg { color: var(--red); }.pb-studio .tool-rail .rail-pop .pro-tag {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted-2);
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }.pb-studio /* The glowing magic frame */
   .frame-wrap {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -56%);
-    width: 42%;
-    max-width: 460px;
+    transform: translate(-50%, -57%);
+    width: 56%;
+    max-width: 600px;
     aspect-ratio: 1;
     z-index: 10;
     display: grid;
@@ -727,31 +1044,72 @@ function StudioStyles() {
         0 18px 50px rgba(0,0,0,0.28);
     }
   }.pb-studio /* Generating state */
-  .frame.generating::before {
+  .frame.generating {
+    background: linear-gradient(180deg, #edeae5 0%, #e0ddd6 100%);
+  }.pb-studio .frame.generating::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg,
-      rgba(255,255,255,0.4) 0%,
-      rgba(238,37,50,0.15) 25%,
-      rgba(255,255,255,0.4) 50%,
-      rgba(238,37,50,0.15) 75%,
-      rgba(255,255,255,0.4) 100%
+    background: linear-gradient(105deg,
+      rgba(255,255,255,0) 32%,
+      rgba(255,255,255,0.78) 50%,
+      rgba(255,255,255,0) 68%
     );
-    background-size: 300% 100%;
-    animation: pbsShimmer 2s linear infinite;
+    background-size: 250% 100%;
+    animation: pbsSweepA 2.6s ease-in-out infinite;
     z-index: 2;
-  }@keyframes pbsShimmer {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
+  }.pb-studio .frame.generating::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(255deg,
+      rgba(217,119,87,0) 36%,
+      rgba(217,119,87,0.18) 50%,
+      rgba(217,119,87,0) 64%
+    );
+    background-size: 250% 100%;
+    animation: pbsSweepB 3.4s ease-in-out infinite;
+    z-index: 2;
+  }@keyframes pbsSweepA {
+    0% { background-position: 130% 50%; }
+    100% { background-position: -30% 50%; }
+  }@keyframes pbsSweepB {
+    0% { background-position: -30% 50%; }
+    100% { background-position: 130% 50%; }
+  }.pb-studio .frame .emerge {
+    position: absolute;
+    inset: -6%;
+    background:
+      radial-gradient(42% 48% at 30% 34%, rgba(212,168,83,0.6), transparent 70%),
+      radial-gradient(46% 42% at 72% 64%, rgba(217,119,87,0.55), transparent 72%),
+      radial-gradient(52% 56% at 52% 82%, rgba(150,112,80,0.5), transparent 75%);
+    filter: blur(20px);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 3;
+    pointer-events: none;
+  }.pb-studio .frame .gen-progress {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: rgba(40,32,24,0.62);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 4px 9px;
+    border-radius: 8px;
+    z-index: 6;
   }.pb-studio .frame .preview {
     position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
     opacity: 0;
-    transition: opacity 0.6s ease;
-    z-index: 3;
+    transition: opacity 0.4s ease-out;
+    z-index: 4;
   }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio /* The empty state caption (subtle, .pb-studio only visible on hover) */
   .frame-hint {
     position: absolute;
@@ -766,7 +1124,117 @@ function StudioStyles() {
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 4;
-  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio /* Prompt bar — glass morphism */
+  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio /* Confirm checkmark — appears after the image is generated */
+  .confirm-check {
+    position: absolute;
+    bottom: -20px;
+    right: -20px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+    background: transparent;
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border: 1.5px solid rgba(255,255,255,0.55);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(255,255,255,0.14);
+    z-index: 12;
+    animation: pbsCheckIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+    transition: transform 0.18s ease, background 0.18s ease;
+  }.pb-studio .confirm-check:hover { transform: scale(1.08); background: rgba(255,255,255,0.16); }@keyframes pbsCheckIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }.pb-studio /* Glassmorphism post-preview template */
+  .post-template {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 25;
+    background: rgba(12,12,16,0.6);
+    animation: pbsTplIn 0.5s ease-out both;
+  }@keyframes pbsTplIn { from { opacity: 0; } to { opacity: 1; } }.pb-studio .post-template .ptpl-blobs {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(34% 30% at 22% 26%, rgba(236,72,153,0.55), transparent 60%),
+      radial-gradient(30% 28% at 78% 32%, rgba(139,92,246,0.55), transparent 60%),
+      radial-gradient(36% 34% at 30% 80%, rgba(168,85,247,0.5), transparent 62%),
+      radial-gradient(32% 30% at 80% 78%, rgba(99,102,241,0.5), transparent 62%);
+    filter: blur(40px);
+    animation: pbsBlobDrift 9s ease-in-out infinite alternate;
+  }@keyframes pbsBlobDrift {
+    from { transform: scale(1) translateY(0); }
+    to { transform: scale(1.08) translateY(-2%); }
+  }.pb-studio .post-template .ptpl-card {
+    position: relative;
+    z-index: 2;
+    width: min(330px, 66%);
+    max-height: 88%;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 4px 0 14px;
+    background: rgba(255,255,255,0.09);
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.22);
+    box-shadow: 0 22px 60px rgba(0,0,0,0.45);
+    color: rgba(255,255,255,0.92);
+    font-size: 13px;
+    animation: pbsCardIn 0.5s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+  }@keyframes pbsCardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }.pb-studio .ptpl-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+  }.pb-studio .ptpl-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    flex: none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12));
+    border: 1px solid rgba(255,255,255,0.3);
+  }.pb-studio .ptpl-name { font-weight: 600; }.pb-studio .ptpl-more { margin-left: auto; letter-spacing: 1px; opacity: 0.8; }.pb-studio .ptpl-media {
+    width: 100%;
+    max-height: 360px;
+    background-size: cover;
+    background-position: center;
+  }.pb-studio .ptpl-actions {
+    display: flex;
+    align-items: center;
+    padding: 11px 12px 2px;
+  }.pb-studio .ptpl-act-left { display: inline-flex; align-items: center; gap: 15px; }.pb-studio .ptpl-actions svg { display: block; }.pb-studio .ptpl-like { color: #ed4956; }.pb-studio .ptpl-dots { display: inline-flex; gap: 4px; margin: 0 auto; }.pb-studio .ptpl-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.45); }.pb-studio .ptpl-dots i:first-child { background: #5aa7ff; }.pb-studio .ptpl-likes { font-weight: 600; padding: 4px 12px 3px; }.pb-studio .ptpl-caption { padding: 0 12px; line-height: 1.45; }.pb-studio .ptpl-cname { font-weight: 600; }.pb-studio .ptpl-tags { color: #7cc0ff; }.pb-studio .ptpl-comments { padding: 6px 12px 0; color: rgba(255,255,255,0.55); }.pb-studio .ptpl-time { padding: 5px 12px 0; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.45); }.pb-studio .ptpl-caption-skel { display: block; margin-top: 6px; }.pb-studio .ptpl-caption-skel span {
+    display: block;
+    height: 8px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+    background-size: 200% 100%;
+    animation: pbsCapSkel 1.3s ease-in-out infinite;
+  }.pb-studio .ptpl-caption-skel span:nth-child(1) { width: 96%; }.pb-studio .ptpl-caption-skel span:nth-child(2) { width: 78%; }.pb-studio .ptpl-caption-skel span:nth-child(3) { width: 54%; }@keyframes pbsCapSkel {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }.pb-studio .ptpl-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 3;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    line-height: 1;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }.pb-studio .ptpl-close:hover { background: rgba(255,255,255,0.26); }.pb-studio /* Prompt bar — glass morphism */
   .prompt-bar {
     position: absolute;
     bottom: 36px;
@@ -792,6 +1260,49 @@ function StudioStyles() {
     background: rgba(255, 255, 255, 0.35);
     border-color: rgba(255, 255, 255, 0.7);
     transform: translateX(-50%) translateY(-2px);
+  }.pb-studio .prompt-bar.is-generating {
+    border-color: rgba(217,119,87,0.55);
+    animation: pbsAgentPulse 2s ease-in-out infinite;
+  }@keyframes pbsAgentPulse {
+    0%, 100% {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.32), 0 0 18px 2px rgba(217,119,87,0.22), 0 10px 40px rgba(0,0,0,0.18);
+    }
+    50% {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.6), 0 0 30px 7px rgba(217,119,87,0.4), 0 10px 40px rgba(0,0,0,0.2);
+    }
+  }.pb-studio .gen-status {
+    position: absolute;
+    bottom: 128px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(40,32,24,0.72);
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 7px 15px;
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    z-index: 16;
+    animation: pbsStatusIn 0.3s ease-out;
+  }@keyframes pbsStatusIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }.pb-studio .gen-dots {
+    display: inline-flex;
+    gap: 4px;
+  }.pb-studio .gen-dots i {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgb(217,119,87);
+    animation: pbsDot 1.4s ease-in-out infinite;
+  }.pb-studio .gen-dots i:nth-child(2) { animation-delay: 0.2s; }.pb-studio .gen-dots i:nth-child(3) { animation-delay: 0.4s; }@keyframes pbsDot {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
   }.pb-studio .prompt-bar input {
     flex: 1;
     background: transparent;
@@ -942,7 +1453,7 @@ function StudioStyles() {
     transition: all 0.15s ease;
   }.pb-studio .btn-publish:hover { background: #1a1a1d; transform: translateY(-1px); }.pb-studio .btn-publish:active { transform: translateY(0); }.pb-studio .btn-publish svg { width: 15px; height: 15px; }@media (max-width: 1379px) {.pb-studio .app {
       grid-template-columns: 232px minmax(0, 1fr);
-      grid-template-areas: "sidebar canvas" "sidebar rail";
+      grid-template-areas: "sidebar canvas";
     }.pb-studio .canvas { min-height: 620px; }.pb-studio /* Rail becomes a horizontal control strip under the canvas */
     .right-rail {
       display: grid;
@@ -951,7 +1462,7 @@ function StudioStyles() {
       align-items: start;
       padding: 22px 24px;
     }.pb-studio .rail-section { margin-bottom: 0; }.pb-studio .rail-actions { grid-column: 1 / -1; margin-top: 4px; flex-direction: row; padding-top: 18px; border-top: 1px solid var(--line); }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: 1; }.pb-studio /* keep the tools block from stretching oddly */
-    .right-rail > .rail-section:nth-of-type(n) { min-width: 0; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas" "rail"; }.pb-studio .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 18px; }.pb-studio .studio-title { display: none; }.pb-studio /* "Studio" wordmark hidden in compact bar */
+    .right-rail > .rail-section:nth-of-type(n) { min-width: 0; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 18px; }.pb-studio .studio-title { display: none; }.pb-studio /* "Studio" wordmark hidden in compact bar */
     .logo { margin-bottom: 0; margin-right: auto; }.pb-studio .nav { flex-direction: row; flex-wrap: wrap; width: 100%; margin-bottom: 0; gap: 4px; }.pb-studio .nav a { padding: 9px 14px; background: #f4f4f6; }.pb-studio .nav a.active { background: #ececef; }.pb-studio .voice-card, .pb-studio .workspace { display: none; }.pb-studio /* secondary on small screens */
 
     .canvas { min-height: 540px; }.pb-studio .right-rail { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 90%; height: 64px; bottom: 22px; padding: 0 14px 0 20px; }.pb-studio .prompt-bar input { font-size: 14px; }.pb-studio .magic-wand { width: 40px; height: 40px; }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: 12.5px; }.pb-studio .right-rail { grid-template-columns: minmax(0, 1fr); padding: 20px; }.pb-studio .rail-actions { flex-direction: column; }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: none; width: 100%; }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }.pb-studio .nav a span { font-size: 13px; }}
