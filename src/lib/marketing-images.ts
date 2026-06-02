@@ -1,9 +1,10 @@
 /**
- * Local placeholder SVGs in `public/images/`.
- * Replace any file with a real JPG/PNG using the same basename (e.g. phone-post.jpg)
- * and update the extension here.
+ * Marketing image inventory.
+ * Keep hero/supporting illustrations here, but use real social mock assets for
+ * the carousel so the landing page does not read as placeholder-heavy.
  */
 const img = (name: string) => `/images/${name}`;
+const socialMock = (name: string) => `/images/social-mocks/${name}`;
 
 export const MARKETING_IMAGES = {
   /** Red squircle + paper plane — hero headline */
@@ -21,14 +22,14 @@ export const MARKETING_IMAGES = {
 } as const;
 
 export const CAROUSEL_IMAGES = [
-  MARKETING_IMAGES.deskClutter,
-  MARKETING_IMAGES.calendar,
-  MARKETING_IMAGES.heroHands,
-  MARKETING_IMAGES.analytics,
-  MARKETING_IMAGES.carousel1,
-  MARKETING_IMAGES.carousel2,
-  MARKETING_IMAGES.carousel3,
-  MARKETING_IMAGES.carousel4,
-  MARKETING_IMAGES.phonePost,
-  MARKETING_IMAGES.ownerPortrait,
+  socialMock("01.png"),
+  socialMock("02.png"),
+  socialMock("03.png"),
+  socialMock("04.png"),
+  socialMock("05.png"),
+  socialMock("06.png"),
+  socialMock("07.png"),
+  socialMock("08.png"),
+  socialMock("09.png"),
+  socialMock("10.png"),
 ] as const;

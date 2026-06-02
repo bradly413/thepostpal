@@ -1,15 +1,20 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import {
-  getDraft,
-  createDraftFromEditor,
-  updateDraft,
-  pressDraft,
-} from "@/lib/drafts-store";
-import { getActiveLocation } from "@/lib/organization-store";
+  createDashboardPost,
+  fetchDashboardPost,
+  formatDashboardApiMessage,
+  submitDashboardPost,
+  updateDashboardPost,
+} from "@/lib/dashboard-api";
+import {
+  getStoredActiveLocationId,
+  setStoredActiveLocationId,
+} from "@/lib/dashboard-browser-state";
 import type { SocialPlatform } from "@/lib/posterboy-types";
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
 
@@ -23,15 +28,41 @@ function EditorInner() {
   const [copy, setCopy] = useState("");
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(["instagram"]);
   const [saved, setSaved] = useState(false);
+  const [locationId, setLocationId] = useState<string | null>(getStoredActiveLocationId());
+  const [loading, setLoading] = useState(Boolean(draftId));
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (draftId) {
-      const draft = getDraft(draftId);
-      if (draft) {
+    let cancelled = false;
+
+    async function loadDraft() {
+      if (!draftId) return;
+      try {
+        setLoading(true);
+        setError(null);
+        const draft = await fetchDashboardPost(draftId);
+        if (cancelled) return;
         setCopy(draft.copy);
         setPlatforms(draft.platforms);
+        if (draft.locationId) {
+          setLocationId(draft.locationId);
+          setStoredActiveLocationId(draft.locationId);
+        }
+      } catch (err) {
+        if (!cancelled) {
+          setError(formatDashboardApiMessage(err, "Could not load this draft."));
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
       }
     }
+
+    void loadDraft();
+    return () => {
+      cancelled = true;
+    };
   }, [draftId]);
 
   function togglePlatform(p: SocialPlatform) {
@@ -40,33 +71,88 @@ function EditorInner() {
     );
   }
 
-  function handleSave(sendForReview = true) {
-    const loc = getActiveLocation();
-    if (!loc) return;
-
-    if (draftId) {
-      updateDraft(draftId, {
-        copy,
-        platforms,
-        status: sendForReview ? "needs_review" : undefined,
-      });
-    } else {
-      createDraftFromEditor({
-        copy,
-        platforms,
-        locationId: loc.id,
-      });
+  async function persistDraft(sendForReview = false): Promise<string | null> {
+    const activeLocationId = locationId ?? getStoredActiveLocationId();
+    if (!activeLocationId) {
+      setError("Choose a location before drafting.");
+      return null;
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2500);
+
+    try {
+      setError(null);
+      let currentId = draftId;
+
+      if (currentId) {
+        await updateDashboardPost(currentId, {
+          copy,
+          platforms,
+          status: sendForReview ? "draft" : "draft",
+        });
+      } else {
+        const created = await createDashboardPost({
+          locationId: activeLocationId,
+          copy,
+          platforms,
+        });
+        currentId = created.id;
+      }
+
+      if (sendForReview && currentId) {
+        await submitDashboardPost(currentId);
+      }
+
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2500);
+      return currentId ?? null;
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, MICROCOPY.error));
+      return null;
+    }
   }
 
-  function handlePress() {
-    handleSave(false);
-    if (draftId) {
-      pressDraft(draftId);
+  async function handleSave(sendForReview = false) {
+    const nextId = await persistDraft(sendForReview);
+    if (nextId && !draftId) {
+      router.replace(`/dashboard/editor?draft=${nextId}`);
     }
-    router.push("/dashboard/drafts");
+  }
+
+  async function handlePress() {
+    const nextId = await persistDraft(true);
+    if (nextId) {
+      router.push("/dashboard/drafts");
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="pb-app max-w-2xl">
+        <div className="space-y-6">
+          <div className="h-10 w-40 animate-pulse rounded-full bg-black/[0.05]" />
+          <div className="h-48 animate-pulse rounded-[24px] bg-black/[0.05]" />
+          <div className="h-20 animate-pulse rounded-[24px] bg-black/[0.05]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error && draftId && !copy) {
+    return (
+      <div className="pb-app max-w-2xl">
+        <div className="rounded-[28px] border border-[#e6ddd1] bg-[#fbf8f3] px-6 py-8 text-sm text-[#6c645a] shadow-[0_16px_40px_-34px_rgba(10,10,10,0.35)]">
+          <p className="font-medium text-[#1f1d19]">That draft is no longer available.</p>
+          <p className="mt-2 leading-6">{error}</p>
+          <div className="mt-4 flex gap-3">
+            <Link href="/dashboard/drafts" className="pb-btn-primary text-sm">
+              Back to content
+            </Link>
+            <button type="button" className="pb-btn-secondary text-sm" onClick={() => router.refresh()}>
+              Refresh
+            </button>
+          </div>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -77,7 +163,13 @@ function EditorInner() {
           <p>{MICROCOPY.rewrite}</p>
           <p className="text-sm opacity-70 mt-1">{MICROCOPY.twoSentences}</p>
         </div>
-        <LocationSwitcher />
+        <LocationSwitcher
+          value={locationId}
+          onChange={(id) => {
+            setStoredActiveLocationId(id);
+            setLocationId(id);
+          }}
+        />
       </div>
 
       <div className="space-y-6">
@@ -91,6 +183,8 @@ function EditorInner() {
             placeholder="Two sentences. That's enough."
           />
         </label>
+
+        {error && <p className="text-sm text-[#8f6a64]">{error}</p>}
 
         <fieldset>
           <legend className="text-xs uppercase tracking-widest opacity-50 mb-2">Platforms</legend>
@@ -109,13 +203,13 @@ function EditorInner() {
         </fieldset>
 
         <div className="flex flex-wrap gap-2">
-          <button type="button" className="pb-btn-primary text-sm" onClick={() => handleSave(true)}>
+          <button type="button" className="pb-btn-primary text-sm" onClick={() => void handleSave(false)}>
             Save draft
           </button>
-          <button type="button" className="pb-btn-secondary text-sm" onClick={() => handleSave(true)}>
+          <button type="button" className="pb-btn-secondary text-sm" onClick={() => void handleSave(true)}>
             Send for approval
           </button>
-          <button type="button" className="pb-btn-primary pb-btn-press text-sm" onClick={handlePress}>
+          <button type="button" className="pb-btn-primary pb-btn-press text-sm" onClick={() => void handlePress()}>
             Press
           </button>
         </div>

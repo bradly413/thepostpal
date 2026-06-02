@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { jwtVerify } from "jose";
+import { jwtVerify, type JWTPayload } from "jose";
 import {
   safeRedirectPath,
   SIGNIN_NEXT_DEFAULT,
@@ -43,14 +43,28 @@ function signInUrl(request: NextRequest, nextPath?: string) {
   return url;
 }
 
+function hasRequiredTenantScope(payload: JWTPayload): boolean {
+  if (payload.legacy) return false;
+
+  const tenantId = typeof payload.tenantId === "string"
+    ? payload.tenantId
+    : typeof payload.accountId === "string"
+      ? payload.accountId
+      : null;
+
+  return !!(typeof payload.sub === "string" && tenantId);
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const token = request.cookies.get("session")?.value;
 
   let sessionValid = false;
+  let payload: JWTPayload | null = null;
   if (token) {
     try {
-      await jwtVerify(token, getSecret());
+      const verified = await jwtVerify(token, getSecret());
+      payload = verified.payload;
       sessionValid = true;
     } catch {
       const response = NextResponse.redirect(signInUrl(request, pathname));
@@ -68,6 +82,12 @@ export async function proxy(request: NextRequest) {
 
   if (isPublicPath(pathname)) {
     return NextResponse.next();
+  }
+
+  if (sessionValid && !hasRequiredTenantScope(payload || {})) {
+    const response = NextResponse.redirect(signInUrl(request, pathname));
+    response.cookies.delete("session");
+    return response;
   }
 
   if (!sessionValid) {
