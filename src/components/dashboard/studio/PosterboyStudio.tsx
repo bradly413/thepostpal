@@ -376,12 +376,12 @@ export default function PosterboyStudio() {
                   className={`rail-ico${platformIdx === i ? " active" : ""}`}
                   onClick={() => setPlatformIdx(i)}
                   aria-pressed={platformIdx === i}
-                  title={`${p.label} · ${p.w} × ${p.h}`}
+                  title={p.label}
                 >
                   <PlatformIcon type={p.id} />
                 </button>
                 {platformIdx === i && (
-                  <span className="rail-ico-label">{p.label} · {p.w} × {p.h}</span>
+                  <span className="rail-ico-label">{p.label}</span>
                 )}
               </div>
             ))}
