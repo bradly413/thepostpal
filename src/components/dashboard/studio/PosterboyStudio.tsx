@@ -39,19 +39,24 @@ import Link from "next/link";
  * Wiring TODOs marked inline (generate -> /api/generate, publish -> /api/publish).
  */
 
-const DIMENSIONS = [
-  { label: "1080 × 1080", aspect: "1:1" },
-  { label: "1080 × 1350", aspect: "4:5" },
-  { label: "1080 × 1920", aspect: "9:16" },
-  { label: "1200 × 628", aspect: "16:9" },
-];
+// Post target per platform, with the recommended feed-post pixel size.
+// `genAspect` is forwarded to the image API (mapped to a supported ratio);
+// `w`/`h` drive the morphing canvas frame.
+const PLATFORMS = [
+  { id: "instagram", label: "Instagram", w: 1080, h: 1350, genAspect: "4:5" },
+  { id: "facebook", label: "Facebook", w: 1200, h: 630, genAspect: "16:9" },
+  { id: "x", label: "X", w: 1600, h: 900, genAspect: "16:9" },
+  { id: "linkedin", label: "LinkedIn", w: 1200, h: 627, genAspect: "16:9" },
+  { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16" },
+] as const;
 
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
 type GenState = "idle" | "generating" | "done";
 
 export default function PosterboyStudio() {
-  const [dimIdx, setDimIdx] = useState(0);
+  const [platformIdx, setPlatformIdx] = useState(0);
+  const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const [theme, setTheme] = useState<"light" | "grid">("light");
   const [postType, setPostType] = useState<PostType>("photo");
   const [channels, setChannels] = useState<Set<string>>(new Set(["instagram"]));
@@ -62,10 +67,32 @@ export default function PosterboyStudio() {
   const [error, setError] = useState("");
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
   const inputRef = useRef<HTMLInputElement>(null);
+  const postSelectRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
   }, []);
+
+  // Close the post-format menu on outside click.
+  useEffect(() => {
+    if (!formatMenuOpen) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!postSelectRef.current?.contains(e.target as Node)) {
+        setFormatMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [formatMenuOpen]);
+
+  // Selected platform + the frame size that fits a square stage while
+  // preserving the post's aspect ratio (both dims as % so they transition).
+  const platform = PLATFORMS[platformIdx];
+  const frameRatio = platform.w / platform.h;
+  const frameSize =
+    frameRatio >= 1
+      ? { width: "100%", height: `${(100 / frameRatio).toFixed(2)}%` }
+      : { width: `${(frameRatio * 100).toFixed(2)}%`, height: "100%" };
 
   const toggleChannel = (id: string) =>
     setChannels((prev) => {
@@ -88,7 +115,7 @@ export default function PosterboyStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: savedPrompt,
-          aspectRatio: DIMENSIONS[dimIdx].aspect,
+          aspectRatio: platform.genAspect,
         }),
       });
       const data = await res.json();
@@ -181,11 +208,39 @@ export default function PosterboyStudio() {
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            <button type="button" className="dim-chip" onClick={() => setDimIdx((i) => (i + 1) % DIMENSIONS.length)}>
-              <FrameIcon size={15} />
-              <span>{DIMENSIONS[dimIdx].label}</span>
-              <ChevronDown className="chev" size={14} />
-            </button>
+            <div className="post-select" ref={postSelectRef}>
+              <button
+                type="button"
+                className={`dim-chip${formatMenuOpen ? " open" : ""}`}
+                onClick={() => setFormatMenuOpen((o) => !o)}
+                aria-haspopup="listbox"
+                aria-expanded={formatMenuOpen}
+              >
+                <FrameIcon size={15} />
+                <span className="post-label">Post</span>
+                <span className="post-meta">{platform.label} · {platform.w} × {platform.h}</span>
+                <ChevronDown className="chev" size={14} />
+              </button>
+              {formatMenuOpen && (
+                <ul className="post-menu" role="listbox">
+                  {PLATFORMS.map((p, i) => (
+                    <li key={p.id} role="option" aria-selected={i === platformIdx}>
+                      <button
+                        type="button"
+                        className={`post-option${i === platformIdx ? " active" : ""}`}
+                        onClick={() => {
+                          setPlatformIdx(i);
+                          setFormatMenuOpen(false);
+                        }}
+                      >
+                        <span className="po-name">{p.label}</span>
+                        <span className="po-dim">{p.w} × {p.h}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
             <div className="top-toggles">
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
               <button className={theme === "grid" ? "active" : ""} onClick={() => setTheme("grid")}><LayoutGrid size={16} /></button>
@@ -193,7 +248,10 @@ export default function PosterboyStudio() {
           </div>
 
           <div className="frame-wrap">
-            <div className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}>
+            <div
+              className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}
+              style={frameSize}
+            >
               <div
                 className="preview"
                 style={genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : undefined}
@@ -555,7 +613,34 @@ function StudioStyles() {
     color: var(--ink);
     cursor: pointer;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip .chev { color: var(--muted); }.pb-studio .top-toggles {
+  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip .post-label { font-weight: 600; }.pb-studio .dim-chip .post-meta { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }.pb-studio .dim-chip .chev { color: var(--muted); transition: transform 0.2s ease; }.pb-studio .dim-chip.open .chev { transform: rotate(180deg); }.pb-studio .post-select { position: relative; }.pb-studio .post-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 220px;
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 14px;
+    box-shadow: 0 10px 34px rgba(0,0,0,0.18);
+    z-index: 30;
+    animation: pbsMenuIn 0.16s ease;
+  }@keyframes pbsMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }.pb-studio .post-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
     display: flex;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(12px) saturate(160%);
@@ -582,6 +667,8 @@ function StudioStyles() {
     max-width: 460px;
     aspect-ratio: 1;
     z-index: 10;
+    display: grid;
+    place-items: center;
   }.pb-studio /* Glow spill behind the frame */
   .frame-wrap::before {
     content: '';
@@ -601,6 +688,7 @@ function StudioStyles() {
     position: relative;
     width: 100%;
     height: 100%;
+    transition: width 0.55s cubic-bezier(0.65, 0, 0.35, 1), height 0.55s cubic-bezier(0.65, 0, 0.35, 1);
     background: linear-gradient(180deg, #fbfbfb 0%, #efefef 100%);
     border-radius: 4px;
     border: 1.5px solid rgba(255,255,255,1);
