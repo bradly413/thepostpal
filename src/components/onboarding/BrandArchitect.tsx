@@ -1,6 +1,8 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { saveBrandEngine } from "@/lib/brand-engine-api";
 import { Fraunces, Syne } from "next/font/google";
 
 // Real type specimens for the typography engine.
@@ -47,6 +49,9 @@ export default function BrandArchitect() {
     typographyPairing: "",
   });
   const [compiled, setCompiled] = useState(false);
+  const router = useRouter();
+  const [saving, setSaving] = useState(false);
+  const [saveNote, setSaveNote] = useState<string | null>(null);
 
   const next = () => setStep((s) => Math.min(s + 1, 3));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -273,15 +278,40 @@ export default function BrandArchitect() {
               <div className="space-y-3">
                 <button
                   type="button"
-                  onClick={() => setCompiled(true)}
-                  className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all"
+                  disabled={saving || !brandData.niche}
+                  onClick={async () => {
+                    setSaving(true);
+                    setSaveNote(null);
+                    try {
+                      await saveBrandEngine(brandData);
+                      setSaveNote("Brand Engine saved to your workspace.");
+                    } catch {
+                      setSaveNote("Showing your DNA — sign in to save it to your workspace.");
+                    } finally {
+                      setSaving(false);
+                      setCompiled(true);
+                    }
+                  }}
+                  className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all disabled:opacity-50"
                 >
-                  Synthesize Brand Engine
+                  {saving ? "Synthesizing…" : "Synthesize Brand Engine"}
                 </button>
                 {compiled && (
-                  <pre className="bg-black/5 backdrop-blur-md border border-black/10 rounded-2xl p-6 font-mono text-[10px] uppercase text-black/50 leading-relaxed overflow-x-auto whitespace-pre-wrap">
+                  <>
+                    {saveNote && (
+                      <div className="text-[11px] tracking-wide text-black/50 text-center">{saveNote}</div>
+                    )}
+                    <pre className="bg-black/5 backdrop-blur-md border border-black/10 rounded-2xl p-6 font-mono text-[10px] uppercase text-black/50 leading-relaxed overflow-x-auto whitespace-pre-wrap">
 {JSON.stringify(brandData, null, 2)}
-                  </pre>
+                    </pre>
+                    <button
+                      type="button"
+                      onClick={() => router.push("/dashboard")}
+                      className="w-full bg-[#ee2532] text-white rounded-2xl py-4 text-xs font-light tracking-[0.2em] shadow-xl hover:opacity-90 transition-all"
+                    >
+                      Enter Posterboy
+                    </button>
+                  </>
                 )}
               </div>
             </div>
