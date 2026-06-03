@@ -45,8 +45,8 @@ const SmokeShaderMaterial = shaderMaterial(
   {
     u_time: 0,
     u_speed: 0.15,
-    u_density: 0.4,
-    u_color: new THREE.Color("#ffffff"),
+    u_density: 0.55,
+    u_color: new THREE.Color("#9aa1ab"), // soft cool grey mist — visible on the near-white page
     u_velocity_impact: 0.0,
   },
   // Vertex shader — fullscreen triangle/quad
@@ -105,8 +105,8 @@ const SmokeShaderMaterial = shaderMaterial(
 
       float f = fbm(p + 4.0 * r);
 
-      float smoke_alpha = smoothstep(0.1, 0.9, f * u_density);
-      vec3 final_color = mix(vec3(0.97, 0.97, 0.97), u_color, smoke_alpha);
+      float smoke_alpha = smoothstep(0.0, 0.85, f * u_density);
+      vec3 final_color = mix(vec3(0.976, 0.976, 0.976), u_color, smoke_alpha);
 
       gl_FragColor = vec4(final_color, 1.0);
     }
@@ -215,10 +215,10 @@ export default function BrandArchitect() {
     const targetStep = steps[nextIndex];
 
     if (shaderRef.current) {
-      let targetDensity = 0.4;
-      if (targetStep.id === "niche") targetDensity = 0.65;
-      else if (targetStep.id === "pivot") targetDensity = 0.5;
-      else if (targetStep.id === "typography") targetDensity = 0.3;
+      let targetDensity = 0.55;
+      if (targetStep.id === "niche") targetDensity = 0.75;
+      else if (targetStep.id === "pivot") targetDensity = 0.6;
+      else if (targetStep.id === "typography") targetDensity = 0.5;
 
       gsap.killTweensOf(shaderRef.current);
       gsap
