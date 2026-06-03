@@ -15,6 +15,7 @@ import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { BRAND_PHOTOS } from "@/lib/brand-photo-assets";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
+import { uploadDashboardImage } from "@/lib/dashboard-upload";
 
 const CAPTION_SUGGESTIONS = [
   "Just listed! This stunning home won't last long. Schedule your private showing today 🏡",
@@ -248,17 +249,12 @@ export default function EditorPage({
         cacheBust: true,
       });
       const blob = await (await fetch(dataUrl)).blob();
-      const formData = new FormData();
-      formData.append("file", blob, `${template!.id}.png`);
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Image upload failed");
+      const file = new File([blob], `${template!.id}.png`, { type: "image/png" });
+      // Presigned S3 upload returns a durable public URL Meta can fetch
+      // (local-disk uploads are ephemeral on Vercel and unreachable by Meta).
+      const imageUrl = await uploadDashboardImage(file);
 
       const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
-      const imageUrl = uploadData.url.startsWith("http")
-        ? uploadData.url
-        : `${window.location.origin}${uploadData.url}`;
       const payload = await buildMetaPublishPayload({
         platform: publishPlatform,
         caption,
@@ -298,17 +294,11 @@ export default function EditorPage({
         cacheBust: true,
       });
       const blob = await (await fetch(dataUrl)).blob();
-      const formData = new FormData();
-      formData.append("file", blob, `${template!.id}.png`);
-
-      const uploadRes = await fetch("/api/upload", { method: "POST", body: formData });
-      const uploadData = await uploadRes.json();
-      if (!uploadRes.ok) throw new Error(uploadData.error || "Image upload failed");
+      const file = new File([blob], `${template!.id}.png`, { type: "image/png" });
+      // Presigned S3 upload returns a durable public URL Meta can fetch.
+      const imageUrl = await uploadDashboardImage(file);
 
       const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
-      const imageUrl = uploadData.url.startsWith("http")
-        ? uploadData.url
-        : `${window.location.origin}${uploadData.url}`;
       const payload = await buildMetaPublishPayload({
         platform: schedulePlatform,
         caption,
