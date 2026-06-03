@@ -1043,7 +1043,8 @@ html[data-theme] body {
 .pb-app {
   --pb-ink: #111111;
   --pb-bone: #F4EFE5;
-  --pb-press: #D9352B;
+  --pb-press: #ee2532;
+  --pb-press-deep: #c81e2a;
   --pb-paper: #FAF7F1;
 }
 
@@ -1174,6 +1175,120 @@ html[data-theme] body {
   clip: rect(0, 0, 0, 0);
   border: 0;
 }
+
+/* ═══════════════════════════════════════════════════════════
+   Warm dashboard kit — shared building blocks for every page
+   so the dashboard reads as one system (cards, fields, tabs,
+   toggles, list rows, stat tiles). Used by settings, calendar,
+   ads, templates, editor, photos.
+   ═══════════════════════════════════════════════════════════ */
+.pb-panel {
+  background: #ffffff;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 20px;
+  padding: 1.5rem;
+}
+.pb-panel-danger { border-color: rgba(238, 37, 50, 0.3); }
+.pb-panel-h {
+  font-family: var(--font-instrument-serif), Georgia, serif;
+  font-size: 1.125rem;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  margin-bottom: 0.75rem;
+}
+.pb-label {
+  display: block;
+  font-size: 0.6875rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(17, 17, 17, 0.5);
+  margin-bottom: 0.4rem;
+}
+.pb-field {
+  width: 100%;
+  border: 1px solid rgba(17, 17, 17, 0.12);
+  background: #ffffff;
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
+  font-size: 0.875rem;
+  color: var(--pb-ink, #111);
+}
+.pb-field:focus {
+  outline: none;
+  border-color: var(--pb-press, #ee2532);
+  box-shadow: 0 0 0 3px rgba(238, 37, 50, 0.12);
+}
+.pb-tab {
+  flex-shrink: 0;
+  font-size: 0.875rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  text-align: left;
+  color: rgba(17, 17, 17, 0.55);
+  transition: color 0.2s, background 0.2s;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+}
+.pb-tab:hover { color: var(--pb-ink, #111); background: rgba(17, 17, 17, 0.04); }
+.pb-tab-active,
+.pb-tab-active:hover { background: var(--pb-press, #ee2532); color: #fff; }
+.pb-toggle {
+  position: relative;
+  height: 1.5rem;
+  width: 2.75rem;
+  border-radius: 999px;
+  background: rgba(17, 17, 17, 0.15);
+  transition: background 0.2s;
+  border: 0;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+.pb-toggle-on { background: var(--pb-press, #ee2532); }
+.pb-toggle-knob {
+  position: absolute;
+  top: 0.125rem;
+  height: 1.25rem;
+  width: 1.25rem;
+  border-radius: 999px;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+  transition: transform 0.2s;
+  transform: translateX(0.125rem);
+}
+.pb-toggle-on .pb-toggle-knob { transform: translateX(1.375rem); }
+.pb-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(17, 17, 17, 0.02);
+}
+.pb-tile {
+  border: 1px solid rgba(17, 17, 17, 0.08);
+  border-radius: 14px;
+  padding: 1rem;
+  background: rgba(17, 17, 17, 0.02);
+}
+.pb-tile-label {
+  font-size: 0.625rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(17, 17, 17, 0.45);
+}
+.pb-chip-soft {
+  display: inline-block;
+  border-radius: 8px;
+  padding: 0.25rem 0.6rem;
+  font-size: 0.625rem;
+  font-weight: 500;
+  background: rgba(17, 17, 17, 0.05);
+  color: rgba(17, 17, 17, 0.5);
+}
+.pb-press-text { color: var(--pb-press, #ee2532); }
 
 @media (max-width: 768px) {
   .pb-footer-inner { grid-template-columns: 1fr; }
