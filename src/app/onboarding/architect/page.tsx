@@ -1,13 +1,7 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import dynamic from "next/dynamic";
-
-// WebGL + GSAP Observer must run client-only.
-const BrandArchitect = dynamic(
-  () => import("@/components/onboarding/BrandArchitect"),
-  { ssr: false },
-);
-
-export default function BrandArchitectPage() {
-  return <BrandArchitect />;
+// The Brand Architect was promoted to be the main onboarding route.
+// Keep this path working for any existing links.
+export default function ArchitectRedirect() {
+  redirect("/onboarding");
 }
