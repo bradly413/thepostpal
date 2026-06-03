@@ -1,5 +1,6 @@
 "use client";
 
+import type { BrandBook, OnboardingAnswers } from "@/lib/brand-book-schema";
 import type { DraftStatus, SocialPlatform } from "@/lib/posterboy-types";
 import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 
@@ -261,6 +262,33 @@ export async function updateDashboardCalendarEvent(
 
 export async function deleteDashboardCalendarEvent(id: string): Promise<void> {
   await apiRequest(`/api/calendar/${id}`, { method: "DELETE" });
+}
+
+export interface DashboardBrandBookResponse {
+  hasBrandBook: boolean;
+  locationId: string | null;
+  brandBook: BrandBook | null;
+  onboardingAnswers?: OnboardingAnswers | null;
+}
+
+export async function fetchDashboardBrandBook(
+  locationId?: string | null,
+): Promise<DashboardBrandBookResponse> {
+  const search = locationId
+    ? `?locationId=${encodeURIComponent(locationId)}`
+    : "";
+  return apiRequest<DashboardBrandBookResponse>(`/api/brand-book${search}`);
+}
+
+export async function saveDashboardBrandBook(input: {
+  locationId: string;
+  brandBook: BrandBook;
+  onboardingAnswers?: OnboardingAnswers;
+}): Promise<DashboardBrandBookResponse> {
+  return apiRequest<DashboardBrandBookResponse>("/api/brand-book", {
+    method: "PUT",
+    body: JSON.stringify(input),
+  });
 }
 
 export function isDashboardAccessError(error: unknown): error is DashboardApiError {

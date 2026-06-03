@@ -49,7 +49,7 @@ export default function PricingPage() {
       <section className="pb-section pb-section-narrow pb-reveal" style={{ textAlign: "center", paddingBottom: "5rem" }}>
         <h2>{CORE.weekDrafted}</h2>
         <p style={{ marginTop: "1rem" }}>
-          <Link href="/sign-in?mode=signup&next=%2Fonboarding&plan=solo" className="pb-btn-primary" style={{ display: "inline-flex" }}>
+          <Link href="/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo" className="pb-btn-primary" style={{ display: "inline-flex" }}>
             Try posterboy
           </Link>
         </p>

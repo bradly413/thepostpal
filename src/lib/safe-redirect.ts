@@ -8,9 +8,12 @@ export function safeRedirectPath(
   return path;
 }
 
-export const SIGNUP_NEXT_DEFAULT = "/onboarding";
+// Real onboarding (brand-book generation) lives at /onboarding/classic.
+// /onboarding itself is the cinematic Brand Architect concept, which is not
+// yet wired to generate a brand book — so signup flows target the wizard.
+export const SIGNUP_NEXT_DEFAULT = "/onboarding/classic";
 export const SIGNIN_NEXT_DEFAULT = "/dashboard";
 
 /** Marketing + hero CTAs: create account, then brand onboarding. */
 export const SIGNUP_ONBOARDING_URL =
-  "/sign-in?mode=signup&next=%2Fonboarding";
+  "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic";

@@ -28,7 +28,7 @@ export default function OnboardingHeader({
         <div className="flex items-center gap-2 text-[13px] shrink-0">
           <span className="text-text-secondary hidden sm:inline">Already have an account?</span>
           <Link
-            href="/sign-in?next=%2Fonboarding"
+            href="/sign-in?next=%2Fonboarding%2Fclassic"
             className="font-medium text-text underline-offset-4 hover:underline"
           >
             Sign in

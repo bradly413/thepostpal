@@ -45,16 +45,22 @@ function SignInForm() {
     saveSelectedPlan(searchParams.get("plan"));
   }, [searchParams]);
 
-  function resolvePostAuthPath(): string {
+  async function resolvePostAuthPath(): Promise<string> {
+    if (typeof window === "undefined") return nextPath;
     if (
-      typeof window !== "undefined" &&
-      !isOnboardingComplete() &&
-      !hasBrandBook() &&
-      !localStorage.getItem("posterboy-organization")
+      isOnboardingComplete() ||
+      hasBrandBook() ||
+      localStorage.getItem("posterboy-organization")
     ) {
-      return "/onboarding";
+      return nextPath;
     }
-    return nextPath;
+    try {
+      const { fetchHasBrandBookFromApi } = await import("@/lib/brand-book-client");
+      if (await fetchHasBrandBookFromApi()) return nextPath;
+    } catch {
+      /* session not ready */
+    }
+    return "/onboarding";
   }
 
   const [username, setUsername] = useState("");
@@ -82,7 +88,7 @@ function SignInForm() {
       });
       const data = await res.json().catch(() => null);
       if (res.ok) {
-        router.push(resolvePostAuthPath());
+        router.push(await resolvePostAuthPath());
       } else if (res.status >= 500) {
         setError(data?.error || "Could not sign in right now.");
         setLoading(false);

@@ -22,9 +22,10 @@ export default function OrganizationPage() {
   const [draftCounts, setDraftCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    ensureDashboardData();
-    setOrg(getOrganization());
-    setLocations(getLocations());
+    void ensureDashboardData().then(() => {
+      setOrg(getOrganization());
+      setLocations(getLocations());
+    });
     const refresh = () => {
       setOrg(getOrganization());
       setLocations(getLocations());

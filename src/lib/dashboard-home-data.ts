@@ -1,4 +1,8 @@
 import {
+  legacyToneFromBrandVoiceJson,
+  parseLocationBrandDocument,
+} from "@/lib/brand-book-document";
+import {
   fetchDashboardLocations,
   fetchDashboardPosts,
   type DashboardLocationRecord,
@@ -185,7 +189,10 @@ export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot
           .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
           .slice(0, 3);
 
-  const toneParts = currentLocation?.brandVoiceJson?.tone ?? [];
+  const brandDoc = parseLocationBrandDocument(currentLocation?.brandVoiceJson);
+  const toneParts =
+    brandDoc?.brandBook.voice?.traits?.map((t) => t.name) ??
+    legacyToneFromBrandVoiceJson(currentLocation?.brandVoiceJson);
   const brandVoiceLine =
     toneParts.length > 0
       ? toneParts.map((t) => t.charAt(0).toUpperCase() + t.slice(1)).join(". ") + "."

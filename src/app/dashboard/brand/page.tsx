@@ -14,6 +14,7 @@ import type {
   Tagline,
 } from "@/lib/brand-book-schema";
 import { SITE_NAME } from "@/lib/site";
+import { useBrandBook } from "@/lib/use-brand-book";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -51,16 +52,12 @@ function useTokens(palette: BrandPalette) {
 }
 
 export default function BrandPage() {
-  const [book, setBook] = useState<BrandBook | null>(null);
+  const { book, loading } = useBrandBook();
   const [activeSec, setActiveSec] = useState("essence");
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
     document.title = `My Brand | ${SITE_NAME}`;
-    try {
-      const stored = localStorage.getItem("postpal-brand-book");
-      if (stored) setBook(JSON.parse(stored));
-    } catch { /* ignore */ }
   }, []);
 
   useEffect(() => {
@@ -93,13 +90,21 @@ export default function BrandPage() {
     }
   }, [book]);
 
+  if (loading) {
+    return (
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
+        <p style={{ fontSize: 14, opacity: 0.7 }}>Loading brand book…</p>
+      </div>
+    );
+  }
+
   if (!book) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
         <div style={{ textAlign: "center", maxWidth: 400 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No Brand Book Yet</h2>
           <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 20 }}>Complete the onboarding flow to generate your personalized brand guidelines.</p>
-          <Link href="/onboarding" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#1E3A8A", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/onboarding/classic" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#1E3A8A", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             Start Onboarding
           </Link>
         </div>

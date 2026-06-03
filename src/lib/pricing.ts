@@ -49,7 +49,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Auto-scheduling",
     ],
     cta: "Start Solo",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding&plan=solo",
+    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo",
     tier: "public",
   },
   {
@@ -71,7 +71,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Enterprise onboarding (SSO by contract)",
     ],
     cta: "Start Command",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding&plan=command",
+    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=command",
     tier: "public",
     highlighted: true,
   },
