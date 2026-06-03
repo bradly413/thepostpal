@@ -1,24 +1,41 @@
 "use client";
 
-import { useRef, useEffect, type RefObject } from "react";
+import { useRef, useEffect, useState, type RefObject } from "react";
 import { Canvas, useFrame, extend, type ThreeElements } from "@react-three/fiber";
 import { shaderMaterial } from "@react-three/drei";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { Observer } from "gsap/Observer";
-import { Fraunces, Syne, Newsreader } from "next/font/google";
+import { Fraunces, Syne } from "next/font/google";
 
 gsap.registerPlugin(Observer);
 
-// Typographic-voice specimens for the aesthetics step.
+// Real type specimens for the typography engine (node 4).
 const fraunces = Fraunces({ subsets: ["latin"], weight: ["400", "500"], style: ["normal", "italic"] });
 const syne = Syne({ subsets: ["latin"], weight: ["500", "700"] });
-const newsreader = Newsreader({ subsets: ["latin"], weight: ["300", "400"], style: ["normal", "italic"] });
 
-const TYPE_VOICES = [
-  { name: "Editorial", desc: "Warm, literary, high-contrast", className: fraunces.className, italic: true, weight: 400 },
-  { name: "Modernist", desc: "Geometric, confident, clean", className: syne.className, italic: false, weight: 700 },
-  { name: "Classic", desc: "Refined, timeless, elegant", className: newsreader.className, italic: true, weight: 300 },
+const TYPE_PAIRS = [
+  {
+    id: "serif-editorial",
+    label: "Fraunces — Editorial Serif",
+    preview: "The Art of Space",
+    className: fraunces.className,
+    style: { fontStyle: "italic", fontWeight: 400 } as const,
+  },
+  {
+    id: "brutalist-sans",
+    label: "Syne — Brutalist Display",
+    preview: "SCALE_01 // SYSTEM",
+    className: syne.className,
+    style: { fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" } as const,
+  },
+  {
+    id: "clean-minimal",
+    label: "Inter — Clean Minimal",
+    preview: "Less is premium.",
+    className: "font-sans",
+    style: { fontWeight: 300 } as const,
+  },
 ];
 
 // ---------------------------------------------------------------------
@@ -135,12 +152,57 @@ export default function BrandArchitect() {
   const shaderRef = useRef<SmokeMaterial | null>(null);
   const canvasWrapperRef = useRef<HTMLDivElement>(null);
 
-  // The three nodes sit in a row inside the 300vw container, so each step is
-  // a third of the container width (xPercent is relative to that width).
+  const [brandData, setBrandData] = useState({
+    niche: "",
+    pivotAnswer: "",
+    paletteVibe: 50, // 0 = clinical / neutral, 100 = vibrant / contrast
+    typographyPairing: "",
+  });
+  const [compiled, setCompiled] = useState(false);
+
+  // The 02 question is driven by the niche picked in node 2.
+  const getPivotQuestion = () => {
+    switch (brandData.niche) {
+      case "Luxury Real Estate":
+        return {
+          title: "02 / Editorial Tone",
+          question:
+            "Do you prefer your property narratives to focus on architectural pedigree, or emotional lifestyle and neighborhood amenities?",
+          options: ["Architectural Pedigree", "Lifestyle & Amenities"],
+        };
+      case "Medical Spa & Wellness":
+        return {
+          title: "02 / Clinical Focus",
+          question:
+            "Should your brand voice lead with technical clinical expertise and raw results, or soft luxury wellness and a sanctuary experience?",
+          options: ["Clinical Expertise", "Sanctuary & Wellness"],
+        };
+      case "Disruptive Tech Startup":
+        return {
+          title: "02 / Market Position",
+          question:
+            "Does your product positioning lean toward being a highly disruptive industry challenger, or an enterprise-grade, institutional partner?",
+          options: ["Disruptive Challenger", "Enterprise-Grade"],
+        };
+      default:
+        return {
+          title: "02 / Brand Focus",
+          question: "Select a niche to unlock your brand's primary tone matrix.",
+          options: [] as string[],
+        };
+    }
+  };
+  const currentPivot = getPivotQuestion();
+
+  // Four nodes on a 2D canvas (300vw x 200vh, flex-wrap): three across the top
+  // row, the fourth wraps to row two. xPercent / yPercent are relative to the
+  // container's own width / height, so a column step is -100/3 of the width and
+  // a row step is -50 of the height.
   const steps = [
-    { id: "intro", xp: 0 },
-    { id: "niche", xp: -100 / 3 },
-    { id: "aesthetics", xp: -200 / 3 },
+    { id: "intro", xp: 0, yp: 0 },
+    { id: "niche", xp: -100 / 3, yp: 0 },
+    { id: "pivot", xp: -200 / 3, yp: 0 },
+    { id: "typography", xp: 0, yp: -50 },
   ];
 
   const currentStepIndex = useRef(0);
@@ -155,7 +217,8 @@ export default function BrandArchitect() {
     if (shaderRef.current) {
       let targetDensity = 0.4;
       if (targetStep.id === "niche") targetDensity = 0.65;
-      else if (targetStep.id === "aesthetics") targetDensity = 0.3;
+      else if (targetStep.id === "pivot") targetDensity = 0.5;
+      else if (targetStep.id === "typography") targetDensity = 0.3;
 
       gsap.killTweensOf(shaderRef.current);
       gsap
@@ -175,6 +238,7 @@ export default function BrandArchitect() {
 
     gsap.to(canvasWrapperRef.current, {
       xPercent: targetStep.xp,
+      yPercent: targetStep.yp,
       scale: 0.95,
       duration: 1.2,
       ease: "expo.inOut",
@@ -235,7 +299,15 @@ export default function BrandArchitect() {
                   <button
                     key={niche}
                     type="button"
-                    className="w-full text-left py-4 px-6 border border-black/5 hover:border-black/20 bg-white/40 hover:bg-white/80 rounded-xl tracking-tight font-light text-lg transition-all duration-300"
+                    onClick={() => {
+                      setBrandData((prev) => ({ ...prev, niche }));
+                      handleStepTransition(1);
+                    }}
+                    className={`w-full text-left py-4 px-6 border rounded-xl tracking-tight font-light text-lg transition-all duration-300 ${
+                      brandData.niche === niche
+                        ? "border-black/70 bg-white/90 shadow-md translate-x-2"
+                        : "border-black/5 hover:border-black/20 bg-white/40 hover:bg-white/80"
+                    }`}
                   >
                     {niche}
                   </button>
@@ -245,44 +317,126 @@ export default function BrandArchitect() {
           </div>
         </div>
 
-        {/* Node 3 — Aesthetics / typographic voice */}
+        {/* Node 3 — Dynamic pivot question (driven by the niche in node 2) */}
         <div className="w-screen h-screen flex items-center justify-center p-24">
-          <div className="w-full max-w-3xl">
-            <h2 className="text-xs tracking-[0.2em] uppercase text-black/50 mb-3 text-center">
-              02 / Your Typographic Voice
+          <div className="w-full max-w-2xl bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-12 relative overflow-hidden">
+            <h2 className="text-xs tracking-[0.2em] uppercase text-black/50 mb-6">
+              {currentPivot.title}
             </h2>
-            <p className="text-center text-black/40 font-light tracking-tight mb-10">
-              Type carries tone. Choose the one that sounds like you.
+            <p className="text-xl font-light text-black/90 tracking-tight leading-relaxed mb-8">
+              {currentPivot.question}
             </p>
-            <div className="space-y-4">
-              {TYPE_VOICES.map((v) => (
-                <button
-                  key={v.name}
-                  type="button"
-                  className="group w-full flex items-center gap-6 sm:gap-10 py-6 px-8 bg-white/30 hover:bg-white/70 border border-black/5 hover:border-black/15 rounded-2xl backdrop-blur-xl shadow-sm hover:shadow-xl transition-all duration-500 text-left"
-                >
-                  <span
-                    className={`${v.className} text-5xl sm:text-6xl text-black/85 w-16 sm:w-20 text-center shrink-0 leading-none`}
-                    style={{ fontStyle: v.italic ? "italic" : "normal", fontWeight: v.weight }}
+            {currentPivot.options.length > 0 ? (
+              <div className="grid grid-cols-2 gap-4">
+                {currentPivot.options.map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => {
+                      setBrandData((prev) => ({ ...prev, pivotAnswer: option }));
+                      handleStepTransition(1);
+                    }}
+                    className={`py-6 px-4 text-center border rounded-xl tracking-tight font-light transition-all duration-300 ${
+                      brandData.pivotAnswer === option
+                        ? "border-black/70 bg-white/90 shadow-md"
+                        : "border-black/5 hover:border-black/20 bg-white/40 hover:bg-white/80"
+                    }`}
                   >
-                    Aa
-                  </span>
-                  <span className="flex-1 min-w-0">
-                    <span
-                      className={`${v.className} block text-xl sm:text-2xl text-black/85 tracking-tight truncate`}
-                      style={{ fontStyle: v.italic ? "italic" : "normal", fontWeight: v.weight }}
-                    >
-                      Posts that sound like you.
-                    </span>
-                    <span className="block mt-1.5 text-xs sm:text-sm text-black/45 tracking-tight">
-                      <span className="text-black/65 font-medium">{v.name}</span> — {v.desc}
-                    </span>
-                  </span>
-                  <span className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 text-black/30 text-xl transition-all duration-300 shrink-0">
-                    &rarr;
-                  </span>
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm font-light text-black/40">
+                Scroll back up and choose a niche to unlock this step.
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Node 4 — Typography engine + visual contrast matrix */}
+        <div className="w-screen h-screen flex items-center justify-center p-24">
+          <div className="w-full max-w-4xl bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-12 grid grid-cols-2 gap-12">
+            {/* Left: type-pairing selectors */}
+            <div className="space-y-5">
+              <div>
+                <h2 className="text-xs tracking-[0.2em] uppercase text-black/50">
+                  03 / Typography Engine
+                </h2>
+                <p className="text-sm font-light text-black/60 mt-2">
+                  Choose the visual architecture of your messaging.
+                </p>
+              </div>
+              {TYPE_PAIRS.map((pair) => (
+                <button
+                  key={pair.id}
+                  type="button"
+                  onClick={() =>
+                    setBrandData((prev) => ({ ...prev, typographyPairing: pair.id }))
+                  }
+                  className={`w-full text-left p-6 border rounded-xl transition-all duration-300 ${
+                    brandData.typographyPairing === pair.id
+                      ? "border-black/70 bg-white/90 shadow-md"
+                      : "border-black/5 hover:border-black/20 bg-white/40 hover:bg-white/60"
+                  }`}
+                >
+                  <div className="text-[11px] font-mono text-black/40 mb-2 tracking-tight">
+                    {pair.label}
+                  </div>
+                  <div
+                    className={`${pair.className} text-2xl tracking-tight text-black/85`}
+                    style={pair.style}
+                  >
+                    {pair.preview}
+                  </div>
                 </button>
               ))}
+            </div>
+
+            {/* Right: contrast slider + synthesize */}
+            <div className="flex flex-col justify-between border-l border-black/5 pl-12">
+              <div className="space-y-8">
+                <h2 className="text-xs tracking-[0.2em] uppercase text-black/50">
+                  04 / Visual Contrast Matrix
+                </h2>
+                <div className="space-y-4">
+                  <div className="flex justify-between text-[11px] tracking-wider uppercase text-black/55">
+                    <span>Clinical / Neutral</span>
+                    <span>Vibrant / Contrast</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0"
+                    max="100"
+                    value={brandData.paletteVibe}
+                    onChange={(e) =>
+                      setBrandData((prev) => ({
+                        ...prev,
+                        paletteVibe: parseInt(e.target.value, 10),
+                      }))
+                    }
+                    className="w-full h-[2px] appearance-none rounded-lg bg-black/15 accent-black cursor-ew-resize"
+                  />
+                  <div className="text-center text-xs font-mono text-black/40">
+                    {brandData.paletteVibe}
+                  </div>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => setCompiled(true)}
+                  className="w-full py-4 bg-black text-white rounded-xl text-sm uppercase tracking-[0.2em] font-medium hover:bg-black/80 transition-all duration-300 shadow-xl"
+                >
+                  Synthesize Brand Engine
+                </button>
+                {compiled && (
+                  <pre className="text-[10px] leading-relaxed font-mono text-black/55 bg-black/5 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
+{JSON.stringify(brandData, null, 2)}
+                  </pre>
+                )}
+              </div>
             </div>
           </div>
         </div>
