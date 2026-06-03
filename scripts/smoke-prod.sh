@@ -33,22 +33,27 @@ ME=$(curl -s -m 20 -b "$JAR" "$BASE/api/me")
 echo "$ME" | grep -q '"plan"' && ok "me returns plan: $(echo "$ME" | sed -E 's/.*"plan":"([^"]+)".*/\1/')" || bad "me missing plan → $ME"
 
 echo "3. /api/locations"
-LOC=$(curl -s -m 20 -b "$JAR" "$BASE/api/locations" | sed -E 's/.*"id":"([^"]+)".*/\1/' | head -1)
-[ -n "$LOC" ] && ok "location resolved: $LOC" || bad "no location"
+LOCRESP=$(curl -s -m 20 -b "$JAR" "$BASE/api/locations")
+LOC=$(echo "$LOCRESP" | grep -oE '"id":"[^"]+"' | head -1 | sed -E 's/"id":"([^"]+)"/\1/')
+if echo "$LOCRESP" | grep -q '"error"' || [ -z "$LOC" ]; then
+  bad "no location → $LOCRESP"; LOC=""
+else
+  ok "location resolved: $LOC"
+fi
 
 if [ -n "$LOC" ]; then
   echo "4. Calendar create → list → delete"
   EV=$(curl -s -m 20 -b "$JAR" -X POST "$BASE/api/calendar" -H "Content-Type: application/json" -d "{\"locationId\":\"$LOC\",\"title\":\"smoke\",\"type\":\"meeting\",\"startsAt\":\"2026-07-01T15:00:00.000Z\"}")
-  EVID=$(echo "$EV" | sed -E 's/.*"event":\{"id":"([^"]+)".*/\1/')
-  [ -n "$EVID" ] && [ "$EVID" != "$EV" ] && ok "event created" || bad "event create failed → $EV"
-  echo "$(curl -s -m 20 -b "$JAR" "$BASE/api/calendar?locationId=$LOC")" | grep -q "$EVID" && ok "event listed" || bad "event not listed"
-  [ "$(code -b "$JAR" -X DELETE "$BASE/api/calendar/$EVID")" = "200" ] && ok "event deleted" || bad "event delete failed"
+  EVID=$(echo "$EV" | grep -oE '"id":"[^"]+"' | head -1 | sed -E 's/"id":"([^"]+)"/\1/')
+  if [ -n "$EVID" ] && echo "$EV" | grep -q '"event"'; then ok "event created"; else bad "event create failed → $EV"; fi
+  if [ -n "$EVID" ] && curl -s -m 20 -b "$JAR" "$BASE/api/calendar?locationId=$LOC" | grep -q "$EVID"; then ok "event listed"; else bad "event not listed"; fi
+  if [ -n "$EVID" ] && [ "$(code -b "$JAR" -X DELETE "$BASE/api/calendar/$EVID")" = "200" ]; then ok "event deleted"; else bad "event delete failed"; fi
 
   echo "5. Photo create → list → delete"
   PH=$(curl -s -m 20 -b "$JAR" -X POST "$BASE/api/photos" -H "Content-Type: application/json" -d "{\"locationId\":\"$LOC\",\"url\":\"/uploads/smoke.png\",\"alt\":\"smoke\"}")
-  PHID=$(echo "$PH" | sed -E 's/.*"photo":\{"id":"([^"]+)".*/\1/')
-  [ -n "$PHID" ] && [ "$PHID" != "$PH" ] && ok "photo created" || bad "photo create failed → $PH"
-  [ "$(code -b "$JAR" -X DELETE "$BASE/api/photos/$PHID")" = "200" ] && ok "photo deleted" || bad "photo delete failed"
+  PHID=$(echo "$PH" | grep -oE '"id":"[^"]+"' | head -1 | sed -E 's/"id":"([^"]+)"/\1/')
+  if [ -n "$PHID" ] && echo "$PH" | grep -q '"photo"'; then ok "photo created"; else bad "photo create failed → $PH"; fi
+  if [ -n "$PHID" ] && [ "$(code -b "$JAR" -X DELETE "$BASE/api/photos/$PHID")" = "200" ]; then ok "photo deleted"; else bad "photo delete failed"; fi
 
   echo "6. RLS / IDOR — foreign location must 403"
   IDOR=$(code -b "$JAR" "$BASE/api/calendar?locationId=not-my-location")
