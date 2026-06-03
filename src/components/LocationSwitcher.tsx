@@ -10,6 +10,7 @@ import {
   getStoredActiveLocationId,
   setStoredActiveLocationId,
 } from "@/lib/dashboard-browser-state";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 
 interface LocationSwitcherProps {
   value?: string | null;
@@ -17,6 +18,11 @@ interface LocationSwitcherProps {
 }
 
 export default function LocationSwitcher({ value, onChange }: LocationSwitcherProps) {
+  // Multi-location is a Command-tier capability. Solo/single-location plans
+  // never see the switcher — this is the single chokepoint so every consumer
+  // page is gated regardless of whether it wraps the component. While the
+  // plan resolves, features defaults to streamlined (no enterprise flash).
+  const features = usePlanFeatures();
   const [locations, setLocations] = useState<DashboardLocationRecord[]>([]);
   const [activeId, setActiveId] = useState<string | null>(value ?? null);
   const [loading, setLoading] = useState(true);
@@ -60,6 +66,9 @@ export default function LocationSwitcher({ value, onChange }: LocationSwitcherPr
       setActiveId(value);
     }
   }, [value]);
+
+  // Hard plan gate — Solo/single-location plans never render the switcher.
+  if (!features.multiLocation) return null;
 
   if (loading) {
     return (
