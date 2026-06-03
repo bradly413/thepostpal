@@ -6,14 +6,14 @@ import {
   formatDashboardApiMessage,
 } from "@/lib/dashboard-api";
 import { mapRecordToCalendarPost } from "@/lib/scheduled-post-mappers";
-import type { ScheduledPost } from "@/lib/schedule-store";
+import type { CalendarPostView } from "@/lib/dashboard-view-types";
 import {
   getStoredActiveLocationId,
   onStoredActiveLocationChange,
 } from "@/lib/dashboard-browser-state";
 
 export function useDashboardScheduledPosts() {
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const [posts, setPosts] = useState<CalendarPostView[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 

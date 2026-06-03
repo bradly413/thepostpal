@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import type { ScheduledPost } from "@/lib/schedule-store";
 import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";

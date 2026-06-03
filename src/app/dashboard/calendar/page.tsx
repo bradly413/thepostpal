@@ -2,8 +2,10 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { templates } from "@/lib/templates";
-import { type ScheduledPost } from "@/lib/schedule-store";
-import { type CalendarEvent } from "@/lib/events-store";
+import {
+  type CalendarEventView,
+  type CalendarPostView,
+} from "@/lib/dashboard-view-types";
 import { getHolidayMap } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { buildMetaPublishPayload } from "@/lib/meta-publish-payload";
@@ -30,7 +32,7 @@ import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 
 // Adapt a live calendar record into the local CalendarEvent view shape the
 // grid + modals already render.
-function recordToEvent(r: DashboardCalendarEventRecord): CalendarEvent {
+function recordToEvent(r: DashboardCalendarEventRecord): CalendarEventView {
   const d = new Date(r.startsAt);
   const allDay = d.getHours() === 0 && d.getMinutes() === 0;
   const hh = String(d.getHours()).padStart(2, "0");
@@ -40,7 +42,7 @@ function recordToEvent(r: DashboardCalendarEventRecord): CalendarEvent {
     title: r.title,
     date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
     time: allDay ? undefined : `${hh}:${mm}`,
-    type: (r.type as CalendarEvent["type"]) || "other",
+    type: (r.type as CalendarEventView["type"]) || "other",
     notes: r.description || undefined,
   };
 }
@@ -86,12 +88,12 @@ export default function CalendarPage() {
   useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week">("month");
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
-  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [posts, setPosts] = useState<CalendarPostView[]>([]);
+  const [events, setEvents] = useState<CalendarEventView[]>([]);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [editingPost, setEditingPost] = useState<ScheduledPost | null>(null);
-  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [editingPost, setEditingPost] = useState<CalendarPostView | null>(null);
+  const [editingEvent, setEditingEvent] = useState<CalendarEventView | null>(null);
   const [showHolidays, setShowHolidays] = useState(true);
 
   const [formTemplate, setFormTemplate] = useState(templates[0]?.id || "");
@@ -104,7 +106,7 @@ export default function CalendarPage() {
 
   const [eventTitle, setEventTitle] = useState("");
   const [eventTime, setEventTime] = useState("");
-  const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
+  const [eventType, setEventType] = useState<CalendarEventView["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
 
   const { meta } = useMetaConnection();
@@ -230,7 +232,7 @@ export default function CalendarPage() {
     setModalMode("post");
   }
 
-  function openEditPost(post: ScheduledPost) {
+  function openEditPost(post: CalendarPostView) {
     setEditingPost(post);
     setSelectedDate(post.date);
     setFormTemplate(post.templateId);
@@ -251,7 +253,7 @@ export default function CalendarPage() {
     setModalMode("event");
   }
 
-  function openEditEvent(event: CalendarEvent) {
+  function openEditEvent(event: CalendarEventView) {
     setEditingEvent(event);
     setSelectedDate(event.date);
     setEventTitle(event.title);
@@ -377,14 +379,14 @@ export default function CalendarPage() {
     }
   }
 
-  const postsMap = new Map<string, ScheduledPost[]>();
+  const postsMap = new Map<string, CalendarPostView[]>();
   posts.forEach((p) => {
     const existing = postsMap.get(p.date) || [];
     existing.push(p);
     postsMap.set(p.date, existing);
   });
 
-  const eventsMap = new Map<string, CalendarEvent[]>();
+  const eventsMap = new Map<string, CalendarEventView[]>();
   events.forEach((e) => {
     const existing = eventsMap.get(e.date) || [];
     existing.push(e);
@@ -949,7 +951,7 @@ export default function CalendarPage() {
               <div>
                 <label className="block text-xs font-medium text-text mb-1.5">Type</label>
                 <div className="flex flex-wrap gap-2">
-                  {(Object.keys(eventTypeLabels) as CalendarEvent["type"][]).map((t) => (
+                  {(Object.keys(eventTypeLabels) as CalendarEventView["type"][]).map((t) => (
                     <button
                       key={t}
                       onClick={() => setEventType(t)}

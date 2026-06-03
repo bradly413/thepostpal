@@ -1,20 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { canTransition } from "../drafts-store";
 import { generateWeeklyPosts } from "../post-generator-tool";
-
-describe("draft status transitions", () => {
-  it("allows needs_review to approved", () => {
-    expect(canTransition("needs_review", "approved")).toBe(true);
-  });
-
-  it("blocks published to draft", () => {
-    expect(canTransition("published", "draft")).toBe(false);
-  });
-
-  it("allows skip from needs_review", () => {
-    expect(canTransition("needs_review", "skipped")).toBe(true);
-  });
-});
 
 describe("post generator tool", () => {
   it("returns five posts", () => {

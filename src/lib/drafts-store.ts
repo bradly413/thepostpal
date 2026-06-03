@@ -1,24 +1,13 @@
 import type { Draft, DraftStatus, SocialPlatform } from "./posterboy-types";
+import { canTransition } from "./draft-status";
 import { getActiveLocation, seedDemoOrganization } from "./organization-store";
+
+export { canTransition } from "./draft-status";
 
 const STORAGE_KEY = "posterboy-drafts";
 
 function generateId(): string {
   return Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-}
-
-const VALID_TRANSITIONS: Record<DraftStatus, DraftStatus[]> = {
-  draft: ["needs_review", "skipped"],
-  needs_review: ["approved", "needs_revision", "skipped"],
-  approved: ["scheduled", "published"],
-  scheduled: ["published", "needs_revision"],
-  published: [],
-  skipped: ["needs_review"],
-  needs_revision: ["needs_review", "draft"],
-};
-
-export function canTransition(from: DraftStatus, to: DraftStatus): boolean {
-  return VALID_TRANSITIONS[from]?.includes(to) ?? false;
 }
 
 export function getDrafts(): Draft[] {

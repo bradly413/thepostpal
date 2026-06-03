@@ -1,0 +1,70 @@
+You are working on Posterboy Social (thepostpal).
+
+READ FIRST (in repo):
+- docs/AGENT-HANDOFF-2026-06-03.md
+- docs/MIGRATION-LOCALSTORAGE-TO-DASHBOARD-API.md — Section 6 "Phase 0" only
+
+CONSTRAINTS:
+- Do NOT push to main, deploy production, or change Vercel env vars.
+- Do NOT implement Phase 1 (StateViews), Phase 2 (editor photos), or new API routes.
+- Work on a feature branch; push that branch only.
+
+TASK — Phase 0 (type hygiene, zero UX behavior change):
+
+1. Create src/lib/dashboard-view-types.ts with:
+
+   export type CalendarPostPlatform = "facebook" | "instagram" | "both";
+
+   export interface CalendarPostView {
+     id: string;
+     templateId: string;
+     templateName: string;
+     platform: CalendarPostPlatform;
+     date: string;
+     time: string;
+     caption: string;
+     status: "scheduled" | "published" | "failed" | "draft";
+     pillar: string;
+   }
+
+   export interface CalendarEventView {
+     id: string;
+     title: string;
+     date: string;
+     time?: string;
+     type: "personal" | "open-house" | "closing" | "meeting" | "other";
+     notes?: string;
+   }
+
+2. Update scheduled-post-mappers.ts:
+   - Import CalendarPostView (and CalendarPostPlatform) from dashboard-view-types.ts
+   - Replace LocalScheduledPost alias with CalendarPostView
+   - mapRecordToCalendarPost returns CalendarPostView
+
+3. Update imports in:
+   - src/lib/use-dashboard-scheduled-posts.ts
+   - src/app/dashboard/calendar/page.tsx (ScheduledPost → CalendarPostView, CalendarEvent → CalendarEventView in UI adapters)
+   - src/app/dashboard/reports/page.tsx (via hook types only if needed)
+   - src/app/dashboard/facebook/page.tsx
+   - src/app/dashboard/instagram/page.tsx
+
+4. Move canTransition from src/lib/drafts-store.ts to src/lib/draft-status.ts (pure function, no localStorage).
+   - Rename test: src/lib/__tests__/drafts-store.test.ts → draft-status.test.ts
+
+5. Grep the repo for schedule-store, events-store, meta-store imports. Delete only when zero imports remain:
+   - src/lib/schedule-store.ts
+   - src/lib/events-store.ts
+   - src/lib/meta-store.ts (deprecated stub; no remaining imports expected)
+
+6. Run: npx tsc --noEmit && npm run build
+
+7. Git:
+   - Branch: chore/migrate-dead-stores-phase-0 from main
+   - Commit message:
+     chore: Phase 0 — extract dashboard view types, remove dead localStorage stores
+
+     Co-Authored-By: Claude Opus 4.8 <noreply@anthropic.com>
+   - Push branch to origin
+   - If gh pr create fails, note in summary: open PR manually at GitHub compare main...chore/migrate-dead-stores-phase-0
+
+8. Reply with: branch name, commit SHA, build pass/fail, list of deleted files, and PR URL if created.

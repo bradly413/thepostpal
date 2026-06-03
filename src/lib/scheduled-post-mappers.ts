@@ -1,8 +1,11 @@
+import type {
+  CalendarPostPlatform,
+  CalendarPostView,
+} from "@/lib/dashboard-view-types";
 import type { DraftStatus, SocialPlatform } from "@/lib/posterboy-types";
-import type { ScheduledPost as LocalScheduledPost } from "@/lib/schedule-store";
 import { templates } from "@/lib/templates";
 
-export type CalendarPostPlatform = LocalScheduledPost["platform"];
+export type { CalendarPostPlatform } from "@/lib/dashboard-view-types";
 
 export interface DashboardScheduledPostRecord {
   id: string;
@@ -54,7 +57,7 @@ export function splitScheduledFor(
   return { date, time };
 }
 
-const LOCAL_STATUS_MAP: Record<DraftStatus, LocalScheduledPost["status"]> = {
+const LOCAL_STATUS_MAP: Record<DraftStatus, CalendarPostView["status"]> = {
   draft: "draft",
   scheduled: "scheduled",
   published: "published",
@@ -66,7 +69,7 @@ const LOCAL_STATUS_MAP: Record<DraftStatus, LocalScheduledPost["status"]> = {
 
 export function mapRecordToCalendarPost(
   record: DashboardScheduledPostRecord,
-): LocalScheduledPost {
+): CalendarPostView {
   const { date, time } = splitScheduledFor(record.scheduledFor);
   const templateId = record.templateId || templates[0]?.id || "";
   const tmpl = templates.find((t) => t.id === templateId);
@@ -86,7 +89,7 @@ export function mapRecordToCalendarPost(
 }
 
 export function mapCalendarPostToCreateInput(
-  post: Omit<LocalScheduledPost, "id">,
+  post: Omit<CalendarPostView, "id">,
   locationId: string,
 ): {
   locationId: string;
