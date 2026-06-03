@@ -7,6 +7,7 @@ import FeedbackWidget from "./FeedbackWidget";
 import { useState, useEffect, useRef } from "react";
 
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
+import { usePlan } from "@/components/dashboard/PlanProvider";
 
 interface NavItem {
   label: string;
@@ -30,7 +31,6 @@ const EXTRA_NAV: NavItem[] = [
   { label: "Settings", icon: "settings", href: "/dashboard/settings" },
 ];
 
-const ALL_NAV: NavItem[] = [...NAV, ...EXTRA_NAV];
 const NAV_ITEM_H = 36;
 
 function SidebarIcon({ type }: { type: string }) {
@@ -85,6 +85,13 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const contentRef = useRef<HTMLDivElement>(null);
   const [navItemH, setNavItemH] = useState(NAV_ITEM_H);
 
+  const { features } = usePlan();
+  // Single-location plans don't manage channels/roll-ups — hide that nav entry.
+  const extraNav = features.locationRollup
+    ? EXTRA_NAV
+    : EXTRA_NAV.filter((item) => item.href !== "/dashboard/organization");
+  const allNav = [...NAV, ...extraNav];
+
   useEffect(() => {
     const saved = localStorage.getItem("sidebar-collapsed");
     if (saved === "true") setCollapsed(true);
@@ -97,14 +104,14 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       if (!contentRef.current) return;
       const available = contentRef.current.clientHeight - 8;
       const sepH = 9;
-      const totalItems = ALL_NAV.length;
+      const totalItems = allNav.length;
       const h = Math.floor((available - sepH) / totalItems);
       setNavItemH(Math.max(30, Math.min(h, 44)));
     }
     measure();
     window.addEventListener("resize", measure);
     return () => window.removeEventListener("resize", measure);
-  }, []);
+  }, [allNav.length]);
 
   useEffect(() => {
     document.documentElement.setAttribute("data-theme", theme);
@@ -152,7 +159,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   const isBentoHome =
     pathname === "/dashboard" || pathname === "/dashboard/studio";
 
-  const activeIdx = ALL_NAV.findIndex((item) => isActive(item.href));
+  const activeIdx = allNav.findIndex((item) => isActive(item.href));
   const highlightIdx = hoverIdx ?? activeIdx;
   const separatorOffset = NAV.length;
 
@@ -171,12 +178,9 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <a href="#main-content" className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black">
           Skip to content
         </a>
-        <main id="main-content" className="flex-1 min-h-0 overflow-hidden">
+        <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden">
           <PageTransition>
             <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <p className="shrink-0 px-4 py-2 text-center text-[11px] tracking-wide bg-amber-50 text-amber-950 border-b border-amber-200/80">
-                Beta — workflow data stays in this browser. Connect Meta in Settings to publish.
-              </p>
               <div className="ds-scroll-pane flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-8">
                 {children}
               </div>
@@ -435,7 +439,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto px-2 space-y-0.5">
-              {ALL_NAV.map((item) => {
+              {allNav.map((item) => {
                 const cls = `flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm transition-colors ${
                   isActive(item.href) ? "text-white bg-white/[0.08]" : "text-white/55 hover:text-white/70"
                 }`;
@@ -502,7 +506,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
           <hr style={{ margin: "4px 0 4px 16px" }} />
 
-          {EXTRA_NAV.map((item, i) => {
+          {extraNav.map((item, i) => {
             const cls = `ds-nav-item ${isActive(item.href) ? "active" : ""}`;
             const handlers = {
               onMouseEnter: () => setHoverIdx(NAV.length + i),
@@ -597,9 +601,6 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden ds-main">
           <PageTransition>
             <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <p className="shrink-0 px-4 py-2 text-center text-[11px] tracking-wide bg-amber-50 text-amber-950 border-b border-amber-200/80">
-                Beta — workflow data stays in this browser. Connect Meta in Settings to publish.
-              </p>
               <div className="ds-scroll-pane flex-1 min-h-0 overflow-y-auto overscroll-y-contain pb-8">
                 {children}
               </div>

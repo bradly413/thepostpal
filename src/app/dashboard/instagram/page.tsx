@@ -2,8 +2,10 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
-import { getScheduledPosts, type ScheduledPost } from "@/lib/schedule-store";
-import { getMetaConnection } from "@/lib/meta-store";
+import type { ScheduledPost } from "@/lib/schedule-store";
+import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
 interface IGProfile {
   username?: string;
@@ -26,28 +28,22 @@ interface IGMedia {
 }
 
 export default function InstagramPage() {
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const { posts: allPosts } = useDashboardScheduledPosts();
+  const posts = allPosts.filter(
+    (p) => p.platform === "instagram" || p.platform === "both",
+  );
   const [profile, setProfile] = useState<IGProfile | null>(null);
   const [media, setMedia] = useState<IGMedia[]>([]);
   const [loading, setLoading] = useState(true);
-  const meta = typeof window !== "undefined" ? getMetaConnection() : null;
+  const { meta } = useMetaConnection();
 
   useEffect(() => {
-    setPosts(
-      getScheduledPosts().filter(
-        (p) => p.platform === "instagram" || p.platform === "both"
-      )
-    );
-  }, []);
-
-  useEffect(() => {
-    if (!meta?.connected || !meta.igAccountId) {
+    const locationId = getStoredActiveLocationId();
+    if (!meta?.connected || !meta.igAccountId || !locationId) {
       setLoading(false);
       return;
     }
-    fetch(
-      `/api/meta/insights?pageId=${meta.pageId}&pageToken=${meta.pageToken}&igAccountId=${meta.igAccountId}`
-    )
+    fetch(`/api/meta/insights?locationId=${encodeURIComponent(locationId)}`)
       .then((r) => (r.ok ? r.json() : null))
       .then((data) => {
         if (data?.instagram) setProfile(data.instagram);
@@ -55,7 +51,7 @@ export default function InstagramPage() {
       })
       .catch(() => {})
       .finally(() => setLoading(false));
-  }, [meta?.connected, meta?.pageId, meta?.pageToken, meta?.igAccountId]);
+  }, [meta?.connected, meta?.igAccountId]);
 
   const scheduled = posts.filter((p) => p.status === "scheduled");
   const totalLikes = media.reduce((sum, m) => sum + (m.like_count || 0), 0);

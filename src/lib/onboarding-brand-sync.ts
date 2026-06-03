@@ -1,8 +1,27 @@
-import type { BrandBook } from "./brand-book-schema";
+import type { BrandBook, OnboardingAnswers } from "./brand-book-schema";
 import { createFromBrandIntake } from "./organization-store";
 
 const BRAND_BOOK_KEY = "postpal-brand-book";
+const ONBOARDING_ANSWERS_KEY = "postpal-onboarding-answers";
 const ONBOARDING_DONE_KEY = "posterboy-onboarding-complete";
+
+export function cacheStoredBrandBook(book: BrandBook): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(BRAND_BOOK_KEY, JSON.stringify(book));
+  } catch {
+    /* quota */
+  }
+}
+
+export function cacheStoredOnboardingAnswers(answers: OnboardingAnswers): void {
+  if (typeof window === "undefined") return;
+  try {
+    localStorage.setItem(ONBOARDING_ANSWERS_KEY, JSON.stringify(answers));
+  } catch {
+    /* quota */
+  }
+}
 
 export function hasBrandBook(): boolean {
   if (typeof window === "undefined") return false;
@@ -56,6 +75,7 @@ export function syncBrandBookToOrganization(book?: BrandBook | null): boolean {
     goals: ["look_alive", "leads"],
   });
 
+  cacheStoredBrandBook(brand);
   markOnboardingComplete();
   return true;
 }

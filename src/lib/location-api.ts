@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { LocationRole } from "@prisma/client";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { db, type TenantDbClient } from "@/lib/db";
 
 export function jsonError(message: string, status: number) {
   return NextResponse.json({ error: message }, { status });
@@ -9,10 +10,10 @@ export function jsonError(message: string, status: number) {
 
 export async function requireLocationAccess(
   locationId: string,
-  options?: { requireApprove?: boolean; minimumRole?: LocationRole },
+  options?: { requireApprove?: boolean; minimumRole?: LocationRole; dbClient?: TenantDbClient },
 ) {
   const auth = await requireAuthContext();
-  const access = await resolveAccess(auth.userId, locationId);
+  const access = await resolveAccess(auth.userId, locationId, options?.dbClient ?? db);
   if (!access.hasAccess) {
     throw new Error("FORBIDDEN");
   }
@@ -34,4 +35,3 @@ export async function requireLocationAccess(
 
   return { auth, access };
 }
-

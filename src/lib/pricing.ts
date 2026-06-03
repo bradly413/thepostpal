@@ -1,18 +1,25 @@
+import type { PlanTier } from "@prisma/client";
 import { CONTACT_EMAIL } from "./site";
 
-export type PricingTierId =
-  | "good"
-  | "better"
-  | "best"
-  | "teams"
-  | "house-account"
-  | "brc-custom";
+/** Self-serve and primary commercial tiers (June 2026 business plan). */
+export type PricingTierId = "solo" | "command" | "brc-custom";
+
+/** Legacy marketing/signup query params → current tier ids. */
+export const LEGACY_PRICING_TIER_ALIASES: Record<string, PricingTierId> = {
+  good: "solo",
+  better: "solo",
+  best: "solo",
+  teams: "command",
+  "house-account": "command",
+};
 
 export interface PricingTier {
   id: PricingTierId;
   name: string;
   price: string;
   priceNote?: string;
+  /** Shown under price when annual billing is offered (Solo). */
+  annualPriceNote?: string;
   description: string;
   bestFor: string;
   features: string[];
@@ -24,127 +31,99 @@ export interface PricingTier {
 
 export const PRICING_TIERS: PricingTier[] = [
   {
-    id: "good",
-    name: "Good",
-    price: "$29",
-    priceNote: "/mo",
-    description: "One business, one user, three social accounts. Enough to show up.",
-    bestFor: "Solo operators who need to post consistently without thinking about it.",
-    features: [
-      "1 user",
-      "3 social accounts",
-      "30 AI-drafted posts/month",
-      "Auto-scheduling",
-      "One-tap approvals",
-      "Library access",
-      "Email reminders",
-    ],
-    cta: "Start with Good",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding&plan=good",
-    tier: "public",
-  },
-  {
-    id: "better",
-    name: "Better",
-    price: "$59",
-    priceNote: "/mo",
-    description: "Unlimited posts, brand voice training, the photo library. Most people land here.",
-    bestFor: "Operators who want the week handled and the brand voice learned.",
-    features: [
-      "1 user",
-      "Unlimited social accounts",
-      "Unlimited AI-drafted posts",
-      "Brand voice training",
-      "Photo library",
-      "Priority scheduling",
-      "Monthly report",
-    ],
-    cta: "Choose Better",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding&plan=better",
-    tier: "public",
-    highlighted: true,
-  },
-  {
-    id: "best",
-    name: "Best",
+    id: "solo",
+    name: "Solo",
     price: "$99",
     priceNote: "/mo",
-    description: "Premium AI, white-glove onboarding, the support line that picks up.",
-    bestFor: "Serious operators who want a calm month and a real strategy.",
+    annualPriceNote: "$79/mo billed annually",
+    description:
+      "One premium operator, one calm workspace. Three social profiles, brand consistency, and scheduling without the noise.",
+    bestFor:
+      "Independent luxury agents, solo aesthetic practitioners, and boutique consultants.",
     features: [
-      "Everything in Better",
-      "Premium AI models",
-      "Custom templates",
-      "White-glove onboarding",
-      "Priority support",
-      "Quarterly strategy call",
+      "Isolated single-user tenant sandbox",
+      "3 social profiles",
+      "Calm Room content workspace",
+      "Visual Grid Planner",
+      "Brand voice training",
+      "Auto-scheduling",
     ],
-    cta: "Choose Best",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding&plan=best",
+    cta: "Start Solo",
+    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo",
     tier: "public",
   },
   {
-    id: "teams",
-    name: "Teams",
-    price: "from $199",
-    priceNote: "/mo",
-    description: "Up to 5, 10, or 25 seats on one brand. Admin controls. Real role permissions.",
-    bestFor: "Internal marketing teams, in-house creators, and small agencies on one brand.",
+    id: "command",
+    name: "Command",
+    price: "$249",
+    priceNote: "/mo base + $39/location",
+    description:
+      "One bill, one login, many branded presences. Centralized approvals and roll-up visibility for multi-location brands.",
+    bestFor:
+      "Real estate brokerages, medical spa franchises, startup incubators, and multi-office operators.",
     features: [
-      "Up to 5 / 10 / 25 seats",
-      "Shared brand kit",
-      "Role permissions",
-      "Audit log",
-      "Dedicated onboarding (10+ seats)",
-      "Custom branding (25 seats)",
-      "SSO (25 seats)",
-    ],
-    cta: "Compare team sizes",
-    ctaHref: `mailto:${CONTACT_EMAIL}?subject=Teams`,
-    tier: "premium",
-  },
-  {
-    id: "house-account",
-    name: "House Account",
-    price: "$499",
-    priceNote: "/mo + $49/location",
-    description: "One corporate bill. One log-in. Many branded presences. Approvals before publish.",
-    bestFor: "Restaurant groups, bank and credit-union networks, franchise operators, multi-office brokerages.",
-    features: [
-      "3 locations included",
+      "Everything in Solo",
+      "Multi-location rollup views",
+      "Centralized team approval pipelines",
+      "Agency-wide asset library",
       "Per-location brand kit and calendar",
       "Per-location social connections",
-      "Corporate approval workflow",
-      "Cross-location publishing",
-      "Roll-up reporting",
-      "SSO + audit log",
-      "Unlimited seats",
+      "Enterprise onboarding (SSO by contract)",
     ],
-    cta: "Open a House Account",
-    ctaHref: `mailto:${CONTACT_EMAIL}?subject=House%20Account`,
-    tier: "premium",
+    cta: "Start Command",
+    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=command",
+    tier: "public",
+    highlighted: true,
   },
   {
     id: "brc-custom",
     name: "BRC Custom",
     price: "from $3,500",
     priceNote: "one-time",
-    description: "Brand book, custom-branded portal, done-with-you content. The kind of thing a dashboard alone can't deliver.",
-    bestFor: "Credit unions, banks, HVAC, industrial, hospitality groups that need a brand system, not just software.",
+    description:
+      "Brand book, custom-branded portal, done-with-you content. For organizations that need a brand system, not just software.",
+    bestFor:
+      "Credit unions, banks, HVAC, industrial, and hospitality groups working with Bradly Robert Creative.",
     features: [
-      "Brand Foundation: $3,500 one-time (brand book + portal + first month done-for-you)",
-      "Brand + Quarterly Content: $7,500/qtr (ongoing content via BRC)",
-      "Visual system",
-      "Voice system",
-      "Custom templates",
-      "Launch kit",
-      "Creative direction from Bradly Robert Creative",
+      "Brand Foundation: brand book + portal + first month done-for-you",
+      "Brand + Quarterly Content packages",
+      "Visual and voice systems",
+      "Custom templates and launch kit",
+      "Creative direction from BRC",
     ],
     cta: "Talk to BRC",
     ctaHref: `mailto:${CONTACT_EMAIL}?subject=BRC%20Custom`,
     tier: "premium",
   },
 ];
+
+export function normalizePricingTierId(
+  raw: string | null | undefined,
+): PricingTierId | null {
+  if (!raw) return null;
+  const key = raw.trim().toLowerCase();
+  if (key in LEGACY_PRICING_TIER_ALIASES) {
+    return LEGACY_PRICING_TIER_ALIASES[key];
+  }
+  const match = PRICING_TIERS.find((t) => t.id === key);
+  return match?.id ?? null;
+}
+
+/** Maps checkout/marketing tier to Prisma `Organization.plan`. */
+export function pricingTierToOrganizationPlan(
+  tierId: PricingTierId,
+): PlanTier | null {
+  switch (tierId) {
+    case "solo":
+      return "solo";
+    case "command":
+      return "house_account";
+    case "brc-custom":
+      return null;
+    default:
+      return null;
+  }
+}
 
 export function getPublicTiers(): PricingTier[] {
   return PRICING_TIERS.filter((t) => t.tier === "public");
@@ -154,6 +133,8 @@ export function getPremiumTiers(): PricingTier[] {
   return PRICING_TIERS.filter((t) => t.tier === "premium");
 }
 
-export function getTierById(id: PricingTierId): PricingTier | undefined {
-  return PRICING_TIERS.find((t) => t.id === id);
+export function getTierById(id: string): PricingTier | undefined {
+  const normalized = normalizePricingTierId(id);
+  if (!normalized) return undefined;
+  return PRICING_TIERS.find((t) => t.id === normalized);
 }

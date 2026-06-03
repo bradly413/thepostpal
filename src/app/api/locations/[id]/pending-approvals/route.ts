@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { withTenantDb } from "@/lib/db";
+import { requireAuthContext } from "@/lib/api-auth";
 import { requireLocationAccess } from "@/lib/location-api";
 
 interface Params {
@@ -9,21 +10,24 @@ interface Params {
 export async function GET(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR" });
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR", dbClient: tx });
 
-    const pending = await db.postApproval.findMany({
-      where: { locationId: id, status: "PENDING_REVIEW" },
-      include: {
-        scheduledPost: true,
-        history: {
-          orderBy: { createdAt: "desc" },
-          take: 10,
+      const pending = await tx.postApproval.findMany({
+        where: { locationId: id, status: "PENDING_REVIEW" },
+        include: {
+          scheduledPost: true,
+          history: {
+            orderBy: { createdAt: "desc" },
+            take: 10,
+          },
         },
-      },
-      orderBy: { createdAt: "asc" },
-    });
+        orderBy: { createdAt: "asc" },
+      });
 
-    return NextResponse.json({ pending });
+      return NextResponse.json({ pending });
+    });
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

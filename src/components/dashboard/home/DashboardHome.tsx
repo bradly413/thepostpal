@@ -25,25 +25,67 @@ import {
   loadDashboardHomeSnapshot,
   type DashboardHomeSnapshot,
 } from "@/lib/dashboard-home-data";
+import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 
 export default function DashboardHome() {
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
-  const refresh = useCallback(() => setData(loadDashboardHomeSnapshot()), []);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const refresh = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      setData(await loadDashboardHomeSnapshot());
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, "Could not load the dashboard right now."));
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     refresh();
-    window.addEventListener("drafts-updated", refresh);
-    window.addEventListener("org-updated", refresh);
+    window.addEventListener("dashboard-location-updated", refresh);
     return () => {
-      window.removeEventListener("drafts-updated", refresh);
-      window.removeEventListener("org-updated", refresh);
+      window.removeEventListener("dashboard-location-updated", refresh);
     };
   }, [refresh]);
 
-  if (!data) {
+  if (loading && !data) {
     return (
       <div className="flex h-full items-center justify-center bg-[#f1f1f3] text-sm text-zinc-500">
-        Loading dashboard...
+        <div className="w-full max-w-5xl px-6">
+          <div className="grid gap-6 lg:grid-cols-[1.6fr_0.9fr]">
+            <div className="h-[360px] animate-pulse rounded-[36px] bg-black/[0.05]" />
+            <div className="space-y-6">
+              <div className="h-[220px] animate-pulse rounded-[30px] bg-black/[0.05]" />
+              <div className="h-[140px] animate-pulse rounded-[30px] bg-black/[0.05]" />
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !data) {
+    return (
+      <div className="flex h-full items-center justify-center bg-[#f1f1f3] px-6">
+        <div className="max-w-md rounded-[28px] border border-[#e5ddd2] bg-[#fbf8f3] px-8 py-10 text-center shadow-[0_20px_50px_-40px_rgba(20,20,20,0.35)]">
+          <h2 className="font-heading text-[28px] leading-tight text-[#1d1d1b]">
+            Calm room, closed door.
+          </h2>
+          <p className="mt-3 text-sm leading-6 text-[#6b6259]">
+            {error || "This workspace is not ready yet."}
+          </p>
+          <div className="mt-6 flex justify-center gap-3">
+            <button type="button" className="pb-btn-primary text-sm" onClick={() => void refresh()}>
+              Try again
+            </button>
+            <Link href="/dashboard/organization" className="pb-btn-secondary text-sm">
+              Review locations
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -66,11 +108,11 @@ export default function DashboardHome() {
     ? `${data.nextUp.copy.slice(0, 38)}${data.nextUp.copy.length > 38 ? "..." : ""}`
     : "Market update: Spring trends";
   const nextSched = data.nextUp ? formatScheduleLabel(data.nextUp) : "No scheduled posts yet";
-  const nextMonth = data.nextUp?.scheduledDate
-    ? new Date(`${data.nextUp.scheduledDate}T12:00:00`).toLocaleDateString("en-US", { month: "short" }).toUpperCase()
+  const nextMonth = data.nextUp?.scheduledFor
+    ? new Date(data.nextUp.scheduledFor).toLocaleDateString("en-US", { month: "short" }).toUpperCase()
     : "MAY";
-  const nextDay = data.nextUp?.scheduledDate
-    ? new Date(`${data.nextUp.scheduledDate}T12:00:00`).toLocaleDateString("en-US", { day: "2-digit" })
+  const nextDay = data.nextUp?.scheduledFor
+    ? new Date(data.nextUp.scheduledFor).toLocaleDateString("en-US", { day: "2-digit" })
     : "24";
 
   const statusLabel = (status: string) => {
@@ -83,7 +125,9 @@ export default function DashboardHome() {
 
   const recent = data.recentPosts.slice(0, 3).map((post, idx) => ({
     title: post.copy.length > 36 ? `${post.copy.slice(0, 36)}...` : post.copy,
-    date: `${formatShortDate(post)}${post.scheduledTime ? ` at ${post.scheduledTime}` : ""}`,
+    date: post.scheduledFor
+      ? formatScheduleLabel(post).replace("Scheduled for ", "")
+      : formatShortDate(post),
     img: HERO_IMAGES[idx % HERO_IMAGES.length],
     status: statusLabel(post.status),
   }));
@@ -172,7 +216,7 @@ export default function DashboardHome() {
             <div className="hero-content">
               <span className="pill">
                 <span className="live-dot" />
-                Beta
+                Live
               </span>
               <span className="tag">Featured post</span>
               <h1>
@@ -352,4 +396,3 @@ export default function DashboardHome() {
     </div>
   );
 }
-

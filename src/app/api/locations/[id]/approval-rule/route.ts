@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { withTenantDb } from "@/lib/db";
+import { requireAuthContext } from "@/lib/api-auth";
 import { requireLocationAccess } from "@/lib/location-api";
 
 interface Params {
@@ -9,9 +10,12 @@ interface Params {
 export async function GET(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR" });
-    const rule = await db.approvalRule.findUnique({ where: { locationId: id } });
-    return NextResponse.json({ rule });
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_EDITOR", dbClient: tx });
+      const rule = await tx.approvalRule.findUnique({ where: { locationId: id } });
+      return NextResponse.json({ rule });
+    });
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
@@ -20,39 +24,42 @@ export async function GET(_: NextRequest, { params }: Params) {
 export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN" });
-    const body = await request.json();
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN", dbClient: tx });
+      const body = await request.json();
 
-    const reviewerUserIds = Array.isArray(body.reviewerUserIds)
-      ? body.reviewerUserIds.filter((v: unknown): v is string => typeof v === "string")
-      : [];
+      const reviewerUserIds = Array.isArray(body.reviewerUserIds)
+        ? body.reviewerUserIds.filter((v: unknown): v is string => typeof v === "string")
+        : [];
 
-    const rule = await db.approvalRule.upsert({
-      where: { locationId: id },
-      create: {
-        locationId: id,
-        requiresApproval: !!body.requiresApproval,
-        reviewerUserIds,
-        minApprovers:
-          Number.isInteger(body.minApprovers) && body.minApprovers > 0 ? body.minApprovers : 1,
-        autoApproveAfterMs:
-          Number.isInteger(body.autoApproveAfterMs) && body.autoApproveAfterMs > 0
-            ? body.autoApproveAfterMs
-            : null,
-      },
-      update: {
-        requiresApproval: !!body.requiresApproval,
-        reviewerUserIds,
-        minApprovers:
-          Number.isInteger(body.minApprovers) && body.minApprovers > 0 ? body.minApprovers : 1,
-        autoApproveAfterMs:
-          Number.isInteger(body.autoApproveAfterMs) && body.autoApproveAfterMs > 0
-            ? body.autoApproveAfterMs
-            : null,
-      },
+      const rule = await tx.approvalRule.upsert({
+        where: { locationId: id },
+        create: {
+          locationId: id,
+          requiresApproval: !!body.requiresApproval,
+          reviewerUserIds,
+          minApprovers:
+            Number.isInteger(body.minApprovers) && body.minApprovers > 0 ? body.minApprovers : 1,
+          autoApproveAfterMs:
+            Number.isInteger(body.autoApproveAfterMs) && body.autoApproveAfterMs > 0
+              ? body.autoApproveAfterMs
+              : null,
+        },
+        update: {
+          requiresApproval: !!body.requiresApproval,
+          reviewerUserIds,
+          minApprovers:
+            Number.isInteger(body.minApprovers) && body.minApprovers > 0 ? body.minApprovers : 1,
+          autoApproveAfterMs:
+            Number.isInteger(body.autoApproveAfterMs) && body.autoApproveAfterMs > 0
+              ? body.autoApproveAfterMs
+              : null,
+        },
+      });
+
+      return NextResponse.json({ rule });
     });
-
-    return NextResponse.json({ rule });
   } catch {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }

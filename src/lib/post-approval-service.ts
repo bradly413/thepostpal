@@ -1,4 +1,4 @@
-import { ApprovalAction, ApprovalStatus } from "@prisma/client";
+import { ApprovalAction, ApprovalStatus, Prisma, PrismaClient } from "@prisma/client";
 import { db } from "@/lib/db";
 import {
   applyApprovalTransition,
@@ -6,11 +6,14 @@ import {
   type ApprovalTransition,
 } from "@/lib/approval-state-machine";
 
+type DbClient = PrismaClient | Prisma.TransactionClient;
+
 export async function loadApprovalByScheduledPostId(
   scheduledPostId: string,
   organizationId: string,
+  client: DbClient = db,
 ) {
-  return db.postApproval.findFirst({
+  return client.postApproval.findFirst({
     where: {
       scheduledPostId,
       scheduledPost: { organizationId },
@@ -57,8 +60,9 @@ export async function applyAndPersistTransition(
   postApprovalId: string,
   actorUserId: string,
   transition: ApprovalTransition,
+  client: DbClient = db,
 ) {
-  const current = await db.postApproval.findUnique({
+  const current = await client.postApproval.findUnique({
     where: { id: postApprovalId },
     include: {
       location: { include: { approvalRule: true } },
@@ -92,7 +96,7 @@ export async function applyAndPersistTransition(
     return { ok: false as const, reason: result.reason ?? "rejected-transition" };
   }
 
-  const updated = await db.postApproval.update({
+  const updated = await client.postApproval.update({
     where: { id: current.id },
     data: {
       status: result.status,
@@ -101,7 +105,7 @@ export async function applyAndPersistTransition(
     },
   });
 
-  await db.approvalEvent.create({
+  await client.approvalEvent.create({
     data: {
       postApprovalId: current.id,
       actorUserId,
@@ -109,7 +113,7 @@ export async function applyAndPersistTransition(
     },
   });
 
-  await db.scheduledPost.update({
+  await client.scheduledPost.update({
     where: { id: current.scheduledPostId },
     data: {
       status: toDraftStatus(updated.status),
@@ -118,4 +122,3 @@ export async function applyAndPersistTransition(
 
   return { ok: true as const, approval: updated };
 }
-

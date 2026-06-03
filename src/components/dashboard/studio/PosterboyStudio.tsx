@@ -1,6 +1,8 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, type CSSProperties } from "react";
+import gsap from "gsap";
+import { useGSAP } from "@gsap/react";
 import {
   Sparkles,
   Calendar,
@@ -17,7 +19,14 @@ import {
   Wand2,
   Send,
   Check,
-  Frame as FrameIcon,
+  Heart,
+  MessageCircle,
+  Bookmark,
+  Crop,
+  Maximize2,
+  Move,
+  RotateCw,
+  SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -39,40 +48,230 @@ import Link from "next/link";
  * Wiring TODOs marked inline (generate -> /api/generate, publish -> /api/publish).
  */
 
-const DIMENSIONS = [
-  { label: "1080 × 1080", aspect: "1:1" },
-  { label: "1080 × 1350", aspect: "4:5" },
-  { label: "1080 × 1920", aspect: "9:16" },
-  { label: "1200 × 628", aspect: "16:9" },
-];
+gsap.registerPlugin(useGSAP);
+
+// Post target per platform, with the recommended feed-post pixel size.
+// `genAspect` is forwarded to the image API (mapped to a supported ratio);
+// `w`/`h` drive the morphing canvas frame.
+const PLATFORMS = [
+  { id: "instagram", label: "Instagram", w: 1080, h: 1350, genAspect: "4:5" },
+  { id: "facebook", label: "Facebook", w: 1200, h: 630, genAspect: "16:9" },
+  { id: "x", label: "X", w: 1600, h: 900, genAspect: "16:9" },
+  { id: "linkedin", label: "LinkedIn", w: 1200, h: 627, genAspect: "16:9" },
+  { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16" },
+] as const;
 
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
 type GenState = "idle" | "generating" | "done";
 
 export default function PosterboyStudio() {
-  const [dimIdx, setDimIdx] = useState(0);
+  const [platformIdx, setPlatformIdx] = useState(0);
   const [theme, setTheme] = useState<"light" | "grid">("light");
   const [postType, setPostType] = useState<PostType>("photo");
-  const [channels, setChannels] = useState<Set<string>>(new Set(["instagram"]));
   const [when, setWhen] = useState<WhenOption>("now");
   const [prompt, setPrompt] = useState("");
   const [genState, setGenState] = useState<GenState>("idle");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
+  const [progress, setProgress] = useState(0);
+  const [showTemplate, setShowTemplate] = useState(false);
+  const [captionState, setCaptionState] = useState<"idle" | "loading" | "done">("idle");
+  const [captionText, setCaptionText] = useState("");
+  const [captionTags, setCaptionTags] = useState("");
+  const [activeTool, setActiveTool] = useState<null | "type" | "tools">(null);
+  const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
+  const [edit, setEdit] = useState(EDIT_DEFAULT);
+  const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const toolRailRef = useRef<HTMLDivElement>(null);
+  const editRailRef = useRef<HTMLDivElement>(null);
+  const promptToolsRef = useRef<HTMLDivElement>(null);
+  const frameWrapRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLElement>(null);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const dragRef = useRef<{ px: number; py: number; ex: number; ey: number } | null>(null);
+  const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
   }, []);
 
-  const toggleChannel = (id: string) =>
-    setChannels((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
+  // Track the canvas size so the board can be sized in exact pixels — both
+  // width and height then animate smoothly between platform aspect ratios.
+  useEffect(() => {
+    const el = canvasRef.current;
+    if (!el) return;
+    const measure = () => setCanvasSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Scroll to zoom the generated image (non-passive so it can preventDefault).
+  useEffect(() => {
+    const el = frameWrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (genState !== "done" || showTemplate) return;
+      e.preventDefault();
+      setEdit((s) => ({
+        ...s,
+        scale: Math.max(0.5, Math.min(3, Number((s.scale - e.deltaY * 0.0015).toFixed(3)))),
+      }));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [genState, showTemplate]);
+
+  // Close the post-type / tools popover on outside click (lives in the
+  // right rail and the prompt bar respectively).
+  useEffect(() => {
+    if (!activeTool) return;
+    const onDocClick = (e: MouseEvent) => {
+      const n = e.target as Node;
+      if (editRailRef.current?.contains(n) || promptToolsRef.current?.contains(n)) return;
+      setActiveTool(null);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [activeTool]);
+
+  // Close the edit-rail popover on outside click.
+  useEffect(() => {
+    if (!activeEdit) return;
+    const onDocClick = (e: MouseEvent) => {
+      if (!editRailRef.current?.contains(e.target as Node)) setActiveEdit(null);
+    };
+    document.addEventListener("mousedown", onDocClick);
+    return () => document.removeEventListener("mousedown", onDocClick);
+  }, [activeEdit]);
+
+  // Illuminated glass-frame entrance: a luminous border traces around the
+  // existing image, a diagonal sheen sweeps, then the post chrome reveals.
+  useGSAP(
+    () => {
+      const card = frameWrapRef.current;
+      if (!card || !showTemplate || genState !== "done") return;
+      const border = card.querySelector<HTMLElement>(".glass-border");
+      const sheen = card.querySelector<HTMLElement>(".glass-sheen");
+      const chrome = card.querySelectorAll(".ptpl-head, .ptpl-foot");
+      const angle = { v: 0 };
+
+      const tl = gsap.timeline();
+      tl.from(card, { autoAlpha: 0, duration: 0.4, ease: "power2.out" }, 0);
+
+      if (border) {
+        gsap.set(border, { autoAlpha: 1 });
+        tl.to(
+          angle,
+          {
+            v: 360,
+            duration: 1.15,
+            ease: "power2.inOut",
+            onUpdate: () => card.style.setProperty("--glass-angle", `${angle.v}deg`),
+          },
+          0,
+        ).to(border, { autoAlpha: 0, duration: 0.45, ease: "power2.out" }, ">-0.25");
+      }
+
+      if (sheen) {
+        tl.fromTo(
+          sheen,
+          { xPercent: -135, autoAlpha: 0 },
+          { xPercent: 135, autoAlpha: 0.55, duration: 1.05, ease: "power1.inOut" },
+          0.12,
+        ).to(sheen, { autoAlpha: 0.12, duration: 0.35, ease: "power1.out" }, ">-0.05");
+      }
+
+      tl.from(
+        chrome,
+        { autoAlpha: 0, y: 12, duration: 0.5, stagger: 0.1, ease: "power2.out" },
+        0.3,
+      );
+    },
+    { dependencies: [showTemplate, genState], scope: frameWrapRef },
+  );
+
+  // Selected platform + the frame size that fits a square stage while
+  // preserving the post's aspect ratio (both dims as % so they transition).
+  const platform = PLATFORMS[platformIdx];
+  const frameRatio = platform.w / platform.h;
+  // Size the board to the post's aspect ratio in exact pixels (computed from
+  // the measured canvas) so both width and height transition smoothly between
+  // platforms; landscape stays wide, portrait stays tall, centered above the
+  // prompt. Falls back to aspect-ratio sizing before the first measurement.
+  const frameWrapStyle: CSSProperties = (() => {
+    const { w: cw, h: ch } = canvasSize;
+    if (!cw || !ch) {
+      return frameRatio >= 1
+        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "58%" }
+        : { height: "min(58%, 560px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
+    }
+    const fitW = Math.min(cw * 0.58, 600);
+    const fitH = Math.min(ch * 0.58, 560);
+    let w = fitW;
+    let h = fitW / frameRatio;
+    if (h > fitH) {
+      h = fitH;
+      w = fitH * frameRatio;
+    }
+    return { width: `${Math.round(w)}px`, height: `${Math.round(h)}px` };
+  })();
+
+  // Generation choreography — staged status text + warm color emergence.
+  const statusText =
+    genState !== "generating"
+      ? ""
+      : progress < 8
+        ? "Thinking…"
+        : progress < 28
+          ? "Analyzing the request…"
+          : progress < 99
+            ? "Generating…"
+            : "Finishing…";
+  const emergeOpacity =
+    genState === "generating"
+      ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
+      : 0;
+
+  // Direct manipulation — drag to pan, wheel to zoom the generated image.
+  const canEditImage = genState === "done" && !showTemplate;
+  const clampPan = (v: number) => Math.max(-50, Math.min(50, v));
+  const onImagePointerDown = (e: React.PointerEvent) => {
+    if (!canEditImage) return;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture can fail in some environments; dragging still works.
+    }
+    dragRef.current = { px: e.clientX, py: e.clientY, ex: edit.x, ey: edit.y };
+  };
+  const onImagePointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    const box = frameWrapRef.current?.getBoundingClientRect();
+    if (!d || !box) return;
+    const nx = d.ex + ((e.clientX - d.px) / box.width) * 100;
+    const ny = d.ey + ((e.clientY - d.py) / box.height) * 100;
+    setEdit((s) => ({ ...s, x: clampPan(nx), y: clampPan(ny) }));
+  };
+  const onImagePointerUp = () => {
+    dragRef.current = null;
+  };
+
+  // Image edit transforms — applied to the preview, carry into the post mockup.
+  const previewStyle = {
+    ...(genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : {}),
+    transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+    filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+  };
+
+  // Clear the progress timer if the component unmounts mid-generation.
+  useEffect(() => () => {
+    if (genTimer.current) clearInterval(genTimer.current);
+  }, []);
 
   const generate = async () => {
     if (!prompt.trim() || genState === "generating") {
@@ -81,6 +280,39 @@ export default function PosterboyStudio() {
     }
     setGenState("generating");
     setError("");
+    setProgress(0);
+    setShowTemplate(false);
+    setCaptionState("idle");
+    setCaptionText("");
+    setCaptionTags("");
+    setEdit(EDIT_DEFAULT);
+    setActiveEdit(null);
+
+    // Simulated diffusion progress: climbs quickly, eases as it nears the
+    // cap, then snaps to 100% when the real image arrives.
+    if (genTimer.current) clearInterval(genTimer.current);
+    genTimer.current = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 92) return p;
+        const inc =
+          p < 30 ? 4 + Math.random() * 5 : p < 70 ? 1.6 + Math.random() * 2.6 : 0.5 + Math.random() * 1.2;
+        return Math.min(92, p + inc);
+      });
+    }, 240);
+    const stopTimer = () => {
+      if (genTimer.current) {
+        clearInterval(genTimer.current);
+        genTimer.current = null;
+      }
+    };
+    // Keep the "thinking → analyzing" choreography perceptible even when the
+    // request resolves (or fails) instantly.
+    const startedAt = Date.now();
+    const holdFloor = async () => {
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < 1600) await new Promise((r) => setTimeout(r, 1600 - elapsed));
+    };
+
     const savedPrompt = prompt.trim();
     try {
       const res = await fetch("/api/generate-image", {
@@ -88,11 +320,14 @@ export default function PosterboyStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: savedPrompt,
-          aspectRatio: DIMENSIONS[dimIdx].aspect,
+          aspectRatio: platform.genAspect,
         }),
       });
       const data = await res.json();
       if (!res.ok || data.error) {
+        await holdFloor();
+        stopTimer();
+        setProgress(0);
         const msg = data.error || "Generation failed";
         setError(
           msg.includes("not configured")
@@ -102,12 +337,77 @@ export default function PosterboyStudio() {
         setGenState("idle");
         return;
       }
+      await holdFloor();
+      stopTimer();
+      setProgress(100);
       setGeneratedUrl(data.image);
       setGenState("done");
     } catch {
+      await holdFloor();
+      stopTimer();
+      setProgress(0);
       setError("Network error. Please try again.");
       setGenState("idle");
     }
+  };
+
+  // Parse the /api/ai response into a caption body + a hashtag string.
+  const parseCaption = (raw: string): { body: string; tags: string } => {
+    const text = (raw || "").trim();
+    const fenced = text.match(/---\s*([\s\S]*?)\s*---/);
+    let body = (fenced ? fenced[1] : text).trim();
+    const hashLine = text.match(/\*\*Hashtags:\*\*\s*([^\n]*)/i);
+    let tags = hashLine ? hashLine[1].trim() : "";
+    body = body.replace(/\*\*Hashtags:\*\*[\s\S]*$/i, "").replace(/^---|---$/g, "").trim();
+    if (!tags) {
+      const inline = body.match(/(#\S+(?:\s+#\S+)*)\s*$/);
+      if (inline) {
+        tags = inline[1].trim();
+        body = body.slice(0, inline.index).trim();
+      }
+    }
+    return { body, tags };
+  };
+
+  const generateCaption = async () => {
+    setCaptionState("loading");
+    setCaptionText("");
+    setCaptionTags("");
+    try {
+      const res = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: [
+            {
+              role: "user",
+              content: `Write a short, engaging ${platform.label} caption (1–2 sentences) for a post featuring this image: "${prompt.trim() || "a brand image"}". Then add 4–6 relevant hashtags.`,
+            },
+          ],
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error || !data.message) {
+        setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
+        setCaptionTags("#posterboy");
+        setCaptionState("done");
+        return;
+      }
+      const { body, tags } = parseCaption(data.message);
+      setCaptionText(body || "Lorem ipsum dolor sit amet, consectetur adipiscing.");
+      setCaptionTags(tags);
+      setCaptionState("done");
+    } catch {
+      setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
+      setCaptionTags("#posterboy");
+      setCaptionState("done");
+    }
+  };
+
+  const confirmToTemplate = () => {
+    if (genState !== "done" || !generatedUrl) return;
+    setShowTemplate(true);
+    void generateCaption();
   };
 
   const publish = async () => {
@@ -115,17 +415,16 @@ export default function PosterboyStudio() {
       inputRef.current?.focus();
       return;
     }
-    const platform =
-      channels.has("instagram") && channels.has("facebook")
-        ? "both"
-        : channels.has("instagram")
-          ? "instagram"
-          : "facebook";
+    const target = platform.id === "facebook" ? "facebook" : platform.id === "instagram" ? "instagram" : null;
+    if (!target) {
+      setError(`Direct publishing to ${platform.label} isn't available yet — it posts to Instagram or Facebook.`);
+      return;
+    }
 
     try {
       const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
       const payload = await buildMetaPublishPayload({
-        platform,
+        platform: target,
         caption: prompt.trim() || "Posted with Posterboy Studio",
         imageUrl: generatedUrl,
       });
@@ -176,31 +475,201 @@ export default function PosterboyStudio() {
         </aside>
 
         {/* CANVAS */}
-        <main className="canvas">
+        <main className="canvas" ref={canvasRef}>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            <button type="button" className="dim-chip" onClick={() => setDimIdx((i) => (i + 1) % DIMENSIONS.length)}>
-              <FrameIcon size={15} />
-              <span>{DIMENSIONS[dimIdx].label}</span>
-              <ChevronDown className="chev" size={14} />
-            </button>
+            <div />
             <div className="top-toggles">
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
               <button className={theme === "grid" ? "active" : ""} onClick={() => setTheme("grid")}><LayoutGrid size={16} /></button>
             </div>
           </div>
 
-          <div className="frame-wrap">
-            <div className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}>
-              <div
-                className="preview"
-                style={genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : undefined}
-              />
+          {/* Minimal control rail — left of the image */}
+          <div className="tool-rail" ref={toolRailRef}>
+            {PLATFORMS.map((p, i) => (
+              <div className="rail-item" key={p.id}>
+                <button
+                  type="button"
+                  className={`rail-ico${platformIdx === i ? " active" : ""}`}
+                  onClick={() => setPlatformIdx(i)}
+                  aria-pressed={platformIdx === i}
+                  title={p.label}
+                >
+                  <PlatformIcon type={p.id} />
+                </button>
+                {platformIdx === i && (
+                  <span className="rail-ico-label">{p.label}</span>
+                )}
+              </div>
+            ))}
+
+            <span className="rail-div" />
+
+            <button
+              type="button"
+              className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
+              onClick={() => void publish()}
+              disabled={genState !== "done" || !generatedUrl}
+              title={publishState === "published" ? "Published" : "Publish"}
+            >
+              {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
+            </button>
+          </div>
+
+          <div
+            ref={frameWrapRef}
+            className={`frame-wrap${showTemplate ? " as-post" : ""}`}
+            style={showTemplate ? undefined : frameWrapStyle}
+          >
+            {showTemplate && <div className="glass-border" aria-hidden="true" />}
+            {showTemplate && <div className="glass-sheen" aria-hidden="true" />}
+            {showTemplate && (
+              <div className="ptpl-head">
+                <span className="ptpl-avatar" />
+                <span className="ptpl-name">User Name</span>
+                <span className="ptpl-more">···</span>
+              </div>
+            )}
+            <div
+              className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
+              style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : { width: "100%", height: "100%" }}
+              onPointerDown={onImagePointerDown}
+              onPointerMove={onImagePointerMove}
+              onPointerUp={onImagePointerUp}
+              onPointerCancel={onImagePointerUp}
+            >
+              <div className="emerge" style={{ opacity: emergeOpacity }} />
+              <div className="preview" style={previewStyle} />
+              {genState === "generating" && (
+                <div className="gen-progress">{Math.round(progress)}%</div>
+              )}
               {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
             </div>
+            {showTemplate && (
+              <div className="ptpl-foot">
+                <div className="ptpl-actions">
+                  <span className="ptpl-act-left">
+                    <Heart size={20} className="ptpl-like" fill="currentColor" />
+                    <MessageCircle size={20} />
+                    <Send size={20} />
+                  </span>
+                  <span className="ptpl-dots"><i /><i /><i /></span>
+                  <Bookmark size={20} className="ptpl-bm" />
+                </div>
+                <div className="ptpl-likes">9,311 likes</div>
+                <div className="ptpl-caption">
+                  <span className="ptpl-cname">User Name</span>{" "}
+                  {captionState === "loading" ? (
+                    <span className="ptpl-caption-skel"><span /><span /><span /></span>
+                  ) : (
+                    <>
+                      {captionText}
+                      {captionTags && <span className="ptpl-tags"> {captionTags}</span>}
+                    </>
+                  )}
+                </div>
+                <div className="ptpl-comments">View all 987 comments</div>
+                <div className="ptpl-time">5 days ago</div>
+              </div>
+            )}
+            {showTemplate && (
+              <button
+                type="button"
+                className="ptpl-close"
+                onClick={() => setShowTemplate(false)}
+                aria-label="Close preview"
+              >
+                ×
+              </button>
+            )}
           </div>
+
+          {/* Image edit tools — right of the image, mirrors the left rail */}
+          {genState === "done" && !showTemplate && (
+            <div className="tool-rail edit-rail" ref={editRailRef}>
+              <div className="rail-item">
+                <button
+                  type="button"
+                  className={`rail-ico${activeTool === "type" ? " open" : ""}`}
+                  onClick={() => { setActiveEdit(null); setActiveTool((t) => (t === "type" ? null : "type")); }}
+                  data-tooltrigger
+                  title="Post type"
+                  aria-label={`Post type: ${postType}`}
+                >
+                  {postType === "photo" ? <ImageIcon size={19} /> : postType === "update" ? <AlignLeft size={19} /> : <Tag size={19} />}
+                </button>
+                {activeTool === "type" && (
+                  <div className="rail-pop">
+                    <button className={postType === "photo" ? "active" : ""} onClick={() => { setPostType("photo"); setActiveTool(null); }}><ImageIcon size={15} /><span>Photo</span></button>
+                    <button className={postType === "update" ? "active" : ""} onClick={() => { setPostType("update"); setActiveTool(null); }}><AlignLeft size={15} /><span>Update</span></button>
+                    <button className={postType === "offer" ? "active" : ""} onClick={() => { setPostType("offer"); setActiveTool(null); }}><Tag size={15} /><span>Offer</span></button>
+                  </div>
+                )}
+              </div>
+              <button type="button" className="rail-ico" title="Crop (coming soon)" disabled><Crop size={19} /></button>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "scale" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "scale" ? null : "scale"))} title="Scale"><Maximize2 size={19} /></button>
+                {activeEdit === "scale" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Zoom</span><span className="edit-val">{Math.round(edit.scale * 100)}%</span></div>
+                    <input type="range" min={50} max={300} value={Math.round(edit.scale * 100)} onChange={(e) => setEdit((s) => ({ ...s, scale: Number(e.target.value) / 100 }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "move" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "move" ? null : "move"))} title="Move"><Move size={19} /></button>
+                {activeEdit === "move" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Horizontal</span><span className="edit-val">{edit.x}%</span></div>
+                    <input type="range" min={-50} max={50} value={edit.x} onChange={(e) => setEdit((s) => ({ ...s, x: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Vertical</span><span className="edit-val">{edit.y}%</span></div>
+                    <input type="range" min={-50} max={50} value={edit.y} onChange={(e) => setEdit((s) => ({ ...s, y: Number(e.target.value) }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "rotate" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "rotate" ? null : "rotate"))} title="Rotate"><RotateCw size={19} /></button>
+                {activeEdit === "rotate" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Rotate</span><span className="edit-val">{edit.rotate}°</span></div>
+                    <input type="range" min={-180} max={180} value={edit.rotate} onChange={(e) => setEdit((s) => ({ ...s, rotate: Number(e.target.value) }))} />
+                  </div>
+                )}
+              </div>
+
+              <div className="rail-item">
+                <button type="button" className={`rail-ico${activeEdit === "adjust" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "adjust" ? null : "adjust"))} title="Adjust"><SlidersHorizontal size={19} /></button>
+                {activeEdit === "adjust" && (
+                  <div className="rail-pop edit-pop">
+                    <div className="edit-row"><span>Brightness</span><span className="edit-val">{edit.brightness}%</span></div>
+                    <input type="range" min={50} max={150} value={edit.brightness} onChange={(e) => setEdit((s) => ({ ...s, brightness: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Contrast</span><span className="edit-val">{edit.contrast}%</span></div>
+                    <input type="range" min={50} max={150} value={edit.contrast} onChange={(e) => setEdit((s) => ({ ...s, contrast: Number(e.target.value) }))} />
+                    <div className="edit-row"><span>Saturation</span><span className="edit-val">{edit.saturate}%</span></div>
+                    <input type="range" min={0} max={200} value={edit.saturate} onChange={(e) => setEdit((s) => ({ ...s, saturate: Number(e.target.value) }))} />
+                    <button type="button" className="edit-reset" onClick={() => setEdit(EDIT_DEFAULT)}>Reset all</button>
+                  </div>
+                )}
+              </div>
+
+              <span className="rail-div" />
+              <button
+                type="button"
+                className="rail-ico rail-confirm"
+                onClick={confirmToTemplate}
+                title="Confirm — preview as post"
+                aria-label="Confirm — preview as post"
+              >
+                <Check size={19} strokeWidth={2.5} />
+              </button>
+            </div>
+          )}
 
           {error ? (
             <div className="studio-error">
@@ -209,7 +678,23 @@ export default function PosterboyStudio() {
             </div>
           ) : null}
 
-          <div className="prompt-bar">
+          {genState === "generating" && (
+            <div className="gen-status">
+              <span className="gen-dots"><i /><i /><i /></span>
+              <span>{statusText}</span>
+            </div>
+          )}
+
+          <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
+            <button
+              type="button"
+              className="pb-util"
+              onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
+              title={when === "now" ? "Post now" : "Scheduled"}
+              aria-label={when === "now" ? "Post now" : "Scheduled"}
+            >
+              {when === "now" ? <Zap size={18} /> : <Calendar size={18} />}
+            </button>
             <input
               ref={inputRef}
               value={prompt}
@@ -218,6 +703,25 @@ export default function PosterboyStudio() {
               placeholder="Type in your prompt"
               disabled={genState === "generating"}
             />
+            <div className="pb-tool" ref={promptToolsRef}>
+              {activeTool === "tools" && (
+                <div className="pb-tools-pop">
+                  <button><span>AI enhance</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Background remover</span><span className="pro-tag">PRO</span></button>
+                  <button><span>Caption assist</span></button>
+                  <button><span>Brand kit</span></button>
+                </div>
+              )}
+              <button
+                type="button"
+                className={`pb-util${activeTool === "tools" ? " active" : ""}`}
+                onClick={() => { setActiveEdit(null); setActiveTool((t) => (t === "tools" ? null : "tools")); }}
+                data-tooltrigger
+                title="Tools"
+              >
+                <Sparkles size={18} />
+              </button>
+            </div>
             <button
               type="button"
               className="magic-wand"
@@ -230,64 +734,12 @@ export default function PosterboyStudio() {
           </div>
         </main>
 
-        {/* RIGHT RAIL / CONTROL BAR */}
-        <aside className="right-rail">
-          <div className="rail-section">
-            <div className="rail-label">Post type</div>
-            <div className="post-type">
-              <button className={postType === "photo" ? "active" : ""} onClick={() => setPostType("photo")}><ImageIcon size={14} />Photo</button>
-              <button className={postType === "update" ? "active" : ""} onClick={() => setPostType("update")}><AlignLeft size={14} />Update</button>
-              <button className={postType === "offer" ? "active" : ""} onClick={() => setPostType("offer")}><Tag size={14} />Offer</button>
-            </div>
-          </div>
-
-          <div className="rail-section">
-            <div className="rail-label">Channels</div>
-            <button type="button" className={`list-row${channels.has("instagram") ? " active" : ""}`} onClick={() => toggleChannel("instagram")}>
-              <ChannelIcon type="instagram" /><span className="lbl">Instagram</span><span className="check" />
-            </button>
-            <button type="button" className={`list-row${channels.has("facebook") ? " active" : ""}`} onClick={() => toggleChannel("facebook")}>
-              <ChannelIcon type="facebook" /><span className="lbl">Facebook</span><span className="check" />
-            </button>
-          </div>
-
-          <div className="rail-section">
-            <div className="rail-label">When</div>
-            <button className={`list-row${when === "now" ? " active" : ""}`} onClick={() => setWhen("now")}>
-              <Zap className="icon" size={16} /><span className="lbl">Now</span><span className="check" />
-            </button>
-            <button className={`list-row${when === "schedule" ? " active" : ""}`} onClick={() => setWhen("schedule")}>
-              <Calendar className="icon" size={16} /><span className="lbl">Schedule</span><span className="check" />
-            </button>
-          </div>
-
-          <div className="rail-section tools">
-            <button className="tool-row"><span className="label">Image tools</span><ChevronRight size={14} /></button>
-            <button className="tool-row"><span className="label">AI enhance</span><span className="pro-tag">PRO</span></button>
-            <button className="tool-row"><span className="label">Caption assist</span><ChevronRight size={14} /></button>
-            <button className="tool-row"><span className="label">Background remover</span><span className="pro-tag">PRO</span></button>
-            <button className="tool-row"><span className="label">Brand kit</span><ChevronRight size={14} /></button>
-          </div>
-
-          <div className="rail-actions">
-            <Link href="/dashboard/dispatch" className="btn-outline"><Calendar size={15} />Schedule</Link>
-            <button
-              type="button"
-              className={`btn-publish${publishState === "published" ? " published" : ""}`}
-              onClick={() => void publish()}
-              disabled={genState !== "done" || !generatedUrl}
-              style={publishState === "published" ? { background: "#1aa260" } : undefined}
-            >
-              {publishState === "published" ? (<><Check size={15} strokeWidth={2.5} />Published</>) : (<><Send size={15} />Publish</>)}
-            </button>
-          </div>
-        </aside>
       </div>
     </div>
   );
 }
 
-function ChannelIcon({ type }: { type: "instagram" | "facebook" }) {
+function PlatformIcon({ type }: { type: string }) {
   if (type === "instagram") {
     return (
       <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
@@ -297,9 +749,31 @@ function ChannelIcon({ type }: { type: "instagram" | "facebook" }) {
       </svg>
     );
   }
+  if (type === "facebook") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
+        <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" strokeLinecap="round" strokeLinejoin="round" />
+      </svg>
+    );
+  }
+  if (type === "x") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+        <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24h-6.65l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231 5.45-6.231Zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77Z" />
+      </svg>
+    );
+  }
+  if (type === "linkedin") {
+    return (
+      <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+        <path d="M20.45 20.45h-3.56v-5.57c0-1.33-.03-3.04-1.85-3.04-1.86 0-2.14 1.45-2.14 2.94v5.67H9.35V9h3.41v1.56h.05c.48-.9 1.64-1.85 3.37-1.85 3.6 0 4.27 2.37 4.27 5.45v6.29ZM5.34 7.43a2.07 2.07 0 1 1 0-4.13 2.07 2.07 0 0 1 0 4.13ZM7.12 20.45H3.56V9h3.56v11.45ZM22.22 0H1.77C.79 0 0 .77 0 1.72v20.56C0 23.23.79 24 1.77 24h20.45c.98 0 1.78-.77 1.78-1.72V1.72C24 .77 23.2 0 22.22 0Z" />
+      </svg>
+    );
+  }
+  // tiktok
   return (
-    <svg className="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} aria-hidden>
-      <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" strokeLinecap="round" strokeLinejoin="round" />
+    <svg className="icon" viewBox="0 0 24 24" fill="currentColor" stroke="none" aria-hidden>
+      <path d="M16.6 5.82a4.28 4.28 0 0 1-1.06-2.82h-3.2v12.93a2.59 2.59 0 0 1-2.59 2.5 2.59 2.59 0 0 1 0-5.18c.27 0 .52.04.77.12V9.91a5.85 5.85 0 0 0-.77-.05 5.8 5.8 0 1 0 5.8 5.8V9.01a7.5 7.5 0 0 0 4.38 1.4V7.2a4.28 4.28 0 0 1-3.33-1.38Z" />
     </svg>
   );
 }
@@ -337,10 +811,10 @@ function StudioStyles() {
     height: 100%;
   }.pb-studio button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }.pb-studio button:disabled { cursor: not-allowed; opacity: 0.45; }.pb-studio input { font-family: inherit; }.pb-studio input:disabled { opacity: 0.6; }.pb-studio a.btn-outline { text-decoration: none; color: inherit; }.pb-studio .app {
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr) 320px;
-    grid-template-areas: "sidebar canvas rail";
-    gap: 16px;
-    padding: 16px;
+    grid-template-columns: 260px minmax(0, 1fr);
+    grid-template-areas: "sidebar canvas";
+    gap: 18px;
+    padding: 18px;
     min-height: 100%;
     height: 100%;
     max-width: 1700px;
@@ -555,7 +1029,34 @@ function StudioStyles() {
     color: var(--ink);
     cursor: pointer;
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
-  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip .chev { color: var(--muted); }.pb-studio .top-toggles {
+  }.pb-studio .dim-chip svg { width: 15px; height: 15px; color: var(--ink-2); }.pb-studio .dim-chip--static { cursor: default; }.pb-studio .dim-chip .post-label { font-weight: 600; }.pb-studio .dim-chip .post-meta { color: var(--muted); font-weight: 500; font-variant-numeric: tabular-nums; }.pb-studio .dim-chip .chev { color: var(--muted); transition: transform 0.2s ease; }.pb-studio .dim-chip.open .chev { transform: rotate(180deg); }.pb-studio .post-select { position: relative; }.pb-studio .post-menu {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    min-width: 220px;
+    list-style: none;
+    margin: 0;
+    padding: 6px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(16px) saturate(160%);
+    -webkit-backdrop-filter: blur(16px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.5);
+    border-radius: 14px;
+    box-shadow: 0 10px 34px rgba(0,0,0,0.18);
+    z-index: 30;
+    animation: pbsMenuIn 0.16s ease;
+  }@keyframes pbsMenuIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }.pb-studio .post-option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 18px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
     display: flex;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(12px) saturate(160%);
@@ -572,16 +1073,106 @@ function StudioStyles() {
     border-radius: 8px;
     color: var(--ink-2);
     transition: background 0.15s ease;
-  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio /* The glowing magic frame */
+  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio /* Minimal control rail — left of the image */
+  .tool-rail {
+    position: absolute;
+    left: 26px;
+    top: 50%;
+    transform: translateY(-54%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    z-index: 18;
+  }.pb-studio .tool-rail .rail-item { position: relative; display: flex; }.pb-studio .tool-rail .rail-ico {
+    width: 46px;
+    height: 46px;
+    display: grid;
+    place-items: center;
+    border-radius: 13px;
+    color: var(--ink-2);
+    background: transparent;
+    transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+  }.pb-studio .tool-rail .rail-ico:hover { color: var(--ink-2); }.pb-studio .tool-rail .rail-ico:hover svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }.pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open {
+    background: transparent;
+    color: #fff;
+  }.pb-studio .tool-rail .rail-ico.active svg, .pb-studio .tool-rail .rail-ico.open svg {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.95)) drop-shadow(0 0 11px rgba(255,255,255,0.7)) drop-shadow(0 0 1px rgba(0,0,0,0.35));
+  }.pb-studio .tool-rail .rail-ico svg { width: 19px; height: 19px; transition: filter 0.2s ease; }.pb-studio .tool-rail .rail-ico-label {
+    position: absolute;
+    left: calc(100% + 10px);
+    top: 50%;
+    transform: translateY(-50%);
+    white-space: nowrap;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    color: #fff;
+    text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 11px rgba(255,255,255,0.65), 0 0 2px rgba(0,0,0,0.5);
+    pointer-events: none;
+    z-index: 19;
+    animation: pbsLabelIn 0.22s ease;
+  }@keyframes pbsLabelIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-5px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }.pb-studio .tool-rail .rail-ico:disabled { opacity: 0.35; }.pb-studio .tool-rail .rail-div {
+    width: 20px;
+    height: 1px;
+    background: rgba(15,15,20,0.12);
+    margin: 7px 0;
+  }.pb-studio .tool-rail .rail-publish:not(:disabled) {
+    color: #fff;
+    background: var(--ink);
+  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail.edit-rail .rail-pop { left: auto; right: calc(100% + 12px); }.pb-studio .edit-pop { padding: 12px; min-width: 190px; }.pb-studio .edit-pop .edit-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink); font-weight: 500; padding: 0 2px; }.pb-studio .edit-pop .edit-row:not(:first-child) { margin-top: 9px; }.pb-studio .edit-pop .edit-val { color: var(--muted); font-variant-numeric: tabular-nums; }.pb-studio .edit-pop input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--line-2); border-radius: 4px; margin: 5px 0 2px; cursor: pointer; }.pb-studio .edit-pop input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }.pb-studio .edit-pop input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: var(--ink); cursor: pointer; }.pb-studio .edit-pop .edit-reset { display: block; margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; color: var(--muted); background: rgba(0,0,0,0.05); }.pb-studio .edit-pop .edit-reset:hover { background: rgba(0,0,0,0.09); color: var(--ink); }.pb-studio .tool-rail .rail-pop {
+    position: absolute;
+    left: calc(100% + 12px);
+    top: 50%;
+    transform: translateY(-50%);
+    min-width: 188px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 14px;
+    box-shadow: 0 14px 38px rgba(0,0,0,0.18);
+    z-index: 20;
+    animation: pbsPopIn 0.16s ease;
+  }@keyframes pbsPopIn {
+    from { opacity: 0; transform: translateY(-50%) translateX(-6px); }
+    to { opacity: 1; transform: translateY(-50%) translateX(0); }
+  }.pb-studio .tool-rail .rail-pop button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .tool-rail .rail-pop button svg { width: 15px; height: 15px; color: var(--muted); }.pb-studio .tool-rail .rail-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .tool-rail .rail-pop button.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .tool-rail .rail-pop button.active svg { color: var(--red); }.pb-studio .tool-rail .rail-pop .pro-tag {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted-2);
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    padding: 1px 5px;
+  }.pb-studio /* The glowing magic frame */
   .frame-wrap {
     position: absolute;
-    top: 50%;
+    top: calc((100% - 132px) / 2);
     left: 50%;
-    transform: translate(-50%, -56%);
-    width: 42%;
-    max-width: 460px;
-    aspect-ratio: 1;
+    transform: translate(-50%, -50%);
     z-index: 10;
+    display: grid;
+    place-items: center;
+    transition: width 0.5s cubic-bezier(0.65, 0, 0.35, 1), height 0.5s cubic-bezier(0.65, 0, 0.35, 1);
   }.pb-studio /* Glow spill behind the frame */
   .frame-wrap::before {
     content: '';
@@ -601,6 +1192,7 @@ function StudioStyles() {
     position: relative;
     width: 100%;
     height: 100%;
+    transition: width 0.55s cubic-bezier(0.65, 0, 0.35, 1), height 0.55s cubic-bezier(0.65, 0, 0.35, 1);
     background: linear-gradient(180deg, #fbfbfb 0%, #efefef 100%);
     border-radius: 4px;
     border: 1.5px solid rgba(255,255,255,1);
@@ -639,32 +1231,73 @@ function StudioStyles() {
         0 18px 50px rgba(0,0,0,0.28);
     }
   }.pb-studio /* Generating state */
-  .frame.generating::before {
+  .frame.generating {
+    background: linear-gradient(180deg, #edeae5 0%, #e0ddd6 100%);
+  }.pb-studio .frame.generating::before {
     content: '';
     position: absolute;
     inset: 0;
-    background: linear-gradient(120deg,
-      rgba(255,255,255,0.4) 0%,
-      rgba(238,37,50,0.15) 25%,
-      rgba(255,255,255,0.4) 50%,
-      rgba(238,37,50,0.15) 75%,
-      rgba(255,255,255,0.4) 100%
+    background: linear-gradient(105deg,
+      rgba(255,255,255,0) 32%,
+      rgba(255,255,255,0.78) 50%,
+      rgba(255,255,255,0) 68%
     );
-    background-size: 300% 100%;
-    animation: pbsShimmer 2s linear infinite;
+    background-size: 250% 100%;
+    animation: pbsSweepA 2.6s ease-in-out infinite;
     z-index: 2;
-  }@keyframes pbsShimmer {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 300% 50%; }
+  }.pb-studio .frame.generating::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(255deg,
+      rgba(217,119,87,0) 36%,
+      rgba(217,119,87,0.18) 50%,
+      rgba(217,119,87,0) 64%
+    );
+    background-size: 250% 100%;
+    animation: pbsSweepB 3.4s ease-in-out infinite;
+    z-index: 2;
+  }@keyframes pbsSweepA {
+    0% { background-position: 130% 50%; }
+    100% { background-position: -30% 50%; }
+  }@keyframes pbsSweepB {
+    0% { background-position: -30% 50%; }
+    100% { background-position: 130% 50%; }
+  }.pb-studio .frame .emerge {
+    position: absolute;
+    inset: -6%;
+    background:
+      radial-gradient(42% 48% at 30% 34%, rgba(212,168,83,0.6), transparent 70%),
+      radial-gradient(46% 42% at 72% 64%, rgba(217,119,87,0.55), transparent 72%),
+      radial-gradient(52% 56% at 52% 82%, rgba(150,112,80,0.5), transparent 75%);
+    filter: blur(20px);
+    opacity: 0;
+    transition: opacity 0.5s ease;
+    z-index: 3;
+    pointer-events: none;
+  }.pb-studio .frame .gen-progress {
+    position: absolute;
+    top: 12px;
+    right: 12px;
+    font-size: 12px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: rgba(40,32,24,0.62);
+    background: rgba(255,255,255,0.72);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    padding: 4px 9px;
+    border-radius: 8px;
+    z-index: 6;
   }.pb-studio .frame .preview {
     position: absolute;
     inset: 0;
     background-size: cover;
     background-position: center;
     opacity: 0;
-    transition: opacity 0.6s ease;
-    z-index: 3;
-  }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio /* The empty state caption (subtle, .pb-studio only visible on hover) */
+    transition: opacity 0.4s ease-out;
+    z-index: 4;
+  }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio .frame.editable { cursor: grab; touch-action: none; }.pb-studio .frame.editable:active { cursor: grabbing; }.pb-studio /* The empty state caption (subtle, .pb-studio only visible on hover) */
   .frame-hint {
     position: absolute;
     bottom: 14px;
@@ -678,10 +1311,213 @@ function StudioStyles() {
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 4;
-  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio /* Prompt bar — glass morphism */
+  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio /* Confirm checkmark — appears after the image is generated */
+  .confirm-check {
+    position: absolute;
+    bottom: -20px;
+    right: -20px;
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 50%;
+    color: var(--ink);
+    background: transparent;
+    backdrop-filter: blur(14px) saturate(150%);
+    -webkit-backdrop-filter: blur(14px) saturate(150%);
+    border: 1.5px solid rgba(255,255,255,0.55);
+    box-shadow: 0 6px 20px rgba(0,0,0,0.16), inset 0 0 0 1px rgba(255,255,255,0.14);
+    z-index: 12;
+    animation: pbsCheckIn 0.45s cubic-bezier(0.34, 1.56, 0.64, 1) 0.35s both;
+    transition: transform 0.18s ease, background 0.18s ease;
+  }.pb-studio .confirm-check:hover { transform: scale(1.08); background: rgba(255,255,255,0.16); }@keyframes pbsCheckIn {
+    from { opacity: 0; transform: scale(0.5); }
+    to { opacity: 1; transform: scale(1); }
+  }.pb-studio /* Glassmorphism post-preview template */
+  .post-template {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    z-index: 25;
+    background: rgba(12,12,16,0.6);
+    animation: pbsTplIn 0.5s ease-out both;
+  }@keyframes pbsTplIn { from { opacity: 0; } to { opacity: 1; } }.pb-studio .post-template .ptpl-blobs {
+    position: absolute;
+    inset: 0;
+    background:
+      radial-gradient(34% 30% at 22% 26%, rgba(236,72,153,0.55), transparent 60%),
+      radial-gradient(30% 28% at 78% 32%, rgba(139,92,246,0.55), transparent 60%),
+      radial-gradient(36% 34% at 30% 80%, rgba(168,85,247,0.5), transparent 62%),
+      radial-gradient(32% 30% at 80% 78%, rgba(99,102,241,0.5), transparent 62%);
+    filter: blur(40px);
+    animation: pbsBlobDrift 9s ease-in-out infinite alternate;
+  }@keyframes pbsBlobDrift {
+    from { transform: scale(1) translateY(0); }
+    to { transform: scale(1.08) translateY(-2%); }
+  }.pb-studio .post-template .ptpl-card {
+    position: relative;
+    z-index: 2;
+    width: min(330px, 66%);
+    max-height: 88%;
+    overflow: hidden;
+    border-radius: 18px;
+    padding: 4px 0 14px;
+    background: rgba(255,255,255,0.09);
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.4);
+    box-shadow:
+      0 22px 60px rgba(0,0,0,0.45),
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 0 0 1px rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.92);
+    font-size: 13px;
+    animation: pbsCardIn 0.55s cubic-bezier(0.22, 1, 0.36, 1) 0.05s both;
+  }@keyframes pbsCardIn {
+    from { opacity: 0; transform: translateY(12px) scale(0.97); }
+    to { opacity: 1; transform: translateY(0) scale(1); }
+  }@property --ptpl-angle {
+    syntax: '<angle>';
+    initial-value: 0deg;
+    inherits: false;
+  }.pb-studio .post-template .ptpl-card::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    z-index: 7;
+    background: conic-gradient(from var(--ptpl-angle), transparent 0deg, transparent 285deg, rgba(255,255,255,0.35) 320deg, rgba(255,255,255,0.95) 350deg, rgba(255,255,255,0.4) 358deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    animation: pbsBorderTrace 1.05s cubic-bezier(0.4, 0, 0.2, 1) 0.05s both;
+  }@keyframes pbsBorderTrace {
+    0% { --ptpl-angle: 0deg; opacity: 1; }
+    78% { opacity: 1; }
+    100% { --ptpl-angle: 360deg; opacity: 0; }
+  }.pb-studio .post-template .ptpl-card::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 6;
+    background: linear-gradient(118deg, transparent 30%, rgba(255,255,255,0.45) 43%, rgba(255,255,255,0.1) 50%, transparent 60%);
+    opacity: 0.1;
+    animation: pbsGlassSheen 1.2s cubic-bezier(0.22, 1, 0.36, 1) 0.1s both;
+  }@keyframes pbsGlassSheen {
+    0% { opacity: 0; transform: translateX(-45%); }
+    55% { opacity: 0.5; }
+    100% { opacity: 0.1; transform: translateX(0); }
+  }.pb-studio .frame-wrap.as-post {
+    aspect-ratio: auto;
+    width: min(360px, 58%);
+    max-width: 380px;
+    height: auto;
+    max-height: calc(100% - 150px);
+    top: calc((100% - 132px) / 2);
+    transform: translate(-50%, -50%);
+    display: flex;
+    flex-direction: column;
+    place-items: stretch;
+    overflow: hidden;
+    border-radius: 18px;
+    padding-bottom: 12px;
+    background: rgba(26,26,32,0.5);
+    backdrop-filter: blur(22px) saturate(150%);
+    -webkit-backdrop-filter: blur(22px) saturate(150%);
+    border: 1px solid rgba(255,255,255,0.42);
+    box-shadow:
+      0 22px 60px rgba(0,0,0,0.42),
+      inset 0 1px 0 rgba(255,255,255,0.5),
+      inset 0 0 0 1px rgba(255,255,255,0.1);
+    color: rgba(255,255,255,0.94);
+    font-size: 13px;
+  }.pb-studio .frame-wrap.as-post .glass-border {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1.5px;
+    pointer-events: none;
+    z-index: 7;
+    background: conic-gradient(from var(--glass-angle, 0deg), transparent 0deg, transparent 280deg, rgba(255,255,255,0.4) 318deg, rgba(255,255,255,1) 350deg, rgba(255,255,255,0.45) 358deg, transparent 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+  }.pb-studio .frame-wrap.as-post .glass-sheen {
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    pointer-events: none;
+    z-index: 6;
+    opacity: 0;
+    background: linear-gradient(115deg, transparent 38%, rgba(255,255,255,0.55) 49%, rgba(255,255,255,0.12) 53%, transparent 64%);
+  }.pb-studio .frame-wrap.as-post .frame {
+    width: 100% !important;
+    height: auto !important;
+    max-height: min(42vh, 400px);
+    flex: none;
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    animation: none;
+    background: #161616;
+  }.pb-studio .frame-wrap.as-post .frame .preview { transition: none; }.pb-studio .frame-wrap.as-post .ptpl-close { z-index: 8; top: 12px; right: 12px; }.pb-studio .ptpl-foot { position: relative; z-index: 2; padding-top: 2px; }.pb-studio .ptpl-head {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 9px 12px;
+  }.pb-studio .ptpl-avatar {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    flex: none;
+    background: linear-gradient(135deg, rgba(255,255,255,0.4), rgba(255,255,255,0.12));
+    border: 1px solid rgba(255,255,255,0.3);
+  }.pb-studio .ptpl-name { font-weight: 600; }.pb-studio .ptpl-more { margin-left: auto; letter-spacing: 1px; opacity: 0.8; }.pb-studio .ptpl-media {
+    width: 100%;
+    max-height: 360px;
+    background-size: cover;
+    background-position: center;
+  }.pb-studio .ptpl-actions {
+    display: flex;
+    align-items: center;
+    padding: 11px 12px 2px;
+  }.pb-studio .ptpl-act-left { display: inline-flex; align-items: center; gap: 15px; }.pb-studio .ptpl-actions svg { display: block; }.pb-studio .ptpl-like { color: #ed4956; }.pb-studio .ptpl-dots { display: inline-flex; gap: 4px; margin: 0 auto; }.pb-studio .ptpl-dots i { width: 5px; height: 5px; border-radius: 50%; background: rgba(255,255,255,0.45); }.pb-studio .ptpl-dots i:first-child { background: #5aa7ff; }.pb-studio .ptpl-likes { font-weight: 600; padding: 4px 12px 3px; }.pb-studio .ptpl-caption { padding: 0 12px; line-height: 1.45; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }.pb-studio .ptpl-cname { font-weight: 600; }.pb-studio .ptpl-tags { color: #7cc0ff; }.pb-studio .ptpl-comments { padding: 6px 12px 0; color: rgba(255,255,255,0.55); }.pb-studio .ptpl-time { padding: 5px 12px 0; font-size: 10px; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.45); }.pb-studio .ptpl-caption-skel { display: block; margin-top: 6px; }.pb-studio .ptpl-caption-skel span {
+    display: block;
+    height: 8px;
+    margin-bottom: 6px;
+    border-radius: 4px;
+    background: linear-gradient(90deg, rgba(255,255,255,0.1), rgba(255,255,255,0.3), rgba(255,255,255,0.1));
+    background-size: 200% 100%;
+    animation: pbsCapSkel 1.3s ease-in-out infinite;
+  }.pb-studio .ptpl-caption-skel span:nth-child(1) { width: 96%; }.pb-studio .ptpl-caption-skel span:nth-child(2) { width: 78%; }.pb-studio .ptpl-caption-skel span:nth-child(3) { width: 54%; }@keyframes pbsCapSkel {
+    0% { background-position: 200% 0; }
+    100% { background-position: -200% 0; }
+  }.pb-studio .ptpl-close {
+    position: absolute;
+    top: 14px;
+    right: 16px;
+    z-index: 3;
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+    font-size: 22px;
+    line-height: 1;
+    color: rgba(255,255,255,0.85);
+    background: rgba(255,255,255,0.14);
+    border: 1px solid rgba(255,255,255,0.25);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }.pb-studio .ptpl-close:hover { background: rgba(255,255,255,0.26); }.pb-studio /* Prompt bar — glass morphism */
   .prompt-bar {
     position: absolute;
-    bottom: 36px;
+    bottom: 56px;
     left: 50%;
     transform: translateX(-50%);
     width: min(680px, 78%);
@@ -704,6 +1540,94 @@ function StudioStyles() {
     background: rgba(255, 255, 255, 0.35);
     border-color: rgba(255, 255, 255, 0.7);
     transform: translateX(-50%) translateY(-2px);
+  }.pb-studio .prompt-bar.is-generating {
+    border-color: rgba(217,119,87,0.55);
+    animation: pbsAgentPulse 2s ease-in-out infinite;
+  }@keyframes pbsAgentPulse {
+    0%, 100% {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.32), 0 0 18px 2px rgba(217,119,87,0.22), 0 10px 40px rgba(0,0,0,0.18);
+    }
+    50% {
+      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.6), 0 0 30px 7px rgba(217,119,87,0.4), 0 10px 40px rgba(0,0,0,0.2);
+    }
+  }.pb-studio .gen-status {
+    position: absolute;
+    bottom: 128px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 13px;
+    font-weight: 500;
+    color: rgba(40,32,24,0.72);
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    padding: 7px 15px;
+    border-radius: 999px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.1);
+    z-index: 16;
+    animation: pbsStatusIn 0.3s ease-out;
+  }@keyframes pbsStatusIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(4px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0); }
+  }.pb-studio .gen-dots {
+    display: inline-flex;
+    gap: 4px;
+  }.pb-studio .gen-dots i {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: rgb(217,119,87);
+    animation: pbsDot 1.4s ease-in-out infinite;
+  }.pb-studio .gen-dots i:nth-child(2) { animation-delay: 0.2s; }.pb-studio .gen-dots i:nth-child(3) { animation-delay: 0.4s; }@keyframes pbsDot {
+    0%, 100% { opacity: 0.3; }
+    50% { opacity: 1; }
+  }.pb-studio .prompt-bar .pb-util {
+    width: 38px;
+    height: 38px;
+    flex: none;
+    display: grid;
+    place-items: center;
+    border-radius: 10px;
+    color: var(--ink-2);
+    transition: background 0.15s ease, color 0.15s ease;
+  }.pb-studio .prompt-bar .pb-util:hover { background: rgba(0,0,0,0.05); }.pb-studio .prompt-bar .pb-util.active { color: var(--ink); background: rgba(0,0,0,0.07); }.pb-studio .prompt-bar .pb-util svg { width: 18px; height: 18px; }.pb-studio .prompt-bar .pb-tool { position: relative; display: flex; flex: none; }.pb-studio .pb-tools-pop {
+    position: absolute;
+    bottom: calc(100% + 12px);
+    right: 0;
+    min-width: 190px;
+    padding: 6px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(20px) saturate(160%);
+    -webkit-backdrop-filter: blur(20px) saturate(160%);
+    border: 1px solid rgba(255,255,255,0.55);
+    border-radius: 14px;
+    box-shadow: 0 14px 38px rgba(0,0,0,0.2);
+    z-index: 30;
+    animation: pbsPopUp 0.16s ease;
+  }@keyframes pbsPopUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }.pb-studio .pb-tools-pop button {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 9px 12px;
+    border-radius: 9px;
+    font-size: 13.5px;
+    color: var(--ink);
+    transition: background 0.14s ease;
+  }.pb-studio .pb-tools-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .pb-tools-pop .pro-tag {
+    margin-left: auto;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.06em;
+    color: var(--muted-2);
+    border: 1px solid var(--line-2);
+    border-radius: 5px;
+    padding: 1px 5px;
   }.pb-studio .prompt-bar input {
     flex: 1;
     background: transparent;
@@ -854,7 +1778,7 @@ function StudioStyles() {
     transition: all 0.15s ease;
   }.pb-studio .btn-publish:hover { background: #1a1a1d; transform: translateY(-1px); }.pb-studio .btn-publish:active { transform: translateY(0); }.pb-studio .btn-publish svg { width: 15px; height: 15px; }@media (max-width: 1379px) {.pb-studio .app {
       grid-template-columns: 232px minmax(0, 1fr);
-      grid-template-areas: "sidebar canvas" "sidebar rail";
+      grid-template-areas: "sidebar canvas";
     }.pb-studio .canvas { min-height: 620px; }.pb-studio /* Rail becomes a horizontal control strip under the canvas */
     .right-rail {
       display: grid;
@@ -863,7 +1787,7 @@ function StudioStyles() {
       align-items: start;
       padding: 22px 24px;
     }.pb-studio .rail-section { margin-bottom: 0; }.pb-studio .rail-actions { grid-column: 1 / -1; margin-top: 4px; flex-direction: row; padding-top: 18px; border-top: 1px solid var(--line); }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: 1; }.pb-studio /* keep the tools block from stretching oddly */
-    .right-rail > .rail-section:nth-of-type(n) { min-width: 0; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas" "rail"; }.pb-studio .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 18px; }.pb-studio .studio-title { display: none; }.pb-studio /* "Studio" wordmark hidden in compact bar */
+    .right-rail > .rail-section:nth-of-type(n) { min-width: 0; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 18px; }.pb-studio .studio-title { display: none; }.pb-studio /* "Studio" wordmark hidden in compact bar */
     .logo { margin-bottom: 0; margin-right: auto; }.pb-studio .nav { flex-direction: row; flex-wrap: wrap; width: 100%; margin-bottom: 0; gap: 4px; }.pb-studio .nav a { padding: 9px 14px; background: #f4f4f6; }.pb-studio .nav a.active { background: #ececef; }.pb-studio .voice-card, .pb-studio .workspace { display: none; }.pb-studio /* secondary on small screens */
 
     .canvas { min-height: 540px; }.pb-studio .right-rail { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 90%; height: 64px; bottom: 22px; padding: 0 14px 0 20px; }.pb-studio .prompt-bar input { font-size: 14px; }.pb-studio .magic-wand { width: 40px; height: 40px; }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: 12.5px; }.pb-studio .right-rail { grid-template-columns: minmax(0, 1fr); padding: 20px; }.pb-studio .rail-actions { flex-direction: column; }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: none; width: 100%; }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }.pb-studio .nav a span { font-size: 13px; }}

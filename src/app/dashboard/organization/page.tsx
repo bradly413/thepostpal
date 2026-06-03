@@ -10,7 +10,8 @@ import {
   setActiveLocationId,
 } from "@/lib/organization-store";
 import { ensureDashboardData } from "@/lib/dashboard-data-init";
-import { getDraftsForLocation } from "@/lib/drafts-store";
+import { fetchDashboardPosts } from "@/lib/dashboard-api";
+import { countPostsByLocation } from "@/lib/dashboard-post-helpers";
 import { GROWTH, HOUSE_ACCOUNT } from "@/lib/posterboy-copy";
 import type { Location, Organization } from "@/lib/posterboy-types";
 
@@ -18,11 +19,13 @@ export default function OrganizationPage() {
   const [org, setOrg] = useState<Organization | null>(null);
   const [locations, setLocations] = useState<Location[]>([]);
   const [newName, setNewName] = useState("");
+  const [draftCounts, setDraftCounts] = useState<Record<string, number>>({});
 
   useEffect(() => {
-    ensureDashboardData();
-    setOrg(getOrganization());
-    setLocations(getLocations());
+    void ensureDashboardData().then(() => {
+      setOrg(getOrganization());
+      setLocations(getLocations());
+    });
     const refresh = () => {
       setOrg(getOrganization());
       setLocations(getLocations());
@@ -30,6 +33,12 @@ export default function OrganizationPage() {
     window.addEventListener("org-updated", refresh);
     return () => window.removeEventListener("org-updated", refresh);
   }, []);
+
+  useEffect(() => {
+    void fetchDashboardPosts(null).then((posts) => {
+      setDraftCounts(countPostsByLocation(posts));
+    });
+  }, [locations.length]);
 
   function handleAddLocation(e: React.FormEvent) {
     e.preventDefault();
@@ -61,7 +70,7 @@ export default function OrganizationPage() {
       <h2 className="text-sm uppercase tracking-widest opacity-50 mb-3">Locations</h2>
       <div className="pb-draft-list mb-8">
         {locations.map((loc) => {
-          const draftCount = getDraftsForLocation(loc.id).length;
+          const draftCount = draftCounts[loc.id] ?? 0;
           return (
             <article key={loc.id} className="pb-draft-card">
               <div className="flex-1">
@@ -92,10 +101,10 @@ export default function OrganizationPage() {
       </form>
 
       <section className="pb-proof-card">
-        <h3 className="pb-display">House Account</h3>
+        <h3 className="pb-display">Command</h3>
         <p className="mt-2">{GROWTH.oneBrandManyLocations} {GROWTH.noFreelancingCaption}</p>
-        <Link href="/pricing#house-account" className="pb-btn-secondary inline-flex mt-4 text-sm">
-          Open a House Account
+        <Link href="/pricing#command" className="pb-btn-secondary inline-flex mt-4 text-sm">
+          View Command pricing
         </Link>
       </section>
     </div>

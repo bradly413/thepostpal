@@ -1,11 +1,20 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import LocationSwitcher from "@/components/LocationSwitcher";
-import { countByStatus, getDrafts } from "@/lib/drafts-store";
-import { ensureDashboardData } from "@/lib/dashboard-data-init";
-import { getActiveLocation } from "@/lib/organization-store";
+import {
+  fetchDashboardPosts,
+  formatDashboardApiMessage,
+} from "@/lib/dashboard-api";
+import {
+  countPostsByStatus,
+  filterPostsForLocation,
+} from "@/lib/dashboard-post-helpers";
+import {
+  getStoredActiveLocationId,
+  onStoredActiveLocationChange,
+} from "@/lib/dashboard-browser-state";
 import { ANALYTICS } from "@/lib/posterboy-copy";
 
 export default function AnalyticsPage() {
@@ -16,32 +25,52 @@ export default function AnalyticsPage() {
     consistency: 0,
     draftToApproval: 0,
   });
+  const [error, setError] = useState<string | null>(null);
+
+  const load = useCallback(async (locationId?: string | null) => {
+    const activeLocationId =
+      locationId === undefined ? getStoredActiveLocationId() : locationId;
+
+    try {
+      setError(null);
+      const posts = await fetchDashboardPosts(activeLocationId);
+      const scoped = filterPostsForLocation(posts, activeLocationId);
+      const counts = countPostsByStatus(posts, activeLocationId);
+      const reviewed = scoped.filter((post) => post.status !== "draft").length;
+      const approved = counts.approved + counts.scheduled + counts.published;
+
+      setStats({
+        approved,
+        published: counts.published,
+        needsReview: counts.needs_review + counts.needs_revision,
+        consistency: scoped.length > 0 ? Math.round((approved / scoped.length) * 100) : 0,
+        draftToApproval: reviewed > 0 ? Math.round((approved / reviewed) * 100) : 0,
+      });
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, "Could not load workflow metrics."));
+    }
+  }, []);
 
   useEffect(() => {
-    ensureDashboardData();
-    const loc = getActiveLocation();
-    const counts = countByStatus(loc?.id);
-    const all = getDrafts().filter((d) => !loc?.id || d.locationId === loc.id);
-    const reviewed = all.filter((d) => d.status !== "draft").length;
-    const approved = counts.approved + counts.scheduled + counts.published;
-    setStats({
-      approved,
-      published: counts.published,
-      needsReview: counts.needs_review + counts.needs_revision,
-      consistency: all.length > 0 ? Math.round((approved / all.length) * 100) : 0,
-      draftToApproval: reviewed > 0 ? Math.round((approved / reviewed) * 100) : 0,
+    void load();
+    return onStoredActiveLocationChange(() => {
+      void load();
     });
-  }, []);
+  }, [load]);
 
   return (
     <div className="pb-app">
       <div className="pb-app-header flex flex-wrap items-start gap-4">
         <div className="flex-1">
           <h1>Workflow metrics</h1>
-          <p>Draft and approval counts from this browser — not Meta reach (beta).</p>
+          <p>Draft and approval activity — not Meta reach.</p>
         </div>
-        <LocationSwitcher />
+        <LocationSwitcher onChange={(id) => void load(id)} />
       </div>
+
+      {error && (
+        <p className="text-sm text-danger mb-4">{error}</p>
+      )}
 
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
         {[
@@ -62,23 +91,10 @@ export default function AnalyticsPage() {
         ))}
       </div>
 
-      <section className="pb-section-narrow" style={{ padding: 0 }}>
-        <h2 className="font-serif text-xl mb-3" style={{ fontFamily: "var(--font-instrument-serif)" }}>
-          {ANALYTICS.worthRepeating}
-        </h2>
-        <ul className="pb-pricing-features">
-          <li>Weekly hours and availability</li>
-          <li>Seasonal offers, stated plainly</li>
-          <li>The occasional photo with a dog in frame</li>
-        </ul>
-        <p className="mt-6 opacity-70">{ANALYTICS.postsDidJob}</p>
-      </section>
-
-      <p className="mt-8">
-        <Link href="/pricing#studio" className="pb-btn-secondary text-sm inline-flex">
-          Ask about Studio
-        </Link>
-      </p>
+      <p className="text-sm opacity-60">{ANALYTICS.showedUp}</p>
+      <Link href="/dashboard/drafts" className="text-sm underline opacity-70 mt-4 inline-block">
+        Review drafts
+      </Link>
     </div>
   );
 }

@@ -1,30 +1,94 @@
 import { NextRequest, NextResponse } from "next/server";
-import { db } from "@/lib/db";
+import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import {
+  assertCanConnectSocialProfile,
+  SOLO_MAX_CONNECTED_PROFILES,
+} from "@/lib/social-profile-limits";
+
+export async function GET(request: NextRequest) {
+  try {
+    const auth = await requireAuthContext();
+    return await withTenantDb(auth, async (tx) => {
+      const locationId = request.nextUrl.searchParams.get("locationId");
+
+      if (locationId) {
+        const access = await resolveAccess(auth.userId, locationId, tx);
+        if (!access.hasAccess) {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+
+        const connections = await tx.socialConnection.findMany({
+          where: { organizationId: auth.tenantId, locationId },
+          orderBy: { createdAt: "desc" },
+        });
+        return NextResponse.json({ connections });
+      }
+
+      const connections = await tx.socialConnection.findMany({
+        where: { organizationId: auth.tenantId },
+        orderBy: { createdAt: "desc" },
+      });
+      return NextResponse.json({ connections });
+    });
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+}
 
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
-    const body = await request.json();
+    return await withTenantDb(auth, async (tx) => {
+      const body = await request.json();
 
-    const locationId = typeof body.locationId === "string" ? body.locationId : "";
-    if (!locationId) return NextResponse.json({ error: "locationId is required" }, { status: 400 });
+      const locationId = typeof body.locationId === "string" ? body.locationId : "";
+      if (!locationId) {
+        return NextResponse.json({ error: "locationId is required" }, { status: 400 });
+      }
 
-    const access = await resolveAccess(auth.userId, locationId);
-    if (!access.hasAccess) return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      const access = await resolveAccess(auth.userId, locationId, tx);
+      if (!access.hasAccess) {
+        return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+      }
 
-    const socialConnection = await db.socialConnection.create({
-      data: {
-        organizationId: auth.organizationId,
-        locationId,
-        platform: body.platform,
-        handle: typeof body.handle === "string" ? body.handle : null,
-        connected: !!body.connected,
-      },
+      const organization = await tx.organization.findFirst({
+        where: { id: auth.tenantId },
+        select: { plan: true },
+      });
+      if (!organization) {
+        return NextResponse.json({ error: "Organization not found" }, { status: 404 });
+      }
+
+      if (body.connected) {
+        try {
+          await assertCanConnectSocialProfile(tx, auth.tenantId, organization.plan);
+        } catch (error) {
+          if (error instanceof Error && error.message === "SOLO_PROFILE_LIMIT") {
+            return NextResponse.json(
+              {
+                error: `Solo includes up to ${SOLO_MAX_CONNECTED_PROFILES} connected social profiles.`,
+              },
+              { status: 402 },
+            );
+          }
+          throw error;
+        }
+      }
+
+      const socialConnection = await tx.socialConnection.create({
+        data: {
+          organizationId: auth.tenantId,
+          locationId,
+          platform: body.platform,
+          handle: typeof body.handle === "string" ? body.handle : null,
+          connected: !!body.connected,
+        },
+      });
+
+      return NextResponse.json({ socialConnection }, { status: 201 });
     });
-
-    return NextResponse.json({ socialConnection }, { status: 201 });
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

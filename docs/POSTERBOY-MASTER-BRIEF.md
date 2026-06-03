@@ -66,7 +66,8 @@ Until merged, **do not assume** Stripe docs in `thepostpal/docs/` apply to v2 co
 |--------|-------|--------|
 | **Growth plan / `/pricing`** (`src/lib/pricing.ts`) | Solo, Shop, Press | $24, $48, $120/mo |
 | **Homepage** (`sections/Pricing.tsx`) | Good, Better, Best | $29, $59, $99/mo |
-| **Codex / thepostpal** (`stripe-billing-setup.md`) | TRIAL, STARTER, PRO, TEAM | Stripe price IDs |
+| **June 2026 business plan** (`docs/BUSINESS-PLAN-2026-06.md`) | **Solo $99**, **Command $249 + $39/location** | Source of truth for GTM |
+| **Codex / thepostpal** (`stripe-billing-setup.md`) | Solo + Command price IDs | Stripe env mapping |
 
 **Premium (all docs):** Studio (~$399), House Account (~$1,500), BRC Custom (quoted) — `mailto:` CTAs.
 

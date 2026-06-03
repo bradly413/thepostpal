@@ -197,7 +197,7 @@ export default function HolographicFeature() {
           ))}
         </div>
 
-        <Link href="/sign-in?mode=signup&next=%2Fonboarding" className="neu-btn" style={{ width: "100%", background: "linear-gradient(90deg, #B64B3A, #2B3A67)", color: "var(--paper)", boxShadow: "0 0 25px rgba(182,75,58,0.3)", textDecoration: "none", display: "block", textAlign: "center" }}>Start your free trial</Link>
+        <Link href="/sign-in?mode=signup&next=%2Fonboarding%2Fclassic" className="neu-btn" style={{ width: "100%", background: "linear-gradient(90deg, #B64B3A, #2B3A67)", color: "var(--paper)", boxShadow: "0 0 25px rgba(182,75,58,0.3)", textDecoration: "none", display: "block", textAlign: "center" }}>Start your free trial</Link>
       </div>
 
       <style>{`

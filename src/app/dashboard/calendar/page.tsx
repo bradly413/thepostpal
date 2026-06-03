@@ -2,23 +2,48 @@
 
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { templates } from "@/lib/templates";
-import {
-  getScheduledPosts,
-  addScheduledPost,
-  deleteScheduledPost,
-  updateScheduledPost,
-  type ScheduledPost,
-} from "@/lib/schedule-store";
-import {
-  getCalendarEvents,
-  addCalendarEvent,
-  deleteCalendarEvent,
-  updateCalendarEvent,
-  type CalendarEvent,
-} from "@/lib/events-store";
+import { type ScheduledPost } from "@/lib/schedule-store";
+import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
-import { getMetaConnection } from "@/lib/meta-store";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { buildMetaPublishPayload } from "@/lib/meta-publish-payload";
 import { SITE_NAME } from "@/lib/site";
+import { useActiveLocation } from "@/lib/use-active-location";
+import {
+  fetchDashboardCalendar,
+  createDashboardCalendarEvent,
+  updateDashboardCalendarEvent,
+  deleteDashboardCalendarEvent,
+  fetchDashboardPosts,
+  createDashboardPost,
+  updateDashboardPost,
+  deleteDashboardPost,
+  formatDashboardApiMessage,
+  type DashboardCalendarEventRecord,
+} from "@/lib/dashboard-api";
+import {
+  mapCalendarPostToCreateInput,
+  mapRecordToCalendarPost,
+} from "@/lib/scheduled-post-mappers";
+import LocationSwitcher from "@/components/LocationSwitcher";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
+
+// Adapt a live calendar record into the local CalendarEvent view shape the
+// grid + modals already render.
+function recordToEvent(r: DashboardCalendarEventRecord): CalendarEvent {
+  const d = new Date(r.startsAt);
+  const allDay = d.getHours() === 0 && d.getMinutes() === 0;
+  const hh = String(d.getHours()).padStart(2, "0");
+  const mm = String(d.getMinutes()).padStart(2, "0");
+  return {
+    id: r.id,
+    title: r.title,
+    date: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`,
+    time: allDay ? undefined : `${hh}:${mm}`,
+    type: (r.type as CalendarEvent["type"]) || "other",
+    notes: r.description || undefined,
+  };
+}
 
 const DAYS = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
@@ -82,20 +107,44 @@ export default function CalendarPage() {
   const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
 
-  const meta = typeof window !== "undefined" ? getMetaConnection() : null;
-  const refreshPosts = useCallback(() => setPosts(getScheduledPosts()), []);
-  const refreshEvents = useCallback(() => setEvents(getCalendarEvents()), []);
+  const { meta } = useMetaConnection();
+  const features = usePlanFeatures();
+  const { locationId } = useActiveLocation();
+  const loadPosts = useCallback(async () => {
+    if (!locationId) {
+      setPosts([]);
+      return;
+    }
+    try {
+      const records = await fetchDashboardPosts(locationId);
+      setPosts(records.map(mapRecordToCalendarPost));
+    } catch {
+      // Keep grid stable on transient errors.
+    }
+  }, [locationId]);
 
   useEffect(() => {
-    refreshPosts();
-    refreshEvents();
-    window.addEventListener("schedule-updated", refreshPosts);
-    window.addEventListener("events-updated", refreshEvents);
-    return () => {
-      window.removeEventListener("schedule-updated", refreshPosts);
-      window.removeEventListener("events-updated", refreshEvents);
-    };
-  }, [refreshPosts, refreshEvents]);
+    void loadPosts();
+  }, [loadPosts]);
+
+  // Calendar events: live, location-scoped.
+  const loadEvents = useCallback(async () => {
+    if (!locationId) {
+      setEvents([]);
+      return;
+    }
+    try {
+      const recs = await fetchDashboardCalendar(locationId);
+      setEvents(recs.map(recordToEvent));
+    } catch {
+      // Keep whatever is already on screen; a transient fetch error shouldn't
+      // wipe the grid. The next mutation / reload reconciles.
+    }
+  }, [locationId]);
+
+  useEffect(() => {
+    void loadEvents();
+  }, [loadEvents]);
 
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
@@ -213,6 +262,8 @@ export default function CalendarPage() {
   }
 
   async function handleSavePost() {
+    if (!locationId) return;
+
     const tmpl = templates.find((t) => t.id === formTemplate);
     const postData = {
       templateId: formTemplate,
@@ -225,10 +276,20 @@ export default function CalendarPage() {
       pillar: tmpl?.pillar || "",
     };
 
-    if (editingPost) {
-      updateScheduledPost(editingPost.id, postData);
-    } else {
-      addScheduledPost(postData);
+    try {
+      const payload = mapCalendarPostToCreateInput(postData, locationId);
+      if (editingPost) {
+        await updateDashboardPost(editingPost.id, payload);
+      } else {
+        await createDashboardPost(payload);
+      }
+      await loadPosts();
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: formatDashboardApiMessage(err, "Could not save this post."),
+      });
+      return;
     }
 
     if (formStatus === "scheduled" && meta?.connected && !editingPost) {
@@ -238,17 +299,16 @@ export default function CalendarPage() {
         const scheduledAt = new Date(`${selectedDate}T${formTime}`);
         const unixTime = Math.floor(scheduledAt.getTime() / 1000);
 
+        const payload = await buildMetaPublishPayload({
+          platform: formPlatform,
+          caption: formCaption,
+          imageUrl: "",
+          scheduledTime: unixTime,
+        });
         const res = await fetch("/api/meta/publish", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            platform: formPlatform,
-            pageId: meta.pageId,
-            pageToken: meta.pageToken,
-            igAccountId: meta.igAccountId,
-            caption: formCaption,
-            scheduledTime: unixTime,
-          }),
+          body: JSON.stringify(payload),
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Scheduling failed");
@@ -265,35 +325,55 @@ export default function CalendarPage() {
     setModalMode(null);
   }
 
-  function handleDeletePost() {
-    if (editingPost && window.confirm("Delete this post?")) {
-      deleteScheduledPost(editingPost.id);
+  async function handleDeletePost() {
+    if (!editingPost || !window.confirm("Delete this post?")) return;
+    try {
+      await deleteDashboardPost(editingPost.id);
+      await loadPosts();
       setModalMode(null);
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: formatDashboardApiMessage(err, "Could not delete this post."),
+      });
     }
   }
 
-  function handleSaveEvent() {
-    if (!eventTitle.trim()) return;
-    const data = {
+  async function handleSaveEvent() {
+    if (!eventTitle.trim() || !locationId) return;
+    const startsAt = new Date(`${selectedDate}T${eventTime || "00:00"}`).toISOString();
+    const fields = {
       title: eventTitle.trim(),
-      date: selectedDate,
-      time: eventTime || undefined,
+      description: eventNotes || null,
       type: eventType,
-      notes: eventNotes || undefined,
+      startsAt,
     };
 
-    if (editingEvent) {
-      updateCalendarEvent(editingEvent.id, data);
-    } else {
-      addCalendarEvent(data);
-    }
     setModalMode(null);
+    try {
+      if (editingEvent) {
+        await updateDashboardCalendarEvent(editingEvent.id, fields);
+      } else {
+        await createDashboardCalendarEvent({ locationId, ...fields });
+      }
+      await loadEvents();
+    } catch {
+      setPublishResult({ type: "error", message: "Could not save that event. Try again." });
+    }
   }
 
-  function handleDeleteEvent() {
-    if (editingEvent && window.confirm("Delete this event?")) {
-      deleteCalendarEvent(editingEvent.id);
-      setModalMode(null);
+  async function handleDeleteEvent() {
+    if (!editingEvent) return;
+    if (!window.confirm("Delete this event?")) return;
+    const id = editingEvent.id;
+    const prev = events;
+    setEvents((cur) => cur.filter((e) => e.id !== id)); // optimistic
+    setModalMode(null);
+    try {
+      await deleteDashboardCalendarEvent(id);
+    } catch {
+      setEvents(prev); // rollback
+      setPublishResult({ type: "error", message: "Could not remove that event. Try again." });
     }
   }
 
@@ -340,7 +420,8 @@ export default function CalendarPage() {
           <h1 className="text-xl font-bold text-text font-heading">Calendar</h1>
           <p className="text-sm text-text-secondary mt-1">Schedule posts, track events, and plan your content</p>
         </div>
-        <div className="flex gap-2 self-start">
+        <div className="flex items-center gap-2 self-start">
+          {features.multiLocation && <LocationSwitcher />}
           <button
             onClick={() => openNewEvent(todayKey)}
             className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-medium text-text-secondary hover:text-text hover:bg-elevated transition-all"

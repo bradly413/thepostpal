@@ -3,6 +3,13 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  isS3Configured,
+  uploadToS3,
+  contentTypeForExtension,
+} from "@/lib/storage";
+
+export const runtime = "nodejs";
 
 const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp"]);
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -36,12 +43,23 @@ export async function POST(req: NextRequest) {
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = `${randomUUID()}.${ext}`;
 
+    // Prefer durable object storage when configured; production (Vercel) has
+    // an ephemeral filesystem, so local-disk writes do not survive deploys.
+    if (isS3Configured()) {
+      const { url } = await uploadToS3({
+        key: `uploads/${filename}`,
+        body: buffer,
+        contentType: contentTypeForExtension(ext),
+      });
+      return NextResponse.json({ url, filename, storage: "s3" });
+    }
+
     const uploadDir = path.join(process.cwd(), "public", "uploads");
     await mkdir(uploadDir, { recursive: true });
     await writeFile(path.join(uploadDir, filename), buffer);
 
     const publicUrl = `/uploads/${filename}`;
-    return NextResponse.json({ url: publicUrl, filename });
+    return NextResponse.json({ url: publicUrl, filename, storage: "local" });
   } catch {
     return NextResponse.json({ error: "Upload failed" }, { status: 500 });
   }

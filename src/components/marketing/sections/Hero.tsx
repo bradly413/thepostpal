@@ -38,14 +38,24 @@ export default function Hero() {
       const likeWord = root.querySelector<HTMLElement>(".hero-word-like");
       const iconSlot = root.querySelector<HTMLElement>(".hero-icon-slot");
       const iconSvg = root.querySelector<HTMLElement>(".hero-icon-svg");
+      const mobileLockup = root.querySelector<HTMLElement>(".hero-mobile-lockup");
       const sub = root.querySelector<HTMLElement>(".hero-sub");
       const cta = root.querySelector<HTMLElement>(".hero-cta");
+      const isMobileLayout =
+        typeof window !== "undefined" && window.matchMedia("(max-width: 640px)").matches;
 
       if (reducedMotion) {
         gsap.set(chars, { opacity: 1, x: 0, y: 0, scale: 1, filter: "blur(0px)" });
         gsap.set(iconSlot, { opacity: 1, x: 0, y: 0, rotation: 0, scale: 1 });
+        gsap.set(mobileLockup, { opacity: 1, y: 0 });
         gsap.set([sub, cta], { opacity: 1, y: 0 });
         iconSvg?.classList.add("hero-icon-glide-active");
+        return;
+      }
+
+      if (isMobileLayout) {
+        gsap.set(mobileLockup, { opacity: 1, y: 0 });
+        gsap.set([sub, cta], { opacity: 1, y: 0 });
         return;
       }
 
@@ -123,6 +133,18 @@ export default function Hero() {
     <div ref={heroRef} className="hero-flip" id="hero">
       <div className="hero-pin">
         <div className="hero-copy">
+          <div className="hero-mobile-lockup">
+            <div className="hero-mobile-mark">
+              <PosterboyAppIcon className="hero-mobile-mark-icon" />
+            </div>
+            <p className="type-label hero-mobile-kicker">AI social for busy owners</p>
+            <h1 className="type-display hero-mobile-title">
+              Post like you
+              <br />
+              like it.
+            </h1>
+          </div>
+
           <div className="hero-headline">
             <h1 className="type-display hero-title-row">
               <span className="hero-word-static">{splitChars("Post", "post")}</span>
@@ -141,15 +163,18 @@ export default function Hero() {
           </div>
 
           <div className="hero-sub">
-            <p className="type-body">Social media for people who&apos;d rather not.</p>
+            <p className="type-body">
+              Posterboy creates, schedules, and publishes so your business stays active
+              without becoming your second job.
+            </p>
           </div>
 
           <div className="hero-cta">
             <Link href={SIGNUP_ONBOARDING_URL} className="neu-btn" style={{ textDecoration: "none" }}>
-              Start your free trial
+              Build your brand book
             </Link>
             <button type="button" className="neu-btn hero-cta-secondary" onClick={scrollToSolution}>
-              See how it works
+              See the workflow
             </button>
           </div>
         </div>

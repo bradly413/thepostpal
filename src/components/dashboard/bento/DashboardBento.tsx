@@ -9,65 +9,100 @@ import BentoAiStudio from "./BentoAiStudio";
 import BentoWeekProgress from "./BentoWeekProgress";
 import BentoBrandTiles from "./BentoBrandTiles";
 import {
-  countByStatus,
-  getDraftsNeedingReview,
-  getScheduledDrafts,
-  seedDemoDrafts,
-} from "@/lib/drafts-store";
-import { getActiveLocation, getOrganization, seedDemoOrganization } from "@/lib/organization-store";
+  fetchDashboardLocations,
+  fetchDashboardPosts,
+  formatDashboardApiMessage,
+} from "@/lib/dashboard-api";
+import {
+  countPostsByStatus,
+  filterPostsNeedingReview,
+  filterPostsScheduled,
+} from "@/lib/dashboard-post-helpers";
 import { getIssues, seedDemoIssues } from "@/lib/issues-store";
+import {
+  getStoredActiveLocationId,
+  onStoredActiveLocationChange,
+} from "@/lib/dashboard-browser-state";
 
-function loadSnapshot() {
-  seedDemoOrganization();
-  seedDemoDrafts();
-  seedDemoIssues();
-  const loc = getActiveLocation();
-  const org = getOrganization();
-  const locationId = loc?.id;
-  const counts = countByStatus(locationId);
-  const pending = getDraftsNeedingReview(locationId);
-  const scheduled = getScheduledDrafts(locationId);
-  const issues = getIssues().filter((i) => !locationId || i.locationId === locationId);
-
-  const next = pending[0] ?? scheduled[0];
-  const nextLabel = next
-    ? next.copy.length > 48
-      ? `${next.copy.slice(0, 48)}…`
-      : next.copy
-    : undefined;
-
-  return {
-    businessName: org?.name ?? loc?.name ?? "Your business",
-    locationLabel: loc
-      ? `${loc.name} · ${loc.socialChannels?.length ?? 0} channels`
-      : "One location",
-    counts: {
-      dispatch: scheduled.length + counts.approved,
-      issues: issues.filter((i) => i.status === "open").length,
-      drafts: pending.length,
-    },
-    draftTotal: Object.values(counts).reduce((a, b) => a + b, 0),
-    pendingReview: pending.length,
-    approvedCount: counts.approved + counts.scheduled,
-    totalThisWeek: pending.length + counts.approved + counts.scheduled + counts.published,
-    nextLabel,
-  };
-}
+type BentoSnapshot = {
+  businessName: string;
+  locationLabel: string;
+  counts: { dispatch: number; issues: number; drafts: number };
+  draftTotal: number;
+  pendingReview: number;
+  approvedCount: number;
+  totalThisWeek: number;
+  nextLabel?: string;
+};
 
 export default function DashboardBento() {
-  const [data, setData] = useState<ReturnType<typeof loadSnapshot> | null>(null);
+  const [data, setData] = useState<BentoSnapshot | null>(null);
+  const [error, setError] = useState<string | null>(null);
 
-  const refresh = useCallback(() => setData(loadSnapshot()), []);
+  const refresh = useCallback(async () => {
+    try {
+      setError(null);
+      const locationId = getStoredActiveLocationId();
+      const [locations, posts] = await Promise.all([
+        fetchDashboardLocations(),
+        fetchDashboardPosts(locationId),
+      ]);
+
+      const loc =
+        locations.find((entry) => entry.id === locationId) ?? locations[0];
+      const counts = countPostsByStatus(posts, loc?.id);
+      const pending = filterPostsNeedingReview(posts, loc?.id);
+      const scheduled = filterPostsScheduled(posts, loc?.id);
+      const issues = getIssues().filter(
+        (issue) => !loc?.id || issue.locationId === loc.id,
+      );
+
+      const next = pending[0] ?? scheduled[0];
+      const nextLabel = next
+        ? next.copy.length > 48
+          ? `${next.copy.slice(0, 48)}…`
+          : next.copy
+        : undefined;
+
+      setData({
+        businessName: loc?.name ?? "Your business",
+        locationLabel: loc ? `${loc.name} · workspace` : "One location",
+        counts: {
+          dispatch: scheduled.length + counts.approved,
+          issues: issues.filter((issue) => issue.status === "open").length,
+          drafts: pending.length + counts.draft + counts.needs_revision,
+        },
+        draftTotal: Object.values(counts).reduce((sum, value) => sum + value, 0),
+        pendingReview: pending.length + counts.draft + counts.needs_revision,
+        approvedCount: counts.approved + counts.scheduled,
+        totalThisWeek:
+          pending.length +
+          counts.approved +
+          counts.scheduled +
+          counts.published,
+        nextLabel,
+      });
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, "Could not load your week."));
+      setData(null);
+    }
+  }, []);
 
   useEffect(() => {
-    refresh();
-    window.addEventListener("drafts-updated", refresh);
-    window.addEventListener("org-updated", refresh);
-    return () => {
-      window.removeEventListener("drafts-updated", refresh);
-      window.removeEventListener("org-updated", refresh);
-    };
+    seedDemoIssues();
+    void refresh();
+    return onStoredActiveLocationChange(() => {
+      void refresh();
+    });
   }, [refresh]);
+
+  if (error) {
+    return (
+      <div className="dbento dbento-stage">
+        <p className="dbento-meta">{error}</p>
+      </div>
+    );
+  }
 
   if (!data) {
     return (

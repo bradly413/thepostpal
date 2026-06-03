@@ -1,4 +1,3 @@
-import { seedDemoDrafts } from "./drafts-store";
 import { getOrganization, seedDemoOrganization } from "./organization-store";
 import {
   getStoredBrandBook,
@@ -7,16 +6,25 @@ import {
 } from "./onboarding-brand-sync";
 
 /** Load org/drafts for dashboard without overwriting user onboarding. */
-export function ensureDashboardData(): void {
+export async function ensureDashboardData(): Promise<void> {
   if (typeof window === "undefined") return;
 
-  if (!getOrganization()) {
-    if (hasBrandBook()) {
-      syncBrandBookToOrganization(getStoredBrandBook());
-    } else {
-      seedDemoOrganization();
-    }
+  if (getOrganization()) return;
+
+  if (hasBrandBook()) {
+    syncBrandBookToOrganization(getStoredBrandBook());
+    return;
   }
 
-  seedDemoDrafts();
+  try {
+    const { fetchHasBrandBookFromApi } = await import("@/lib/brand-book-client");
+    if (await fetchHasBrandBookFromApi()) {
+      syncBrandBookToOrganization(getStoredBrandBook());
+      return;
+    }
+  } catch {
+    /* offline or unauthenticated */
+  }
+
+  seedDemoOrganization();
 }

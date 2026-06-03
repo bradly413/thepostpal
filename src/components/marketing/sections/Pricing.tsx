@@ -15,9 +15,8 @@ gsap.registerPlugin(ScrollTrigger);
 const PUBLIC_TIERS = getPublicTiers();
 
 const TIER_NOTES: Record<string, string> = {
-  good: "start here",
-  better: "most popular",
-  best: "for serious operators",
+  solo: "premium solo",
+  command: "multi-location",
 };
 
 export default function Pricing() {
@@ -89,10 +88,10 @@ export default function Pricing() {
       <div ref={headingRef} style={{ marginBottom: 'clamp(40px, 6vw, 80px)', maxWidth: 600 }}>
         <span className="section-num" style={{ display: 'block', marginBottom: '1.5em' }}>03 / Pricing</span>
         <h2 className="type-h2" style={{ color: 'var(--ink)', marginBottom: '0.5em' }}>
-          Good. Better. Best.
+          Solo. Command.
         </h2>
         <p className="type-body" style={{ maxWidth: 420 }}>
-          One plan would be nice, but businesses are different sizes. Pick the one that fits.
+          Two tiers. No paralysis. Premium operators and multi-location brands on the same calm platform.
         </p>
       </div>
 
@@ -125,6 +124,11 @@ export default function Pricing() {
               <span className="type-caption" style={{ marginLeft: '0.25em' }}>{tier.priceNote}</span>
             </div>
             <p className="type-caption" style={{ margin: 0 }}>{tier.description}</p>
+            {tier.annualPriceNote && (
+              <p className="type-caption" style={{ margin: 0, opacity: 0.85 }}>
+                {tier.annualPriceNote}
+              </p>
+            )}
             <ul style={{ listStyle: 'none', padding: 0, margin: 0, flex: 1 }}>
               {tier.features.map((f, i) => (
                 <li key={i} style={{
@@ -145,11 +149,11 @@ export default function Pricing() {
 
       <div style={{ marginTop: '3em', textAlign: 'center' }}>
         <p className="type-caption">
-          Need multiple locations?{' '}
-          <a href={`mailto:${CONTACT_EMAIL}?subject=Teams`} style={{ color: 'var(--deep-link)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
-            Talk to us about Teams
+          Need done-with-you brand work?{' '}
+          <a href={`mailto:${CONTACT_EMAIL}?subject=BRC%20Custom`} style={{ color: 'var(--deep-link)', textDecoration: 'underline', textUnderlineOffset: '3px' }}>
+            BRC Custom
           </a>
-          . Full pricing details on <Link href="/pricing" style={{ color: 'var(--deep-link)' }}>/pricing</Link>.
+          . Full details on <Link href="/pricing" style={{ color: 'var(--deep-link)' }}>/pricing</Link>.
         </p>
       </div>
 

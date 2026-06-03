@@ -5,43 +5,65 @@ import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import {
-  getDraftsNeedingReview,
-  pressDraft,
-  approveAllDrafts,
-  skipDraft,
-} from "@/lib/drafts-store";
-import { ensureDashboardData } from "@/lib/dashboard-data-init";
-import { getActiveLocation } from "@/lib/organization-store";
-import type { Draft } from "@/lib/posterboy-types";
+  fetchDashboardPosts,
+  formatDashboardApiMessage,
+  submitDashboardPost,
+  updateDashboardPost,
+  type DashboardPostRecord,
+} from "@/lib/dashboard-api";
+import {
+  getStoredActiveLocationId,
+  onStoredActiveLocationChange,
+} from "@/lib/dashboard-browser-state";
 import { CORE, MICROCOPY } from "@/lib/posterboy-copy";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 
-function formatSchedule(draft: Draft): string {
-  if (!draft.scheduledDate) return "Unscheduled";
-  const d = new Date(draft.scheduledDate + "T12:00:00");
+function formatSchedule(draft: DashboardPostRecord): string {
+  if (!draft.scheduledFor) return "Unscheduled";
+  const d = new Date(draft.scheduledFor);
   const day = d.toLocaleDateString("en-US", { weekday: "short" }).toUpperCase();
-  return `${day} ${draft.scheduledTime ?? ""}`.trim();
+  const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
+  return `${day} ${time}`;
 }
 
 export default function DraftsPage() {
-  const [drafts, setDrafts] = useState<Draft[]>([]);
+  const features = usePlanFeatures();
+  const [drafts, setDrafts] = useState<DashboardPostRecord[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [locationId, setLocationId] = useState<string | undefined>();
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  const load = useCallback(() => {
-    ensureDashboardData();
-    const loc = getActiveLocation();
-    setLocationId(loc?.id);
-    setDrafts(getDraftsNeedingReview(loc?.id));
+  const load = useCallback(async (nextLocationId?: string | null) => {
+    const activeLocationId = nextLocationId === undefined
+      ? getStoredActiveLocationId()
+      : nextLocationId;
+    setLocationId(activeLocationId ?? undefined);
+
+    try {
+      setLoading(true);
+      setError(null);
+      const posts = await fetchDashboardPosts(activeLocationId);
+      setDrafts(
+        posts.filter(
+          (post) =>
+            post.status === "draft" ||
+            post.status === "needs_revision" ||
+            post.status === "needs_review",
+        ),
+      );
+    } catch (err) {
+      setError(formatDashboardApiMessage(err, "Could not load this content queue."));
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => {
-    load();
-    window.addEventListener("drafts-updated", load);
-    window.addEventListener("org-updated", load);
-    return () => {
-      window.removeEventListener("drafts-updated", load);
-      window.removeEventListener("org-updated", load);
-    };
+    void load();
+    return onStoredActiveLocationChange(() => {
+      void load();
+    });
   }, [load]);
 
   function showToast(msg: string) {
@@ -49,21 +71,50 @@ export default function DraftsPage() {
     setTimeout(() => setToast(null), 2500);
   }
 
-  function handlePress(id: string) {
-    pressDraft(id);
-    showToast(MICROCOPY.saved);
-    load();
+  async function handlePress(id: string) {
+    try {
+      if (features.approvalPipeline) {
+        await submitDashboardPost(id);
+        showToast("Sent to the queue. Quietly.");
+      } else {
+        // Solo / single-location: no team review — schedule directly.
+        await updateDashboardPost(id, { status: "scheduled" });
+        showToast("Scheduled. Quietly.");
+      }
+      await load(locationId ?? null);
+    } catch (err) {
+      showToast(formatDashboardApiMessage(err, MICROCOPY.error));
+    }
   }
 
-  function handleApproveAll() {
-    const n = approveAllDrafts(locationId);
-    showToast(n > 0 ? MICROCOPY.saved : MICROCOPY.emptyDrafts);
-    load();
+  async function handleApproveAll() {
+    const eligible = drafts.filter((draft) => draft.status === "draft" || draft.status === "needs_revision");
+    if (eligible.length === 0) {
+      showToast("Nothing new to send.");
+      return;
+    }
+
+    try {
+      if (features.approvalPipeline) {
+        await Promise.all(eligible.map((draft) => submitDashboardPost(draft.id)));
+        showToast(`Queued ${eligible.length} ${eligible.length === 1 ? "draft" : "drafts"}.`);
+      } else {
+        await Promise.all(eligible.map((draft) => updateDashboardPost(draft.id, { status: "scheduled" })));
+        showToast(`Scheduled ${eligible.length} ${eligible.length === 1 ? "post" : "posts"}.`);
+      }
+      await load(locationId ?? null);
+    } catch (err) {
+      showToast(formatDashboardApiMessage(err, MICROCOPY.error));
+    }
   }
 
-  function handleSkip(id: string) {
-    skipDraft(id);
-    load();
+  async function handleSkip(id: string) {
+    try {
+      await updateDashboardPost(id, { status: "skipped" });
+      await load(locationId ?? null);
+    } catch (err) {
+      showToast(formatDashboardApiMessage(err, MICROCOPY.error));
+    }
   }
 
   const count = drafts.length;
@@ -73,6 +124,8 @@ export default function DraftsPage() {
       : count === 1
         ? "One draft ready for review"
         : `${count} drafts ready for review`;
+
+  const needsAction = drafts.some((draft) => draft.status === "draft" || draft.status === "needs_revision");
 
   return (
     <div className="pb-app">
@@ -84,13 +137,15 @@ export default function DraftsPage() {
             Five posts, three captions, one photo of the dog. {CORE.approveLeisure}
           </p>
         </div>
-        <LocationSwitcher />
+        {features.multiLocation && (
+          <LocationSwitcher value={locationId ?? null} onChange={(id) => void load(id)} />
+        )}
       </div>
 
-      {count > 0 && (
+      {count > 0 && needsAction && (
         <div className="flex flex-wrap gap-2 mb-6">
           <button type="button" className="pb-btn-primary text-sm py-2 px-4" onClick={handleApproveAll}>
-            Approve all
+            {features.approvalPipeline ? "Send all to review" : "Schedule all"}
           </button>
           <Link href="/dashboard/editor" className="pb-btn-secondary text-sm py-2 px-4">
             Send to editor
@@ -98,7 +153,26 @@ export default function DraftsPage() {
         </div>
       )}
 
-      {count === 0 ? (
+      {loading && count === 0 ? (
+        <div className="grid gap-4">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <div key={idx} className="h-32 animate-pulse rounded-[24px] border border-black/8 bg-black/[0.03]" />
+          ))}
+        </div>
+      ) : error ? (
+        <div className="rounded-[28px] border border-[#e6ddd1] bg-[#fbf8f3] px-6 py-8 text-sm text-[#6c645a] shadow-[0_16px_40px_-34px_rgba(10,10,10,0.35)]">
+          <p className="font-medium text-[#1f1d19]">This content queue is protected.</p>
+          <p className="mt-2 leading-6">{error}</p>
+          <div className="mt-4 flex gap-3">
+            <button type="button" className="pb-btn-primary text-sm" onClick={() => void load(locationId ?? null)}>
+              Try again
+            </button>
+            <Link href="/dashboard/organization" className="pb-btn-secondary text-sm">
+              Review locations
+            </Link>
+          </div>
+        </div>
+      ) : count === 0 ? (
         <div className="pb-empty">{MICROCOPY.emptyDrafts}</div>
       ) : (
         <div className="pb-draft-list">
@@ -115,11 +189,17 @@ export default function DraftsPage() {
                 </div>
               </div>
               <div className="pb-draft-actions">
-                <button type="button" className="pb-press-btn" onClick={() => handlePress(draft.id)}>
-                  Press
-                </button>
+                {(draft.status === "draft" || draft.status === "needs_revision") ? (
+                  <button type="button" className="pb-press-btn" onClick={() => void handlePress(draft.id)}>
+                    {features.approvalPipeline ? "Press" : "Schedule"}
+                  </button>
+                ) : (
+                  <span className="pb-btn-secondary text-sm px-4 py-2 opacity-70">
+                    {features.approvalPipeline ? "In review" : "Scheduled"}
+                  </span>
+                )}
                 <Link href={`/dashboard/editor?draft=${draft.id}`}>Edit</Link>
-                <button type="button" onClick={() => handleSkip(draft.id)}>Skip</button>
+                <button type="button" onClick={() => void handleSkip(draft.id)}>Skip</button>
               </div>
             </article>
           ))}

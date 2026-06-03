@@ -1,5 +1,7 @@
-import { LocationRole } from "@prisma/client";
+import { LocationRole, PrismaClient, Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
+
+type DbClient = PrismaClient | Prisma.TransactionClient;
 
 export interface AccessResolution {
   hasAccess: boolean;
@@ -10,8 +12,9 @@ export interface AccessResolution {
 export async function resolveAccess(
   userId: string,
   locationId: string,
+  client: DbClient = db,
 ): Promise<AccessResolution> {
-  const membership = await db.locationMembership.findUnique({
+  const membership = await client.locationMembership.findUnique({
     where: {
       locationId_userId: {
         locationId,
@@ -24,7 +27,7 @@ export async function resolveAccess(
     return { hasAccess: false, role: null, canApprove: false };
   }
 
-  const rule = await db.approvalRule.findUnique({
+  const rule = await client.approvalRule.findUnique({
     where: { locationId },
     select: { reviewerUserIds: true, requiresApproval: true },
   });
@@ -39,4 +42,3 @@ export async function resolveAccess(
     canApprove: rule?.requiresApproval ? canApprove : false,
   };
 }
-

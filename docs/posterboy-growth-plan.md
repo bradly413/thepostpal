@@ -84,7 +84,7 @@ Track via `Approval` records / draft status transitions to `approved` or `publis
 ## Future roadmap
 
 - [ ] Wire Prisma + PostgreSQL (replace localStorage)
-- [ ] Stripe billing for Solo / Shop / Press
+- [ ] Stripe billing for Solo / Command (see `docs/stripe-billing-setup.md`)
 - [ ] Studio workflow (human editorial queue)
 - [ ] Meta publish from approved drafts
 - [ ] Activation tracking dashboard

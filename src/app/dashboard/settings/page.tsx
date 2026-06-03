@@ -2,7 +2,8 @@
 
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { getMetaConnection, saveMetaConnection, clearMetaConnection, type MetaConnection } from "@/lib/meta-store";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { SITE_NAME } from "@/lib/site";
 
 export default function SettingsPage() {
@@ -19,7 +20,7 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const [saved, setSaved] = useState(false);
-  const [meta, setMeta] = useState<MetaConnection | null>(null);
+  const { meta, reload: reloadMeta, disconnect: disconnectMeta } = useMetaConnection();
   const [metaError, setMetaError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState({
@@ -45,24 +46,19 @@ function SettingsContent() {
   });
 
   useEffect(() => {
-    setMeta(getMetaConnection());
     const connected = searchParams.get("meta_connected");
     const error = searchParams.get("meta_error");
     if (connected) {
-      try {
-        const data = JSON.parse(connected);
-        saveMetaConnection(data);
-        setMeta(data);
-        setActiveTab("account");
-      } catch {}
-      router.replace("/dashboard/settings");
-    }
-    if (error) {
-      setMetaError(error);
+      void reloadMeta();
       setActiveTab("account");
       router.replace("/dashboard/settings");
     }
-  }, [searchParams, router]);
+    if (error) {
+      setMetaError(decodeURIComponent(error.replace(/\+/g, " ")));
+      setActiveTab("account");
+      router.replace("/dashboard/settings");
+    }
+  }, [searchParams, router, reloadMeta]);
 
   useEffect(() => {
     try {
@@ -92,14 +88,23 @@ function SettingsContent() {
     const scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish";
     // Generate a random state for CSRF protection and store it in a cookie
     const state = crypto.randomUUID();
+    const locationId = getStoredActiveLocationId();
+    if (!locationId) {
+      setMetaError("Choose a location in the dashboard before connecting Meta.");
+      return;
+    }
     document.cookie = `meta_oauth_state=${state}; path=/; max-age=600; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
+    document.cookie = `meta_oauth_location_id=${locationId}; path=/; max-age=600; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
     window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirect}&scope=${scopes}&response_type=code&state=${state}`;
   }
 
-  function handleDisconnectMeta() {
+  async function handleDisconnectMeta() {
     if (!window.confirm("Disconnect Meta account?")) return;
-    clearMetaConnection();
-    setMeta(null);
+    try {
+      await disconnectMeta();
+    } catch (err) {
+      setMetaError(err instanceof Error ? err.message : "Could not disconnect Meta.");
+    }
   }
 
   function handleLogout() {
