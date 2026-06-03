@@ -356,7 +356,7 @@ export default function BrandArchitect() {
 
         {/* Node 4 — Typography engine + visual contrast matrix */}
         <div className="w-screen h-screen flex items-center justify-center p-24">
-          <div className="w-full max-w-4xl bg-white/10 backdrop-blur-2xl border border-white/20 shadow-2xl rounded-3xl p-12 grid grid-cols-2 gap-12">
+          <div className="w-full max-w-5xl bg-white/10 backdrop-blur-[40px] border border-white/40 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] rounded-3xl p-16 grid grid-cols-2 gap-20">
             {/* Left: type-pairing selectors */}
             <div className="space-y-5">
               <div>
@@ -374,10 +374,10 @@ export default function BrandArchitect() {
                   onClick={() =>
                     setBrandData((prev) => ({ ...prev, typographyPairing: pair.id }))
                   }
-                  className={`w-full text-left p-6 border rounded-xl transition-all duration-300 ${
+                  className={`w-full text-left rounded-2xl p-6 transition-all duration-500 ${
                     brandData.typographyPairing === pair.id
-                      ? "border-black/70 bg-white/90 shadow-md"
-                      : "border-black/5 hover:border-black/20 bg-white/40 hover:bg-white/60"
+                      ? "border border-black bg-white/30 shadow-md"
+                      : "border border-black/10 bg-transparent hover:bg-white/20"
                   }`}
                 >
                   <div className="text-[11px] font-mono text-black/40 mb-2 tracking-tight">
@@ -427,12 +427,12 @@ export default function BrandArchitect() {
                 <button
                   type="button"
                   onClick={() => setCompiled(true)}
-                  className="w-full py-4 bg-black text-white rounded-xl text-sm uppercase tracking-[0.2em] font-medium hover:bg-black/80 transition-all duration-300 shadow-xl"
+                  className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light uppercase tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all"
                 >
                   Synthesize Brand Engine
                 </button>
                 {compiled && (
-                  <pre className="text-[10px] leading-relaxed font-mono text-black/55 bg-black/5 rounded-lg p-3 overflow-x-auto whitespace-pre-wrap">
+                  <pre className="bg-black/5 backdrop-blur-md border border-black/10 rounded-2xl p-6 font-mono text-[10px] uppercase text-black/50 leading-relaxed overflow-x-auto whitespace-pre-wrap">
 {JSON.stringify(brandData, null, 2)}
                   </pre>
                 )}
