@@ -263,6 +263,30 @@ export default function BrandArchitect() {
 
   return (
     <div className="relative w-screen h-screen overflow-hidden bg-[#F9F9F9]">
+      {/* Layer 0: CSS fog fallback — shows through if WebGL is blank / frozen /
+          disabled (e.g. some embedded preview panes), so the background is
+          never dead-flat white. The opaque WebGL smoke covers it when it runs. */}
+      <style>{`
+        @keyframes architect-fog-drift {
+          0%   { transform: scale(1.15) translate3d(0, 0, 0); }
+          50%  { transform: scale(1.3) translate3d(3%, -3%, 0); }
+          100% { transform: scale(1.2) translate3d(-3%, 3%, 0); }
+        }
+        .architect-fog {
+          background:
+            radial-gradient(55% 50% at 28% 30%, rgba(154,161,171,0.40), transparent 70%),
+            radial-gradient(50% 55% at 72% 62%, rgba(154,161,171,0.34), transparent 70%),
+            radial-gradient(45% 45% at 50% 85%, rgba(120,128,140,0.30), transparent 72%),
+            radial-gradient(40% 40% at 80% 15%, rgba(170,177,185,0.30), transparent 72%);
+          filter: blur(40px);
+          animation: architect-fog-drift 26s ease-in-out infinite alternate;
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .architect-fog { animation: none; }
+        }
+      `}</style>
+      <div className="architect-fog fixed inset-0 z-0 pointer-events-none" />
+
       {/* Layer 1: fixed WebGL shader background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
         <Canvas
