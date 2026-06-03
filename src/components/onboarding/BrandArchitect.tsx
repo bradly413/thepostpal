@@ -6,8 +6,20 @@ import { shaderMaterial } from "@react-three/drei";
 import * as THREE from "three";
 import { gsap } from "gsap";
 import { Observer } from "gsap/Observer";
+import { Fraunces, Syne, Newsreader } from "next/font/google";
 
 gsap.registerPlugin(Observer);
+
+// Typographic-voice specimens for the aesthetics step.
+const fraunces = Fraunces({ subsets: ["latin"], weight: ["400", "500"], style: ["normal", "italic"] });
+const syne = Syne({ subsets: ["latin"], weight: ["500", "700"] });
+const newsreader = Newsreader({ subsets: ["latin"], weight: ["300", "400"], style: ["normal", "italic"] });
+
+const TYPE_VOICES = [
+  { name: "Editorial", desc: "Warm, literary, high-contrast", className: fraunces.className, italic: true, weight: 400 },
+  { name: "Modernist", desc: "Geometric, confident, clean", className: syne.className, italic: false, weight: 700 },
+  { name: "Classic", desc: "Refined, timeless, elegant", className: newsreader.className, italic: true, weight: 300 },
+];
 
 // ---------------------------------------------------------------------
 // GLSL smoke shader (Fractional Brownian Motion)
@@ -233,10 +245,45 @@ export default function BrandArchitect() {
           </div>
         </div>
 
-        {/* Node 3 — Aesthetics frame (-100vw, -100vh) */}
+        {/* Node 3 — Aesthetics / typographic voice */}
         <div className="w-screen h-screen flex items-center justify-center p-24">
-          <div className="max-w-md text-center">
-            <p className="text-xl font-light text-black/60">Next section content placeholder&hellip;</p>
+          <div className="w-full max-w-3xl">
+            <h2 className="text-xs tracking-[0.2em] uppercase text-black/50 mb-3 text-center">
+              02 / Your Typographic Voice
+            </h2>
+            <p className="text-center text-black/40 font-light tracking-tight mb-10">
+              Type carries tone. Choose the one that sounds like you.
+            </p>
+            <div className="space-y-4">
+              {TYPE_VOICES.map((v) => (
+                <button
+                  key={v.name}
+                  type="button"
+                  className="group w-full flex items-center gap-6 sm:gap-10 py-6 px-8 bg-white/30 hover:bg-white/70 border border-black/5 hover:border-black/15 rounded-2xl backdrop-blur-xl shadow-sm hover:shadow-xl transition-all duration-500 text-left"
+                >
+                  <span
+                    className={`${v.className} text-5xl sm:text-6xl text-black/85 w-16 sm:w-20 text-center shrink-0 leading-none`}
+                    style={{ fontStyle: v.italic ? "italic" : "normal", fontWeight: v.weight }}
+                  >
+                    Aa
+                  </span>
+                  <span className="flex-1 min-w-0">
+                    <span
+                      className={`${v.className} block text-xl sm:text-2xl text-black/85 tracking-tight truncate`}
+                      style={{ fontStyle: v.italic ? "italic" : "normal", fontWeight: v.weight }}
+                    >
+                      Posts that sound like you.
+                    </span>
+                    <span className="block mt-1.5 text-xs sm:text-sm text-black/45 tracking-tight">
+                      <span className="text-black/65 font-medium">{v.name}</span> — {v.desc}
+                    </span>
+                  </span>
+                  <span className="opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-x-0 text-black/30 text-xl transition-all duration-300 shrink-0">
+                    &rarr;
+                  </span>
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </div>
