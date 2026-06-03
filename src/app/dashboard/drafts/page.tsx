@@ -5,6 +5,11 @@ import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import {
+  EmptyState,
+  ErrorState,
+  SkeletonText,
+} from "@/components/dashboard/StateViews";
+import {
   fetchDashboardPosts,
   formatDashboardApiMessage,
   submitDashboardPost,
@@ -154,26 +159,18 @@ export default function DraftsPage() {
       )}
 
       {loading && count === 0 ? (
-        <div className="grid gap-4">
+        <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, idx) => (
-            <div key={idx} className="h-32 animate-pulse rounded-[24px] border border-black/8 bg-black/[0.03]" />
+            <SkeletonText key={idx} className="h-32 w-full rounded-[24px]" />
           ))}
         </div>
       ) : error ? (
-        <div className="rounded-[28px] border border-[#e6ddd1] bg-[#fbf8f3] px-6 py-8 text-sm text-[#6c645a] shadow-[0_16px_40px_-34px_rgba(10,10,10,0.35)]">
-          <p className="font-medium text-[#1f1d19]">This content queue is protected.</p>
-          <p className="mt-2 leading-6">{error}</p>
-          <div className="mt-4 flex gap-3">
-            <button type="button" className="pb-btn-primary text-sm" onClick={() => void load(locationId ?? null)}>
-              Try again
-            </button>
-            <Link href="/dashboard/organization" className="pb-btn-secondary text-sm">
-              Review locations
-            </Link>
-          </div>
-        </div>
+        <ErrorState
+          message={error}
+          onRetry={() => void load(locationId ?? null)}
+        />
       ) : count === 0 ? (
-        <div className="pb-empty">{MICROCOPY.emptyDrafts}</div>
+        <EmptyState title="Nothing awaiting review" sub={MICROCOPY.emptyDrafts} />
       ) : (
         <div className="pb-draft-list">
           {drafts.map((draft) => (

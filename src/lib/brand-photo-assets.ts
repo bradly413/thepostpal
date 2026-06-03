@@ -1,12 +1,12 @@
-const STORAGE_KEY = "user-photos";
+/** Static brand imagery served from /public/brand (not tenant DB). */
 
-export interface StoredPhoto {
+export interface BrandPhotoAsset {
   id: string;
   src: string;
   name: string;
 }
 
-export const BRAND_PHOTOS: StoredPhoto[] = [
+export const BRAND_PHOTOS: BrandPhotoAsset[] = [
   { id: "bp-1", src: "/brand/interior-arch.jpg", name: "Interior Archway" },
   { id: "bp-2", src: "/brand/interior-staircase.jpg", name: "Interior Staircase" },
   { id: "bp-3", src: "/brand/streetscape.jpg", name: "Streetscape" },
@@ -20,24 +20,3 @@ export const BRAND_PHOTOS: StoredPhoto[] = [
   { id: "bp-11", src: "/brand/IMG_8734.jpg", name: "Property Photo 5" },
   { id: "bp-12", src: "/brand/cover.jpg", name: "Cover Photo" },
 ];
-
-export function getUserPhotos(): StoredPhoto[] {
-  if (typeof window === "undefined") return [];
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-export function saveUserPhoto(photo: StoredPhoto) {
-  const photos = getUserPhotos();
-  photos.unshift(photo);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(photos.slice(0, 50)));
-}
-
-export function removeUserPhoto(id: string) {
-  const photos = getUserPhotos().filter((p) => p.id !== id);
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(photos));
-}

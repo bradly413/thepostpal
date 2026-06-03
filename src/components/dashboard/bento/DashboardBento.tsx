@@ -9,6 +9,7 @@ import BentoAiStudio from "./BentoAiStudio";
 import BentoWeekProgress from "./BentoWeekProgress";
 import BentoBrandTiles from "./BentoBrandTiles";
 import {
+  fetchDashboardIssues,
   fetchDashboardLocations,
   fetchDashboardPosts,
   formatDashboardApiMessage,
@@ -18,7 +19,6 @@ import {
   filterPostsNeedingReview,
   filterPostsScheduled,
 } from "@/lib/dashboard-post-helpers";
-import { getIssues, seedDemoIssues } from "@/lib/issues-store";
 import {
   getStoredActiveLocationId,
   onStoredActiveLocationChange,
@@ -43,9 +43,10 @@ export default function DashboardBento() {
     try {
       setError(null);
       const locationId = getStoredActiveLocationId();
-      const [locations, posts] = await Promise.all([
+      const [locations, posts, issues] = await Promise.all([
         fetchDashboardLocations(),
         fetchDashboardPosts(locationId),
+        fetchDashboardIssues(locationId ?? undefined),
       ]);
 
       const loc =
@@ -53,9 +54,6 @@ export default function DashboardBento() {
       const counts = countPostsByStatus(posts, loc?.id);
       const pending = filterPostsNeedingReview(posts, loc?.id);
       const scheduled = filterPostsScheduled(posts, loc?.id);
-      const issues = getIssues().filter(
-        (issue) => !loc?.id || issue.locationId === loc.id,
-      );
 
       const next = pending[0] ?? scheduled[0];
       const nextLabel = next
@@ -89,7 +87,6 @@ export default function DashboardBento() {
   }, []);
 
   useEffect(() => {
-    seedDemoIssues();
     void refresh();
     return onStoredActiveLocationChange(() => {
       void refresh();

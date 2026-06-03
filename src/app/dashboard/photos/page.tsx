@@ -2,7 +2,8 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BRAND_PHOTOS } from "@/lib/photo-store";
+import { BRAND_PHOTOS } from "@/lib/brand-photo-assets";
+import { uploadDashboardImage } from "@/lib/dashboard-upload";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
   fetchDashboardPhotos,
@@ -33,23 +34,6 @@ function readAsDataUrl(file: File): Promise<string> {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
-}
-
-async function uploadFile(file: File): Promise<string> {
-  // Try the disk upload endpoint; fall back to an inline data URL so an
-  // upload hiccup never blocks the user from saving a photo.
-  try {
-    const fd = new FormData();
-    fd.append("file", file);
-    const res = await fetch("/api/upload", { method: "POST", body: fd });
-    if (res.ok) {
-      const data = (await res.json()) as { url?: string };
-      if (data.url) return data.url;
-    }
-  } catch {
-    /* fall through to data URL */
-  }
-  return readAsDataUrl(file);
 }
 
 export default function PhotosPage() {
@@ -100,7 +84,7 @@ export default function PhotosPage() {
         setPhotos((prev) => [{ id: tempId, src: previewSrc, name: file.name, pending: true }, ...prev]);
 
         try {
-          const url = await uploadFile(file);
+          const url = await uploadDashboardImage(file);
           const created = await createDashboardPhoto({
             locationId,
             url,

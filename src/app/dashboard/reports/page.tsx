@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { templates } from "@/lib/templates";
+import { ErrorState, SkeletonText } from "@/components/dashboard/StateViews";
 import { useDashboardScheduledPosts } from "@/lib/use-dashboard-scheduled-posts";
 
 export default function ReportsPage() {
-  const { posts, loading, error } = useDashboardScheduledPosts();
+  const { posts, loading, error, reload } = useDashboardScheduledPosts();
   const [timeRange, setTimeRange] = useState<"7d" | "30d" | "90d">("30d");
 
   const rangeDays = timeRange === "7d" ? 7 : timeRange === "30d" ? 30 : 90;
@@ -59,9 +60,17 @@ export default function ReportsPage() {
         </select>
       </div>
 
-      {loading && <p className="text-sm text-text-secondary">Loading…</p>}
-      {error && <p className="text-sm text-danger mb-4">{error}</p>}
+      {loading && (
+        <div className="grid grid-cols-3 gap-4 mb-8">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <SkeletonText key={i} className="h-20 w-full rounded-lg" />
+          ))}
+        </div>
+      )}
+      {error && !loading && <ErrorState message={error} onRetry={reload} />}
 
+      {!loading && !error && (
+      <>
       <div className="grid grid-cols-3 gap-4 mb-8">
         <div className="rounded-lg border border-border p-4">
           <p className="text-xs uppercase tracking-wide text-text-secondary">Scheduled</p>
@@ -110,6 +119,8 @@ export default function ReportsPage() {
       <p className="text-xs text-text-secondary mt-8 opacity-60">
         {templates.length} templates available in catalog.
       </p>
+      </>
+      )}
     </div>
   );
 }

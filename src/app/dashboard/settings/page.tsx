@@ -198,7 +198,7 @@ function SettingsContent() {
                 Tell posterboy how your business sounds. We use this to draft posts that sound less like posts.
               </p>
               <a
-                href="/dashboard/brand-intake"
+                href="/dashboard/brand"
                 className="inline-flex rounded-lg bg-text px-4 py-2 text-sm font-medium text-bg"
               >
                 Open brand intake

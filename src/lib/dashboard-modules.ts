@@ -14,7 +14,7 @@ export const BENTO_NAV: BentoNavItem[] = [
   { id: "issues", label: PRODUCT.issues, href: "/dashboard/issues", countKey: "issues" },
   { id: "drafts", label: PRODUCT.drafts, href: "/dashboard/drafts", countKey: "drafts" },
   { id: "library", label: "Library", href: "/dashboard/editor" },
-  { id: "voice", label: "Voice", href: "/dashboard/brand-intake" },
+  { id: "voice", label: "Voice", href: "/dashboard/brand" },
 ];
 
 export type AiModuleId = "studio" | "image" | "video" | "assistant";

@@ -85,9 +85,67 @@ async function apiRequest<T>(input: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+export interface DashboardMeRecord {
+  plan: string;
+  role: string;
+  organizationId: string;
+  isSuperadmin: boolean;
+  locationCount: number;
+  organization: {
+    id: string;
+    name: string;
+    businessType: string;
+    website: string | null;
+    locationCount: number;
+    plan: string;
+    createdAt: string;
+  };
+}
+
+export interface DashboardIssueRecord {
+  id: string;
+  organizationId: string;
+  locationId: string | null;
+  title: string;
+  weekStart: string;
+  weekEnd: string;
+  status: "open" | "in_review" | "closed";
+  stats: {
+    total: number;
+    approved: number;
+    scheduled: number;
+    needsReview: number;
+  };
+}
+
+export async function fetchDashboardMe(): Promise<DashboardMeRecord> {
+  return apiRequest<DashboardMeRecord>("/api/me");
+}
+
 export async function fetchDashboardLocations(): Promise<DashboardLocationRecord[]> {
   const data = await apiRequest<{ locations: DashboardLocationRecord[] }>("/api/locations");
   return data.locations;
+}
+
+export async function createDashboardLocation(input: {
+  name: string;
+  slug?: string;
+}): Promise<DashboardLocationRecord> {
+  const data = await apiRequest<{ location: DashboardLocationRecord }>("/api/locations", {
+    method: "POST",
+    body: JSON.stringify(input),
+  });
+  return data.location;
+}
+
+export async function fetchDashboardIssues(
+  locationId?: string | null,
+): Promise<DashboardIssueRecord[]> {
+  const search = locationId
+    ? `/api/issues?locationId=${encodeURIComponent(locationId)}`
+    : "/api/issues";
+  const data = await apiRequest<{ issues: DashboardIssueRecord[] }>(search);
+  return data.issues;
 }
 
 export async function fetchDashboardPosts(locationId?: string | null): Promise<DashboardPostRecord[]> {
@@ -288,6 +346,27 @@ export async function saveDashboardBrandBook(input: {
   return apiRequest<DashboardBrandBookResponse>("/api/brand-book", {
     method: "PUT",
     body: JSON.stringify(input),
+  });
+}
+
+export interface GenerateDashboardImageResult {
+  success: boolean;
+  image: string;
+  imageUrl: string;
+  text?: string;
+}
+
+export async function generateDashboardImage(
+  basePrompt: string,
+  options?: { locationId?: string; referenceImage?: string | null },
+): Promise<GenerateDashboardImageResult> {
+  return apiRequest<GenerateDashboardImageResult>("/api/images/generate", {
+    method: "POST",
+    body: JSON.stringify({
+      basePrompt,
+      locationId: options?.locationId,
+      referenceImage: options?.referenceImage ?? null,
+    }),
   });
 }
 

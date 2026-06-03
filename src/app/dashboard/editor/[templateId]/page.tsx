@@ -12,7 +12,9 @@ import {
   scheduledForIso,
 } from "@/lib/scheduled-post-mappers";
 import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
-import { getUserPhotos, saveUserPhoto, BRAND_PHOTOS, type StoredPhoto } from "@/lib/photo-store";
+import { BRAND_PHOTOS } from "@/lib/brand-photo-assets";
+import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
+import { useActiveLocation } from "@/lib/use-active-location";
 
 const CAPTION_SUGGESTIONS = [
   "Just listed! This stunning home won't last long. Schedule your private showing today 🏡",
@@ -143,32 +145,43 @@ export default function EditorPage({
   }, [caption]);
 
   const { meta } = useMetaConnection();
+  const { locationId } = useActiveLocation();
+  const { photos: workspacePhotos, uploadAndCreate } = useDashboardPhotos(locationId);
   const { containerRef, scale } = useCanvasScale(template);
 
-  const [, setPhotosTick] = useState(0);
-  const handlePhoto = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const src = e.target?.result as string;
-      setPhoto(src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0);
-      const stored: StoredPhoto = {
-        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
-        src,
-        name: file.name,
-      };
-      saveUserPhoto(stored);
-      setPhotosTick((t) => t + 1);
-    };
-    reader.readAsDataURL(file);
-  }, []);
+  const handlePhoto = useCallback(
+    async (file: File) => {
+      if (!file.type.startsWith("image/")) return;
+      if (!locationId) return;
+      try {
+        const saved = await uploadAndCreate(file);
+        setPhoto(saved.src);
+        setPhotoPos({ x: 50, y: 50 });
+        setPhotoZoom(100);
+        setPhotoRotate(0);
+      } catch {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const src = e.target?.result as string;
+          if (src) {
+            setPhoto(src);
+            setPhotoPos({ x: 50, y: 50 });
+            setPhotoZoom(100);
+            setPhotoRotate(0);
+          }
+        };
+        reader.readAsDataURL(file);
+      }
+    },
+    [locationId, uploadAndCreate],
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
       setDragOver(false);
       const file = e.dataTransfer.files[0];
-      if (file) handlePhoto(file);
+      if (file) void handlePhoto(file);
     },
     [handlePhoto]
   );
@@ -176,7 +189,7 @@ export default function EditorPage({
   const handleFileInput = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
       const file = e.target.files?.[0];
-      if (file) handlePhoto(file);
+      if (file) void handlePhoto(file);
     },
     [handlePhoto]
   );
@@ -481,7 +494,7 @@ export default function EditorPage({
                   />
                 </div>
                 <div className="mt-2 flex gap-1.5">
-                  {[...BRAND_PHOTOS.slice(0, 2), ...getUserPhotos().slice(0, 2)].map((p) => (
+                  {[...BRAND_PHOTOS.slice(0, 2), ...workspacePhotos.slice(0, 2)].map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -756,11 +769,11 @@ export default function EditorPage({
                   ))}
                 </div>
               </div>
-              {typeof window !== "undefined" && getUserPhotos().length > 0 && (
+              {workspacePhotos.length > 0 && (
                 <div>
                   <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">My Uploads</p>
                   <div className="grid grid-cols-4 gap-2">
-                    {getUserPhotos().map((p) => (
+                    {workspacePhotos.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}

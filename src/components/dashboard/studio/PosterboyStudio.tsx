@@ -458,7 +458,7 @@ export default function PosterboyStudio() {
             <Link href="/dashboard/studio" className="active"><Sparkles size={18} /><span>Create</span></Link>
             <Link href="/dashboard/dispatch"><Calendar size={18} /><span>Schedule</span></Link>
             <Link href="/dashboard/templates"><ImageIcon size={18} /><span>Library</span></Link>
-            <Link href="/dashboard/brand-intake"><Hexagon size={18} /><span>Brand</span></Link>
+            <Link href="/dashboard/brand"><Hexagon size={18} /><span>Brand</span></Link>
             <Link href="/dashboard/settings"><Settings size={18} /><span>Settings</span></Link>
           </nav>
           <div className="voice-card">

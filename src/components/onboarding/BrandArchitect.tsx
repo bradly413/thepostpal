@@ -203,7 +203,7 @@ export default function BrandArchitect() {
         )}
 
         {step === 3 && (
-          <div className={`${CARD} max-w-5xl p-12 sm:p-16 grid md:grid-cols-2 gap-12 md:gap-20`}>
+          <div className="w-full max-w-5xl bg-white/10 backdrop-blur-[40px] border border-white/40 shadow-[0_30px_60px_-15px_rgba(0,0,0,0.1)] rounded-3xl p-16 grid md:grid-cols-2 gap-12 md:gap-20">
             {/* Left: type-pairing selectors */}
             <div className="space-y-5">
               <div>
@@ -221,10 +221,10 @@ export default function BrandArchitect() {
                   onClick={() =>
                     setBrandData((prev) => ({ ...prev, typographyPairing: pair.id }))
                   }
-                  className={`w-full text-left rounded-2xl p-6 transition-all duration-300 ${
+                  className={`w-full text-left ${
                     brandData.typographyPairing === pair.id
-                      ? "border border-black bg-white/70 shadow-md"
-                      : "border border-black/10 bg-transparent hover:bg-white/40"
+                      ? "border border-black bg-white/30 shadow-md rounded-2xl p-6"
+                      : "border border-black/10 bg-transparent hover:bg-white/20 transition-all duration-500 rounded-2xl p-6"
                   }`}
                 >
                   <div className="text-[11px] font-mono text-black/40 mb-2 tracking-tight">
@@ -274,7 +274,7 @@ export default function BrandArchitect() {
                 <button
                   type="button"
                   onClick={() => setCompiled(true)}
-                  className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light uppercase tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all"
+                  className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all"
                 >
                   Synthesize Brand Engine
                 </button>
