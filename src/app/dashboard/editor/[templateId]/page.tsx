@@ -339,29 +339,29 @@ export default function EditorPage({
   if (!template) {
     if (!templateResolved) {
       return (
-        <div className="flex flex-1 items-center justify-center bg-bg">
-          <p className="text-text-secondary">Loading template…</p>
+        <div className="flex flex-1 items-center justify-center bg-white">
+          <p className="text-black/55">Loading template…</p>
         </div>
       );
     }
 
     return (
-      <div className="flex flex-1 items-center justify-center bg-bg">
-        <p className="text-text-secondary">Template not found.</p>
+      <div className="flex flex-1 items-center justify-center bg-white">
+        <p className="text-black/55">Template not found.</p>
       </div>
     );
   }
 
   return (
     <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-border shrink-0">
-        <Link href="/dashboard/templates" className="flex items-center gap-2 text-text-secondary hover:text-text transition-colors">
+      <div className="flex items-center justify-between px-4 py-2 border-b border-black/10 shrink-0">
+        <Link href="/dashboard/templates" className="flex items-center gap-2 text-black/55 hover:text-black transition-colors">
           <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           <span className="text-xs font-medium">Templates</span>
         </Link>
-        <h2 className="font-heading text-sm text-text">{template.name}</h2>
+        <h2 className="font-heading text-sm text-black">{template.name}</h2>
         <div className="w-20" />
       </div>
 
@@ -371,7 +371,7 @@ export default function EditorPage({
           <div className="flex-1 flex flex-col gap-2 overflow-hidden">
             <div ref={containerRef} className="flex justify-center">
               <div
-                className="overflow-hidden rounded-xl shadow-2xl ring-1 ring-border"
+                className="overflow-hidden rounded-xl shadow-sm ring-1 ring-black/10"
                 style={{
                   width: template.width * scale,
                   height: template.height * scale,
@@ -393,26 +393,26 @@ export default function EditorPage({
 
             {/* Gemini Creator Studio */}
             <div className="flex flex-1 justify-center">
-            <div className="flex flex-col rounded-xl border border-border bg-surface/60 backdrop-blur-sm p-3" style={{ width: template.width * scale }}>
+            <div className="flex flex-col rounded-xl border border-black/10 bg-white p-3" style={{ width: template.width * scale }}>
               <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-accent" viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor">
+                <svg className="h-4 w-4 text-[#ee2532]" viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
                 </svg>
-                <span className="text-xs font-semibold text-text tracking-wide">Gemini Creator Studio</span>
+                <span className="text-xs font-semibold text-black tracking-wide">Gemini Creator Studio</span>
               </div>
               <textarea
                 value={aiPrompt}
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !aiGenerating) { e.preventDefault(); handleAiGenerate(); } }}
                 placeholder="Describe an image to generate…"
-                className="flex-1 w-full rounded-lg border border-border bg-elevated px-3 py-2 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                className="pb-field flex-1 resize-none"
               />
               <div className="flex items-center justify-between mt-2">
-                <p className="text-[10px] text-text-secondary/50">Powered by Gemini — generated images are placed directly into your template</p>
+                <p className="text-[10px] text-black/35">Powered by Gemini — generated images are placed directly into your template</p>
                 <button
                   onClick={handleAiGenerate}
                   disabled={aiGenerating || !aiPrompt.trim()}
-                  className="rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all disabled:opacity-50 whitespace-nowrap shrink-0 ml-3"
+                  className="pb-btn-primary px-4 py-2 text-xs disabled:opacity-50 whitespace-nowrap shrink-0 ml-3"
                 >
                   {aiGenerating ? (
                     <span className="flex items-center gap-1.5">
@@ -423,7 +423,7 @@ export default function EditorPage({
                 </button>
               </div>
               {aiError && (
-                <p className="mt-2 text-xs text-danger">{aiError}</p>
+                <p className="mt-2 text-xs text-[#ee2532]">{aiError}</p>
               )}
             </div>
             </div>
@@ -435,17 +435,17 @@ export default function EditorPage({
             {/* Photo upload */}
             {template.hasPhotoSlot && (
               <div>
-                <label className="block text-sm font-medium text-text mb-2">Photo</label>
+                <label className="block text-sm font-medium text-black mb-2">Photo</label>
                 <div
                   onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
                   onDragLeave={() => setDragOver(false)}
                   onDrop={handleDrop}
                   className={`relative rounded-xl border-2 border-dashed p-6 text-center transition-colors cursor-pointer ${
                     dragOver
-                      ? "border-accent bg-accent/5"
+                      ? "border-[#ee2532] bg-[rgba(238,37,50,0.06)]"
                       : photo
-                        ? "border-success bg-success/5"
-                        : "border-border hover:border-accent/50"
+                        ? "border-[#1f9d4d] bg-[rgba(31,157,77,0.06)]"
+                        : "border-black/10 hover:border-[rgba(238,37,50,0.5)]"
                   }`}
                   role="button"
                   tabIndex={0}
@@ -455,11 +455,11 @@ export default function EditorPage({
                   {photo ? (
                     <div className="space-y-2 relative">
                       <img src={photo} alt="Preview" className="mx-auto h-20 w-20 rounded-lg object-cover" />
-                      <p className="text-xs text-success font-medium">Photo added! Click or drop to replace.</p>
+                      <p className="text-xs text-[#1f9d4d] font-medium">Photo added! Click or drop to replace.</p>
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); setPhoto(null); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); }}
-                        className="absolute -top-1 -right-1 p-1 rounded-full bg-danger/80 text-white hover:bg-danger transition-colors"
+                        className="absolute -top-1 -right-1 p-1 rounded-full bg-[rgba(238,37,50,0.8)] text-white hover:bg-[#ee2532] transition-colors"
                         title="Remove photo"
                       >
                         <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
@@ -469,10 +469,10 @@ export default function EditorPage({
                     </div>
                   ) : (
                     <div className="space-y-2">
-                      <svg className="mx-auto h-8 w-8 text-text-secondary/50" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                      <svg className="mx-auto h-8 w-8 text-black/35" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
                         <path strokeLinecap="round" strokeLinejoin="round" d="M2.25 15.75l5.159-5.159a2.25 2.25 0 013.182 0l5.159 5.159m-1.5-1.5l1.409-1.409a2.25 2.25 0 013.182 0l2.909 2.909M3.75 21h16.5A2.25 2.25 0 0022.5 18.75V5.25A2.25 2.25 0 0020.25 3H3.75A2.25 2.25 0 001.5 5.25v13.5A2.25 2.25 0 003.75 21z" />
                       </svg>
-                      <p className="text-sm text-text-secondary">Drop a photo here or click to browse</p>
+                      <p className="text-sm text-black/55">Drop a photo here or click to browse</p>
                     </div>
                   )}
                   <input
@@ -489,7 +489,7 @@ export default function EditorPage({
                       key={p.id}
                       type="button"
                       onClick={(e) => { e.stopPropagation(); setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); }}
-                      className="relative h-11 w-11 shrink-0 rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
+                      className="relative h-11 w-11 shrink-0 rounded-lg overflow-hidden border border-black/10 hover:border-[#ee2532] transition-colors"
                     >
                       <img src={p.src} alt={p.name} className="h-full w-full object-cover" />
                     </button>
@@ -497,7 +497,7 @@ export default function EditorPage({
                   <button
                     type="button"
                     onClick={(e) => { e.stopPropagation(); setShowPhotoPicker(true); }}
-                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-border text-text-secondary hover:border-accent hover:text-accent transition-colors"
+                    className="flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-dashed border-black/10 text-black/55 hover:border-[#ee2532] hover:text-[#ee2532] transition-colors"
                     title="View photo library"
                   >
                     <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
@@ -508,19 +508,19 @@ export default function EditorPage({
 
                 {/* Photo position & zoom controls */}
                 {photo && (
-                  <div className="mt-3 space-y-3 rounded-xl border border-border bg-surface/60 p-3">
+                  <div className="mt-3 space-y-3 rounded-xl border border-black/10 bg-white p-3">
                     <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-medium text-text-secondary">Adjust Photo</span>
+                      <span className="text-[11px] font-medium text-black/55">Adjust Photo</span>
                       <button
                         type="button"
                         onClick={() => { setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); }}
-                        className="text-[10px] text-text-secondary/50 hover:text-accent transition-colors"
+                        className="text-[10px] text-black/35 hover:text-[#ee2532] transition-colors"
                       >
                         Reset
                       </button>
                     </div>
                     <div>
-                      <label className="flex items-center justify-between text-[10px] text-text-secondary/60 mb-1">
+                      <label className="flex items-center justify-between text-[10px] text-black/55 mb-1">
                         <span>Zoom</span>
                         <span>{photoZoom}%</span>
                       </label>
@@ -530,11 +530,11 @@ export default function EditorPage({
                         max={200}
                         value={photoZoom}
                         onChange={(e) => setPhotoZoom(Number(e.target.value))}
-                        className="w-full h-1 accent-accent rounded-full appearance-none bg-white/10 cursor-pointer"
+                        className="w-full h-1 accent-[#ee2532] rounded-full appearance-none bg-black/[0.04] cursor-pointer"
                       />
                     </div>
                     <div>
-                      <label className="flex items-center justify-between text-[10px] text-text-secondary/60 mb-1">
+                      <label className="flex items-center justify-between text-[10px] text-black/55 mb-1">
                         <span>Horizontal</span>
                         <span>{photoPos.x}%</span>
                       </label>
@@ -544,11 +544,11 @@ export default function EditorPage({
                         max={100}
                         value={photoPos.x}
                         onChange={(e) => setPhotoPos((p) => ({ ...p, x: Number(e.target.value) }))}
-                        className="w-full h-1 accent-accent rounded-full appearance-none bg-white/10 cursor-pointer"
+                        className="w-full h-1 accent-[#ee2532] rounded-full appearance-none bg-black/[0.04] cursor-pointer"
                       />
                     </div>
                     <div>
-                      <label className="flex items-center justify-between text-[10px] text-text-secondary/60 mb-1">
+                      <label className="flex items-center justify-between text-[10px] text-black/55 mb-1">
                         <span>Vertical</span>
                         <span>{photoPos.y}%</span>
                       </label>
@@ -558,11 +558,11 @@ export default function EditorPage({
                         max={100}
                         value={photoPos.y}
                         onChange={(e) => setPhotoPos((p) => ({ ...p, y: Number(e.target.value) }))}
-                        className="w-full h-1 accent-accent rounded-full appearance-none bg-white/10 cursor-pointer"
+                        className="w-full h-1 accent-[#ee2532] rounded-full appearance-none bg-black/[0.04] cursor-pointer"
                       />
                     </div>
                     <div>
-                      <label className="flex items-center justify-between text-[10px] text-text-secondary/60 mb-1">
+                      <label className="flex items-center justify-between text-[10px] text-black/55 mb-1">
                         <span>Rotate</span>
                         <span>{photoRotate}°</span>
                       </label>
@@ -572,7 +572,7 @@ export default function EditorPage({
                         max={180}
                         value={photoRotate}
                         onChange={(e) => setPhotoRotate(Number(e.target.value))}
-                        className="w-full h-1 accent-accent rounded-full appearance-none bg-white/10 cursor-pointer"
+                        className="w-full h-1 accent-[#ee2532] rounded-full appearance-none bg-black/[0.04] cursor-pointer"
                       />
                     </div>
                   </div>
@@ -583,10 +583,10 @@ export default function EditorPage({
             {/* Text fields */}
             {template.fields.map((field) => (
               <div key={field.id}>
-                <label className="block text-sm font-medium text-text mb-1">
+                <label className="block text-sm font-medium text-black mb-1">
                   {field.label}
                   {field.maxLength && (
-                    <span className="ml-2 text-xs text-text-secondary font-normal">
+                    <span className="ml-2 text-xs text-black/55 font-normal">
                       {(fields[field.id] || "").length}/{field.maxLength}
                     </span>
                   )}
@@ -596,7 +596,7 @@ export default function EditorPage({
                     value={fields[field.id] || ""}
                     onChange={(e) => setFields({ ...fields, [field.id]: e.target.value })}
                     rows={field.type === "list" ? 5 : 3}
-                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                    className="pb-field resize-none"
                   />
                 ) : (
                   <input
@@ -604,18 +604,18 @@ export default function EditorPage({
                     value={fields[field.id] || ""}
                     onChange={(e) => setFields({ ...fields, [field.id]: e.target.value })}
                     maxLength={field.maxLength}
-                    className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    className="pb-field"
                   />
                 )}
               </div>
             ))}
 
             {/* Caption for social */}
-            <div className="border-t border-border pt-4 -mt-1" />
+            <div className="border-t border-black/10 pt-4 -mt-1" />
             <div>
-              <label className="block text-sm font-medium text-text mb-1">
+              <label className="block text-sm font-medium text-black mb-1">
                 Post Caption
-                <span className="ml-2 text-xs text-text-secondary font-normal">optional</span>
+                <span className="ml-2 text-xs text-black/55 font-normal">optional</span>
               </label>
               <div className="relative">
                 <textarea
@@ -624,16 +624,16 @@ export default function EditorPage({
                   onKeyDown={(e) => { if (e.key === "Tab" && !caption) { e.preventDefault(); setCaption(CAPTION_SUGGESTIONS[captionSuggIdx]); } }}
                   rows={4}
                   placeholder=" "
-                  className="w-full rounded-lg border border-border bg-surface px-3 py-2 text-sm text-text placeholder:text-transparent focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  className="pb-field resize-none placeholder:text-transparent"
                 />
                 {!caption && (
                   <span
                     onClick={() => setCaption(CAPTION_SUGGESTIONS[captionSuggIdx])}
-                    className="absolute left-3 top-2 text-sm text-text-secondary/40 transition-opacity duration-1000 line-clamp-3 cursor-pointer hover:text-text-secondary/60"
+                    className="absolute left-3 top-2 text-sm text-black/35 transition-opacity duration-1000 line-clamp-3 cursor-pointer hover:text-black/55"
                     style={{ opacity: captionSuggFade ? 1 : 0, right: 12 }}
                   >
                     {CAPTION_SUGGESTIONS[captionSuggIdx]}
-                    <span className="block text-[10px] text-text-secondary/25 mt-1">Tap to use · or press Tab</span>
+                    <span className="block text-[10px] text-black/35 mt-1">Tap to use · or press Tab</span>
                   </span>
                 )}
               </div>
@@ -644,26 +644,26 @@ export default function EditorPage({
               <button
                 onClick={handleDownload}
                 disabled={generating}
-                className="w-full rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-2.5 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all disabled:opacity-50"
+                className="pb-btn-primary w-full py-2.5 text-xs disabled:opacity-50"
               >
                 {generating ? "Generating..." : "Download Image"}
               </button>
               {!showSchedule ? (
                 <button
                   onClick={() => setShowSchedule(true)}
-                  className="flex items-center justify-center gap-1.5 w-full rounded-full border border-border py-2.5 text-xs font-medium text-text-secondary hover:text-text hover:bg-surface transition-all"
+                  className="pb-btn-secondary flex items-center justify-center gap-1.5 w-full py-2.5 text-xs"
                 >
                   <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" /></svg>
                   Schedule
                 </button>
               ) : (
-                <div className="w-full rounded-xl border border-accent/30 bg-surface/80 backdrop-blur-sm p-3 space-y-3">
+                <div className="w-full rounded-xl border border-[rgba(238,37,50,0.3)] bg-white p-3 space-y-3">
                   <div className="flex items-center justify-between">
-                    <p className="text-xs font-semibold text-text flex items-center gap-1.5">
+                    <p className="text-xs font-semibold text-black flex items-center gap-1.5">
                       <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M12 6v6h4.5m4.5 0a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
                       Schedule Post
                     </p>
-                    <button onClick={() => setShowSchedule(false)} aria-label="Close" className="text-text-secondary hover:text-text transition-colors">
+                    <button onClick={() => setShowSchedule(false)} aria-label="Close" className="text-black/55 hover:text-black transition-colors">
                       <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
                     </button>
                   </div>
@@ -675,7 +675,7 @@ export default function EditorPage({
                       value={scheduleDate}
                       onChange={(e) => setScheduleDate(e.target.value)}
                       min={new Date().toISOString().split("T")[0]}
-                      className="flex-1 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:dark]"
+                      className="pb-field flex-1"
                     />
                     <input
                       type="time"
@@ -683,7 +683,7 @@ export default function EditorPage({
                       aria-label="Schedule time"
                       value={scheduleTime}
                       onChange={(e) => setScheduleTime(e.target.value)}
-                      className="w-28 rounded-lg border border-border bg-elevated px-2.5 py-1.5 text-xs text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:dark]"
+                      className="pb-field w-28"
                     />
                   </div>
                   <div className="flex gap-1.5">
@@ -693,8 +693,8 @@ export default function EditorPage({
                         onClick={() => setSchedulePlatform(p)}
                         className={`flex-1 rounded-full py-1.5 text-[11px] font-medium capitalize transition-all ${
                           schedulePlatform === p
-                            ? "bg-white/15 backdrop-blur-sm border border-white/20 text-white"
-                            : "bg-elevated text-text-secondary hover:text-text"
+                            ? "bg-[#ee2532] text-white"
+                            : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
                         }`}
                       >
                         {p === "both" ? "FB + IG" : p === "facebook" ? "Facebook" : "Instagram"}
@@ -705,14 +705,14 @@ export default function EditorPage({
                     <button
                       onClick={handleSchedule}
                       disabled={scheduling || !scheduleDate || !scheduleTime}
-                      className="w-full rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all disabled:opacity-50"
+                      className="pb-btn-primary w-full py-2 text-xs disabled:opacity-50"
                     >
                       {scheduling ? "Scheduling..." : "Schedule Post"}
                     </button>
                   ) : (
                     <Link
                       href="/dashboard/settings?tab=account"
-                      className="block w-full rounded-lg border border-border py-2 text-center text-xs font-medium text-text-secondary hover:text-text transition-colors"
+                      className="block w-full rounded-lg border border-black/10 py-2 text-center text-xs font-medium text-black/55 hover:text-black transition-colors"
                     >
                       Connect Facebook to schedule
                     </Link>
@@ -721,7 +721,7 @@ export default function EditorPage({
               )}
               {publishResult && (
                 <div className={`rounded-lg px-3 py-2 text-xs font-medium ${
-                  publishResult.type === "success" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+                  publishResult.type === "success" ? "bg-[rgba(31,157,77,0.1)] text-[#1f9d4d]" : "bg-[rgba(238,37,50,0.1)] text-[#ee2532]"
                 }`}>
                   {publishResult.message}
                 </div>
@@ -734,22 +734,22 @@ export default function EditorPage({
 
       {showPhotoPicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" role="presentation" onClick={() => setShowPhotoPicker(false)}>
-          <div className="w-full max-w-lg max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-border">
-              <h3 className="text-base font-heading text-text">Choose a Photo</h3>
-              <button onClick={() => setShowPhotoPicker(false)} aria-label="Close" className="text-text-secondary hover:text-text transition-colors">
+          <div className="w-full max-w-lg max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b border-black/10">
+              <h3 className="text-base font-heading text-black">Choose a Photo</h3>
+              <button onClick={() => setShowPhotoPicker(false)} aria-label="Close" className="text-black/55 hover:text-black transition-colors">
                 <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               <div>
-                <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">Brand Photos</p>
+                <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">Brand Photos</p>
                 <div className="grid grid-cols-4 gap-2">
                   {BRAND_PHOTOS.map((p) => (
                     <button
                       key={p.id}
                       onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
-                      className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
+                      className="group relative aspect-square rounded-lg overflow-hidden border border-black/10 hover:border-[#ee2532] transition-colors"
                     >
                       <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
                       <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
@@ -761,13 +761,13 @@ export default function EditorPage({
               </div>
               {workspacePhotos.length > 0 && (
                 <div>
-                  <p className="text-xs font-medium text-text-secondary uppercase tracking-wider mb-3">My Uploads</p>
+                  <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">My Uploads</p>
                   <div className="grid grid-cols-4 gap-2">
                     {workspacePhotos.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
-                        className="group relative aspect-square rounded-lg overflow-hidden border border-border hover:border-accent transition-colors"
+                        className="group relative aspect-square rounded-lg overflow-hidden border border-black/10 hover:border-[#ee2532] transition-colors"
                       >
                         <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
                         <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
