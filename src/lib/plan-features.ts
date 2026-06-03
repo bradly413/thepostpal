@@ -30,6 +30,8 @@ export interface PlanFeatures {
   locationRollup: boolean;
   /** Primary action on the post composer. */
   composerPrimaryAction: "schedule" | "submit";
+  /** Meta Ads builder + Marketing API (Command tier + META_ADS_ENABLED). */
+  metaAds: boolean;
 }
 
 export function isMultiLocationPlan(plan: PlanTier): boolean {
@@ -44,7 +46,17 @@ export function planFeatures(plan: PlanTier): PlanFeatures {
     teamManagement: multi,
     locationRollup: multi,
     composerPrimaryAction: multi ? "submit" : "schedule",
+    metaAds: multi,
   };
+}
+
+/** Plan allows Meta Ads; still requires META_ADS_ENABLED=true at runtime. */
+export function isMetaAdsPlanEnabled(plan: PlanTier): boolean {
+  return planFeatures(plan).metaAds;
+}
+
+export function isMetaAdsFeatureActive(plan: PlanTier): boolean {
+  return isMetaAdsPlanEnabled(plan) && process.env.META_ADS_ENABLED === "true";
 }
 
 /** Conservative default before /api/me resolves: streamlined (solo) surface. */

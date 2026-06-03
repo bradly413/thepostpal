@@ -295,6 +295,74 @@ export function isDashboardAccessError(error: unknown): error is DashboardApiErr
   return error instanceof DashboardApiError && (error.status === 403 || error.status === 404);
 }
 
+// ── Meta Ads (Marketing API) ──────────────────────────────────
+
+export interface DashboardMetaAdAccountRecord {
+  id: string;
+  organizationId: string;
+  locationId: string | null;
+  adAccountId: string;
+  name: string;
+  currency: string;
+}
+
+export interface MetaAdsLaunchPayload {
+  locationId: string;
+  adAccountId: string;
+  campaignName: string;
+  objective: string;
+  dailyBudgetCents: number;
+  startTime: string;
+  endTime?: string;
+  geoCountries: string[];
+  ageMin: number;
+  ageMax: number;
+  message: string;
+  link: string;
+  callToAction: string;
+  imageUrl: string;
+}
+
+export async function fetchDashboardMetaAdAccounts(
+  locationId: string,
+): Promise<DashboardMetaAdAccountRecord[]> {
+  const data = await apiRequest<{ accounts: DashboardMetaAdAccountRecord[] }>(
+    `/api/meta/ad-accounts?locationId=${encodeURIComponent(locationId)}`,
+  );
+  return data.accounts;
+}
+
+export async function fetchDashboardMetaAdsAuthUrl(
+  locationId: string,
+): Promise<string> {
+  const data = await apiRequest<{ url: string }>(
+    `/api/meta/ads/auth?locationId=${encodeURIComponent(locationId)}`,
+  );
+  return data.url;
+}
+
+export async function launchDashboardMetaAd(
+  payload: MetaAdsLaunchPayload,
+): Promise<{ message: string; campaignId: string; adId: string; status: string }> {
+  return apiRequest("/api/meta/ads/launch", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function fetchDashboardMetaAdInsights(
+  locationId: string,
+  adAccountId: string,
+  datePreset = "last_7d",
+): Promise<{ insights: { data?: unknown[] } }> {
+  const q = new URLSearchParams({
+    locationId,
+    adAccountId,
+    date_preset: datePreset,
+  });
+  return apiRequest(`/api/meta/ads/insights?${q.toString()}`);
+}
+
 export function formatDashboardApiMessage(error: unknown, fallback: string): string {
   if (error instanceof DashboardApiError) {
     if (error.status === 403) {

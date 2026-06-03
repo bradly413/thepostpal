@@ -36,6 +36,7 @@ enum SocialPlatform {
   tiktok
   youtube
   twitter
+  meta_ads
 }
 
 enum LocationStatus {
@@ -74,6 +75,7 @@ model Organization {
   website       String?
   locationCount Int      @default(1)
   plan          PlanTier @default(solo)
+  brandEngine   Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -89,6 +91,7 @@ model Organization {
   knowledgeEntries  KnowledgeBaseEntry[]
   subscriptions     Subscription[]
   analytics         AnalyticsSnapshot[]
+  metaAdAccounts    MetaAdAccount[]
 }
 
 model User {
@@ -145,6 +148,7 @@ model Location {
   campaignLocations CampaignLocation[]
   analytics         AnalyticsSnapshot[]
   knowledgeEntries  KnowledgeBaseEntry[]
+  metaAdAccounts    MetaAdAccount[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -262,6 +266,23 @@ model SocialConnection {
   @@index([organizationId, platform])
   @@index([locationId])
   @@index([externalAccountId])
+}
+
+model MetaAdAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String?
+  location       Location?    @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  adAccountId    String
+  name           String
+  currency       String
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([organizationId, adAccountId])
+  @@index([organizationId])
+  @@index([locationId])
 }
 
 model ScheduledPost {

@@ -15,7 +15,11 @@ export async function countConnectedSocialProfiles(
   organizationId: string,
 ): Promise<number> {
   return tx.socialConnection.count({
-    where: { organizationId, connected: true },
+    where: {
+      organizationId,
+      connected: true,
+      platform: { not: "meta_ads" },
+    },
   });
 }
 

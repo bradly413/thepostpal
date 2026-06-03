@@ -1,6 +1,11 @@
 const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || "";
 const APP_SECRET = process.env.META_APP_SECRET || "";
 const REDIRECT_URI = process.env.META_REDIRECT_URI || "http://localhost:3000/api/meta/callback";
+export const ADS_REDIRECT_URI =
+  process.env.META_ADS_REDIRECT_URI ||
+  (process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/meta/ads/callback`
+    : "http://localhost:8240/api/meta/ads/callback");
 const GRAPH = "https://graph.facebook.com/v25.0";
 
 const SCOPES = [
@@ -10,6 +15,15 @@ const SCOPES = [
   "instagram_basic",
   "instagram_content_publish",
 ].join(",");
+
+/** Incremental Marketing API consent — separate from organic page publishing. */
+export const META_ADS_SCOPES = [
+  "ads_management",
+  "ads_read",
+  "business_management",
+] as const;
+
+const ADS_OAUTH_SCOPES = [...META_ADS_SCOPES, "pages_show_list"].join(",");
 
 export function getLoginUrl(state: string) {
   const params = new URLSearchParams({
@@ -22,11 +36,23 @@ export function getLoginUrl(state: string) {
   return `https://www.facebook.com/v21.0/dialog/oauth?${params}`;
 }
 
-export async function exchangeCode(code: string) {
+/** Ads-only OAuth — does not replace organic scopes on the standard connect flow. */
+export function getAdsLoginUrl(state: string) {
+  const params = new URLSearchParams({
+    client_id: APP_ID,
+    redirect_uri: ADS_REDIRECT_URI,
+    scope: ADS_OAUTH_SCOPES,
+    response_type: "code",
+    state,
+  });
+  return `https://www.facebook.com/v21.0/dialog/oauth?${params}`;
+}
+
+export async function exchangeCode(code: string, redirectUri = REDIRECT_URI) {
   const params = new URLSearchParams({
     client_id: APP_ID,
     client_secret: APP_SECRET,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     code,
   });
   const res = await fetch(`${GRAPH}/oauth/access_token?${params}`);

@@ -87,9 +87,16 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   const { features } = usePlan();
   // Single-location plans don't manage channels/roll-ups — hide that nav entry.
-  const extraNav = features.locationRollup
+  let extraNav = features.locationRollup
     ? EXTRA_NAV
     : EXTRA_NAV.filter((item) => item.href !== "/dashboard/organization");
+  if (features.metaAds) {
+    extraNav = [
+      ...extraNav.slice(0, 1),
+      { label: "Ads", icon: "reports", href: "/dashboard/ads" },
+      ...extraNav.slice(1),
+    ];
+  }
   const allNav = [...NAV, ...extraNav];
 
   useEffect(() => {
