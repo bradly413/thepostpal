@@ -91,6 +91,7 @@ export default function PosterboyStudio() {
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const dragRef = useRef<{ px: number; py: number; ex: number; ey: number } | null>(null);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -108,6 +109,22 @@ export default function PosterboyStudio() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
+
+  // Scroll to zoom the generated image (non-passive so it can preventDefault).
+  useEffect(() => {
+    const el = frameWrapRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (genState !== "done" || showTemplate) return;
+      e.preventDefault();
+      setEdit((s) => ({
+        ...s,
+        scale: Math.max(0.5, Math.min(3, Number((s.scale - e.deltaY * 0.0015).toFixed(3)))),
+      }));
+    };
+    el.addEventListener("wheel", onWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onWheel);
+  }, [genState, showTemplate]);
 
   // Close the post-type / tools popover on outside click (lives in the
   // right rail and the prompt bar respectively).
@@ -219,6 +236,30 @@ export default function PosterboyStudio() {
     genState === "generating"
       ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
       : 0;
+
+  // Direct manipulation — drag to pan, wheel to zoom the generated image.
+  const canEditImage = genState === "done" && !showTemplate;
+  const clampPan = (v: number) => Math.max(-50, Math.min(50, v));
+  const onImagePointerDown = (e: React.PointerEvent) => {
+    if (!canEditImage) return;
+    try {
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+    } catch {
+      // Pointer capture can fail in some environments; dragging still works.
+    }
+    dragRef.current = { px: e.clientX, py: e.clientY, ex: edit.x, ey: edit.y };
+  };
+  const onImagePointerMove = (e: React.PointerEvent) => {
+    const d = dragRef.current;
+    const box = frameWrapRef.current?.getBoundingClientRect();
+    if (!d || !box) return;
+    const nx = d.ex + ((e.clientX - d.px) / box.width) * 100;
+    const ny = d.ey + ((e.clientY - d.py) / box.height) * 100;
+    setEdit((s) => ({ ...s, x: clampPan(nx), y: clampPan(ny) }));
+  };
+  const onImagePointerUp = () => {
+    dragRef.current = null;
+  };
 
   // Image edit transforms — applied to the preview, carry into the post mockup.
   const previewStyle = {
@@ -493,8 +534,12 @@ export default function PosterboyStudio() {
               </div>
             )}
             <div
-              className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}`}
+              className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
               style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : { width: "100%", height: "100%" }}
+              onPointerDown={onImagePointerDown}
+              onPointerMove={onImagePointerMove}
+              onPointerUp={onImagePointerUp}
+              onPointerCancel={onImagePointerUp}
             >
               <div className="emerge" style={{ opacity: emergeOpacity }} />
               <div className="preview" style={previewStyle} />
@@ -1252,7 +1297,7 @@ function StudioStyles() {
     opacity: 0;
     transition: opacity 0.4s ease-out;
     z-index: 4;
-  }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio /* The empty state caption (subtle, .pb-studio only visible on hover) */
+  }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio .frame.editable { cursor: grab; touch-action: none; }.pb-studio .frame.editable:active { cursor: grabbing; }.pb-studio /* The empty state caption (subtle, .pb-studio only visible on hover) */
   .frame-hint {
     position: absolute;
     bottom: 14px;
