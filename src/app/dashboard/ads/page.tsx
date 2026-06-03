@@ -157,7 +157,7 @@ export default function MetaAdsBuilderPage() {
 
   if (planLoading || locationLoading) {
     return (
-      <div className="pb-app p-6 space-y-4">
+      <div className="pb-app space-y-4">
         <SkeletonText className="h-8 w-48" />
         <SkeletonText className="h-32 w-full" />
       </div>
@@ -166,34 +166,38 @@ export default function MetaAdsBuilderPage() {
 
   if (!features.metaAds) {
     return (
-      <div className="pb-app p-6">
-        <EmptyState
-          title="Meta Ads is a Command feature"
-          sub="Upgrade to Command and enable META_ADS_ENABLED to access the ad builder."
-          action={
-            <Link href="/pricing" className="text-sm underline">
-              View pricing
-            </Link>
-          }
-        />
+      <div className="pb-app">
+        <div className="pb-app-header">
+          <h1>Meta Ads</h1>
+          <p>Build campaigns in a calm flow.</p>
+        </div>
+        <div className="pb-panel max-w-2xl">
+          <h2 className="pb-panel-h">Meta Ads is a Command feature</h2>
+          <p className="text-sm opacity-65 mb-5">
+            Upgrade to Command and enable META_ADS_ENABLED to access the ad builder.
+          </p>
+          <Link href="/pricing" className="pb-btn-primary text-sm py-2 px-4 inline-flex">
+            View pricing
+          </Link>
+        </div>
       </div>
     );
   }
 
   if (!locationId) {
     return (
-      <div className="pb-app p-6">
+      <div className="pb-app">
         <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
       </div>
     );
   }
 
   return (
-    <div className="pb-app px-4 py-6 md:px-8 max-w-3xl">
-      <div className="flex flex-wrap items-start gap-4 mb-8">
+    <div className="pb-app max-w-3xl">
+      <div className="pb-app-header flex flex-wrap items-start gap-4">
         <div className="flex-1">
-          <h1 className="text-xl font-heading font-semibold text-text">Meta Ads</h1>
-          <p className="text-sm text-text-secondary mt-1">
+          <h1>Meta Ads</h1>
+          <p>
             Build campaigns in a calm flow. Everything is created paused in Meta Ads Manager.
           </p>
         </div>
@@ -201,7 +205,10 @@ export default function MetaAdsBuilderPage() {
       </div>
 
       {success && (
-        <p className="mb-4 text-sm text-success border border-success/30 rounded-xl px-4 py-3 bg-success/5">
+        <p
+          className="mb-4 text-sm rounded-xl px-4 py-3"
+          style={{ color: "#1f9d4d", background: "rgba(31,157,77,0.08)", border: "1px solid rgba(31,157,77,0.3)" }}
+        >
           {success}
         </p>
       )}
@@ -226,20 +233,20 @@ export default function MetaAdsBuilderPage() {
               type="button"
               disabled={connecting}
               onClick={() => void handleConnectAds()}
-              className="rounded-full bg-[#1a1a1a] px-5 py-2 text-sm text-white"
+              className="pb-btn-primary text-sm py-2 px-4"
             >
               {connecting ? "Redirecting…" : "Connect Meta Ads"}
             </button>
           }
         />
       ) : (
-        <form onSubmit={handleLaunch} className="space-y-8">
-          <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-secondary">Ad account</h2>
+        <form onSubmit={handleLaunch} className="space-y-4">
+          <section className="pb-panel">
+            <h2 className="pb-panel-h">Ad account</h2>
             <select
               value={adAccountId}
               onChange={(e) => setAdAccountId(e.target.value)}
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             >
               {accounts.map((a) => (
                 <option key={a.id} value={a.adAccountId}>
@@ -249,12 +256,12 @@ export default function MetaAdsBuilderPage() {
             </select>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-secondary">Objective</h2>
+          <section className="pb-panel space-y-3">
+            <h2 className="pb-panel-h">Objective</h2>
             <select
               value={objective}
               onChange={(e) => setObjective(e.target.value)}
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             >
               {OBJECTIVES.map((o) => (
                 <option key={o.id} value={o.id}>
@@ -267,102 +274,102 @@ export default function MetaAdsBuilderPage() {
               value={campaignName}
               onChange={(e) => setCampaignName(e.target.value)}
               placeholder="Campaign name"
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             />
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-secondary">Budget and schedule</h2>
+          <section className="pb-panel">
+            <h2 className="pb-panel-h">Budget and schedule</h2>
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                Daily budget (USD)
+              <div>
+                <label className="pb-label">Daily budget (USD)</label>
                 <input
                   type="number"
                   min="1"
                   step="1"
                   value={dailyBudget}
                   onChange={(e) => setDailyBudget(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
-              <label className="text-sm">
-                Country
+              </div>
+              <div>
+                <label className="pb-label">Country</label>
                 <input
                   type="text"
                   value={geo}
                   onChange={(e) => setGeo(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
-              <label className="text-sm">
-                Start date
+              </div>
+              <div>
+                <label className="pb-label">Start date</label>
                 <input
                   type="date"
                   value={startDate}
                   onChange={(e) => setStartDate(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
-              <label className="text-sm">
-                End date (optional)
+              </div>
+              <div>
+                <label className="pb-label">End date (optional)</label>
                 <input
                   type="date"
                   value={endDate}
                   onChange={(e) => setEndDate(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
+              </div>
             </div>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-secondary">Audience</h2>
+          <section className="pb-panel">
+            <h2 className="pb-panel-h">Audience</h2>
             <div className="grid grid-cols-2 gap-3">
-              <label className="text-sm">
-                Age min
+              <div>
+                <label className="pb-label">Age min</label>
                 <input
                   type="number"
                   min="18"
                   max="65"
                   value={ageMin}
                   onChange={(e) => setAgeMin(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
-              <label className="text-sm">
-                Age max
+              </div>
+              <div>
+                <label className="pb-label">Age max</label>
                 <input
                   type="number"
                   min="18"
                   max="65"
                   value={ageMax}
                   onChange={(e) => setAgeMax(e.target.value)}
-                  className="mt-1 w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+                  className="pb-field"
                 />
-              </label>
+              </div>
             </div>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-xs uppercase tracking-widest text-text-secondary">Creative</h2>
+          <section className="pb-panel space-y-3">
+            <h2 className="pb-panel-h">Creative</h2>
             <textarea
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={3}
               placeholder="Primary text"
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             />
             <input
               type="url"
               value={link}
               onChange={(e) => setLink(e.target.value)}
               placeholder="Destination URL"
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             />
             <select
               value={cta}
               onChange={(e) => setCta(e.target.value)}
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             >
               {CTAS.map((c) => (
                 <option key={c} value={c}>
@@ -373,7 +380,7 @@ export default function MetaAdsBuilderPage() {
             <select
               value={imageUrl}
               onChange={(e) => setImageUrl(e.target.value)}
-              className="w-full border border-border rounded-xl px-3 py-2 text-sm bg-bg"
+              className="pb-field"
             >
               <option value="">Select photo asset</option>
               {photos.map((p) => (
@@ -387,7 +394,7 @@ export default function MetaAdsBuilderPage() {
           <button
             type="submit"
             disabled={submitting || !imageUrl || !message || !link}
-            className="w-full rounded-2xl bg-[#1a1a1a] text-white py-4 text-sm tracking-wide disabled:opacity-40"
+            className="pb-btn-primary w-full justify-center py-4 disabled:opacity-40"
           >
             {submitting ? "Creating paused ad…" : "Create paused ad"}
           </button>
@@ -395,9 +402,9 @@ export default function MetaAdsBuilderPage() {
       )}
 
       {insights && insights.length > 0 && (
-        <section className="mt-10 border border-border rounded-2xl p-4">
-          <h2 className="text-xs uppercase tracking-widest text-text-secondary mb-2">Recent insights</h2>
-          <pre className="text-[10px] font-mono text-text-secondary overflow-x-auto whitespace-pre-wrap">
+        <section className="pb-panel mt-10">
+          <h2 className="pb-panel-h">Recent insights</h2>
+          <pre className="text-[10px] font-mono opacity-55 overflow-x-auto whitespace-pre-wrap">
             {JSON.stringify(insights[0], null, 2)}
           </pre>
         </section>

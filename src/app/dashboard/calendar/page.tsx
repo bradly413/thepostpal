@@ -55,17 +55,17 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
 });
 
 const platformColors: Record<string, string> = {
-  facebook: "bg-accent/15 text-accent",
-  instagram: "bg-accent-cyan/15 text-accent-cyan",
-  both: "bg-success/15 text-success",
+  facebook: "bg-[rgba(59,130,246,0.12)] text-[#2563eb]",
+  instagram: "bg-[rgba(236,72,153,0.12)] text-[#db2777]",
+  both: "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d]",
 };
 
 const eventTypeColors: Record<string, string> = {
-  "open-house": "bg-warning/15 text-warning",
-  closing: "bg-success/15 text-success",
-  meeting: "bg-accent/15 text-accent",
-  personal: "bg-accent-cyan/15 text-accent-cyan",
-  other: "bg-elevated text-text-secondary",
+  "open-house": "bg-[rgba(217,119,6,0.12)] text-[#b45309]",
+  closing: "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d]",
+  meeting: "bg-[rgba(238,37,50,0.1)] text-[#ee2532]",
+  personal: "bg-[rgba(59,130,246,0.12)] text-[#2563eb]",
+  other: "bg-black/[0.05] text-black/55",
 };
 
 const eventTypeLabels: Record<string, string> = {
@@ -414,17 +414,17 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="px-4 py-6 md:px-6">
-      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="pb-app">
+      <div className="pb-app-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold text-text font-heading">Calendar</h1>
-          <p className="text-sm text-text-secondary mt-1">Schedule posts, track events, and plan your content</p>
+          <h1>Calendar</h1>
+          <p>Schedule posts, track events, and plan your content</p>
         </div>
         <div className="flex items-center gap-2 self-start">
           {features.multiLocation && <LocationSwitcher />}
           <button
             onClick={() => openNewEvent(todayKey)}
-            className="flex items-center gap-1.5 rounded-full border border-border px-4 py-2 text-xs font-medium text-text-secondary hover:text-text hover:bg-elevated transition-all"
+            className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2 px-4"
           >
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
@@ -433,7 +433,7 @@ export default function CalendarPage() {
           </button>
           <button
             onClick={() => openNewPost(todayKey)}
-            className="flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all"
+            className="pb-btn-primary flex items-center gap-1.5 text-xs py-2 px-4"
           >
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -445,7 +445,7 @@ export default function CalendarPage() {
 
       {publishResult && (
         <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between ${
-          publishResult.type === "success" ? "bg-success/10 text-success" : "bg-danger/10 text-danger"
+          publishResult.type === "success" ? "bg-[rgba(31,157,77,0.1)] text-[#1f9d4d]" : "bg-[rgba(238,37,50,0.1)] text-[#ee2532]"
         }`}>
           {publishResult.message}
           <button onClick={() => setPublishResult(null)} className="ml-3 opacity-60 hover:opacity-100 transition-opacity">
@@ -459,29 +459,29 @@ export default function CalendarPage() {
           {/* Calendar controls */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-text font-heading">{monthName}</h2>
+              <h2 className="text-lg font-bold text-black font-heading">{monthName}</h2>
               <div className="flex gap-1">
-                <button onClick={prevPeriod} className="p-1.5 rounded-lg text-text-secondary hover:bg-elevated hover:text-text transition-colors">
+                <button onClick={prevPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
                   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
-                <button onClick={nextPeriod} className="p-1.5 rounded-lg text-text-secondary hover:bg-elevated hover:text-text transition-colors">
+                <button onClick={nextPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
                   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
               </div>
-              <button onClick={goToday} className="rounded-lg border border-border px-2.5 py-1 text-xs font-medium text-text-secondary hover:text-text hover:bg-elevated transition-all">
+              <button onClick={goToday} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Today
               </button>
             </div>
             <div className="flex items-center gap-3">
               <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" name="show-holidays" checked={showHolidays} onChange={(e) => setShowHolidays(e.target.checked)} className="rounded border-border accent-accent" />
-                <span className="text-[11px] text-text-secondary">Holidays</span>
+                <input type="checkbox" name="show-holidays" checked={showHolidays} onChange={(e) => setShowHolidays(e.target.checked)} className="rounded border-black/10 accent-[#ee2532]" />
+                <span className="text-[11px] text-black/55">Holidays</span>
               </label>
-              <div className="flex gap-1 rounded-xl bg-surface border border-border p-1">
-                <button onClick={() => setView("month")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "month" ? "bg-elevated text-text" : "text-text-secondary hover:text-text"}`}>
+              <div className="flex gap-1 rounded-xl bg-white border border-black/10 p-1">
+                <button onClick={() => setView("month")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "month" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
                   Month
                 </button>
-                <button onClick={() => setView("week")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "week" ? "bg-elevated text-text" : "text-text-secondary hover:text-text"}`}>
+                <button onClick={() => setView("week")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "week" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
                   Week
                 </button>
               </div>
@@ -490,10 +490,10 @@ export default function CalendarPage() {
 
           {/* Month view */}
           {view === "month" && (
-            <div className="rounded-2xl bg-surface border border-border overflow-hidden">
+            <div className="rounded-2xl bg-white border border-black/10 overflow-hidden">
               <div className="grid grid-cols-7">
                 {DAYS.map((d) => (
-                  <div key={d} className="px-2 py-2.5 text-center text-xs font-bold text-text-secondary/50 border-b border-border">{d}</div>
+                  <div key={d} className="px-2 py-2.5 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7">
@@ -507,18 +507,18 @@ export default function CalendarPage() {
                     <button
                       key={i}
                       onClick={() => openDayDetail(cell.dateKey)}
-                      className={`min-h-[110px] border-b border-r border-border p-1.5 cursor-pointer hover:bg-elevated/30 transition-colors text-left ${
+                      className={`min-h-[110px] border-b border-r border-black/10 p-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
                     >
                       <div className={`text-xs font-medium mb-0.5 w-6 h-6 flex items-center justify-center rounded-full ${
-                        isToday ? "bg-gradient-to-br from-accent to-accent-cyan text-white font-bold" : "text-text-secondary"
+                        isToday ? "bg-[#ee2532] text-white font-bold" : "text-black/55"
                       }`}>
                         {cell.day}
                       </div>
                       <div className="space-y-0.5">
                         {holiday && (
-                          <div className="rounded px-1 py-0.5 text-[9px] font-semibold truncate bg-warning/10 text-warning">
+                          <div className="rounded px-1 py-0.5 text-[9px] font-semibold truncate bg-[rgba(217,119,6,0.1)] text-[#b45309]">
                             {holiday}
                           </div>
                         )}
@@ -536,14 +536,14 @@ export default function CalendarPage() {
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
                             className={`w-full text-left rounded px-1 py-0.5 text-[9px] font-medium truncate transition-colors hover:opacity-80 ${
-                              p.status === "draft" ? "bg-elevated text-text-secondary border border-dashed border-border" : platformColors[p.platform]
+                              p.status === "draft" ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
                             {p.time.slice(0, 5)} {p.templateName}
                           </button>
                         ))}
                         {totalItems > (holiday ? 3 : 4) && (
-                          <p className="text-[9px] text-text-secondary px-1">+{totalItems - (holiday ? 3 : 4)} more</p>
+                          <p className="text-[9px] text-black/55 px-1">+{totalItems - (holiday ? 3 : 4)} more</p>
                         )}
                       </div>
                     </button>
@@ -555,7 +555,7 @@ export default function CalendarPage() {
 
           {/* Week view */}
           {view === "week" && (
-            <div className="rounded-2xl bg-surface border border-border overflow-hidden">
+            <div className="rounded-2xl bg-white border border-black/10 overflow-hidden">
               <div className="grid grid-cols-7">
                 {getWeekDates().map((wd) => {
                   const isToday = wd.dateKey === todayKey;
@@ -563,17 +563,17 @@ export default function CalendarPage() {
                   const dayEvents = eventsMap.get(wd.dateKey) || [];
                   const holiday = showHolidays ? holidayMap.get(wd.dateKey) : undefined;
                   return (
-                    <div key={wd.dateKey} className="border-r border-border last:border-r-0">
-                      <div className={`px-2 py-3 text-center border-b border-border ${isToday ? "bg-accent/5" : ""}`}>
-                        <p className="text-[10px] text-text-secondary font-bold uppercase">{wd.dayName}</p>
-                        <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-accent" : "text-text"}`}>{wd.day}</p>
+                    <div key={wd.dateKey} className="border-r border-black/10 last:border-r-0">
+                      <div className={`px-2 py-3 text-center border-b border-black/10 ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
+                        <p className="text-[10px] text-black/55 font-bold uppercase">{wd.dayName}</p>
+                        <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-[#ee2532]" : "text-black"}`}>{wd.day}</p>
                       </div>
                       <button
-                        className="min-h-[400px] p-2 space-y-1.5 cursor-pointer hover:bg-elevated/20 transition-colors w-full text-left"
+                        className="min-h-[400px] p-2 space-y-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors w-full text-left"
                         onClick={() => openDayDetail(wd.dateKey)}
                       >
                         {holiday && (
-                          <div className="rounded-lg p-2 bg-warning/10 text-warning">
+                          <div className="rounded-lg p-2 bg-[rgba(217,119,6,0.1)] text-[#b45309]">
                             <p className="text-[10px] font-bold">{holiday}</p>
                           </div>
                         )}
@@ -593,7 +593,7 @@ export default function CalendarPage() {
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
                             className={`w-full text-left rounded-lg p-2 transition-colors hover:opacity-80 ${
-                              p.status === "draft" ? "bg-elevated border border-dashed border-border" : platformColors[p.platform]
+                              p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
                             <p className="text-[10px] font-bold">{p.time.slice(0, 5)}</p>
@@ -612,48 +612,48 @@ export default function CalendarPage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-surface border border-border p-4">
-            <h3 className="text-sm font-bold text-text mb-3">Upcoming Posts</h3>
+          <div className="rounded-2xl bg-white border border-black/10 p-4">
+            <h3 className="text-sm font-bold text-black mb-3">Upcoming Posts</h3>
             {upcoming.length === 0 ? (
-              <p className="text-xs text-text-secondary py-4 text-center">No upcoming posts scheduled</p>
+              <p className="text-xs text-black/55 py-4 text-center">No upcoming posts scheduled</p>
             ) : (
               <div className="space-y-2">
                 {upcoming.map((p) => (
                   <button
                     key={p.id}
                     onClick={() => openEditPost(p)}
-                    className="w-full text-left rounded-xl bg-elevated/50 p-3 hover:bg-elevated transition-colors"
+                    className="w-full text-left rounded-xl bg-black/[0.03] p-3 hover:bg-black/[0.05] transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-text-secondary">{p.date} at {p.time}</span>
+                      <span className="text-[10px] font-bold text-black/55">{p.date} at {p.time}</span>
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${platformColors[p.platform]}`}>{p.platform}</span>
                     </div>
-                    <p className="text-xs font-semibold text-text">{p.templateName}</p>
-                    {p.caption && <p className="text-[10px] text-text-secondary truncate mt-0.5">{p.caption}</p>}
+                    <p className="text-xs font-semibold text-black">{p.templateName}</p>
+                    {p.caption && <p className="text-[10px] text-black/55 truncate mt-0.5">{p.caption}</p>}
                   </button>
                 ))}
               </div>
             )}
           </div>
 
-          <div className="rounded-2xl bg-surface border border-border p-4">
-            <h3 className="text-sm font-bold text-text mb-3">Upcoming Events</h3>
+          <div className="rounded-2xl bg-white border border-black/10 p-4">
+            <h3 className="text-sm font-bold text-black mb-3">Upcoming Events</h3>
             {upcomingEvents.length === 0 ? (
-              <p className="text-xs text-text-secondary py-4 text-center">No upcoming events</p>
+              <p className="text-xs text-black/55 py-4 text-center">No upcoming events</p>
             ) : (
               <div className="space-y-2">
                 {upcomingEvents.map((ev) => (
                   <button
                     key={ev.id}
                     onClick={() => openEditEvent(ev)}
-                    className="w-full text-left rounded-xl bg-elevated/50 p-3 hover:bg-elevated transition-colors"
+                    className="w-full text-left rounded-xl bg-black/[0.03] p-3 hover:bg-black/[0.05] transition-colors"
                   >
                     <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-text-secondary">{ev.date}{ev.time ? ` at ${ev.time}` : ""}</span>
+                      <span className="text-[10px] font-bold text-black/55">{ev.date}{ev.time ? ` at ${ev.time}` : ""}</span>
                       <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${eventTypeColors[ev.type]}`}>{eventTypeLabels[ev.type]}</span>
                     </div>
-                    <p className="text-xs font-semibold text-text">{ev.title}</p>
-                    {ev.notes && <p className="text-[10px] text-text-secondary truncate mt-0.5">{ev.notes}</p>}
+                    <p className="text-xs font-semibold text-black">{ev.title}</p>
+                    {ev.notes && <p className="text-[10px] text-black/55 truncate mt-0.5">{ev.notes}</p>}
                   </button>
                 ))}
               </div>
@@ -661,37 +661,37 @@ export default function CalendarPage() {
           </div>
 
           {showHolidays && upcomingHolidays.length > 0 && (
-            <div className="rounded-2xl bg-surface border border-border p-4">
-              <h3 className="text-sm font-bold text-text mb-3">Upcoming Holidays</h3>
+            <div className="rounded-2xl bg-white border border-black/10 p-4">
+              <h3 className="text-sm font-bold text-black mb-3">Upcoming Holidays</h3>
               <div className="space-y-2">
                 {upcomingHolidays.map(([date, name]) => (
-                  <div key={date} className="rounded-xl bg-warning/5 border border-warning/10 p-3">
-                    <p className="text-[10px] font-bold text-text-secondary">{new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
-                    <p className="text-xs font-semibold text-warning">{name}</p>
+                  <div key={date} className="rounded-xl bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] p-3">
+                    <p className="text-[10px] font-bold text-black/55">{new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                    <p className="text-xs font-semibold text-[#b45309]">{name}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="rounded-2xl bg-surface border border-border p-4">
-            <h3 className="text-sm font-bold text-text mb-3">Schedule Stats</h3>
+          <div className="rounded-2xl bg-white border border-black/10 p-4">
+            <h3 className="text-sm font-bold text-black mb-3">Schedule Stats</h3>
             <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-xl bg-elevated/50 p-3 text-center">
-                <p className="text-xl font-bold text-text font-heading">{posts.filter((p) => p.status === "scheduled").length}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Scheduled</p>
+              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
+                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "scheduled").length}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Scheduled</p>
               </div>
-              <div className="rounded-xl bg-elevated/50 p-3 text-center">
-                <p className="text-xl font-bold text-text font-heading">{posts.filter((p) => p.status === "draft").length}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Drafts</p>
+              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
+                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "draft").length}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Drafts</p>
               </div>
-              <div className="rounded-xl bg-elevated/50 p-3 text-center">
-                <p className="text-xl font-bold text-text font-heading">{posts.filter((p) => p.status === "published").length}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Published</p>
+              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
+                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "published").length}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Published</p>
               </div>
-              <div className="rounded-xl bg-elevated/50 p-3 text-center">
-                <p className="text-xl font-bold text-text font-heading">{events.length}</p>
-                <p className="text-[10px] text-text-secondary mt-0.5">Events</p>
+              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
+                <p className="text-xl font-bold text-black font-heading">{events.length}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Events</p>
               </div>
             </div>
           </div>
@@ -701,15 +701,15 @@ export default function CalendarPage() {
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Event details" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-surface border border-border shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-6 py-4 border-b border-border shrink-0">
+          <div role="dialog" aria-modal="true" aria-label="Event details" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-text font-heading">{formatDisplayDate(selectedDate)}</h3>
+                <h3 className="text-lg font-bold text-black font-heading">{formatDisplayDate(selectedDate)}</h3>
                 {holidayMap.get(selectedDate) && (
-                  <p className="text-xs font-semibold text-warning mt-0.5">{holidayMap.get(selectedDate)}</p>
+                  <p className="text-xs font-semibold text-[#b45309] mt-0.5">{holidayMap.get(selectedDate)}</p>
                 )}
               </div>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -717,7 +717,7 @@ export default function CalendarPage() {
               {/* Events for this day */}
               {(eventsMap.get(selectedDate) || []).length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Events</p>
+                  <p className="text-[10px] font-bold text-black/55 uppercase tracking-wider mb-2">Events</p>
                   <div className="space-y-1.5">
                     {(eventsMap.get(selectedDate) || []).map((ev) => (
                       <button
@@ -740,14 +740,14 @@ export default function CalendarPage() {
               {/* Posts for this day */}
               {(postsMap.get(selectedDate) || []).length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-text-secondary uppercase tracking-wider mb-2">Scheduled Posts</p>
+                  <p className="text-[10px] font-bold text-black/55 uppercase tracking-wider mb-2">Scheduled Posts</p>
                   <div className="space-y-1.5">
                     {(postsMap.get(selectedDate) || []).map((p) => (
                       <button
                         key={p.id}
                         onClick={() => openEditPost(p)}
                         className={`w-full text-left rounded-xl p-3 transition-colors hover:opacity-80 ${
-                          p.status === "draft" ? "bg-elevated border border-dashed border-border" : platformColors[p.platform]
+                          p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                         }`}
                       >
                         <div className="flex items-center justify-between mb-0.5">
@@ -763,20 +763,20 @@ export default function CalendarPage() {
               )}
 
               {(postsMap.get(selectedDate) || []).length === 0 && (eventsMap.get(selectedDate) || []).length === 0 && !holidayMap.get(selectedDate) && (
-                <p className="text-sm text-text-secondary text-center py-6">Nothing scheduled for this day</p>
+                <p className="text-sm text-black/55 text-center py-6">Nothing scheduled for this day</p>
               )}
             </div>
-            <div className="flex gap-2 px-6 py-4 border-t border-border shrink-0">
+            <div className="flex gap-2 px-6 py-4 border-t border-black/10 shrink-0">
               <button
                 onClick={() => openNewEvent(selectedDate)}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-full border border-border py-2.5 text-xs font-medium text-text-secondary hover:text-text hover:bg-elevated transition-all"
+                className="pb-btn-secondary flex-1 flex items-center justify-center gap-1.5 text-xs py-2.5"
               >
                 <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                 Add Event
               </button>
               <button
                 onClick={() => openNewPost(selectedDate)}
-                className="flex-1 flex items-center justify-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-2.5 text-xs font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all"
+                className="pb-btn-primary flex-1 flex items-center justify-center gap-1.5 text-xs py-2.5"
               >
                 <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                 Schedule Post
@@ -789,21 +789,21 @@ export default function CalendarPage() {
       {/* Schedule Post Modal */}
       {modalMode === "post" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Schedule post" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Schedule post" className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-text font-heading">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <h3 className="text-lg font-bold text-black font-heading">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Template</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Template</label>
                 <select
                   value={formTemplate}
                   onChange={(e) => setFormTemplate(e.target.value)}
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  className="pb-field"
                 >
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>{t.name}</option>
@@ -813,20 +813,20 @@ export default function CalendarPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-text mb-1.5">Date</label>
+                  <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:dark]"
+                    className="pb-field"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-text mb-1.5">Time</label>
+                  <label className="block text-xs font-medium text-black mb-1.5">Time</label>
                   <select
                     value={formTime}
                     onChange={(e) => setFormTime(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    className="pb-field"
                   >
                     {TIME_OPTIONS.map((t) => (
                       <option key={t.value} value={t.value}>{t.display}</option>
@@ -836,7 +836,7 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Platform</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Platform</label>
                 <div className="flex gap-2">
                   {(["facebook", "instagram", "both"] as const).map((p) => (
                     <button
@@ -844,8 +844,8 @@ export default function CalendarPage() {
                       onClick={() => setFormPlatform(p)}
                       className={`flex-1 rounded-xl py-2 text-xs font-semibold capitalize transition-all ${
                         formPlatform === p
-                          ? "bg-white/15 backdrop-blur-sm border border-white/20 text-white"
-                          : "bg-elevated border border-border text-text-secondary hover:text-text"
+                          ? "bg-[#ee2532] text-white"
+                          : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
                       }`}
                     >
                       {p === "both" ? "Both" : p}
@@ -855,25 +855,25 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Caption</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Caption</label>
                 <textarea
                   value={formCaption}
                   onChange={(e) => setFormCaption(e.target.value)}
                   rows={3}
                   placeholder="Write your post caption…"
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  className="pb-field resize-none"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Status</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Status</label>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setFormStatus("scheduled")}
                     className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
                       formStatus === "scheduled"
-                        ? "bg-success/15 text-success border border-success/30"
-                        : "bg-elevated border border-border text-text-secondary hover:text-text"
+                        ? "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d] border border-[rgba(31,157,77,0.3)]"
+                        : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
                     }`}
                   >
                     Schedule
@@ -882,8 +882,8 @@ export default function CalendarPage() {
                     onClick={() => setFormStatus("draft")}
                     className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
                       formStatus === "draft"
-                        ? "bg-warning/15 text-warning border border-warning/30"
-                        : "bg-elevated border border-border text-text-secondary hover:text-text"
+                        ? "bg-[rgba(217,119,6,0.12)] text-[#b45309] border border-[rgba(217,119,6,0.3)]"
+                        : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
                     }`}
                   >
                     Save as Draft
@@ -893,9 +893,9 @@ export default function CalendarPage() {
             </div>
 
             {meta?.connected && formStatus === "scheduled" && !editingPost && (
-              <div className="flex items-center gap-2 rounded-lg bg-success/10 px-3 py-2 mt-4">
-                <div className="h-2 w-2 rounded-full bg-success" />
-                <p className="text-[11px] text-success font-medium">Connected to {meta.pageName} — will schedule via Meta Graph API</p>
+              <div className="flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2 mt-4">
+                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
+                <p className="text-[11px] text-[#1f9d4d] font-medium">Connected to {meta.pageName} — will schedule via Meta Graph API</p>
               </div>
             )}
 
@@ -903,18 +903,18 @@ export default function CalendarPage() {
               {editingPost && (
                 <button
                   onClick={handleDeletePost}
-                  className="rounded-xl border border-danger/30 px-4 py-2.5 text-sm font-semibold text-danger hover:bg-danger/10 transition-all"
+                  className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
                 </button>
               )}
-              <button onClick={() => setModalMode(null)} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-semibold text-text-secondary hover:text-text hover:bg-elevated transition-all">
+              <button onClick={() => setModalMode(null)} className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Cancel
               </button>
               <button
                 onClick={handleSavePost}
                 disabled={publishing}
-                className="flex-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-2.5 text-sm font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all disabled:opacity-50"
+                className="pb-btn-primary flex-1 text-sm py-2.5 disabled:opacity-50"
               >
                 {publishing ? "Scheduling..." : editingPost ? "Update" : "Schedule"}
               </button>
@@ -926,28 +926,28 @@ export default function CalendarPage() {
       {/* Event Modal */}
       {modalMode === "event" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Add event" className="w-full max-w-md rounded-2xl bg-surface border border-border p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div role="dialog" aria-modal="true" aria-label="Add event" className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-text font-heading">{editingEvent ? "Edit Event" : "Add Event"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-text-secondary hover:text-text hover:bg-elevated transition-colors">
+              <h3 className="text-lg font-bold text-black font-heading">{editingEvent ? "Edit Event" : "Add Event"}</h3>
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
 
             <div className="space-y-4">
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Event Title</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Event Title</label>
                 <input
                   type="text"
                   value={eventTitle}
                   onChange={(e) => setEventTitle(e.target.value)}
                   placeholder="Open house, closing, meeting…"
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                  className="pb-field"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Type</label>
+                <label className="block text-xs font-medium text-black mb-1.5">Type</label>
                 <div className="flex flex-wrap gap-2">
                   {(Object.keys(eventTypeLabels) as CalendarEvent["type"][]).map((t) => (
                     <button
@@ -956,7 +956,7 @@ export default function CalendarPage() {
                       className={`rounded-xl px-3 py-2 text-xs font-semibold transition-all ${
                         eventType === t
                           ? eventTypeColors[t] + " border border-current/20"
-                          : "bg-elevated border border-border text-text-secondary hover:text-text"
+                          : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
                       }`}
                     >
                       {eventTypeLabels[t]}
@@ -967,20 +967,20 @@ export default function CalendarPage() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-text mb-1.5">Date</label>
+                  <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input
                     type="date"
                     value={selectedDate}
                     onChange={(e) => setSelectedDate(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 [color-scheme:dark]"
+                    className="pb-field"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-text mb-1.5">Time <span className="text-text-secondary/50 font-normal">optional</span></label>
+                  <label className="block text-xs font-medium text-black mb-1.5">Time <span className="text-black/35 font-normal">optional</span></label>
                   <select
                     value={eventTime}
                     onChange={(e) => setEventTime(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20"
+                    className="pb-field"
                   >
                     <option value="">All day</option>
                     {TIME_OPTIONS.map((t) => (
@@ -991,13 +991,13 @@ export default function CalendarPage() {
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-text mb-1.5">Notes <span className="text-text-secondary/50 font-normal">optional</span></label>
+                <label className="block text-xs font-medium text-black mb-1.5">Notes <span className="text-black/35 font-normal">optional</span></label>
                 <textarea
                   value={eventNotes}
                   onChange={(e) => setEventNotes(e.target.value)}
                   rows={2}
                   placeholder="Any additional details…"
-                  className="w-full rounded-xl border border-border bg-elevated px-3 py-2.5 text-sm text-text placeholder:text-text-secondary/50 focus:border-accent focus:outline-none focus:ring-2 focus:ring-accent/20 resize-none"
+                  className="pb-field resize-none"
                 />
               </div>
             </div>
@@ -1006,18 +1006,18 @@ export default function CalendarPage() {
               {editingEvent && (
                 <button
                   onClick={handleDeleteEvent}
-                  className="rounded-xl border border-danger/30 px-4 py-2.5 text-sm font-semibold text-danger hover:bg-danger/10 transition-all"
+                  className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
                 </button>
               )}
-              <button onClick={() => setModalMode(null)} className="flex-1 rounded-xl border border-border py-2.5 text-sm font-semibold text-text-secondary hover:text-text hover:bg-elevated transition-all">
+              <button onClick={() => setModalMode(null)} className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Cancel
               </button>
               <button
                 onClick={handleSaveEvent}
                 disabled={!eventTitle.trim()}
-                className="flex-1 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 py-2.5 text-sm font-medium text-white hover:bg-accent/30 hover:border-accent/40 transition-all disabled:opacity-50"
+                className="pb-btn-primary flex-1 text-sm py-2.5 disabled:opacity-50"
               >
                 {editingEvent ? "Update" : "Add Event"}
               </button>
