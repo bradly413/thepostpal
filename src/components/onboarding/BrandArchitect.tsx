@@ -265,7 +265,22 @@ export default function BrandArchitect() {
     <div className="relative w-screen h-screen overflow-hidden bg-[#F9F9F9]">
       {/* Layer 1: fixed WebGL shader background */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <Canvas camera={{ position: [0, 0, 1] }}>
+        <Canvas
+          camera={{ position: [0, 0, 1] }}
+          frameloop="always"
+          dpr={[1, 2]}
+          gl={{ antialias: false, powerPreference: "high-performance" }}
+          onCreated={({ gl }) => {
+            // In dev, repeated HMR full-reloads can exhaust WebGL contexts and
+            // leave the smoke frozen. Letting the browser auto-restore a lost
+            // context keeps the background alive instead of going static.
+            gl.domElement.addEventListener(
+              "webglcontextlost",
+              (e) => e.preventDefault(),
+              false,
+            );
+          }}
+        >
           <SmokeBackground shaderRef={shaderRef} />
         </Canvas>
       </div>
