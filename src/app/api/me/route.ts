@@ -19,7 +19,14 @@ export async function GET() {
     return await withTenantDb(auth, async (tx) => {
       const org = await tx.organization.findUnique({
         where: { id: auth.tenantId },
-        select: { plan: true },
+        select: {
+          plan: true,
+          name: true,
+          businessType: true,
+          website: true,
+          locationCount: true,
+          createdAt: true,
+        },
       });
 
       if (!org) {
@@ -36,6 +43,15 @@ export async function GET() {
         organizationId: auth.organizationId,
         isSuperadmin: auth.isSuperadmin,
         locationCount,
+        organization: {
+          id: auth.organizationId,
+          name: org.name,
+          businessType: org.businessType,
+          website: org.website,
+          locationCount: org.locationCount,
+          plan: org.plan,
+          createdAt: org.createdAt.toISOString(),
+        },
       });
     });
   } catch {
