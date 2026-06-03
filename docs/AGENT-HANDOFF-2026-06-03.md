@@ -73,5 +73,15 @@ P0 real-UI validation (Solo surface, fresh signup + RLS isolation, Command surfa
 
 ## Open threads / tech debt
 - Secondary dashboard pages (dispatch/analytics/reports/facebook/instagram/editor) partly still on localStorage stores — migrate + delete dead `*-store.ts`.
-- `CLAUDE.md` is stale (repo path, "Prisma not active", route table) — needs a rewrite to match this reality.
+- `CLAUDE.md` — rewritten 2026-06-03 to match production; still read this handoff for gotchas and env status.
 - Uploads need S3 in prod (local-disk fallback is ephemeral on Vercel).
+- `/api/ai` should eventually use per-location brand book from `GET /api/brand-book`, not only `angie-nichols` hardcode.
+
+## Related docs
+| Doc | Purpose |
+|-----|---------|
+| `docs/PLAN-2026-06-04.md` | Tomorrow's P0–P3 checklist |
+| `docs/PROD-ENV-CHECKLIST.md` | Vercel env matrix |
+| `docs/PROD-DB-SETUP.md` | Neon + migrate + RLS |
+| `docs/AGENT-FLEET-PLAN.md` | Monitor/maintain/support agent fleet |
+| `CLAUDE.md` | Repo map (synced with this handoff) |
