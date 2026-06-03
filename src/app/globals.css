@@ -1040,34 +1040,47 @@ html[data-theme] body {
 }
 
 /* ── posterboy app (drafts workflow) ── */
+/* Content pages share the home page's foundation (.pb-home2): cool-gray
+   frosted background, sans typography, frosted-glass cards. The ONLY serif
+   in the dashboard is the logo — page titles are sans. */
 .pb-app {
-  --pb-ink: #111111;
-  --pb-bone: #F4EFE5;
+  --pb-ink: #1c1c1e;
+  --pb-ink-soft: #76767e;
+  --pb-line: rgba(20, 20, 30, 0.07);
   --pb-press: #ee2532;
   --pb-press-deep: #c81e2a;
-  --pb-paper: #FAF7F1;
+  --pb-card: rgba(255, 255, 255, 0.72);
+  min-height: 100%;
+  padding: 22px;
+  color: var(--pb-ink);
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  background:
+    radial-gradient(1100px 520px at 88% -8%, rgba(238, 37, 50, 0.06), transparent 60%),
+    linear-gradient(165deg, #eef0f2 0%, #e9ebee 55%, #edeff1 100%);
 }
 
 .pb-app-header {
-  margin-bottom: 2rem;
+  margin-bottom: 1.75rem;
 }
 
 .pb-app-header h1 {
-  font-family: var(--font-instrument-serif), Georgia, serif;
-  font-size: 1.75rem;
-  font-weight: 400;
+  font-family: inherit;
+  font-size: 1.5rem;
+  font-weight: 700;
   letter-spacing: -0.02em;
+  color: var(--pb-ink);
 }
 
 .pb-app-header p {
-  margin-top: 0.5rem;
+  margin-top: 0.4rem;
   font-size: 0.9375rem;
-  color: rgba(17, 17, 17, 0.65);
+  color: var(--pb-ink-soft);
 }
 
 [data-theme="light"] .pb-app-header p,
 [data-theme="dark"] .pb-app-header p {
-  color: rgba(17, 17, 17, 0.65);
+  color: var(--pb-ink-soft);
 }
 
 .pb-draft-list {
@@ -1077,8 +1090,12 @@ html[data-theme] body {
 
 .pb-draft-card {
   padding: 1.25rem 1.5rem;
-  background: var(--pb-paper, #FAF7F1);
-  border: 1px solid rgba(17, 17, 17, 0.08);
+  background: var(--pb-card, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 20px;
+  box-shadow: 0 22px 54px -38px rgba(20, 20, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.65);
   display: grid;
   grid-template-columns: auto 1fr auto;
   gap: 1rem;
@@ -1086,7 +1103,7 @@ html[data-theme] body {
 }
 
 [data-theme="light"] .pb-draft-card {
-  background: #FFFFFF;
+  background: var(--pb-card, rgba(255, 255, 255, 0.72));
 }
 
 .pb-draft-meta {
@@ -1183,17 +1200,20 @@ html[data-theme] body {
    ads, templates, editor, photos.
    ═══════════════════════════════════════════════════════════ */
 .pb-panel {
-  background: #ffffff;
-  border: 1px solid rgba(17, 17, 17, 0.08);
-  border-radius: 20px;
+  background: var(--pb-card, rgba(255, 255, 255, 0.72));
+  backdrop-filter: blur(22px) saturate(1.5);
+  -webkit-backdrop-filter: blur(22px) saturate(1.5);
+  border: 1px solid rgba(255, 255, 255, 0.62);
+  border-radius: 24px;
   padding: 1.5rem;
+  box-shadow: 0 22px 54px -38px rgba(20, 20, 40, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.65);
 }
 .pb-panel-danger { border-color: rgba(238, 37, 50, 0.3); }
 .pb-panel-h {
-  font-family: var(--font-instrument-serif), Georgia, serif;
-  font-size: 1.125rem;
-  font-weight: 400;
-  letter-spacing: -0.01em;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
   margin-bottom: 0.75rem;
 }
 .pb-label {
