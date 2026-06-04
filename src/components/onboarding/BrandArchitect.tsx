@@ -4,6 +4,8 @@ import { useState, useEffect, useCallback, type ReactNode } from "react";
 import { useRouter } from "next/navigation";
 import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
 import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
+import { INDUSTRIES, getIndustry } from "@/lib/industries";
+import type { OnboardingAnswers } from "@/lib/brand-book-schema";
 import { Fraunces, Syne } from "next/font/google";
 
 // Real type specimens for the typography engine.
@@ -104,7 +106,6 @@ export default function BrandArchitect() {
     paletteVibe: 50, // 0 = clinical / neutral, 100 = vibrant / contrast
     typographyPairing: "",
   });
-  const [compiled, setCompiled] = useState(false);
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -123,6 +124,54 @@ export default function BrandArchitect() {
   const setProfileUrl = (id: string, url: string) =>
     setProfiles((prev) => ({ ...prev, [id]: url }));
   const selectedPlatforms = SOCIAL_PLATFORMS.filter((p) => p.id in profiles);
+
+  // Identity + industry — the real OnboardingAnswers inputs the brand-book
+  // generator needs (ported from the classic wizard). Step 2 collects these.
+  const [name, setName] = useState("");
+  const [business, setBusiness] = useState("");
+  const [location, setLocation] = useState("");
+  const [industryId, setIndustryId] = useState("");
+  const [bookState, setBookState] = useState<"idle" | "generating" | "error">("idle");
+
+  // Map the collected flow → OnboardingAnswers. Target client + content focus
+  // are derived from the chosen industry's taxonomy defaults (Stage 2 will let
+  // the user refine these + add personality/voice samples).
+  const buildAnswers = (): OnboardingAnswers => {
+    const ind = getIndustry(industryId);
+    const toneMap: Record<string, OnboardingAnswers["tonePreference"]> = {
+      "Warm & personal": "warm",
+      "Polished & professional": "professional",
+      "Bold & playful": "playful",
+      "Refined & premium": "authoritative",
+    };
+    const tone = toneMap[brandData.pivotAnswer] ?? "warm";
+    const traitLabel: Record<OnboardingAnswers["tonePreference"], string> = {
+      warm: "Warm",
+      professional: "Professional",
+      playful: "Energetic",
+      authoritative: "Premium",
+    };
+    const social = selectedPlatforms
+      .map((p) => profiles[p.id])
+      .filter((u) => u && u.trim())
+      .join(", ");
+    return {
+      name: name.trim() || "Owner",
+      brokerage: business.trim() || undefined,
+      industry: industryId || undefined,
+      profession: ind?.defaultProfessionTitle,
+      location: location.trim() || "Local Area",
+      markets: location.trim() ? [location.trim()] : ["Local"],
+      targetClient: ind
+        ? ind.clientArchetypes.slice(0, 3).map((a) => a.label).join(", ")
+        : "Local customers",
+      personalityTraits: [traitLabel[tone]],
+      tonePreference: tone,
+      contentFocus: ind ? ind.contentFocus.slice(0, 4).map((c) => c.label) : ["Updates"],
+      fontPairing: brandData.typographyPairing || undefined,
+      social: social || undefined,
+    };
+  };
 
   // READ PATH — hydrate the Niche / Tone / Vibe pickers from the Postgres
   // brandEngine JSON column (GET /api/brand-engine, RLS-scoped via withTenantDb)
@@ -175,39 +224,18 @@ export default function BrandArchitect() {
   const next = () => setStep((s) => Math.min(s + 1, 4));
   const back = () => setStep((s) => Math.max(s - 1, 0));
 
-  // The 02 question is driven by the niche picked in step 1.
-  const getPivotQuestion = () => {
-    switch (brandData.niche) {
-      case "Luxury Real Estate":
-        return {
-          title: "03 / Editorial Tone",
-          question:
-            "Do you prefer your property narratives to focus on architectural pedigree, or emotional lifestyle and neighborhood amenities?",
-          options: ["Architectural Pedigree", "Lifestyle & Amenities"],
-        };
-      case "Medical Spa & Wellness":
-        return {
-          title: "03 / Clinical Focus",
-          question:
-            "Should your brand voice lead with technical clinical expertise and raw results, or soft luxury wellness and a sanctuary experience?",
-          options: ["Clinical Expertise", "Sanctuary & Wellness"],
-        };
-      case "Disruptive Tech Startup":
-        return {
-          title: "03 / Market Position",
-          question:
-            "Does your product positioning lean toward being a highly disruptive industry challenger, or an enterprise-grade, institutional partner?",
-          options: ["Disruptive Challenger", "Enterprise-Grade"],
-        };
-      default:
-        return {
-          title: "03 / Brand Focus",
-          question: "Select a niche to unlock your brand's primary tone matrix.",
-          options: [] as string[],
-        };
-    }
+  // Generic tone question (decoupled from the old demo niches). The chosen
+  // option maps to OnboardingAnswers.tonePreference in buildAnswers().
+  const currentPivot = {
+    title: "03 / Your Tone",
+    question: "When you talk to your customers, what feels most like you?",
+    options: [
+      "Warm & personal",
+      "Polished & professional",
+      "Bold & playful",
+      "Refined & premium",
+    ],
   };
-  const currentPivot = getPivotQuestion();
 
   return (
     <div className="architect-stage relative min-h-screen w-full flex items-center justify-center overflow-hidden px-6 py-20">
@@ -421,28 +449,71 @@ export default function BrandArchitect() {
 
         {step === 2 && (
           <div className={`${CARD} max-w-2xl p-12`}>
-            <h2 className="arch-eyebrow mb-8" style={{ letterSpacing: "0.2em" }}>
-              02 / Define Your Niche
+            <h2 className="arch-eyebrow mb-2" style={{ letterSpacing: "0.2em" }}>
+              02 / Tell us about your business
             </h2>
-            <div className="space-y-5">
-              {["Luxury Real Estate", "Medical Spa & Wellness", "Disruptive Tech Startup"].map(
-                (niche) => (
-                  <button
-                    key={niche}
-                    type="button"
-                    onClick={() => {
-                      setBrandData((prev) => ({ ...prev, niche }));
-                      next();
-                    }}
-                    className={`arch-opt w-full text-left py-4 px-6 text-lg tracking-tight font-light ${
-                      brandData.niche === niche ? "on translate-x-1" : ""
-                    }`}
-                  >
-                    {niche}
-                  </button>
-                ),
-              )}
+            <p className="arch-title text-xl font-medium tracking-tight mb-6">
+              The basics — so your posts actually sound like you.
+            </p>
+
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <div className="arch-field">
+                <input
+                  className="arch-field-input"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  aria-label="Your name"
+                />
+              </div>
+              <div className="arch-field">
+                <input
+                  className="arch-field-input"
+                  placeholder="Business name"
+                  value={business}
+                  onChange={(e) => setBusiness(e.target.value)}
+                  aria-label="Business name"
+                />
+              </div>
             </div>
+            <div className="arch-field mb-7">
+              <input
+                className="arch-field-input"
+                placeholder="City / area you serve"
+                value={location}
+                onChange={(e) => setLocation(e.target.value)}
+                aria-label="City or area you serve"
+              />
+            </div>
+
+            <div className="arch-eyebrow mb-3" style={{ letterSpacing: "0.2em" }}>
+              What kind of business?
+            </div>
+            <div className="grid sm:grid-cols-2 gap-3 max-h-[42vh] overflow-y-auto pr-1">
+              {INDUSTRIES.filter((i) => i.id !== "other-general").map((ind) => (
+                <button
+                  key={ind.id}
+                  type="button"
+                  onClick={() => {
+                    setIndustryId(ind.id);
+                    setBrandData((prev) => ({ ...prev, niche: ind.label }));
+                  }}
+                  className={`arch-opt text-left p-4 ${industryId === ind.id ? "on" : ""}`}
+                >
+                  <div className="font-medium text-[15px] tracking-tight">{ind.label}</div>
+                  <div className="text-[12px] text-[#76767e] mt-0.5 leading-snug">{ind.description}</div>
+                </button>
+              ))}
+            </div>
+
+            <button
+              type="button"
+              disabled={!name.trim() || !industryId}
+              onClick={next}
+              className="mt-7 w-full bg-[#ee2532] text-white rounded-2xl py-4 text-xs font-medium uppercase tracking-[0.2em] shadow-[0_18px_38px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-50"
+            >
+              Continue
+            </button>
           </div>
         )}
 
@@ -543,42 +614,46 @@ export default function BrandArchitect() {
               <div className="space-y-3">
                 <button
                   type="button"
-                  disabled={saving || !brandData.niche}
+                  disabled={saving || !industryId || !name.trim()}
                   onClick={async () => {
-                    // OPTIMISTIC WRITE — reveal the compiled DNA + success note
-                    // immediately, then reconcile with Postgres (PUT /api/brand-engine)
-                    // and roll the note back only if the persist actually fails.
+                    // Build the brand book: assemble OnboardingAnswers → generate
+                    // (Claude voice) → persist to the workspace → into the app.
+                    setBookState("generating");
                     setSaving(true);
-                    setCompiled(true);
-                    setSaveNote("Brand Engine saved to your workspace.");
+                    setSaveNote(null);
                     try {
-                      await saveBrandEngine(brandData);
+                      // Also save the brand DNA — feeds the AI caption/image voice.
+                      saveBrandEngine(brandData).catch(() => {});
+                      const answers = buildAnswers();
+                      const res = await fetch("/api/brand-book/generate", {
+                        method: "POST",
+                        headers: { "Content-Type": "application/json" },
+                        body: JSON.stringify({ answers }),
+                      });
+                      const data = await res.json();
+                      if (!res.ok || data.error || !data.brandBook) {
+                        throw new Error(data.error || "generate failed");
+                      }
+                      const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
+                      await persistBrandBookToWorkspace({
+                        brandBook: data.brandBook,
+                        onboardingAnswers: answers,
+                      });
+                      const { syncBrandBookToOrganization } = await import("@/lib/onboarding-brand-sync");
+                      syncBrandBookToOrganization(data.brandBook);
+                      router.push("/dashboard/brand");
                     } catch {
-                      setSaveNote("Showing your DNA — sign in to save it to your workspace.");
-                    } finally {
+                      setBookState("error");
                       setSaving(false);
+                      setSaveNote("Couldn't build your brand book — sign in and try again.");
                     }
                   }}
                   className="w-full bg-[#ee2532] text-white rounded-2xl py-5 text-xs font-medium uppercase tracking-[0.2em] shadow-[0_22px_44px_-20px_rgba(238,37,50,0.75)] hover:bg-[#c81e2a] transition-all disabled:opacity-50"
                 >
-                  {saving ? "Synthesizing…" : "Synthesize Brand Engine"}
+                  {bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
                 </button>
-                {compiled && (
-                  <>
-                    {saveNote && (
-                      <div className="text-[11px] tracking-wide text-[#76767e] text-center">{saveNote}</div>
-                    )}
-                    <pre className="bg-black/[0.04] backdrop-blur-md border border-black/10 rounded-2xl p-6 font-mono text-[10px] uppercase text-[#76767e] leading-relaxed overflow-x-auto whitespace-pre-wrap">
-{JSON.stringify(brandData, null, 2)}
-                    </pre>
-                    <button
-                      type="button"
-                      onClick={() => router.push("/dashboard")}
-                      className="w-full bg-[#ee2532] text-white rounded-2xl py-4 text-xs font-light tracking-[0.2em] shadow-xl hover:opacity-90 transition-all"
-                    >
-                      Enter Posterboy
-                    </button>
-                  </>
+                {bookState === "error" && saveNote && (
+                  <div className="text-[11px] tracking-wide text-[#76767e] text-center">{saveNote}</div>
                 )}
               </div>
             </div>
