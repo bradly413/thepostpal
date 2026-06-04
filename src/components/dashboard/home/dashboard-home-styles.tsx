@@ -119,7 +119,7 @@ export function DashboardHomeStyles() {
     }
     .hero2 .herobtn:hover { transform: translateY(-2px); background: #fff; }
     .hero2 .dots { position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; gap: 8px; }
-    .hero2 .dots .d { width: 8px; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.45); transition: all .3s; cursor: pointer; }
+    .hero2 .dots .d { width: 8px; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.45); transition: all .3s; cursor: pointer; border: 0; padding: 0; appearance: none; -webkit-appearance: none; }
     .hero2 .dots .d.on { width: 24px; background: #fff; }
 
     /* Shortcuts */

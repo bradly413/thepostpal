@@ -2,8 +2,8 @@
 
 import type { ReactNode } from "react";
 
-// Shared, calm state views for the dashboard. Neutral-chic / luxury editorial:
-// warm cream surfaces, soft ink, gold accent (#D4A853), no emojis, no spinners.
+// Shared, calm state views for the dashboard — warm-light system: frosted
+// white surfaces, soft ink, brand red (#ee2532) accent, no emojis, no spinners.
 
 export function Skeleton({ className = "" }: { className?: string }) {
   return <div className={`animate-pulse rounded-xl bg-black/[0.05] ${className}`} />;
@@ -26,7 +26,7 @@ export function SkeletonGrid({ count = 8 }: { count?: number }) {
 
 function Frame({ children }: { children: ReactNode }) {
   return (
-    <div className="flex min-h-[240px] w-full flex-col items-center justify-center rounded-2xl border border-black/[0.06] bg-[#faf9f6] px-6 py-12 text-center">
+    <div className="flex min-h-[240px] w-full flex-col items-center justify-center rounded-2xl border border-white/60 bg-white/70 backdrop-blur-xl px-6 py-12 text-center shadow-[0_22px_54px_-38px_rgba(20,20,40,0.45)]">
       {children}
     </div>
   );
@@ -43,7 +43,7 @@ export function EmptyState({
 }) {
   return (
     <Frame>
-      <h3 className="font-heading text-lg text-[#1a1a1a]">{title}</h3>
+      <h3 className="text-lg font-semibold text-[#1c1c1e]">{title}</h3>
       {sub ? <p className="mt-2 max-w-sm text-sm text-[#6b6b6b]">{sub}</p> : null}
       {action ? <div className="mt-6">{action}</div> : null}
     </Frame>
@@ -59,12 +59,12 @@ export function ErrorState({
 }) {
   return (
     <Frame>
-      <h3 className="font-heading text-lg text-[#1a1a1a]">Something needs a moment</h3>
+      <h3 className="text-lg font-semibold text-[#1c1c1e]">Couldn&apos;t load this</h3>
       <p className="mt-2 max-w-sm text-sm text-[#6b6b6b]">{message}</p>
       {onRetry ? (
         <button
           onClick={onRetry}
-          className="mt-6 rounded-full border border-[#D4A853]/40 bg-[#D4A853]/10 px-5 py-2 text-sm font-medium text-[#8a6a1f] transition-colors hover:bg-[#D4A853]/20"
+          className="mt-6 rounded-full border border-[#ee2532]/40 bg-[#ee2532]/10 px-5 py-2 text-sm font-medium text-[#c81e2a] transition-colors hover:bg-[#ee2532]/20"
         >
           Try again
         </button>

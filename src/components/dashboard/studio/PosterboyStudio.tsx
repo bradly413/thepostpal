@@ -153,6 +153,7 @@ export default function PosterboyStudio() {
     () => {
       const card = frameWrapRef.current;
       if (!card || !showTemplate || genState !== "done") return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       const border = card.querySelector<HTMLElement>(".glass-border");
       const sheen = card.querySelector<HTMLElement>(".glass-sheen");
       const chrome = card.querySelectorAll(".pc-reveal");

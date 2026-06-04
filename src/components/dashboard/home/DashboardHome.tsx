@@ -147,6 +147,7 @@ export default function DashboardHome() {
   useGSAP(
     () => {
       if (!data) return;
+      if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       // tiny scale entrance — frozen mid-tween (bg tab) stays fully visible
       gsap.from(".anim", { scale: 0.985, duration: 0.45, ease: "power2.out", stagger: 0.05, transformOrigin: "50% 50%", clearProps: "transform" });
     },
@@ -259,7 +260,7 @@ export default function DashboardHome() {
               )}
               <div className="dots">
                 {SLIDES.map((s, i) => (
-                  <span key={s.title} className={`d${i === slide ? " on" : ""}`} onClick={() => setSlide(i)} role="button" aria-label={`Slide ${i + 1}`} />
+                  <button key={s.title} type="button" className={`d${i === slide ? " on" : ""}`} onClick={() => setSlide(i)} aria-label={`Go to slide ${i + 1}: ${s.title}`} />
                 ))}
               </div>
             </section>

@@ -1309,6 +1309,16 @@ html[data-theme] body {
 }
 .pb-press-text { color: var(--pb-press, #ee2532); }
 
+/* Visible keyboard focus across the whole dashboard — custom controls (tabs,
+   toggles, nav, rails, buttons) previously fell back to the invisible UA
+   outline against the red/frosted theme. */
+.pb-home2 :focus-visible,
+.pb-app :focus-visible,
+.pb-studio :focus-visible {
+  outline: 2px solid #ee2532;
+  outline-offset: 2px;
+}
+
 @media (max-width: 768px) {
   .pb-footer-inner { grid-template-columns: 1fr; }
   .pb-footer-columns { grid-template-columns: 1fr 1fr; }
