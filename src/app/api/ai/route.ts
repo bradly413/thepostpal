@@ -4,6 +4,7 @@ import { angieNicholsBrandBook } from "@/lib/brand-books/angie-nichols";
 import { buildKnowledgeContext } from "@/lib/knowledge-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { loadTemplateCatalog } from "@/lib/template-catalog";
+import { requireAuthContext } from "@/lib/api-auth";
 
 const brandContext = buildBrandPrompt(angieNicholsBrandBook);
 
@@ -77,6 +78,13 @@ ${templateInfo}`;
 }
 
 export async function POST(req: Request) {
+  let tenantId: string;
+  try {
+    tenantId = (await requireAuthContext()).tenantId;
+  } catch {
+    return Response.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const ip = getClientIp(req.headers as unknown as Headers);
   if (!rateLimit(`ai:${ip}`, 20, 60_000)) {
     return Response.json(
@@ -101,7 +109,7 @@ export async function POST(req: Request) {
   }
 
   const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
-  const knowledgeContext = lastUserMsg ? buildKnowledgeContext(lastUserMsg.content) : "";
+  const knowledgeContext = lastUserMsg ? buildKnowledgeContext(tenantId, lastUserMsg.content) : "";
   const templateCatalog = await loadTemplateCatalog();
   const templateContext = lastUserMsg
     ? buildTemplateContext(lastUserMsg.content, templateCatalog)
@@ -156,7 +164,7 @@ export async function POST(req: Request) {
     const text = parts.map((p: { text?: string }) => p.text || "").join("");
     return Response.json({ message: text });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json({ error: message }, { status: 500 });
+    console.error("[api/ai] request failed:", err instanceof Error ? err.message : err);
+    return Response.json({ error: "AI request failed" }, { status: 500 });
   }
 }

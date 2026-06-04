@@ -75,8 +75,8 @@ export async function POST(request: NextRequest) {
 
         return NextResponse.json({ caption });
       } catch (error) {
-        const message = error instanceof Error ? error.message : "Caption generation failed";
-        return NextResponse.json({ error: message }, { status: 502 });
+        console.error("[api/posts/generate] caption failed:", error instanceof Error ? error.message : error);
+        return NextResponse.json({ error: "Caption generation failed" }, { status: 502 });
       }
     });
   } catch (error) {

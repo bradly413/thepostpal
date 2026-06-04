@@ -1,13 +1,29 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { requireAuthContext } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
+  // Require an authenticated session — this route spends Gemini quota.
+  try {
+    await requireAuthContext();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const ip = getClientIp(req.headers);
   if (!rateLimit(`gen-image:${ip}`, 10, 60_000)) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  const { prompt, aspectRatio = "1:1", referenceImage } = await req.json();
+  let parsed: { prompt?: unknown; aspectRatio?: unknown; referenceImage?: unknown };
+  try {
+    parsed = (await req.json()) as typeof parsed;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const prompt = typeof parsed.prompt === "string" ? parsed.prompt : "";
+  const aspectRatio = typeof parsed.aspectRatio === "string" ? parsed.aspectRatio : "1:1";
+  const referenceImage = parsed.referenceImage;
 
   if (!prompt || typeof prompt !== "string") {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -36,10 +52,15 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Gemini image gen has no aspectRatio config field — hint it in the prompt
+  // so portrait/landscape platform formats aren't all returned square.
+  const ratioHint =
+    aspectRatio && aspectRatio !== "1:1" ? ` Compose the image in a ${aspectRatio} aspect ratio.` : "";
   parts.push({
-    text: referenceImage
-      ? `Using the uploaded image as a reference, generate a new image based on this description: ${prompt}`
-      : prompt,
+    text:
+      (referenceImage && typeof referenceImage === "string"
+        ? `Using the uploaded image as a reference, generate a new image based on this description: ${prompt}`
+        : prompt) + ratioHint,
   });
 
   try {

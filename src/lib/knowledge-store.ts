@@ -29,15 +29,26 @@ function ensureDir() {
   }
 }
 
-function articlePath(id: string) {
-  const safe = id.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, 64);
-  if (!safe) throw new Error("Invalid article ID");
-  return path.join(KNOWLEDGE_DIR, `${safe}.json`);
+// Articles are stored one JSON file per article, keyed by tenant so one
+// tenant can never read/write/inject another's knowledge.
+function safe(s: string, max = 64) {
+  return s.replace(/[^a-zA-Z0-9_-]/g, "").slice(0, max);
+}
+function tenantPrefix(tenantId: string) {
+  const t = safe(tenantId);
+  if (!t) throw new Error("Invalid tenant");
+  return `${t}__`;
+}
+function articlePath(tenantId: string, id: string) {
+  const idSafe = safe(id);
+  if (!idSafe) throw new Error("Invalid article ID");
+  return path.join(KNOWLEDGE_DIR, `${tenantPrefix(tenantId)}${idSafe}.json`);
 }
 
-export function getAllArticles(): Article[] {
+export function getAllArticles(tenantId: string): Article[] {
   ensureDir();
-  const files = fs.readdirSync(KNOWLEDGE_DIR).filter((f) => f.endsWith(".json"));
+  const prefix = tenantPrefix(tenantId);
+  const files = fs.readdirSync(KNOWLEDGE_DIR).filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
   return files
     .map((f) => {
       try {
@@ -50,8 +61,8 @@ export function getAllArticles(): Article[] {
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 }
 
-export function getArticle(id: string): Article | null {
-  const p = articlePath(id);
+export function getArticle(tenantId: string, id: string): Article | null {
+  const p = articlePath(tenantId, id);
   if (!fs.existsSync(p)) return null;
   try {
     return JSON.parse(fs.readFileSync(p, "utf-8")) as Article;
@@ -60,25 +71,25 @@ export function getArticle(id: string): Article | null {
   }
 }
 
-export function saveArticle(article: Article): void {
+export function saveArticle(tenantId: string, article: Article): void {
   ensureDir();
-  fs.writeFileSync(articlePath(article.id), JSON.stringify(article, null, 2));
+  fs.writeFileSync(articlePath(tenantId, article.id), JSON.stringify(article, null, 2));
 }
 
-export function deleteArticle(id: string): boolean {
-  const p = articlePath(id);
+export function deleteArticle(tenantId: string, id: string): boolean {
+  const p = articlePath(tenantId, id);
   if (!fs.existsSync(p)) return false;
   fs.unlinkSync(p);
   return true;
 }
 
-export function getArticlesByCategory(category: Category): Article[] {
-  return getAllArticles().filter((a) => a.category === category);
+export function getArticlesByCategory(tenantId: string, category: Category): Article[] {
+  return getAllArticles(tenantId).filter((a) => a.category === category);
 }
 
-export function searchArticles(query: string): Article[] {
+export function searchArticles(tenantId: string, query: string): Article[] {
   const q = query.toLowerCase();
-  return getAllArticles().filter(
+  return getAllArticles(tenantId).filter(
     (a) =>
       a.title.toLowerCase().includes(q) ||
       a.content.toLowerCase().includes(q) ||
@@ -86,9 +97,9 @@ export function searchArticles(query: string): Article[] {
   );
 }
 
-export function buildKnowledgeContext(query: string, maxChars = 6000): string {
+export function buildKnowledgeContext(tenantId: string, query: string, maxChars = 6000): string {
   const q = query.toLowerCase();
-  const all = getAllArticles();
+  const all = getAllArticles(tenantId);
   if (all.length === 0) return "";
 
   const scored = all.map((a) => {

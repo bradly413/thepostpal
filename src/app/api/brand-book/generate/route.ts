@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { requireAuthContext } from "@/lib/api-auth";
 import { generateBrandBook } from "@/lib/onboarding-agent";
 import { synthesizeVoice, toBrandVoice } from "@/lib/voice-synthesis";
 import type { OnboardingAnswers } from "@/lib/brand-book-schema";
@@ -42,6 +43,16 @@ function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
 }
 
 export async function POST(req: NextRequest) {
+  // Derive the user from the session — never trust a userId in the body
+  // (this route spends Claude credits and writes a per-user brand book).
+  let userId: string;
+  try {
+    const auth = await requireAuthContext();
+    userId = auth.userId;
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const ip = getClientIp(req.headers);
   if (!rateLimit(`brand-book-gen:${ip}`, 6, 60_000)) {
     return NextResponse.json(
@@ -57,10 +68,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const userId = typeof body.userId === "string" ? body.userId : "";
-  if (!userId) {
-    return NextResponse.json({ error: "userId is required" }, { status: 400 });
-  }
   if (!isPlausibleAnswers(body.answers)) {
     return NextResponse.json(
       { error: "answers payload is missing required fields" },
