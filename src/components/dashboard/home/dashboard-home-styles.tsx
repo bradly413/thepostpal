@@ -107,6 +107,9 @@ export function DashboardHomeStyles() {
     .hero2 .hbody { position: absolute; z-index: 2; left: 42px; top: 50%; transform: translateY(-50%); right: 40px; }
     .hero2 .htitle { font-size: 38px; line-height: 1.04; font-weight: 700; color: #fff; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
     .hero2 .hsub { margin-top: 14px; color: rgba(255,255,255,0.88); font-size: 15px; }
+    /* Baked slides are complete designed artwork (title + subtitle in the
+       image): no scrim/overlay; the whole slide links to the composer. */
+    .hero2 .hero-link { position: absolute; inset: 0; z-index: 2; }
     .hero2 .herobtn {
       display: inline-block; margin-top: 22px; padding: 12px 26px; border-radius: 99px;
       background: rgba(255,255,255,0.95); color: #14181f; font-size: 14px; font-weight: 600; text-decoration: none;

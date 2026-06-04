@@ -29,10 +29,10 @@ import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 
 // ── Hero slideshow (seasonal hooks) ──────────────────────────
 const SLIDES = [
-  { title: "Father's Day", date: "June 15", img: "https://images.unsplash.com/photo-1518199266791-5375a83190b7?w=1300&q=80&auto=format&fit=crop" },
-  { title: "Fourth of July", date: "America 250", img: "https://images.unsplash.com/photo-1498931299472-f7a63a5a1cfa?w=1300&q=80&auto=format&fit=crop" },
-  { title: "Summer Kickoff", date: "June 20", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1300&q=80&auto=format&fit=crop" },
-  { title: "Shop Local", date: "Every Week", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1300&q=80&auto=format&fit=crop" },
+  { title: "Father's Day", date: "June 15", img: "/hero/fathers-day.png", baked: true },
+  { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.png", baked: true },
+  { title: "Summer Kickoff", date: "June 20", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1300&q=80&auto=format&fit=crop", baked: false },
+  { title: "Shop Local", date: "Every Week", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1300&q=80&auto=format&fit=crop", baked: false },
 ];
 
 // Placeholder media (recent media + post thumbnails) — wire to /api/photos later
@@ -246,13 +246,17 @@ export default function DashboardHome() {
               {SLIDES.map((s, i) => (
                 <div key={s.title} className={`slide${i === slide ? " on" : ""}`} style={{ backgroundImage: `url('${s.img}')` }} />
               ))}
-              <div className="scrim" />
+              {!cur.baked && <div className="scrim" />}
               <span className="slabel">Auto Slideshow · {SLIDES.length} slides</span>
-              <div className="hbody">
-                <div className="htitle">{cur.title}<br />{cur.date}</div>
-                <div className="hsub">Let&apos;s schedule your post now.</div>
-                <Link href="/dashboard/studio" className="herobtn">Create Post</Link>
-              </div>
+              {cur.baked ? (
+                <Link href="/dashboard/studio" className="hero-link" aria-label="Create a post" />
+              ) : (
+                <div className="hbody">
+                  <div className="htitle">{cur.title}<br />{cur.date}</div>
+                  <div className="hsub">Let&apos;s schedule your post now.</div>
+                  <Link href="/dashboard/studio" className="herobtn">Create Post</Link>
+                </div>
+              )}
               <div className="dots">
                 {SLIDES.map((s, i) => (
                   <span key={s.title} className={`d${i === slide ? " on" : ""}`} onClick={() => setSlide(i)} role="button" aria-label={`Slide ${i + 1}`} />
