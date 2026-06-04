@@ -30,7 +30,15 @@ const BASE_SYSTEM = `You are a brand voice analyst for posterboy onboarding. You
 ## Voice rules
 - Ground copy in the declared industry. Never use terminology from outside that industry.
 - If a vertical seed is provided, treat it as law.
-- traits: short labels (2–5 words), specific — never generic "professional" or "trustworthy" alone.`;
+- traits: short labels (2–5 words), specific — never generic "professional" or "trustworthy" alone.
+
+## Lifestyle collateral (collateralPrompts — strict)
+Generate 3 highly detailed image generation prompts (optimized for Midjourney/Kling AI). These prompts must visualize the new brand identity applied to physical lifestyle collateral. Specifically generate:
+1. Custom packaging, bags, or boxes.
+2. A premium branded coaster or physical touchpoint on a textured surface.
+3. Modern staff apparel (e.g., a heavy-cotton t-shirt, jacket, or apron).
+Focus strictly on these physical lifestyle touchpoints. Do not include prompts for standard paper menu systems.
+Each prompt must name the business, reference the curated palette vibe (materials, lighting, mood — not invented hex codes), and be copy-paste ready for an image model.`;
 
 function formatCuratedPaletteCatalog(): string {
   return Object.values(CURATED_PALETTES)
@@ -147,7 +155,7 @@ export async function generateBrandVoiceStructured(
     schema: brandVoiceAiSchema,
     system: buildBrandVoiceSystemPrompt(answers),
     prompt: buildBrandVoiceUserPrompt(answers),
-    maxOutputTokens: 1500,
+    maxOutputTokens: 2800,
   });
 
   return object;

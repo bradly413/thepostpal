@@ -72,7 +72,8 @@ export async function POST(req: NextRequest) {
 
   const shouldAttemptAi =
     Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
-    (Boolean(answers.industry?.trim()) ||
+    (Boolean(answers.dressCode && answers.greeting && answers.compliment) ||
+      Boolean(answers.industry?.trim()) ||
       (answers.voiceSamples?.length ?? 0) > 0 ||
       Boolean(answers.mission?.trim()));
 
@@ -84,6 +85,7 @@ export async function POST(req: NextRequest) {
       const brandBook = generateBrandBook(userId, answers, {
         voice: brandVoiceAiToBrandVoice(structured),
         paletteId: structured.paletteId,
+        collateralPrompts: structured.collateralPrompts,
       });
       voiceSource = "structured";
       return NextResponse.json({ brandBook, voice: voiceSource });

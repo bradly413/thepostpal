@@ -490,6 +490,8 @@ export interface GenerateBrandBookOptions {
   voice?: BrandVoice;
   /** Curated palette — dress code wins over AI suggestion when both exist. */
   paletteId?: CuratedPaletteId;
+  /** Lifestyle merch image prompts (Midjourney/Kling). */
+  collateralPrompts?: string[];
 }
 
 function resolveIndustry(answers: OnboardingAnswers): IndustryDef | null {
@@ -746,6 +748,7 @@ export function generateBrandBook(
     },
     photography,
     pillars,
+    collateralPrompts: options.collateralPrompts,
     colophon: {
       version: "1.0",
       issuedDate: now.split("T")[0],

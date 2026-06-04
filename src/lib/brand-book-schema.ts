@@ -238,6 +238,9 @@ export interface BrandBook {
 
   // 07 — Colophon
   colophon: BrandColophon;
+
+  /** Midjourney/Kling-ready lifestyle merch prompts (packaging, coaster, apparel). */
+  collateralPrompts?: string[];
 }
 
 // ═══════════════════════════════════════════════════════════
@@ -337,6 +340,12 @@ export const brandVoiceAiSchema = z.object({
     .min(3)
     .max(5)
     .describe("Short voice trait labels grounded in Dress Code + Greeting, not generic adjectives."),
+  collateralPrompts: z
+    .array(z.string().min(40).max(2000))
+    .length(3)
+    .describe(
+      "Exactly 3 detailed image-generation prompts (Midjourney/Kling). Index 0: custom packaging/bags/boxes. Index 1: branded coaster or physical touchpoint on textured surface. Index 2: modern staff apparel. No paper menu systems.",
+    ),
 });
 
 export type BrandVoiceAiOutput = z.infer<typeof brandVoiceAiSchema>;

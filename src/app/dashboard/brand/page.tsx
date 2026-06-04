@@ -26,6 +26,7 @@ import { SITE_NAME } from "@/lib/site";
 import { applyCuratedPaletteToBook } from "@/lib/color-registry";
 import { useBrandBook } from "@/lib/use-brand-book";
 import RegenerateBrandButton from "@/components/dashboard/brand/RegenerateBrandButton";
+import CollateralPromptsSection from "@/components/dashboard/brand/CollateralPromptsSection";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -167,7 +168,18 @@ export default function BrandPage() {
   }
 
   const migrated = migrateBrandBook(applyCuratedPaletteToBook(book));
-  const { identity, glance, palette, typography, voice, mark, photography, pillars, applications } = migrated;
+  const {
+    identity,
+    glance,
+    palette,
+    typography,
+    voice,
+    mark,
+    photography,
+    pillars,
+    applications,
+    collateralPrompts,
+  } = migrated;
   const tokens = useTokens(palette);
   const serif = `'${typography.display.family}', Georgia, serif`;
   const sans = `'${typography.body.family}', system-ui, sans-serif`;
@@ -277,6 +289,10 @@ export default function BrandPage() {
               <VoiceDoDont kind="dont" items={voice.weDontSay} palette={palette} />
             </div>
           </div>
+
+          {collateralPrompts && collateralPrompts.length > 0 && (
+            <CollateralPromptsSection prompts={collateralPrompts} />
+          )}
         </Section>
 
         <DividerMark />
