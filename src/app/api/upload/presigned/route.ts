@@ -3,9 +3,19 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
-import { createS3Client, getS3Config, getS3PublicUrl } from "@/lib/storage";
+import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  createS3Client,
+  getS3Config,
+  getS3PublicUrl,
+  isAllowedPresignedContentType,
+  PRESIGNED_UPLOAD_MAX_BYTES,
+} from "@/lib/storage";
 
 export const runtime = "nodejs";
+
+const PRESIGN_TTL_SECONDS = 900;
+const MAX_FILENAME_LENGTH = 180;
 
 function sanitizeFilename(filename: string): string {
   const basename = filename.split(/[\\/]/).pop() || "upload.bin";
@@ -13,12 +23,18 @@ function sanitizeFilename(filename: string): string {
     .replace(/\s+/g, "-")
     .replace(/[^A-Za-z0-9._-]+/g, "-")
     .replace(/-+/g, "-")
-    .replace(/^[-.]+|[-.]+$/g, "");
+    .replace(/^[-.]+|[-.]+$/g, "")
+    .slice(0, MAX_FILENAME_LENGTH);
 
   return sanitized || "upload.bin";
 }
 
 export async function POST(request: NextRequest) {
+  const ip = getClientIp(request.headers);
+  if (!rateLimit(`upload-presign:${ip}`, 30, 60_000)) {
+    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  }
+
   try {
     const auth = await requireAuthContext();
     const body = (await request.json()) as Record<string, unknown>;
@@ -29,11 +45,35 @@ export async function POST(request: NextRequest) {
         ? body.contentType.trim()
         : "";
 
+    const fileSize =
+      typeof body.fileSize === "number" && Number.isFinite(body.fileSize)
+        ? Math.floor(body.fileSize)
+        : null;
+
     if (!filename || !contentType) {
       return NextResponse.json(
         { error: "filename and contentType are required" },
         { status: 400 },
       );
+    }
+
+    if (!isAllowedPresignedContentType(contentType)) {
+      return NextResponse.json(
+        { error: "Only image and video uploads are supported" },
+        { status: 400 },
+      );
+    }
+
+    if (fileSize != null) {
+      if (fileSize <= 0) {
+        return NextResponse.json({ error: "fileSize must be positive" }, { status: 400 });
+      }
+      if (fileSize > PRESIGNED_UPLOAD_MAX_BYTES) {
+        return NextResponse.json(
+          { error: `File too large (${PRESIGNED_UPLOAD_MAX_BYTES / (1024 * 1024)}MB max)` },
+          { status: 400 },
+        );
+      }
     }
 
     const config = getS3Config();
@@ -50,17 +90,26 @@ export async function POST(request: NextRequest) {
       Bucket: config.bucket,
       Key: key,
       ContentType: contentType,
+      ...(fileSize != null ? { ContentLength: fileSize } : {}),
     });
 
-    const uploadUrl = await getSignedUrl(client, command, { expiresIn: 900 });
+    const uploadUrl = await getSignedUrl(client, command, {
+      expiresIn: PRESIGN_TTL_SECONDS,
+    });
     const publicUrl = getS3PublicUrl(config, key);
 
-    return NextResponse.json({ uploadUrl, publicUrl });
+    return NextResponse.json({
+      uploadUrl,
+      publicUrl,
+      key,
+      expiresIn: PRESIGN_TTL_SECONDS,
+    });
   } catch (error) {
     if (error instanceof Error && error.message === "UNAUTHORIZED") {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
+    console.error("[upload/presigned]", error);
     return NextResponse.json(
       { error: "Could not create upload URL" },
       { status: 500 },

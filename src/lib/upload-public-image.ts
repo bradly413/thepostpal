@@ -1,4 +1,4 @@
-import { uploadDashboardImage } from "@/lib/dashboard-upload";
+import { uploadMediaToS3 } from "@/lib/dashboard-upload";
 
 /**
  * Resolve an image reference to a durable, publicly-fetchable URL.
@@ -19,5 +19,5 @@ export async function resolvePublicImageUrl(imageUrl: string): Promise<string> {
   const type = blob.type || (ext === "png" ? "image/png" : "image/jpeg");
   const file = new File([blob], `publish.${ext}`, { type });
 
-  return uploadDashboardImage(file);
+  return uploadMediaToS3(file);
 }

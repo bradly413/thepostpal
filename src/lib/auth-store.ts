@@ -1,7 +1,7 @@
 import "server-only";
 
-import { Redis } from "@upstash/redis";
 import { promises as fs } from "fs";
+import { getRedis } from "@/lib/redis";
 import path from "path";
 import { randomBytes, randomUUID, scryptSync, timingSafeEqual } from "crypto";
 
@@ -48,29 +48,11 @@ const EMAIL_KEY_PREFIX = "auth:user-email:";
 const USER_KEY_PREFIX = "auth:user:";
 const ACCOUNT_KEY_PREFIX = "auth:account:";
 
-let redisClient: Redis | null | undefined;
-
 export class AuthEmailExistsError extends Error {
   constructor() {
     super("An account with this email already exists.");
     this.name = "AuthEmailExistsError";
   }
-}
-
-function getRedisClient(): Redis | null {
-  if (redisClient !== undefined) return redisClient;
-
-  try {
-    if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) {
-      redisClient = Redis.fromEnv();
-      return redisClient;
-    }
-  } catch {
-    // Fall through to the file-backed store used for local/dev fallback.
-  }
-
-  redisClient = null;
-  return redisClient;
 }
 
 function normalizeEmail(email: string): string {
@@ -137,7 +119,7 @@ async function writeFileSnapshot(snapshot: AuthStoreSnapshot): Promise<void> {
 
 async function getStoredUserByEmail(email: string): Promise<AuthUserRecord | null> {
   const normalizedEmail = normalizeEmail(email);
-  const redis = getRedisClient();
+  const redis = getRedis();
 
   if (redis) {
     const userId = await redis.get<string | null>(`${EMAIL_KEY_PREFIX}${normalizedEmail}`);
@@ -150,7 +132,7 @@ async function getStoredUserByEmail(email: string): Promise<AuthUserRecord | nul
 }
 
 async function getStoredAccountById(accountId: string): Promise<AuthAccountRecord | null> {
-  const redis = getRedisClient();
+  const redis = getRedis();
 
   if (redis) {
     return (await redis.get<AuthAccountRecord | null>(`${ACCOUNT_KEY_PREFIX}${accountId}`)) || null;
@@ -161,7 +143,7 @@ async function getStoredAccountById(accountId: string): Promise<AuthAccountRecor
 }
 
 async function saveStoredAccount(account: AuthAccountRecord): Promise<void> {
-  const redis = getRedisClient();
+  const redis = getRedis();
 
   if (redis) {
     await redis.set(`${ACCOUNT_KEY_PREFIX}${account.id}`, account);
@@ -174,7 +156,7 @@ async function saveStoredAccount(account: AuthAccountRecord): Promise<void> {
 }
 
 async function saveStoredUser(user: AuthUserRecord): Promise<void> {
-  const redis = getRedisClient();
+  const redis = getRedis();
 
   if (redis) {
     await redis.set(`${USER_KEY_PREFIX}${user.id}`, user);

@@ -38,3 +38,17 @@ export async function withTenantDb<T>(
     return run(tx);
   });
 }
+
+/** Cross-tenant jobs (Vercel Cron) — RLS bypass via superadmin GUC. */
+export async function withCronDb<T>(run: (tx: TenantDbClient) => Promise<T>): Promise<T> {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT
+        set_config('app.current_tenant_id', '', true),
+        set_config('app.current_user_id', 'system-cron', true),
+        set_config('app.current_is_superadmin', 'true', true)
+    `;
+
+    return run(tx);
+  });
+}

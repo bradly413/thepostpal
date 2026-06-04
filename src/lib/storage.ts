@@ -118,3 +118,15 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
 export function contentTypeForExtension(ext: string): string {
   return CONTENT_TYPE_BY_EXT[ext.toLowerCase()] || "application/octet-stream";
 }
+
+/** Max bytes for direct browser → S3 uploads (presigned PUT). */
+export const PRESIGNED_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
+const PRESIGNED_CONTENT_TYPE_PREFIXES = ["image/", "video/"] as const;
+
+export function isAllowedPresignedContentType(contentType: string): boolean {
+  const normalized = contentType.trim().toLowerCase();
+  return PRESIGNED_CONTENT_TYPE_PREFIXES.some((prefix) =>
+    normalized.startsWith(prefix),
+  );
+}
