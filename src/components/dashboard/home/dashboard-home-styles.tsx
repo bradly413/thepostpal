@@ -104,15 +104,17 @@ export function DashboardHomeStyles() {
     .hero2 .slide.on { opacity: 1; }
     .hero2 .scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(8,12,20,0.72) 0%, rgba(8,12,20,0.38) 44%, rgba(8,12,20,0) 72%); }
     .hero2 .slabel { position: absolute; z-index: 3; right: 18px; top: 16px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.92); background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 99px; backdrop-filter: blur(6px); }
-    .hero2 .hbody { position: absolute; z-index: 2; left: 42px; top: 50%; transform: translateY(-50%); right: 40px; }
-    .hero2 .htitle { font-size: 38px; line-height: 1.04; font-weight: 700; color: #fff; letter-spacing: 4px; text-transform: uppercase; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
-    .hero2 .hsub { margin-top: 14px; color: rgba(255,255,255,0.88); font-size: 15px; }
+    /* Title + subtitle + button form one compact block anchored to the
+       lower-left, sized to fit the same space on every slide. */
+    .hero2 .hbody { position: absolute; z-index: 2; left: 42px; bottom: 28px; right: 40px; max-width: 62%; }
+    .hero2 .htitle { font-size: 27px; line-height: 1.08; font-weight: 700; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
+    .hero2 .hsub { margin-top: 9px; color: rgba(255,255,255,0.88); font-size: 14px; }
     /* Baked slides are complete designed artwork (title + subtitle in the
        image): no scrim/overlay; the whole slide links to the composer. */
     .hero2 .hero-link { position: absolute; inset: 0; z-index: 2; }
     .hero2 .herobtn {
-      display: inline-block; margin-top: 22px; padding: 12px 26px; border-radius: 99px;
-      background: rgba(255,255,255,0.95); color: #14181f; font-size: 14px; font-weight: 600; text-decoration: none;
+      display: inline-block; margin-top: 14px; padding: 10px 22px; border-radius: 99px;
+      background: rgba(255,255,255,0.95); color: #14181f; font-size: 13px; font-weight: 600; text-decoration: none;
       box-shadow: 0 12px 30px -14px rgba(0,0,0,0.5); transition: transform .2s, background .2s;
     }
     .hero2 .herobtn:hover { transform: translateY(-2px); background: #fff; }
