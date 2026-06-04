@@ -349,6 +349,119 @@ export default function PosterboyStudio() {
     }
   };
 
+  // Non-technical composer: one plain-language intent ("make an instagram post
+  // about our weekend sale") → /api/studio/compose (infers platform, writes a
+  // real image prompt + brand-voice caption) → generates the image → shows the
+  // finished post preview. Falls back to a raw image generation if the intent
+  // router is unavailable.
+  const composeFromIntent = async () => {
+    const intent = prompt.trim();
+    if (!intent || genState === "generating") {
+      inputRef.current?.focus();
+      return;
+    }
+    setGenState("generating");
+    setError("");
+    setProgress(0);
+    setShowTemplate(false);
+    setCaptionState("loading");
+    setCaptionText("");
+    setCaptionTags("");
+    setEdit(EDIT_DEFAULT);
+    setActiveEdit(null);
+
+    if (genTimer.current) clearInterval(genTimer.current);
+    genTimer.current = setInterval(() => {
+      setProgress((p) => {
+        if (p >= 92) return p;
+        const inc =
+          p < 30 ? 4 + Math.random() * 5 : p < 70 ? 1.6 + Math.random() * 2.6 : 0.5 + Math.random() * 1.2;
+        return Math.min(92, p + inc);
+      });
+    }, 240);
+    const stopTimer = () => {
+      if (genTimer.current) {
+        clearInterval(genTimer.current);
+        genTimer.current = null;
+      }
+    };
+
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
+    try {
+      // 1) intent → structured brief
+      const cRes = await fetch("/api/studio/compose", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ intent }),
+        signal: ctrl.signal,
+      });
+      const brief = await cRes.json();
+      if (!cRes.ok || brief.error) {
+        // Graceful fallback: treat the text as a raw image prompt.
+        stopTimer();
+        setCaptionState("idle");
+        clearTimeout(timeoutId);
+        await generate();
+        return;
+      }
+
+      // 2) switch to the inferred platform
+      const idx = PLATFORMS.findIndex((p) => p.id === brief.platform);
+      const pIdx = idx >= 0 ? idx : 0;
+      setPlatformIdx(pIdx);
+      const aspect = PLATFORMS[pIdx].genAspect;
+
+      // 3) generate the image from the translated prompt
+      const iRes = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: brief.imagePrompt, aspectRatio: aspect }),
+        signal: ctrl.signal,
+      });
+      const iData = await iRes.json();
+      if (!iRes.ok || iData.error) {
+        stopTimer();
+        setProgress(0);
+        setCaptionState("idle");
+        const msg = iData.error || "Generation failed";
+        setError(
+          msg.includes("not configured")
+            ? "Image generation is not available yet. API key needs to be configured."
+            : msg,
+        );
+        setGenState("idle");
+        return;
+      }
+
+      // 4) assemble the finished post preview
+      stopTimer();
+      setProgress(100);
+      setGeneratedUrl(iData.image);
+      setCaptionText(brief.caption || "");
+      setCaptionTags(
+        Array.isArray(brief.hashtags) && brief.hashtags.length
+          ? brief.hashtags.map((h: string) => `#${h}`).join(" ")
+          : "",
+      );
+      setCaptionState("done");
+      setGenState("done");
+      setShowTemplate(true);
+    } catch (err) {
+      stopTimer();
+      setProgress(0);
+      setCaptionState("idle");
+      setError(
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Timed out. Please try again."
+          : "Network error. Please try again.",
+      );
+      setGenState("idle");
+    } finally {
+      clearTimeout(timeoutId);
+    }
+  };
+
   // Parse the /api/ai response into a caption body + a hashtag string.
   const parseCaption = (raw: string): { body: string; tags: string } => {
     const text = (raw || "").trim();
@@ -661,8 +774,8 @@ export default function PosterboyStudio() {
               ref={inputRef}
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && genState !== "generating" && void generate()}
-              placeholder="Type in your prompt"
+              onKeyDown={(e) => e.key === "Enter" && genState !== "generating" && void composeFromIntent()}
+              placeholder="Make a post — e.g. “an Instagram post about our weekend sale”"
               disabled={genState === "generating"}
             />
             <div className="pb-tool" ref={promptToolsRef}>
@@ -687,9 +800,9 @@ export default function PosterboyStudio() {
             <button
               type="button"
               className="magic-wand"
-              onClick={() => void generate()}
+              onClick={() => void composeFromIntent()}
               disabled={genState === "generating"}
-              aria-label="Generate"
+              aria-label="Make a post"
             >
               <Wand2 size={20} />
             </button>

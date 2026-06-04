@@ -236,7 +236,12 @@ function StudioPostChromeStyles() {
     .pc-sub { font-size: 11.5px; color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
     .pc-sub2 { font-size: 11.5px; color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
     .pc-more { margin-left: auto; color: rgba(22,22,28,0.55); flex: none; }
-    .pc-text { padding: 2px 14px 10px; font-size: 13.5px; line-height: 1.45; }
+    .pc-text {
+      padding: 2px 14px 10px; font-size: 13.5px; line-height: 1.45;
+      /* Clamp long AI captions so they never spill past the frame (overflow:hidden). */
+      overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
+      display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
+    }
     .pc-tags { color: #1d6fd6; }
     .pc-media { width: 100%; background-size: cover; background-position: center; }
     .pc-skel { display: inline-block; width: 100%; }
@@ -295,7 +300,7 @@ function StudioPostChromeStyles() {
     .pc-tt-disc { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #333, #111); display: grid; place-items: center; color: #fff; margin-top: 4px; }
     .pc-tt-cap { position: absolute; left: 0; right: 56px; bottom: 14px; z-index: 5; padding: 0 14px; color: #fff; }
     .pc-tt-handle { font-weight: 700; font-size: 13.5px; }
-    .pc-tt-text { font-size: 12.5px; line-height: 1.4; margin: 4px 0 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); }
+    .pc-tt-text { font-size: 12.5px; line-height: 1.4; margin: 4px 0 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow: hidden; overflow-wrap: anywhere; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
     .pc-tt-sound { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
 
     /* Instagram */
