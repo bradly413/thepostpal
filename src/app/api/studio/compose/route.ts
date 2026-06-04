@@ -73,7 +73,7 @@ export async function POST(req: Request) {
 Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys:
 {
   "platform": one of "instagram" | "facebook" | "x" | "tiktok" | "linkedin" (infer from the request; default "instagram" if unstated),
-  "imagePrompt": a vivid, concrete text-to-image prompt for a photorealistic social image that fits the request and the brand. Describe subject, setting, lighting, mood, and composition. Do NOT render any text, words, or logos in the image. 1-3 sentences.,
+  "imagePrompt": a richly detailed, PROFESSIONAL-PHOTOGRAPHY prompt for a photorealistic social image (3-5 sentences). Treat it like a brief for a high-end photographer, not a stock image. Always specify: (1) the concrete subject + setting with specific real-world detail; (2) camera + lens (e.g. "shot on a 70-200mm telephoto", "wide 24mm", "85mm portrait"); (3) the exact lighting + time of day (e.g. "blue hour", "golden-hour backlight", "long-exposure"); (4) composition + depth (foreground/midground/background, leading lines, rule of thirds); (5) mood + color; and (6) quality anchors: "photorealistic, sharp focus, high dynamic range, natural lighting, fine detail, award-winning photograph". For fireworks/night/motion use "long-exposure". Do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
   "caption": a finished, ready-to-publish caption in the brand's voice. Match the platform (Instagram/Facebook warm + conversational, X punchy under 240 chars, LinkedIn professional, TikTok casual). Do NOT include hashtags here.,
   "hashtags": an array of 4-8 relevant hashtag strings, WITHOUT the # sign
 }${brand}`;
@@ -109,7 +109,9 @@ Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys
       : [];
     return Response.json({
       platform,
-      imagePrompt: typeof parsed.imagePrompt === "string" && parsed.imagePrompt.trim() ? parsed.imagePrompt.trim() : intent,
+      imagePrompt:
+        (typeof parsed.imagePrompt === "string" && parsed.imagePrompt.trim() ? parsed.imagePrompt.trim() : intent) +
+        " Photorealistic, professional photography, sharp focus, high dynamic range, natural lighting, fine detail, no text or watermark.",
       caption: typeof parsed.caption === "string" ? parsed.caption.trim() : "",
       hashtags,
     });
