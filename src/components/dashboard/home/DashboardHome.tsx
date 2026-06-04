@@ -29,8 +29,8 @@ import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 
 // ── Hero slideshow (seasonal hooks) ──────────────────────────
 const SLIDES = [
-  { title: "Father's Day", date: "June 16th", img: "/hero/3.svg", baked: false },
-  { title: "Fourth of July", date: "America 250", img: "/hero/4.svg", baked: false },
+  { title: "Father's Day", date: "June 16th", img: "/hero/fathers-day.jpg", baked: false },
+  { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", baked: false },
   { title: "Summer Kickoff", date: "June 20", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1300&q=80&auto=format&fit=crop", baked: false },
   { title: "Shop Local", date: "Every Week", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1300&q=80&auto=format&fit=crop", baked: false },
 ];
