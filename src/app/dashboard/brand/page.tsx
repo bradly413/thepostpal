@@ -106,9 +106,26 @@ export default function BrandPage() {
   const [userTier, setUserTier] = useState<BrandBookTier>("basic");
   const observerRef = useRef<IntersectionObserver | null>(null);
 
-  // Tier source is a follow-up (Organization/billing) — preview via ?tier=mid|premium.
+  // Tier source: persisted Organization.accountSettings.brandBookTier (set by the
+  // upgrade/billing flow — Gemini). `?tier=` overrides it for preview/QA.
   useEffect(() => {
-    setUserTier(parseTier(new URLSearchParams(window.location.search).get("tier")));
+    const urlTier = new URLSearchParams(window.location.search).get("tier");
+    if (urlTier) {
+      setUserTier(parseTier(urlTier));
+      return;
+    }
+    let cancelled = false;
+    fetch("/api/account/settings", { credentials: "same-origin" })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled) return;
+        const t = (d?.settings as { brandBookTier?: string } | null | undefined)?.brandBookTier;
+        if (t) setUserTier(parseTier(t));
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   useEffect(() => {
@@ -211,6 +228,26 @@ export default function BrandPage() {
           />
         </div>
         <UpgradeBanner tier={userTier} />
+        {userTier === "premium" && (
+          <div className="brand-print-hide" style={{ marginTop: 24 }}>
+            <button
+              type="button"
+              onClick={() => window.print()}
+              style={{ display: "inline-flex", alignItems: "center", gap: 9, padding: "11px 24px", borderRadius: 999, border: "1px solid var(--primary)", background: "transparent", color: "var(--primary)", fontWeight: 600, fontSize: 13.5, cursor: "pointer" }}
+            >
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14" /></svg>
+              Download brand book (PDF)
+            </button>
+          </div>
+        )}
+        <style>{`
+          @media print {
+            nav[aria-label="Sections"], .brand-print-hide { display: none !important; }
+            * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+            section[id] { break-inside: avoid; page-break-inside: avoid; page-break-before: always; }
+            section:first-of-type { page-break-before: avoid; }
+          }
+        `}</style>
         {/* 01 · ESSENCE */}
         <Section id="essence">
           <SecHead no="01" eyebrow="The Essence" title={essenceHeadline(identity.industry)} lede={glance.howWeSound} palette={palette} />
