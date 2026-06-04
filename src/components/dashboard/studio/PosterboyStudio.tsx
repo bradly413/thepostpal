@@ -9,6 +9,8 @@ import {
   Image as ImageIcon,
   Settings,
   Sun,
+  Eye,
+  Pencil,
   LayoutGrid,
   AlignLeft,
   Tag,
@@ -459,7 +461,20 @@ export default function PosterboyStudio() {
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            <div />
+            {genState === "done" ? (
+              <button
+                type="button"
+                className="preview-toggle"
+                onClick={() => setShowTemplate((v) => !v)}
+                aria-pressed={showTemplate}
+                title={showTemplate ? "Back to edit" : "Preview as post"}
+              >
+                {showTemplate ? <Pencil size={15} /> : <Eye size={15} />}
+                <span>{showTemplate ? "Edit" : "Preview"}</span>
+              </button>
+            ) : (
+              <div />
+            )}
             <div className="top-toggles">
               <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
               <button className={theme === "grid" ? "active" : ""} onClick={() => setTheme("grid")}><LayoutGrid size={16} /></button>
@@ -1052,7 +1067,16 @@ function StudioStyles() {
     border-radius: 8px;
     color: var(--ink-2);
     transition: background 0.15s ease;
-  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio /* Minimal control rail — left of the image */
+  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio .preview-toggle {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 8px 14px; border-radius: 12px;
+    background: rgba(255,255,255,0.7);
+    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    border: 1px solid rgba(0,0,0,0.06);
+    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    font-size: 13px; font-weight: 600; color: var(--ink);
+    cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+  }.pb-studio .preview-toggle:hover { background: #fff; transform: translateY(-1px); }.pb-studio .preview-toggle svg { width: 15px; height: 15px; }.pb-studio .preview-toggle[aria-pressed="true"] { background: var(--red, #ee2532); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px rgba(238,37,50,0.55); }.pb-studio /* Minimal control rail — left of the image */
   .tool-rail {
     position: absolute;
     left: 26px;
