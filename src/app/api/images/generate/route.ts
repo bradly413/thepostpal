@@ -107,14 +107,14 @@ export async function POST(req: NextRequest) {
       if (error.message === "UNAUTHORIZED") {
         return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
       }
-      if (error.message.startsWith("GEMINI_IMAGE_")) {
-        return NextResponse.json({ error: "Image generation failed" }, { status: 502 });
-      }
       if (error.message === "GEMINI_IMAGE_EMPTY") {
         return NextResponse.json(
           { error: "No image was generated. Try a different prompt." },
           { status: 422 },
         );
+      }
+      if (error.message.startsWith("GEMINI_IMAGE_")) {
+        return NextResponse.json({ error: "Image generation failed" }, { status: 502 });
       }
     }
 

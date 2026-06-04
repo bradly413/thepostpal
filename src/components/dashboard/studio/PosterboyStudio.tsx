@@ -302,6 +302,8 @@ export default function PosterboyStudio() {
     };
 
     const savedPrompt = prompt.trim();
+    const ctrl = new AbortController();
+    const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
     try {
       const res = await fetch("/api/generate-image", {
         method: "POST",
@@ -310,6 +312,7 @@ export default function PosterboyStudio() {
           prompt: savedPrompt,
           aspectRatio: platform.genAspect,
         }),
+        signal: ctrl.signal,
       });
       const data = await res.json();
       if (!res.ok || data.error) {
@@ -330,12 +333,18 @@ export default function PosterboyStudio() {
       setProgress(100);
       setGeneratedUrl(data.image);
       setGenState("done");
-    } catch {
+    } catch (err) {
       await holdFloor();
       stopTimer();
       setProgress(0);
-      setError("Network error. Please try again.");
+      setError(
+        err instanceof DOMException && err.name === "AbortError"
+          ? "Generation timed out. Please try again."
+          : "Network error. Please try again.",
+      );
       setGenState("idle");
+    } finally {
+      clearTimeout(timeoutId);
     }
   };
 
