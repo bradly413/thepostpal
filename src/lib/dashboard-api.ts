@@ -173,6 +173,8 @@ export async function createDashboardPost(input: {
   status?: DraftStatus;
   templateId?: string | null;
   pillar?: string | null;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
 }): Promise<DashboardPostRecord> {
   const data = await apiRequest<{ post: DashboardPostRecord }>("/api/posts", {
     method: "POST",
@@ -192,6 +194,8 @@ export async function updateDashboardPost(
     pillar: string | null;
     note: string | null;
     reviewerNotes: string | null;
+    mediaUrl: string | null;
+    mediaType: "image" | "video" | null;
   }>,
 ): Promise<DashboardPostRecord> {
   const data = await apiRequest<{ post: DashboardPostRecord }>(`/api/posts/${id}`, {

@@ -18,6 +18,12 @@ enum DraftStatus {
   published
   skipped
   needs_revision
+  failed
+}
+
+enum ScheduledPostMediaType {
+  image
+  video
 }
 
 enum PlanTier {
@@ -304,6 +310,9 @@ model ScheduledPost {
   pillar         String?
   note           String?
   reviewerNotes  String?
+  mediaUrl       String?
+  mediaType      ScheduledPostMediaType?
+  errorLog       String?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

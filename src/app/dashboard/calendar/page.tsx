@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
 import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
+import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
 import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
@@ -101,6 +102,32 @@ export default function CalendarPage() {
   const [formStatus, setFormStatus] = useState<"scheduled" | "draft">("scheduled");
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
+
+  // S3 media for the post (absolute public URL — what the Meta dispatcher needs).
+  const [mediaUrl, setMediaUrl] = useState<string>("");
+  const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  const [uploadingMedia, setUploadingMedia] = useState(false);
+  const [mediaError, setMediaError] = useState<string | null>(null);
+
+  // On select/drop → bypass local blobs, push straight to S3, bind the returned
+  // absolute publicUrl to mediaUrl + set mediaType from the file.
+  async function handleMediaFile(file: File | null | undefined) {
+    if (!file) return;
+    setMediaError(null);
+    setUploadingMedia(true);
+    setMediaType(file.type.startsWith("video/") ? "video" : "image");
+    try {
+      const publicUrl = await uploadMediaToS3(file);
+      setMediaUrl(publicUrl);
+    } catch (err) {
+      setMediaUrl("");
+      setMediaError(
+        err instanceof DashboardUploadError ? err.message : "Upload failed. Please try again.",
+      );
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
 
   const [eventTitle, setEventTitle] = useState("");
   const [eventTime, setEventTime] = useState("");
@@ -227,6 +254,9 @@ export default function CalendarPage() {
     setFormTime("09:00");
     setFormCaption("");
     setFormStatus("scheduled");
+    setMediaUrl("");
+    setMediaType("image");
+    setMediaError(null);
     setModalMode("post");
   }
 
@@ -238,6 +268,9 @@ export default function CalendarPage() {
     setFormTime(post.time);
     setFormCaption(post.caption);
     setFormStatus(post.status === "published" ? "scheduled" : post.status as "scheduled" | "draft");
+    setMediaUrl("");
+    setMediaType("image");
+    setMediaError(null);
     setModalMode("post");
   }
 
@@ -261,8 +294,8 @@ export default function CalendarPage() {
     setModalMode("event");
   }
 
-  async function handleSavePost() {
-    if (!locationId) return;
+  async function handleSavePost(approve = false) {
+    if (!locationId || uploadingMedia) return;
 
     const tmpl = templates.find((t) => t.id === formTemplate);
     const postData = {
@@ -277,7 +310,15 @@ export default function CalendarPage() {
     };
 
     try {
-      const payload = mapCalendarPostToCreateInput(postData, locationId);
+      const base = mapCalendarPostToCreateInput(postData, locationId);
+      // Approve → status 'approved' (the cron dispatcher only publishes approved
+      // posts). Attach the absolute S3 publicUrl + media type for the dispatcher.
+      const payload = {
+        ...base,
+        status: approve ? ("approved" as const) : base.status,
+        mediaUrl: mediaUrl || null,
+        mediaType: mediaUrl ? mediaType : null,
+      };
       if (editingPost) {
         await updateDashboardPost(editingPost.id, payload);
       } else {
@@ -292,7 +333,9 @@ export default function CalendarPage() {
       return;
     }
 
-    if (formStatus === "scheduled" && meta?.connected && !editingPost) {
+    // 'approved' posts are handed to the cron dispatcher — skip the immediate
+    // Meta call so we don't double-publish.
+    if (formStatus === "scheduled" && meta?.connected && !editingPost && !approve) {
       setPublishing(true);
       setPublishResult(null);
       try {
@@ -302,7 +345,7 @@ export default function CalendarPage() {
         const payload = await buildMetaPublishPayload({
           platform: formPlatform,
           caption: formCaption,
-          imageUrl: "",
+          imageUrl: mediaUrl,
           scheduledTime: unixTime,
         });
         const res = await fetch("/api/meta/publish", {
@@ -899,6 +942,51 @@ export default function CalendarPage() {
               </div>
             )}
 
+            {/* Media → S3 (absolute publicUrl for the Meta dispatcher) */}
+            <div className="mt-4">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-black/55 mb-1.5">Media</label>
+              <div className="relative">
+                <label
+                  className={`group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 bg-white/60 backdrop-blur-xl px-4 py-6 text-center cursor-pointer transition-colors hover:border-[#ee2532]/40 ${uploadingMedia ? "pointer-events-none" : ""}`}
+                >
+                  {mediaUrl && mediaType === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaUrl} alt="" className="max-h-36 w-auto rounded-xl object-contain" />
+                  ) : mediaUrl && mediaType === "video" ? (
+                    <video src={mediaUrl} className="max-h-36 w-auto rounded-xl" muted />
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium text-black/70">Drop or choose a photo / video</span>
+                      <span className="text-[11px] text-black/45">Uploads straight to your secure bucket</span>
+                    </>
+                  )}
+                  <input
+                    type="file"
+                    accept="image/*,video/*"
+                    className="sr-only"
+                    onChange={(e) => handleMediaFile(e.target.files?.[0])}
+                    disabled={uploadingMedia}
+                  />
+                </label>
+                {uploadingMedia && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/55 backdrop-blur-md">
+                    <span className="h-6 w-6 rounded-full border-2 border-[#323232]/25 border-t-[#323232] animate-spin" aria-hidden />
+                    <span className="text-[11px] font-medium text-[#323232]">Uploading…</span>
+                  </div>
+                )}
+              </div>
+              {mediaUrl && !uploadingMedia && (
+                <button
+                  type="button"
+                  onClick={() => { setMediaUrl(""); setMediaError(null); }}
+                  className="mt-1.5 text-[11px] text-black/45 hover:text-[#ee2532] transition-colors"
+                >
+                  Remove media
+                </button>
+              )}
+              {mediaError && <p className="mt-1.5 text-[11px] text-[#ee2532]">{mediaError}</p>}
+            </div>
+
             <div className="flex gap-3 mt-6">
               {editingPost && (
                 <button
@@ -912,11 +1000,19 @@ export default function CalendarPage() {
                 Cancel
               </button>
               <button
-                onClick={handleSavePost}
-                disabled={publishing}
-                className="pb-btn-primary flex-1 text-sm py-2.5 disabled:opacity-50"
+                onClick={() => handleSavePost(false)}
+                disabled={publishing || uploadingMedia}
+                className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
               >
-                {publishing ? "Scheduling..." : editingPost ? "Update" : "Schedule"}
+                {publishing ? "Saving…" : editingPost ? "Update" : "Schedule"}
+              </button>
+              <button
+                onClick={() => handleSavePost(true)}
+                disabled={publishing || uploadingMedia}
+                className="pb-btn-primary flex-1 text-sm py-2.5 disabled:opacity-50"
+                title="Approve so the dispatcher publishes it"
+              >
+                Schedule &amp; Approve
               </button>
             </div>
           </div>

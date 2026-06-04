@@ -15,7 +15,10 @@ const VALID_STATUSES = new Set([
   "published",
   "skipped",
   "needs_revision",
+  "failed",
 ]);
+
+const VALID_MEDIA_TYPES = new Set(["image", "video"]);
 
 export async function GET(_: NextRequest, { params }: Params) {
   const { id } = await params;
@@ -103,6 +106,18 @@ export async function PUT(request: NextRequest, { params }: Params) {
                 ? body.reviewerNotes
                 : undefined,
           status: nextStatus,
+          mediaUrl:
+            body.mediaUrl === null
+              ? null
+              : typeof body.mediaUrl === "string"
+                ? body.mediaUrl
+                : undefined,
+          mediaType:
+            body.mediaType === null
+              ? null
+              : typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
+                ? body.mediaType
+                : undefined,
         },
       });
 

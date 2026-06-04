@@ -16,6 +16,9 @@ export interface DashboardScheduledPostRecord {
   pillar?: string | null;
   note?: string | null;
   reviewerNotes?: string | null;
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
+  errorLog?: string | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -62,6 +65,7 @@ const LOCAL_STATUS_MAP: Record<DraftStatus, LocalScheduledPost["status"]> = {
   needs_review: "draft",
   needs_revision: "draft",
   skipped: "draft",
+  failed: "draft",
 };
 
 export function mapRecordToCalendarPost(

@@ -11,7 +11,10 @@ const VALID_STATUSES = new Set([
   "published",
   "skipped",
   "needs_revision",
+  "failed",
 ]);
+
+const VALID_MEDIA_TYPES = new Set(["image", "video"]);
 
 export async function GET(request: NextRequest) {
   try {
@@ -80,6 +83,11 @@ export async function POST(request: NextRequest) {
           templateId:
             typeof body.templateId === "string" ? body.templateId : null,
           pillar: typeof body.pillar === "string" ? body.pillar : null,
+          mediaUrl: typeof body.mediaUrl === "string" ? body.mediaUrl : null,
+          mediaType:
+            typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
+              ? body.mediaType
+              : null,
         },
       });
 
