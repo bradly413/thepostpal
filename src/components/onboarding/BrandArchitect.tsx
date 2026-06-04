@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
-import { saveBrandEngine } from "@/lib/brand-engine-api";
+import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
+import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
 import { Fraunces, Syne } from "next/font/google";
 
 // Real type specimens for the typography engine.
@@ -52,6 +53,54 @@ export default function BrandArchitect() {
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
+
+  // READ PATH — hydrate the Niche / Tone / Vibe pickers from the Postgres
+  // brandEngine JSON column (GET /api/brand-engine, RLS-scoped via withTenantDb)
+  // so a returning user edits their saved DNA instead of a blank slate.
+  const [hydrate, setHydrate] = useState<"loading" | "ready" | "error">("loading");
+
+  const loadBrandEngine = useCallback(async () => {
+    setHydrate("loading");
+    try {
+      const dna = (await fetchBrandEngine()) as
+        | {
+            niche?: string;
+            primaryTone?: string;
+            contrastVibe?: string | number;
+            paletteVibe?: number;
+            typographyPairing?: string;
+          }
+        | null;
+      if (dna && typeof dna === "object") {
+        setBrandData((prev) => ({
+          niche: typeof dna.niche === "string" ? dna.niche : prev.niche,
+          pivotAnswer:
+            typeof dna.primaryTone === "string" ? dna.primaryTone : prev.pivotAnswer,
+          paletteVibe:
+            typeof dna.contrastVibe === "number"
+              ? dna.contrastVibe
+              : typeof dna.contrastVibe === "string" &&
+                  dna.contrastVibe.trim() !== "" &&
+                  !Number.isNaN(Number(dna.contrastVibe))
+                ? Number(dna.contrastVibe)
+                : typeof dna.paletteVibe === "number"
+                  ? dna.paletteVibe
+                  : prev.paletteVibe,
+          typographyPairing:
+            typeof dna.typographyPairing === "string"
+              ? dna.typographyPairing
+              : prev.typographyPairing,
+        }));
+      }
+      setHydrate("ready");
+    } catch {
+      setHydrate("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    void loadBrandEngine();
+  }, [loadBrandEngine]);
 
   const next = () => setStep((s) => Math.min(s + 1, 3));
   const back = () => setStep((s) => Math.max(s - 1, 0));
@@ -132,7 +181,21 @@ export default function BrandArchitect() {
         </button>
       )}
 
-      {/* Stage — remounts per step so the fade replays */}
+      {/* READ STATE → StateViews (warm-light frames) while we hydrate the DNA */}
+      {hydrate === "loading" ? (
+        <div className="architect-fade w-full max-w-2xl space-y-4">
+          <Skeleton className="h-3 w-44" />
+          <Skeleton className="h-[280px] w-full rounded-3xl" />
+        </div>
+      ) : hydrate === "error" ? (
+        <div className="architect-fade w-full max-w-md">
+          <ErrorState
+            message="We couldn't reach your Brand Engine. Check your connection and try again."
+            onRetry={() => void loadBrandEngine()}
+          />
+        </div>
+      ) : (
+      /* Stage — remounts per step so the fade replays */
       <div key={step} className="architect-fade w-full flex items-center justify-center">
         {step === 0 && (
           <div className="max-w-xl text-center">
@@ -280,16 +343,18 @@ export default function BrandArchitect() {
                   type="button"
                   disabled={saving || !brandData.niche}
                   onClick={async () => {
+                    // OPTIMISTIC WRITE — reveal the compiled DNA + success note
+                    // immediately, then reconcile with Postgres (PUT /api/brand-engine)
+                    // and roll the note back only if the persist actually fails.
                     setSaving(true);
-                    setSaveNote(null);
+                    setCompiled(true);
+                    setSaveNote("Brand Engine saved to your workspace.");
                     try {
                       await saveBrandEngine(brandData);
-                      setSaveNote("Brand Engine saved to your workspace.");
                     } catch {
                       setSaveNote("Showing your DNA — sign in to save it to your workspace.");
                     } finally {
                       setSaving(false);
-                      setCompiled(true);
                     }
                   }}
                   className="w-full bg-black text-white rounded-2xl py-5 text-xs font-light tracking-[0.2em] shadow-2xl hover:bg-black/80 transition-all disabled:opacity-50"
@@ -318,6 +383,7 @@ export default function BrandArchitect() {
           </div>
         )}
       </div>
+      )}
     </div>
   );
 }
