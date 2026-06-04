@@ -783,8 +783,11 @@ html[data-theme] body {
   align-items: center;
   justify-content: center;
   padding: 0.75rem 1.5rem;
-  background: var(--pb-ink);
-  color: var(--pb-paper);
+  /* Fallbacks are load-bearing: if these vars don't cascade into scope (e.g. a
+     button rendered in a portal/modal outside .pb-app) the label must NOT render
+     invisible on the dark fill. This was the "blacked-out button" bug. */
+  background: var(--pb-ink, #1c1c1e);
+  color: var(--pb-paper, #faf7f1);
   font-size: 0.875rem;
   font-weight: 500;
   text-decoration: none;
@@ -1061,6 +1064,7 @@ html[data-theme] body {
    transparent and just sets typography tokens. */
 .pb-app {
   --pb-ink: #1c1c1e;
+  --pb-paper: #faf7f1;
   --pb-ink-soft: #76767e;
   --pb-line: rgba(20, 20, 30, 0.07);
   --pb-press: #ee2532;
@@ -1150,8 +1154,15 @@ html[data-theme] body {
 
 .pb-draft-actions .pb-press-btn {
   background: var(--pb-ink);
-  color: var(--pb-paper);
+  color: var(--pb-paper, #faf7f1);
   border-color: var(--pb-ink);
+}
+
+.pb-issue-card {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 1rem;
+  align-items: start;
 }
 
 .pb-status {
@@ -1768,4 +1779,18 @@ body.pb-xp-active {
 @media (prefers-reduced-motion: reduce) {
   body.pb-xp-active { cursor: auto; }
   .pb-xp-cursor { display: none; }
+}
+
+/* Dashboard page entrance fade — keyed remount per route (PageTransition.tsx).
+   Resting opacity is 1, so content is never stranded invisible if the animation
+   is throttled/disabled (replaces the old rAF-gated opacity that blanked pages). */
+@keyframes pbPageFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+.pb-page-fade {
+  animation: pbPageFade 0.35s ease;
+}
+@media (prefers-reduced-motion: reduce) {
+  .pb-page-fade { animation: none; }
 }

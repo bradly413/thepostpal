@@ -71,11 +71,7 @@ export default function IssuesPage() {
       ) : (
         <div className="pb-draft-list">
           {issues.map((issue) => (
-            <article
-              key={issue.id}
-              className="pb-draft-card"
-              style={{ gridTemplateColumns: "1fr auto" }}
-            >
+            <article key={issue.id} className="pb-draft-card pb-issue-card">
               <div>
                 <h2
                   className="font-serif text-lg"

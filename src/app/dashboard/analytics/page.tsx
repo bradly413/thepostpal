@@ -111,7 +111,11 @@ export default function AnalyticsPage() {
                 value: `${Math.max(1, Math.min(14, stats.approved * 2))} hrs`,
               },
             ].map((m) => (
-              <div key={m.label} className="pb-draft-card" style={{ gridTemplateColumns: "1fr" }}>
+              <div
+                key={m.label}
+                className="pb-draft-card"
+                style={{ gridTemplateColumns: "1fr", alignItems: "stretch" }}
+              >
                 <p className="text-xs uppercase tracking-widest opacity-50">{m.label}</p>
                 <p className="text-2xl mt-2 font-serif" style={{ fontFamily: "var(--font-instrument-serif)" }}>{m.value}</p>
               </div>

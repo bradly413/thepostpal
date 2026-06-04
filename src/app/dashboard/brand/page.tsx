@@ -176,7 +176,7 @@ export default function BrandPage() {
         <div style={{ textAlign: "center", maxWidth: 400 }}>
           <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No Brand Book Yet</h2>
           <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 20 }}>Complete the onboarding flow to generate your personalized brand guidelines.</p>
-          <Link href="/onboarding/classic" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#1E3A8A", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <Link href="/onboarding" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#ee2532", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
             Start Onboarding
           </Link>
         </div>
