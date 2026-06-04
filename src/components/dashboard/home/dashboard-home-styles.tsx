@@ -97,7 +97,7 @@ export function DashboardHomeStyles() {
     @media (max-width: 1080px) { .top2 { grid-template-columns: 1fr; } .top2 .hero2 { grid-column: 1 / -1; } }
 
     .hero2 {
-      position: relative; aspect-ratio: 796 / 372; height: auto; border-radius: 26px; overflow: hidden;
+      position: relative; height: 372px; border-radius: 26px; overflow: hidden;
       border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 30px 70px -42px rgba(20,20,40,0.55); isolation: isolate;
     }
     .hero2 .slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.1s ease; }
