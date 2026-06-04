@@ -173,6 +173,36 @@ export async function loadMetaBundleSecrets(
   };
 }
 
+/** Cron / system context — no user auth; scoped by organization + location. */
+export async function loadMetaBundleSecretsForCron(
+  tx: TenantDbClient,
+  organizationId: string,
+  locationId: string,
+): Promise<MetaConnectionSecrets | null> {
+  const rows = await tx.socialConnection.findMany({
+    where: {
+      organizationId,
+      locationId,
+      platform: { in: [...META_PLATFORMS] },
+      connected: true,
+    },
+  });
+
+  const facebook = rows.find((row) => row.platform === "facebook");
+  if (!facebook?.externalAccountId || !facebook.accessToken) {
+    return null;
+  }
+
+  const instagram = rows.find((row) => row.platform === "instagram");
+
+  return {
+    pageId: facebook.externalAccountId,
+    pageToken: facebook.accessToken,
+    pageName: facebook.handle || "Facebook Page",
+    igAccountId: instagram?.externalAccountId ?? null,
+  };
+}
+
 export async function disconnectMetaBundle(
   auth: AuthContext,
   tx: TenantDbClient,

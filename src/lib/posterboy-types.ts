@@ -5,7 +5,8 @@ export type DraftStatus =
   | "scheduled"
   | "published"
   | "skipped"
-  | "needs_revision";
+  | "needs_revision"
+  | "failed";
 
 export type SocialPlatform = "facebook" | "instagram" | "linkedin" | "tiktok";
 

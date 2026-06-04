@@ -8,6 +8,7 @@ const VALID_TRANSITIONS: Record<DraftStatus, DraftStatus[]> = {
   published: [],
   skipped: ["needs_review"],
   needs_revision: ["needs_review", "draft"],
+  failed: ["needs_review", "draft"],
 };
 
 export function canTransition(from: DraftStatus, to: DraftStatus): boolean {

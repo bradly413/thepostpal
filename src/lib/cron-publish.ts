@@ -2,6 +2,8 @@ import "server-only";
 
 import type { DraftStatus } from "@prisma/client";
 import type { TenantDbClient } from "@/lib/db";
+import { MetaApiError, publishToMeta } from "@/lib/meta-api";
+import { loadMetaBundleSecretsForCron } from "@/lib/meta-social-db";
 
 export interface CronPublishResult {
   processed: number;
@@ -11,11 +13,11 @@ export interface CronPublishResult {
   errors: Array<{ postId: string; message: string }>;
 }
 
-const READY_STATUSES: DraftStatus[] = ["approved", "scheduled"];
+const READY_STATUSES: DraftStatus[] = ["approved"];
 
 /**
- * Finds scheduled posts that are due and marks them published.
- * Meta dispatch is stubbed — wire publishToFacebook/Instagram when S3 public URLs exist.
+ * Finds approved scheduled posts that are due, dispatches to Meta Graph API,
+ * and updates status to published or failed with errorLog for the dashboard.
  */
 export async function processDueScheduledPosts(tx: TenantDbClient): Promise<CronPublishResult> {
   const now = new Date();
@@ -28,11 +30,6 @@ export async function processDueScheduledPosts(tx: TenantDbClient): Promise<Cron
     },
     orderBy: { scheduledFor: "asc" },
     take: 50,
-    include: {
-      location: {
-        select: { id: true, name: true },
-      },
-    },
   });
 
   const result: CronPublishResult = {
@@ -44,28 +41,60 @@ export async function processDueScheduledPosts(tx: TenantDbClient): Promise<Cron
   };
 
   for (const post of pending) {
+    const locationId = post.locationId!;
+
     try {
-      // TODO: Load SocialConnection tokens for post.locationId and call Meta publish APIs.
-      // await dispatchScheduledPostToMeta(post);
+      const secrets = await loadMetaBundleSecretsForCron(
+        tx,
+        post.organizationId,
+        locationId,
+      );
+
+      if (!secrets?.pageToken) {
+        result.skipped += 1;
+        const message = "Meta not connected for this location";
+        await tx.scheduledPost.update({
+          where: { id: post.id },
+          data: {
+            status: "failed",
+            errorLog: message,
+            updatedAt: now,
+          },
+        });
+        result.errors.push({ postId: post.id, message });
+        continue;
+      }
+
+      await publishToMeta(post, secrets.pageToken, {
+        pageId: secrets.pageId,
+        igAccountId: secrets.igAccountId,
+      });
 
       await tx.scheduledPost.update({
         where: { id: post.id },
         data: {
           status: "published",
+          errorLog: null,
           updatedAt: now,
         },
       });
 
       result.published += 1;
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Unknown publish error";
+      const message =
+        error instanceof MetaApiError
+          ? error.toLogString()
+          : error instanceof Error
+            ? error.message
+            : "Unknown publish error";
+
       console.error(`[CRON] Failed to publish post ${post.id}:`, error);
 
       await tx.scheduledPost.update({
         where: { id: post.id },
         data: {
-          status: "needs_revision",
-          reviewerNotes: `[cron-publish] ${message}`.slice(0, 2000),
+          status: "failed",
+          errorLog: message.slice(0, 4000),
           updatedAt: now,
         },
       });

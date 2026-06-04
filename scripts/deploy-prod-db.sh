@@ -22,10 +22,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+AUTO_CONFIRM="${DEPLOY_DB_YES:-}"
 URL="${1:-${PROD_DATABASE_URL:-}}"
 if [[ -z "$URL" ]]; then
   echo "✗ No connection string. Pass it as an argument or set PROD_DATABASE_URL." >&2
   echo "  ./scripts/deploy-prod-db.sh \"postgresql://...\"" >&2
+  echo "  # or: ./scripts/deploy-prod-db-from-clipboard.sh  (after copying Neon direct URL)" >&2
   exit 1
 fi
 
@@ -48,10 +50,14 @@ echo "Pending migration status:"
 DATABASE_URL="$URL" npx prisma migrate status || true
 echo ""
 
-read -r -p "Apply 'prisma migrate deploy' to the above database? [y/N] " ans
-if [[ "${ans:-}" != "y" && "${ans:-}" != "Y" ]]; then
-  echo "Aborted. Nothing was applied."
-  exit 0
+if [[ "$AUTO_CONFIRM" != "1" && "$AUTO_CONFIRM" != "true" && "$AUTO_CONFIRM" != "yes" ]]; then
+  read -r -p "Apply 'prisma migrate deploy' to the above database? [y/N] " ans
+  if [[ "${ans:-}" != "y" && "${ans:-}" != "Y" ]]; then
+    echo "Aborted. Nothing was applied."
+    exit 0
+  fi
+else
+  echo "→ DEPLOY_DB_YES set — applying migrations without prompt."
 fi
 
 echo ""

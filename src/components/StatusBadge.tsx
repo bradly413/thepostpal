@@ -8,6 +8,7 @@ const LABELS: Record<DraftStatus, string> = {
   published: "Published",
   skipped: "Skipped",
   needs_revision: "Needs revision",
+  failed: "Publish failed",
 };
 
 interface StatusBadgeProps {

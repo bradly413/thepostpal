@@ -9,6 +9,7 @@ const EMPTY_COUNTS: Record<DraftStatus, number> = {
   published: 0,
   skipped: 0,
   needs_revision: 0,
+  failed: 0,
 };
 
 export function filterPostsForLocation(
