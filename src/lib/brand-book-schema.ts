@@ -278,6 +278,8 @@ export interface OnboardingAnswers {
   // exists); generator narrows to IndustryId when building AgentIdentity.
   // Accepts IndustryId values from src/lib/industries.ts when typed.
   industry?: string;
+  /** Multi-select industries (wizard). `industry` is the primary (= industries[0]). */
+  industries?: string[];
   /** Free-text profession label ("Realtor", "Pastry Chef"). */
   profession?: string;
   /** 1–2 sentence "why we do this", in the user's own words. */
@@ -292,10 +294,16 @@ export interface OnboardingAnswers {
   // ── Behavioral onboarding (plain-English, no jargon) ───────
   /** "If your business had a dress code…" → curated palette + visual vibe. */
   dressCode?: DressCodeChoice;
+  /** Multi-select dress codes; `dressCode` is the primary (= dressCodes[0]). */
+  dressCodes?: DressCodeChoice[];
   /** "A new customer walks through the door…" → weSay / weDontSay tone. */
   greeting?: GreetingChoice;
+  /** Multi-select greetings; `greeting` is the primary (= greetings[0]). */
+  greetings?: GreetingChoice[];
   /** "Best 5-star review…" → hero positioning. */
   compliment?: ComplimentChoice;
+  /** Multi-select compliments; `compliment` is the primary (= compliments[0]). */
+  compliments?: ComplimentChoice[];
 }
 
 // ═══════════════════════════════════════════════════════════

@@ -53,18 +53,22 @@ function formatBehavioralSignals(answers: OnboardingAnswers): string {
   if (!answers.dressCode && !answers.greeting && !answers.compliment) {
     return "";
   }
+  const also = (primary: string | undefined, all: string[] | undefined) => {
+    const extra = (all ?? []).filter((v) => v && v !== primary);
+    return extra.length > 0 ? ` (also: ${extra.join("; ")})` : "";
+  };
   return `## Owner's behavioral answers (authoritative)
 
 **Dress Code** — "If your business had a dress code, what would it be?"
-→ ${answers.dressCode ?? "(not provided)"}
-Use for paletteId and overall visual vibe only.
+→ ${answers.dressCode ?? "(not provided)"}${also(answers.dressCode, answers.dressCodes)}
+Use for paletteId and overall visual vibe only. The first (primary) leads; treat any others as secondary nuance.
 
 **Greeting** — "A new customer walks through the door. How do you greet them?"
-→ ${answers.greeting ?? "(not provided)"}
+→ ${answers.greeting ?? "(not provided)"}${also(answers.greeting, answers.greetings)}
 Use for weSay and weDontSay — match this energy and phrasing style.
 
 **Compliment** — "What is the best 5-star review a customer could leave you?"
-→ ${answers.compliment ?? "(not provided)"}
+→ ${answers.compliment ?? "(not provided)"}${also(answers.compliment, answers.compliments)}
 Use for hero — the positioning line must reflect this praise theme.`;
 }
 
@@ -105,7 +109,13 @@ function buildBrandVoiceUserPrompt(answers: OnboardingAnswers): string {
       ? answers.antiVoice.map((a) => `- ${a}`).join("\n")
       : "(none)";
 
-  return `Industry ID: ${answers.industry ?? "unknown"}
+  const extraIndustries = (answers.industries ?? []).filter(
+    (id) => id && id !== answers.industry,
+  );
+
+  return `Industry ID: ${answers.industry ?? "unknown"}${
+    extraIndustries.length > 0 ? ` (also serves: ${extraIndustries.join(", ")})` : ""
+  }
 Industry label: ${industryDef?.label ?? "General business"}
 Profession: ${answers.profession ?? industryDef?.defaultProfessionTitle ?? "Owner"}
 Company / venue: ${company ?? "(not specified)"}

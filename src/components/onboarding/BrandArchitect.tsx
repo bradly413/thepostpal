@@ -17,6 +17,12 @@ import {
   type DressCodeChoice,
   type GreetingChoice,
 } from "@/lib/onboarding-choices";
+import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
+import {
+  cacheStoredBrandBook,
+  cacheStoredOnboardingAnswers,
+  markOnboardingComplete,
+} from "@/lib/onboarding-brand-sync";
 
 // Social platforms the user can connect (Step 1). Profile URLs are captured in
 // local state; backend persistence (Meta OAuth / profile store) is a follow-up.
@@ -86,41 +92,52 @@ const FIELD =
 function BehavioralPicker<T extends string>({
   question,
   options,
-  value,
-  onChange,
+  values,
+  onToggle,
   onNext,
   nextDisabled,
   nextLabel = "Next",
 }: {
   question: string;
   options: readonly T[];
-  value: T | "";
-  onChange: (v: T) => void;
+  /** Multi-select: every chosen option. The first is treated as primary. */
+  values: T[];
+  onToggle: (v: T) => void;
   onNext: () => void;
   nextDisabled?: boolean;
   nextLabel?: string;
 }) {
   return (
     <div className="architect-fade w-full max-w-xl">
-      <p className="text-[15px] text-[#76767e] mb-8 leading-relaxed">{question}</p>
+      <p className="text-[15px] text-[#76767e] mb-3 leading-relaxed">{question}</p>
+      <p className="text-[12px] text-[#9a9aa2] mb-6">Pick one or more — the first you choose leads.</p>
       <div className="flex flex-col divide-y divide-black/[0.06]">
         {options.map((opt) => {
-          const on = value === opt;
+          const on = values.includes(opt);
+          const primary = on && values[0] === opt && values.length > 1;
           return (
             <button
               key={opt}
               type="button"
-              onClick={() => onChange(opt)}
+              aria-pressed={on}
+              onClick={() => onToggle(opt)}
               className="group flex items-start gap-4 py-4 text-left"
             >
               <span
-                className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition-colors ${
-                  on ? "border-[#ee2532]" : "border-black/25 group-hover:border-black/45"
+                className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition-colors ${
+                  on ? "border-[#ee2532] bg-[#ee2532]" : "border-black/25 group-hover:border-black/45"
                 }`}
               >
-                {on && <span className="h-2.5 w-2.5 rounded-full bg-[#ee2532]" />}
+                {on && (
+                  <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" aria-hidden>
+                    <path d="M2.5 6.2l2.2 2.2 4.8-4.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                )}
               </span>
-              <span className="text-[16px] font-medium text-[#1c1c1e] leading-snug">{opt}</span>
+              <span className="text-[16px] font-medium text-[#1c1c1e] leading-snug">
+                {opt}
+                {primary && <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-[#ee2532]">Leads</span>}
+              </span>
             </button>
           );
         })}
@@ -146,7 +163,7 @@ function BehavioralPicker<T extends string>({
 }
 
 export default function BrandArchitect() {
-  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4–6 behavioral
+  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4 topics · 5–7 behavioral
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -172,11 +189,33 @@ export default function BrandArchitect() {
   const [business, setBusiness] = useState("");
   const [location, setLocation] = useState("");
   const [industryId, setIndustryId] = useState("");
+  // Multi-select industries. industryId stays the PRIMARY (= industryIds[0]) so
+  // all industry-scoped steps (target client / content focus) + the generator
+  // keep narrowing to one definition; the array carries the full selection.
+  const [industryIds, setIndustryIds] = useState<string[]>([]);
   const [bookState, setBookState] = useState<"idle" | "generating" | "error">("idle");
 
+  const [targetIds, setTargetIds] = useState<string[]>([]);
+  const [contentFocusIds, setContentFocusIds] = useState<string[]>([]);
+  // Behavioral answers are multi-select; the singular value is the primary
+  // (= [0]) that drives the 1:1 palette/tone/font mappings, the arrays carry
+  // every pick (surfaced to voice synthesis).
   const [dressCode, setDressCode] = useState<DressCodeChoice | "">("");
+  const [dressCodes, setDressCodes] = useState<DressCodeChoice[]>([]);
   const [greeting, setGreeting] = useState<GreetingChoice | "">("");
+  const [greetings, setGreetings] = useState<GreetingChoice[]>([]);
   const [compliment, setCompliment] = useState<ComplimentChoice | "">("");
+  const [compliments, setCompliments] = useState<ComplimentChoice[]>([]);
+
+  const toggleId = (ids: string[], id: string) =>
+    ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
+
+  // Toggle a value in a multi-select array and return the new array + the
+  // resulting primary (first element, or "" when empty).
+  function toggleMulti<T extends string>(arr: T[], v: T): { next: T[]; primary: T | "" } {
+    const next = arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+    return { next, primary: (next[0] ?? "") as T | "" };
+  }
 
   const buildAnswers = (): OnboardingAnswers => {
     const ind = getIndustry(industryId);
@@ -187,6 +226,18 @@ export default function BrandArchitect() {
       playful: "Upbeat",
       authoritative: "Refined",
     };
+    const archetypeLabels =
+      ind && targetIds.length > 0
+        ? ind.clientArchetypes
+            .filter((a) => targetIds.includes(a.id))
+            .map((a) => a.label)
+        : [];
+    const focusLabels =
+      ind && contentFocusIds.length > 0
+        ? ind.contentFocus
+            .filter((c) => contentFocusIds.includes(c.id))
+            .map((c) => c.label)
+        : [];
     const social = selectedPlatforms
       .map((p) => profiles[p.id])
       .filter((u) => u && u.trim())
@@ -195,18 +246,36 @@ export default function BrandArchitect() {
       name: name.trim() || "Owner",
       company: business.trim() || undefined,
       industry: industryId || undefined,
+      industries:
+        industryIds.length > 0
+          ? industryIds
+          : industryId
+            ? [industryId]
+            : undefined,
       profession: ind?.defaultProfessionTitle,
       location: location.trim() || "Local Area",
       markets: location.trim() ? [location.trim()] : ["Local"],
-      targetClient: ind
-        ? ind.clientArchetypes.slice(0, 3).map((a) => a.label).join(", ")
-        : "Local customers",
-      personalityTraits: [traitLabel[tone]],
+      targetClient:
+        archetypeLabels.length > 0
+          ? archetypeLabels.join(", ")
+          : ind
+            ? ind.clientArchetypes.slice(0, 2).map((a) => a.label).join(", ")
+            : "Local customers",
+      personalityTraits:
+        archetypeLabels.length > 0 ? archetypeLabels : [traitLabel[tone]],
       tonePreference: tone,
-      contentFocus: ind ? ind.contentFocus.slice(0, 4).map((c) => c.label) : ["Updates"],
+      contentFocus:
+        focusLabels.length > 0
+          ? focusLabels
+          : ind
+            ? ind.contentFocus.slice(0, 3).map((c) => c.label)
+            : ["Updates"],
       dressCode: dressCode || undefined,
+      dressCodes: dressCodes.length > 0 ? dressCodes : undefined,
       greeting: greeting || undefined,
+      greetings: greetings.length > 0 ? greetings : undefined,
       compliment: compliment || undefined,
+      compliments: compliments.length > 0 ? compliments : undefined,
       fontPairing: dressCode ? DRESS_CODE_TO_FONT_PAIRING[dressCode] : undefined,
       mission: compliment ? `What customers say: ${compliment}` : undefined,
       social: social || undefined,
@@ -232,15 +301,19 @@ export default function BrandArchitect() {
       if (dna && typeof dna === "object") {
         if (DRESS_CODE_OPTIONS.includes(dna.dressCode as DressCodeChoice)) {
           setDressCode(dna.dressCode as DressCodeChoice);
+          setDressCodes([dna.dressCode as DressCodeChoice]);
         }
         if (GREETING_OPTIONS.includes(dna.greeting as GreetingChoice)) {
           setGreeting(dna.greeting as GreetingChoice);
+          setGreetings([dna.greeting as GreetingChoice]);
         }
         if (COMPLIMENT_OPTIONS.includes(dna.compliment as ComplimentChoice)) {
           setCompliment(dna.compliment as ComplimentChoice);
+          setCompliments([dna.compliment as ComplimentChoice]);
         }
         if (typeof dna.industryId === "string") {
           setIndustryId(dna.industryId);
+          setIndustryIds([dna.industryId]);
         }
       }
       setHydrate("ready");
@@ -253,7 +326,7 @@ export default function BrandArchitect() {
     void loadBrandEngine();
   }, [loadBrandEngine]);
 
-  const next = () => setStep((s) => Math.min(s + 1, 6));
+  const next = () => setStep((s) => Math.min(s + 1, 7));
   const back = () => setStep((s) => (s === 3 ? 1 : Math.max(s - 1, 0)));
 
   // Auto-advance the "analyzing your social media" loader once it has played.
@@ -546,23 +619,42 @@ export default function BrandArchitect() {
             </div>
             <div className="flex flex-col divide-y divide-black/[0.06] max-h-[40vh] overflow-y-auto -mx-1 px-1">
               {INDUSTRIES.filter((i) => i.id !== "other-general").map((ind) => {
-                const on = industryId === ind.id;
+                const on = industryIds.includes(ind.id);
+                const isPrimary = on && industryIds[0] === ind.id && industryIds.length > 1;
                 return (
                   <button
                     key={ind.id}
                     type="button"
-                    onClick={() => setIndustryId(ind.id)}
+                    aria-pressed={on}
+                    onClick={() => {
+                      const { next, primary } = toggleMulti(industryIds, ind.id);
+                      setIndustryIds(next);
+                      // Target/content steps are scoped to the PRIMARY industry —
+                      // only reset them when the primary actually changes.
+                      if (primary !== industryId) {
+                        setIndustryId(primary);
+                        setTargetIds([]);
+                        setContentFocusIds([]);
+                      }
+                    }}
                     className="group flex items-start gap-4 py-3.5 text-left"
                   >
                     <span
-                      className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition-colors ${
-                        on ? "border-[#ee2532]" : "border-black/25 group-hover:border-black/45"
+                      className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition-colors ${
+                        on ? "border-[#ee2532] bg-[#ee2532]" : "border-black/25 group-hover:border-black/45"
                       }`}
                     >
-                      {on && <span className="h-2.5 w-2.5 rounded-full bg-[#ee2532]" />}
+                      {on && (
+                        <svg viewBox="0 0 12 12" className="h-3 w-3 text-white" fill="none" aria-hidden>
+                          <path d="M2.5 6.2l2.2 2.2 4.8-4.8" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                        </svg>
+                      )}
                     </span>
                     <span className="min-w-0">
-                      <div className="text-[16px] font-semibold text-[#1c1c1e] leading-tight">{ind.label}</div>
+                      <div className="text-[16px] font-semibold text-[#1c1c1e] leading-tight">
+                        {ind.label}
+                        {isPrimary && <span className="ml-2 text-[11px] font-semibold uppercase tracking-wide text-[#ee2532]">Leads</span>}
+                      </div>
                       <div className="text-[13px] text-[#76767e] mt-0.5 leading-snug">{ind.description}</div>
                     </span>
                   </button>
@@ -586,42 +678,74 @@ export default function BrandArchitect() {
         {step === 4 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              The Dress Code
+              Your audience &amp; topics
             </h2>
-            <BehavioralPicker
-              question="If your business had a dress code, what would it be?"
-              options={DRESS_CODE_OPTIONS}
-              value={dressCode}
-              onChange={(v) => {
-                setDressCode(v);
-                saveBrandEngine({
-                  industryId,
-                  dressCode: v,
-                  greeting: greeting || undefined,
-                  compliment: compliment || undefined,
-                }).catch(() => {});
-              }}
-              onNext={next}
-              nextDisabled={!dressCode}
-            />
+            <p className="text-[15px] text-[#76767e] mb-6">
+              Pick all that apply — we use these to shape your voice and content pillars.
+            </p>
+            {(() => {
+              const ind = getIndustry(industryId);
+              if (!ind) return null;
+              return (
+                <div className="space-y-8">
+                  <div>
+                    <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-3">
+                      Who&apos;s your ideal customer?
+                    </div>
+                    <PillMultiSelect
+                      options={ind.clientArchetypes}
+                      selected={targetIds}
+                      onToggle={(id) => setTargetIds((prev) => toggleId(prev, id))}
+                    />
+                  </div>
+                  <div>
+                    <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-3">
+                      What do you want to post about?
+                    </div>
+                    <PillMultiSelect
+                      options={ind.contentFocus}
+                      selected={contentFocusIds}
+                      onToggle={(id) => setContentFocusIds((prev) => toggleId(prev, id))}
+                    />
+                  </div>
+                </div>
+              );
+            })()}
+            <div className="mt-9 flex items-center justify-end">
+              <button
+                type="button"
+                disabled={!industryId || contentFocusIds.length === 0}
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
 
         {step === 5 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              The Greeting
+              The Dress Code
             </h2>
             <BehavioralPicker
-              question="A new customer walks through the door. How do you greet them?"
-              options={GREETING_OPTIONS}
-              value={greeting}
-              onChange={(v) => {
-                setGreeting(v);
-                saveBrandDna();
+              question="If your business had a dress code, what would it be?"
+              options={DRESS_CODE_OPTIONS}
+              values={dressCodes}
+              onToggle={(v) => {
+                const { next: arr, primary } = toggleMulti(dressCodes, v);
+                setDressCodes(arr);
+                setDressCode(primary);
+                saveBrandEngine({
+                  industryId,
+                  dressCode: primary || undefined,
+                  greeting: greeting || undefined,
+                  compliment: compliment || undefined,
+                }).catch(() => {});
               }}
               onNext={next}
-              nextDisabled={!greeting}
+              nextDisabled={dressCodes.length === 0}
             />
           </div>
         )}
@@ -629,14 +753,37 @@ export default function BrandArchitect() {
         {step === 6 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              The Greeting
+            </h2>
+            <BehavioralPicker
+              question="A new customer walks through the door. How do you greet them?"
+              options={GREETING_OPTIONS}
+              values={greetings}
+              onToggle={(v) => {
+                const { next: arr, primary } = toggleMulti(greetings, v);
+                setGreetings(arr);
+                setGreeting(primary);
+                saveBrandDna();
+              }}
+              onNext={next}
+              nextDisabled={greetings.length === 0}
+            />
+          </div>
+        )}
+
+        {step === 7 && (
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               The Compliment
             </h2>
             <BehavioralPicker
               question="What is the best 5-star review a customer could leave you?"
               options={COMPLIMENT_OPTIONS}
-              value={compliment}
-              onChange={(v) => {
-                setCompliment(v);
+              values={compliments}
+              onToggle={(v) => {
+                const { next: arr, primary } = toggleMulti(compliments, v);
+                setCompliments(arr);
+                setCompliment(primary);
                 saveBrandDna();
               }}
               onNext={() => {
@@ -656,18 +803,29 @@ export default function BrandArchitect() {
                     if (!res.ok || data.error || !data.brandBook) {
                       throw new Error(data.error || "generate failed");
                     }
-                    const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
-                    await persistBrandBookToWorkspace({
-                      brandBook: data.brandBook,
-                      onboardingAnswers: answers,
-                    });
-                    const { syncBrandBookToOrganization } = await import("@/lib/onboarding-brand-sync");
-                    syncBrandBookToOrganization(data.brandBook);
+                    cacheStoredBrandBook(data.brandBook);
+                    cacheStoredOnboardingAnswers(answers);
+                    markOnboardingComplete();
+
+                    if (data.authMode === "guest") {
+                      router.push("/sign-in?next=%2Fdashboard%2Fbrand");
+                      return;
+                    }
+
+                    try {
+                      const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
+                      await persistBrandBookToWorkspace({
+                        brandBook: data.brandBook,
+                        onboardingAnswers: answers,
+                      });
+                    } catch {
+                      /* local cache is enough until they sign in */
+                    }
                     router.push("/dashboard/brand");
                   } catch {
                     setBookState("error");
                     setSaving(false);
-                    setSaveNote("Couldn't build your brand book — sign in and try again.");
+                    setSaveNote("Couldn't build your brand book. Check your connection and try again.");
                   }
                 })();
               }}
