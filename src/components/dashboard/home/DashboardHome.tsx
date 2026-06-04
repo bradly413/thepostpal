@@ -26,6 +26,7 @@ import {
   type DashboardHomeSnapshot,
 } from "@/lib/dashboard-home-data";
 import { formatDashboardApiMessage } from "@/lib/dashboard-api";
+import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 
 // ── Hero slideshow (seasonal hooks) ──────────────────────────
 const SLIDES = [
@@ -101,6 +102,10 @@ export default function DashboardHome() {
   const [loading, setLoading] = useState(true);
   const [slide, setSlide] = useState(0);
   const [wx, setWx] = useState<Weather>({ temp: 72, high: 78, low: 61, code: 2 });
+
+  // Recent Media — live workspace photos, falling back to the static set.
+  const { photos: livePhotos } = useDashboardPhotos();
+  const recentMedia = livePhotos.length > 0 ? livePhotos.slice(0, 4).map((p) => p.src) : MEDIA;
 
   const refresh = useCallback(async () => {
     try {
@@ -333,8 +338,8 @@ export default function DashboardHome() {
             <div className="mod media2 anim">
               <div className="mhead"><span className="mtitle2">Recent Media</span><Link href="/dashboard/photos" className="viewall">View all</Link></div>
               <div className="mediastrip">
-                {MEDIA.map((m, i) => (
-                  <Link key={i} href="/dashboard/photos" className="mediathumb" style={{ backgroundImage: `url('${m}')` }} aria-label="Open media" />
+                {recentMedia.map((m, i) => (
+                  <Link key={i} href="/dashboard/photos" className="mediathumb" style={{ backgroundImage: `url('${m}')` }} aria-label={`Open media ${i + 1}`} />
                 ))}
               </div>
             </div>

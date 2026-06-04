@@ -118,8 +118,6 @@ function SettingsContent() {
     { id: "account", label: "Account" },
     { id: "posting", label: "Posting" },
     { id: "notifications", label: "Notifications" },
-    { id: "knowledge", label: "Knowledge Base" },
-    { id: "reports", label: "Reports" },
     { id: "legal", label: "Legal" },
   ];
 
@@ -378,62 +376,6 @@ function SettingsContent() {
                   >
                     Sign Out
                   </button>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {activeTab === "knowledge" && (
-            <div className="pb-panel">
-              <h2 className="pb-panel-h">Knowledge base</h2>
-              <p className="text-sm opacity-65 mb-5">Documents and data that inform your AI assistant&apos;s responses</p>
-              <div className="space-y-3">
-                {[
-                  { name: "Brand Voice Guide", type: "PDF", size: "2.4 MB", date: "Apr 12, 2026" },
-                  { name: "Neighborhood Descriptions", type: "DOC", size: "890 KB", date: "Mar 28, 2026" },
-                  { name: "Listing Templates", type: "PDF", size: "1.1 MB", date: "May 1, 2026" },
-                  { name: "FAQs & Objection Handling", type: "DOC", size: "420 KB", date: "Feb 15, 2026" },
-                ].map((doc) => (
-                  <div key={doc.name} className="pb-row">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-9 w-9 items-center justify-center rounded-lg text-xs font-bold pb-press-text" style={{ background: "rgba(238,37,50,0.08)" }}>{doc.type}</div>
-                      <div>
-                        <p className="text-sm font-medium">{doc.name}</p>
-                        <p className="text-[10px] opacity-55 mt-0.5">{doc.size} &middot; {doc.date}</p>
-                      </div>
-                    </div>
-                    <span className="pb-chip-soft">View</span>
-                  </div>
-                ))}
-              </div>
-              <button className="mt-4 w-full rounded-xl border border-dashed border-black/15 py-3 text-xs font-medium opacity-65 hover:opacity-100 transition-all">
-                + Upload Document
-              </button>
-            </div>
-          )}
-
-          {activeTab === "reports" && (
-            <div className="pb-panel">
-              <h2 className="pb-panel-h">Reports</h2>
-              <p className="text-sm opacity-65 mb-5">
-                Sample layout only — connect Meta for real insights on Facebook / Instagram pages.
-              </p>
-              <div className="space-y-4">
-                <div className="grid grid-cols-2 gap-3">
-                  {[
-                    { label: "Posts This Month", value: "—" },
-                    { label: "Total Reach", value: "—" },
-                    { label: "Engagement Rate", value: "—" },
-                    { label: "Top Platform", value: "—" },
-                  ].map((stat) => (
-                    <div key={stat.label} className="pb-tile">
-                      <p className="pb-tile-label">{stat.label}</p>
-                      <p className="text-lg font-semibold mt-1">{stat.value}</p>
-                    </div>
-                  ))}
-                </div>
-                <div className="pb-tile text-center">
-                  <p className="text-sm opacity-45">Detailed analytics coming soon</p>
                 </div>
               </div>
             </div>

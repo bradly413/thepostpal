@@ -94,13 +94,23 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 
 See `docs/PROD-ENV-CHECKLIST.md`. Set: `DATABASE_URL`, `AUTH_SECRET`, AI/Meta/Vimeo keys. Missing (graceful degrade): Upstash, S3, Stripe, Leonardo, `NEXT_PUBLIC_APP_URL`.
 
-## Design System
+## Design System — WARM-LIGHT (canonical)
 
-### Visual Language
-- **Glassmorphism**: `backdrop-filter: blur(24px) saturate(1.4)`, semi-transparent gradients
-- **Accent**: `#D4A853` (warm gold)
-- **Background**: Dark `bg-[#0c0c0e]` in dashboard
-- **No emojis in UI**
+> The dashboard is **warm-light**. Build around the home page (`.pb-home2`).
+> The OLD dark/gold system (`#D4A853`, `bg-[#0c0c0e]`) is retired — do not use it.
+
+### Foundation
+- **Background**: cool-gray frosted — `linear-gradient(165deg,#eef0f2,#e9ebee,#edeff1)` + a faint red radial glow. Provided by the shared frame; pages are transparent.
+- **Accent (brand red)**: `#ee2532` (`--pb-press`), deep `#c81e2a`. Positive metrics/success use green `#1f9d4d`.
+- **Cards**: frosted glass — `background: rgba(255,255,255,0.72)`, `backdrop-filter: blur(22px) saturate(1.5)`, 20–24px radius, soft shadow.
+- **Type**: sans (SF Pro / Inter). **Serif (`var(--font-instrument-serif)`) is logo-ONLY** — never on page/section titles.
+- **No emojis in UI.**
+
+### Shared building blocks (`src/app/globals.css`)
+- One sidebar everywhere: `AppSidebar` (`.pb-side`) — frosted, serif `posterboy` logo, uppercase nav, red active. Rendered by `DashboardShell` (the shared frame).
+- Content pages wrap in `.pb-app` and use the kit: `.pb-panel`, `.pb-panel-h`, `.pb-field`, `.pb-label`, `.pb-tab`, `.pb-toggle`, `.pb-row`, `.pb-tile`, `.pb-chip-soft`, `.pb-btn-primary`/`.pb-btn-secondary`, `.pb-press-text`.
+- Shared states: `StateViews.tsx` (Skeleton/Empty/Error/NoLocation).
+- A global `:focus-visible` red ring is applied across `.pb-home2/.pb-app/.pb-studio`; GSAP entrances respect `prefers-reduced-motion`.
 
 ## Posterboy Studio (`/dashboard/studio`)
 
