@@ -31,6 +31,7 @@ and catalogued here so they can be pulled on demand.
 | Gradient Border Button | buttons | button, border, gradient, hover | `buttons/GradientBorderButton.tsx` | — | original |
 | Ripple Button | buttons | button, ripple, click, material | `buttons/RippleButton.tsx` | JS (no lib) | original |
 | Hover Glow Button | buttons | button, glow, hover, blur | `buttons/HoverGlowButton.tsx` | — | original |
+| Glass Button | buttons | button, glass, glassmorphism, neon, blur, shine, hover | `buttons/GlassButton.tsx` | — | adapted from user CodePen |
 | Shimmer Skeleton | loaders | loader, skeleton, shimmer, loading | `loaders/ShimmerSkeleton.tsx` | — | original |
 | Marquee | animations | marquee, scroll, infinite, logos | `animations/Marquee.tsx` | — | original |
 | Gradient Text | text | text, gradient, animated, heading | `text/GradientText.tsx` | — | original |

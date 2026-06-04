@@ -6,6 +6,7 @@ import ShimmerButton from "@/lib/ui-snippets/buttons/ShimmerButton";
 import GradientBorderButton from "@/lib/ui-snippets/buttons/GradientBorderButton";
 import RippleButton from "@/lib/ui-snippets/buttons/RippleButton";
 import HoverGlowButton from "@/lib/ui-snippets/buttons/HoverGlowButton";
+import GlassButton from "@/lib/ui-snippets/buttons/GlassButton";
 import ShimmerSkeleton from "@/lib/ui-snippets/loaders/ShimmerSkeleton";
 import Marquee from "@/lib/ui-snippets/animations/Marquee";
 import GradientText from "@/lib/ui-snippets/text/GradientText";
@@ -59,6 +60,14 @@ export default function UiLabPage() {
         </Demo>
         <Demo title="Hover Glow Button" file="buttons/HoverGlowButton.tsx">
           <HoverGlowButton>Hover me</HoverGlowButton>
+        </Demo>
+        <Demo title="Glass Button" file="buttons/GlassButton.tsx">
+          {/* glass needs a vibrant/dark backdrop to read — demo on a gradient */}
+          <div className="flex w-full flex-wrap items-center justify-center gap-4 rounded-2xl bg-gradient-to-b from-[#5d326c] to-[#350048] p-6">
+            <GlassButton accent="#ee2532">Read more</GlassButton>
+            <GlassButton accent="#2db2ff">Read more</GlassButton>
+            <GlassButton accent="#1eff45">Read more</GlassButton>
+          </div>
         </Demo>
         <Demo title="Shimmer Skeleton" file="loaders/ShimmerSkeleton.tsx">
           <div className="w-full space-y-3">
