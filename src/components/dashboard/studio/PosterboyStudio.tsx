@@ -7,10 +7,7 @@ import {
   Sparkles,
   Calendar,
   Image as ImageIcon,
-  Hexagon,
   Settings,
-  ChevronDown,
-  ChevronRight,
   Sun,
   LayoutGrid,
   AlignLeft,
@@ -29,6 +26,7 @@ import {
   SlidersHorizontal,
 } from "lucide-react";
 import Link from "next/link";
+import AppSidebar from "@/components/dashboard/AppSidebar";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -450,29 +448,10 @@ export default function PosterboyStudio() {
       <StudioStyles />
       <div className="app">
 
-        {/* SIDEBAR */}
-        <aside className="sidebar">
-          <Link href="/dashboard" className="logo" aria-label="Posterboy — Home">POSTER<span className="red">BOY</span></Link>
-          <h2 className="studio-title">Studio</h2>
-          <nav className="nav">
-            <Link href="/dashboard/studio" className="active"><Sparkles size={18} /><span>Create</span></Link>
-            <Link href="/dashboard/dispatch"><Calendar size={18} /><span>Schedule</span></Link>
-            <Link href="/dashboard/templates"><ImageIcon size={18} /><span>Library</span></Link>
-            <Link href="/dashboard/brand"><Hexagon size={18} /><span>Brand</span></Link>
-            <Link href="/dashboard/settings"><Settings size={18} /><span>Settings</span></Link>
-          </nav>
-          <div className="voice-card">
-            <div className="label">Brand voice</div>
-            <button className="voice-select"><span>Posterboy Studio</span><ChevronDown size={14} /></button>
-            <div className="desc">Minimal. Bold. Timeless. We speak with clarity and create with purpose.</div>
-            <button className="manage"><span>Manage voice</span><ChevronRight size={14} /></button>
-          </div>
-          <button className="workspace">
-            <span className="ws-avatar">PS</span>
-            <span><span className="ws-name">Posterboy Studio</span><span className="ws-plan">Pro Plan</span></span>
-            <ChevronDown className="ws-chev" size={14} />
-          </button>
-        </aside>
+        {/* SIDEBAR — shared across the whole dashboard */}
+        <div style={{ gridArea: "sidebar", minWidth: 0 }}>
+          <AppSidebar />
+        </div>
 
         {/* CANVAS */}
         <main className="canvas" ref={canvasRef}>
