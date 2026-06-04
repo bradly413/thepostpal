@@ -63,6 +63,18 @@ type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
 type GenState = "idle" | "generating" | "done";
 
+// Short example prompts that typewriter-rotate through the composer placeholder.
+const PROMPT_EXAMPLES = [
+  "an Instagram post about our weekend sale",
+  "a Facebook post for our new menu",
+  "a TikTok about today's special",
+  "a post that we're hiring",
+  "we just hit 1,000 followers",
+  "a grand opening announcement",
+  "a quick thank-you to our customers",
+  "a LinkedIn post about our latest project",
+];
+
 export default function PosterboyStudio() {
   const [platformIdx, setPlatformIdx] = useState(0);
   const [theme, setTheme] = useState<"light" | "grid">("light");
@@ -79,6 +91,50 @@ export default function PosterboyStudio() {
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
   const [activeTool, setActiveTool] = useState<null | "type" | "tools">(null);
+  const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
+
+  // Typewriter-rotate short example prompts in the placeholder while it's empty.
+  useEffect(() => {
+    if (prompt.trim() || genState === "generating") return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const render = (s: string) => setPlaceholderText(`Make a post — e.g. “${s}”`);
+    if (reduce) {
+      render(PROMPT_EXAMPLES[0]);
+      return;
+    }
+    let ex = 0;
+    let ci = 0;
+    let deleting = false;
+    let timer: ReturnType<typeof setTimeout>;
+    const tick = () => {
+      const full = PROMPT_EXAMPLES[ex];
+      if (!deleting) {
+        ci++;
+        render(full.slice(0, ci));
+        if (ci >= full.length) {
+          deleting = true;
+          timer = setTimeout(tick, 1700);
+          return;
+        }
+        timer = setTimeout(tick, 42 + Math.random() * 38);
+      } else {
+        ci--;
+        render(full.slice(0, ci));
+        if (ci <= 0) {
+          deleting = false;
+          ex = (ex + 1) % PROMPT_EXAMPLES.length;
+          timer = setTimeout(tick, 280);
+          return;
+        }
+        timer = setTimeout(tick, 22);
+      }
+    };
+    timer = setTimeout(tick, 500);
+    return () => clearTimeout(timer);
+  }, [prompt, genState]);
+
   const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
   const [edit, setEdit] = useState(EDIT_DEFAULT);
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
@@ -775,7 +831,7 @@ export default function PosterboyStudio() {
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && genState !== "generating" && void composeFromIntent()}
-              placeholder="Make a post — e.g. “an Instagram post about our weekend sale”"
+              placeholder={placeholderText}
               disabled={genState === "generating"}
             />
             <div className="pb-tool" ref={promptToolsRef}>
