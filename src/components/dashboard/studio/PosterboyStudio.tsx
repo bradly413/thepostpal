@@ -18,9 +18,6 @@ import {
   Wand2,
   Send,
   Check,
-  Heart,
-  MessageCircle,
-  Bookmark,
   Crop,
   Maximize2,
   Move,
@@ -29,6 +26,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
+import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -157,7 +155,7 @@ export default function PosterboyStudio() {
       if (!card || !showTemplate || genState !== "done") return;
       const border = card.querySelector<HTMLElement>(".glass-border");
       const sheen = card.querySelector<HTMLElement>(".glass-sheen");
-      const chrome = card.querySelectorAll(".ptpl-head, .ptpl-foot");
+      const chrome = card.querySelectorAll(".pc-reveal");
       const tl = gsap.timeline();
       tl.from(card, { autoAlpha: 0, duration: 0.45, ease: "power2.out" }, 0);
 
@@ -505,69 +503,39 @@ export default function PosterboyStudio() {
 
           <div
             ref={frameWrapRef}
-            className={`frame-wrap${showTemplate ? " as-post" : ""}`}
+            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}`}
             style={showTemplate ? undefined : frameWrapStyle}
           >
-            {showTemplate && <div className="glass-border" aria-hidden="true" />}
-            {showTemplate && <div className="glass-sheen" aria-hidden="true" />}
-            {showTemplate && (
-              <div className="ptpl-head">
-                <span className="ptpl-avatar" />
-                <span className="ptpl-name">User Name</span>
-                <span className="ptpl-more">···</span>
-              </div>
-            )}
-            <div
-              className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
-              style={showTemplate ? { width: "100%", aspectRatio: `${platform.w} / ${platform.h}` } : { width: "100%", height: "100%" }}
-              onPointerDown={onImagePointerDown}
-              onPointerMove={onImagePointerMove}
-              onPointerUp={onImagePointerUp}
-              onPointerCancel={onImagePointerUp}
-            >
-              <div className="emerge" style={{ opacity: emergeOpacity }} />
-              <div className="preview" style={previewStyle} />
-              {genState === "generating" && (
-                <div className="gen-progress">{Math.round(progress)}%</div>
-              )}
-              {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
-            </div>
-            {showTemplate && (
-              <div className="ptpl-foot">
-                <div className="ptpl-actions">
-                  <span className="ptpl-act-left">
-                    <Heart size={20} className="ptpl-like" fill="currentColor" />
-                    <MessageCircle size={20} />
-                    <Send size={20} />
-                  </span>
-                  <span className="ptpl-dots"><i /><i /><i /></span>
-                  <Bookmark size={20} className="ptpl-bm" />
-                </div>
-                <div className="ptpl-likes">9,311 likes</div>
-                <div className="ptpl-caption">
-                  <span className="ptpl-cname">User Name</span>{" "}
-                  {captionState === "loading" ? (
-                    <span className="ptpl-caption-skel"><span /><span /><span /></span>
-                  ) : (
-                    <>
-                      {captionText}
-                      {captionTags && <span className="ptpl-tags"> {captionTags}</span>}
-                    </>
-                  )}
-                </div>
-                <div className="ptpl-comments">View all 987 comments</div>
-                <div className="ptpl-time">5 days ago</div>
-              </div>
-            )}
-            {showTemplate && (
-              <button
-                type="button"
-                className="ptpl-close"
-                onClick={() => setShowTemplate(false)}
-                aria-label="Close preview"
+            {showTemplate ? (
+              <>
+                <div className="glass-border" aria-hidden="true" />
+                <div className="glass-sheen" aria-hidden="true" />
+                <StudioPostChrome
+                  platform={platform.id}
+                  mediaStyle={previewStyle}
+                  aspect={`${platform.w} / ${platform.h}`}
+                  caption={captionText}
+                  tags={captionTags}
+                  captionLoading={captionState === "loading"}
+                  onClose={() => setShowTemplate(false)}
+                />
+              </>
+            ) : (
+              <div
+                className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
+                style={{ width: "100%", height: "100%" }}
+                onPointerDown={onImagePointerDown}
+                onPointerMove={onImagePointerMove}
+                onPointerUp={onImagePointerUp}
+                onPointerCancel={onImagePointerUp}
               >
-                ×
-              </button>
+                <div className="emerge" style={{ opacity: emergeOpacity }} />
+                <div className="preview" style={previewStyle} />
+                {genState === "generating" && (
+                  <div className="gen-progress">{Math.round(progress)}%</div>
+                )}
+                {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
+              </div>
             )}
           </div>
 
@@ -1432,6 +1400,20 @@ function StudioStyles() {
       inset 0 1px 0 rgba(255,255,255,0.95);
     color: rgba(22,22,28,0.92);
     font-size: 13px;
+  }.pb-studio .frame-wrap.as-post.pc-platform-facebook,
+  .pb-studio .frame-wrap.as-post.pc-platform-x,
+  .pb-studio .frame-wrap.as-post.pc-platform-linkedin {
+    width: min(424px, 64%);
+    max-width: 440px;
+  }.pb-studio .frame-wrap.as-post.pc-platform-tiktok {
+    background: #0b0b0d;
+    padding-bottom: 0;
+    width: min(250px, 42%);
+    max-width: 270px;
+    aspect-ratio: 9 / 16;
+    height: auto;
+    max-height: calc(100% - 110px);
+    border: 1px solid rgba(255,255,255,0.5);
   }@property --glass-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
   @keyframes pbsBorderSpin { to { --glass-angle: 360deg; } }
   .pb-studio .frame-wrap.as-post .glass-border {
