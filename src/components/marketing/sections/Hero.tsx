@@ -171,7 +171,7 @@ export default function Hero() {
 
           <div className="hero-cta">
             <Link href={SIGNUP_ONBOARDING_URL} className="neu-btn" style={{ textDecoration: "none" }}>
-              Build your brand book
+              Get Started
             </Link>
             <button type="button" className="neu-btn hero-cta-secondary" onClick={scrollToSolution}>
               See the workflow
