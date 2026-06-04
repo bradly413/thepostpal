@@ -28,6 +28,12 @@ const PUBLIC_PREFIXES = [
   "/api/auth",
   "/api/webhooks",
   "/api/cron",
+  // Guest onboarding: logged-out visitors must be able to reach the brand-book
+  // wizard and generate a preview. The generate route itself handles guest vs.
+  // session auth (resolveBrandBookAuth). NOTE: only the generate endpoint is
+  // public — the rest of /api/brand-book (GET/PUT CRUD) stays tenant-gated.
+  "/onboarding",
+  "/api/brand-book/generate",
 ];
 
 function isPublicPath(pathname: string): boolean {

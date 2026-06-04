@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { requireAuthContext } from "@/lib/api-auth";
+import {
+  guestCookieOptions,
+  ONBOARDING_GUEST_COOKIE,
+  resolveBrandBookAuth,
+} from "@/lib/onboarding-auth";
 import { generateBrandBook } from "@/lib/onboarding-agent";
 import {
   brandVoiceAiToBrandVoice,
@@ -27,8 +31,13 @@ interface RequestBody {
 function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
   if (!v || typeof v !== "object") return false;
   const o = v as Record<string, unknown>;
+  if (typeof o.name !== "string" || !o.name.trim()) return false;
+  const hasBehavioral =
+    typeof o.dressCode === "string" &&
+    typeof o.greeting === "string" &&
+    typeof o.compliment === "string";
+  if (hasBehavioral) return true;
   return (
-    typeof o.name === "string" &&
     typeof o.location === "string" &&
     Array.isArray(o.markets) &&
     typeof o.targetClient === "string" &&
@@ -38,14 +47,31 @@ function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
   );
 }
 
+function normalizeAnswers(raw: OnboardingAnswers): OnboardingAnswers {
+  const tone = raw.tonePreference ?? "warm";
+  return {
+    ...raw,
+    location: raw.location?.trim() || "Local Area",
+    markets:
+      Array.isArray(raw.markets) && raw.markets.length > 0
+        ? raw.markets
+        : [raw.location?.trim() || "Local"],
+    targetClient: raw.targetClient?.trim() || "Local customers",
+    personalityTraits:
+      Array.isArray(raw.personalityTraits) && raw.personalityTraits.length > 0
+        ? raw.personalityTraits
+        : ["Welcoming"],
+    tonePreference: tone,
+    contentFocus:
+      Array.isArray(raw.contentFocus) && raw.contentFocus.length > 0
+        ? raw.contentFocus
+        : ["Updates"],
+  };
+}
+
 export async function POST(req: NextRequest) {
-  let userId: string;
-  try {
-    const auth = await requireAuthContext();
-    userId = auth.userId;
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
-  }
+  const brandAuth = await resolveBrandBookAuth();
+  const userId = brandAuth.userId;
 
   const ip = getClientIp(req.headers);
   if (!rateLimit(`brand-book-gen:${ip}`, 6, 60_000)) {
@@ -68,7 +94,7 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  const answers = body.answers;
+  const answers = normalizeAnswers(body.answers);
 
   const shouldAttemptAi =
     Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
@@ -88,7 +114,19 @@ export async function POST(req: NextRequest) {
         collateralPrompts: structured.collateralPrompts,
       });
       voiceSource = "structured";
-      return NextResponse.json({ brandBook, voice: voiceSource });
+      const res = NextResponse.json({
+        brandBook,
+        voice: voiceSource,
+        authMode: brandAuth.mode,
+      });
+      if (brandAuth.mode === "guest" && brandAuth.setGuestCookie) {
+        res.cookies.set(
+          ONBOARDING_GUEST_COOKIE,
+          brandAuth.setGuestCookie,
+          guestCookieOptions(),
+        );
+      }
+      return res;
     } catch (err) {
       console.warn(
         "[brand-book/generate] structured voice failed, falling back:",
@@ -98,5 +136,17 @@ export async function POST(req: NextRequest) {
   }
 
   const brandBook = generateBrandBook(userId, answers);
-  return NextResponse.json({ brandBook, voice: voiceSource });
+  const res = NextResponse.json({
+    brandBook,
+    voice: voiceSource,
+    authMode: brandAuth.mode,
+  });
+  if (brandAuth.mode === "guest" && brandAuth.setGuestCookie) {
+    res.cookies.set(
+      ONBOARDING_GUEST_COOKIE,
+      brandAuth.setGuestCookie,
+      guestCookieOptions(),
+    );
+  }
+  return res;
 }
