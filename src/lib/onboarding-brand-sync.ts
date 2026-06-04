@@ -46,6 +46,16 @@ export function getStoredBrandBook(): BrandBook | null {
   }
 }
 
+export function getStoredOnboardingAnswers(): OnboardingAnswers | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(ONBOARDING_ANSWERS_KEY);
+    return raw ? (JSON.parse(raw) as OnboardingAnswers) : null;
+  } catch {
+    return null;
+  }
+}
+
 /** Cache brand book locally after API persistence; no localStorage org seeding. */
 export function syncBrandBookToOrganization(book?: BrandBook | null): boolean {
   if (typeof window === "undefined") return false;

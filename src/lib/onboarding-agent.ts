@@ -13,6 +13,13 @@ import {
   type IndustryDef,
   type IndustryId,
 } from "./industries";
+import { buildGenericVoice, buildIndustryVoice } from "./brand-voice-builder";
+import { paletteToBrandPalette, type CuratedPaletteId } from "./color-registry";
+import {
+  DRESS_CODE_TO_FONT_PAIRING,
+  resolvePaletteIdFromAnswers,
+} from "./onboarding-choices";
+import type { DressCodeChoice } from "./onboarding-choices";
 
 // ─────────────────────────────────────────────────────────────
 //  Onboarding Steps
@@ -355,125 +362,6 @@ function pickFonts(answers: OnboardingAnswers): BrandTypography {
   return { ...variants[seed % variants.length] };
 }
 
-function buildVoice(answers: OnboardingAnswers): BrandVoice {
-  const name = answers.name.split(" ")[0];
-  const traits = answers.personalityTraits.join(", ").toLowerCase();
-  const market = answers.markets[0] || answers.location;
-
-  const voiceMap: Record<OnboardingAnswers["tonePreference"], BrandVoice> = {
-    warm: {
-      hero: `${name} sounds like the friend who happens to know every house on the block — ${traits}, and always rooting for you.`,
-      weSay: [
-        `Hi, I'm ${name}. Let's find your next chapter.`,
-        "The kitchen catches the morning sun — I thought of you.",
-        "We'll walk through the numbers together, no rush.",
-      ],
-      weDontSay: [
-        "Aggressive market disruptor delivering best-in-class results.",
-        "Synergies and value-adds across the buying journey.",
-        "DM ME NOW for HOT listings!! 🔥🏡",
-      ],
-      always: "Warm, genuine, helpful. Lowercase by default. Em-dashes welcome.",
-      sometimes: "A personal story. A practical number. A quiet celebration.",
-      never: "Hype. Jargon. Emoji parties. Pressure tactics.",
-      italicRule: "Use italic on the emotional word. Never on the verb. Never on three words in a row.",
-      traits: [
-        { name: "Warm & Optimistic", description: `Advice from a trusted, knowledgeable friend. ${traits} — generous, never breezy.` },
-        { name: "Helpful & Informed", description: `Backed by deep ${market} knowledge and a smart pricing strategy. Useful first.` },
-        { name: "Casual yet Clean", description: "Avoid corporate jargon. Keep language accessible, elevated, uncluttered." },
-      ],
-      taglines: [
-        { quiet: "It's never just", loud: "about the house." },
-        { quiet: `What`, loud: `home means to me.` },
-        { quiet: `Guiding you to the life you want,`, loud: `in the place you'll call home.` },
-      ],
-    },
-    professional: {
-      hero: `${name} leads with data, follows with care — ${traits}. Every recommendation is backed by the numbers.`,
-      weSay: [
-        `${name} here. Let's look at what the market is telling us.`,
-        "The comps support this price — here's why.",
-        "I'll send you the analysis before our call.",
-      ],
-      weDontSay: [
-        "Trust me, this is a steal!",
-        "You NEED to see this before it's gone!!!",
-        "Let's manifest your dream home.",
-      ],
-      always: "Measured, confident, clear. Data before opinion.",
-      sometimes: "A market insight that surprises. A subtle personal touch.",
-      never: "Hype. Urgency tricks. Unsubstantiated claims.",
-      italicRule: "Use italic on the emotional word. Never on the verb. Never on three words in a row.",
-      traits: [
-        { name: "Data-Driven", description: `Every recommendation backed by ${market} market data and verified comps.` },
-        { name: "Measured & Confident", description: `${traits}. Clear communication, no hedging, no hype.` },
-        { name: "Strategically Clear", description: "Complex concepts made simple. The client always knows the next step." },
-      ],
-      taglines: [
-        { quiet: "The numbers speak.", loud: "We listen." },
-        { quiet: `Your ${market}`, loud: "market expert." },
-        { quiet: "Strategic pricing,", loud: "not guesswork." },
-      ],
-    },
-    playful: {
-      hero: `${name} makes real estate feel less like a transaction and more like an adventure — ${traits}, with good energy.`,
-      weSay: [
-        `Hey! I'm ${name}. Let's find you something great.`,
-        "This backyard? Weekend barbecue energy.",
-        "Sold in a week. Not bad for a Tuesday listing.",
-      ],
-      weDontSay: [
-        "Per our previous correspondence regarding the property.",
-        "Pursuant to market conditions, we advise...",
-        "This exclusive opportunity won't last.",
-      ],
-      always: "Energetic, approachable, real. Emojis okay in moderation.",
-      sometimes: "A joke. A pop culture reference. A celebration.",
-      never: "Corporate speak. Fake urgency. Taking yourself too seriously.",
-      italicRule: "Use italic on the emotional word. Never on the verb. Never on three words in a row.",
-      traits: [
-        { name: "Energetic & Real", description: `${traits}. Makes the whole process feel like an adventure, not a chore.` },
-        { name: "Approachable Expert", description: `Knows ${market} inside and out but never makes you feel behind.` },
-        { name: "Fun but Focused", description: "Good energy meets sharp negotiation. Playful doesn't mean careless." },
-      ],
-      taglines: [
-        { quiet: "Real estate,", loud: "but make it fun." },
-        { quiet: `Find your vibe`, loud: `in ${market}.` },
-        { quiet: "Let's find you", loud: "something great." },
-      ],
-    },
-    authoritative: {
-      hero: `${name} brings quiet authority to every deal — ${traits}. The kind of agent other agents call for advice.`,
-      weSay: [
-        `${name}. ${answers.location} specialist.`,
-        "The data is clear. Here's my recommendation.",
-        "Precision pricing. Expert negotiation. Clean closings.",
-      ],
-      weDontSay: [
-        "OMG you guys this house is AMAZING!!",
-        "I'm so blessed to be in real estate!",
-        "Let's vibe on this listing.",
-      ],
-      always: "Confident, direct, knowledgeable. Short sentences.",
-      sometimes: "A quiet insight. A decisive recommendation.",
-      never: "Slang. Excitement for excitement's sake. Hedging.",
-      italicRule: "Use italic on the emotional word. Never on the verb. Never on three words in a row.",
-      traits: [
-        { name: "Quiet Authority", description: `${traits}. Doesn't need to be loud — the track record speaks.` },
-        { name: "Decisive & Direct", description: `Clear recommendations backed by ${market} expertise. No hedging.` },
-        { name: "Elevated Precision", description: "Every detail is intentional. Every word earns its place." },
-      ],
-      taglines: [
-        { quiet: `${market}.`, loud: "Mastered." },
-        { quiet: "Precision pricing.", loud: "Expert negotiation." },
-        { quiet: "The kind of agent", loud: "other agents call." },
-      ],
-    },
-  };
-
-  return voiceMap[answers.tonePreference];
-}
-
 function buildPillars(answers: OnboardingAnswers): ContentPillar[] {
   const focusSet = new Set(answers.contentFocus.map((f) => f.toLowerCase()));
   const pillars: ContentPillar[] = [];
@@ -598,8 +486,10 @@ function buildPhotography(answers: OnboardingAnswers): PhotographyStyle {
 // ─────────────────────────────────────────────────────────────
 
 export interface GenerateBrandBookOptions {
-  /** Pre-synthesized voice (typically from voice-synthesis.ts → Claude). */
+  /** Pre-synthesized voice (typically from brand-book-voice-ai → Claude). */
   voice?: BrandVoice;
+  /** Curated palette — dress code wins over AI suggestion when both exist. */
+  paletteId?: CuratedPaletteId;
 }
 
 function resolveIndustry(answers: OnboardingAnswers): IndustryDef | null {
@@ -709,7 +599,7 @@ function buildGlance(
   voice: BrandVoice,
 ): BrandBook["glance"] {
   const name = answers.name.split(" ")[0];
-  const company = answers.brokerage;
+  const company = answers.company ?? answers.brokerage;
   const traitsLine = answers.personalityTraits.length
     ? `Known for being ${answers.personalityTraits
         .slice(0, 3)
@@ -717,12 +607,13 @@ function buildGlance(
         .toLowerCase()}.`
     : "";
   const businessNoun = industry ? industry.shortLabel.toLowerCase() : "business";
-  const companyClause = company ? ` (${company})` : "";
+  const companyClause = company ? ` at ${company}` : "";
+  const article = /^[aeiou]/i.test(title.trim()) ? "an" : "a";
 
   return {
-    story: `${answers.name} is ${title.toLowerCase().startsWith("a") || title.toLowerCase().startsWith("e") || title.toLowerCase().startsWith("i") || title.toLowerCase().startsWith("o") || title.toLowerCase().startsWith("u") ? "an" : "a"} ${title}${companyClause} in ${answers.location} who believes social media shouldn't be the hard part. ${traitsLine} The brand is built around one idea: you handle the work, posterboy handles the posts.`,
-    whatItIs: `A ${answers.personalityTraits[0]?.toLowerCase() || "considered"} ${businessNoun} presence in ${answers.location}.`,
-    howItWorks: `${name} posts consistently, on-brand, without spending hours on social media — because posterboy handles it.`,
+    story: `${answers.name} is ${article} ${title}${companyClause} in ${answers.location}, serving ${answers.targetClient}. ${traitsLine} ${industry ? industry.promptAddendum.split(".")[0] + "." : "Social media should sound like the real work — not a template."} Posterboy keeps the posts on-brand while you run the ${businessNoun}.`,
+    whatItIs: `A ${answers.personalityTraits[0]?.toLowerCase() || "considered"} ${businessNoun} brand in ${answers.location} — ${industry?.description ?? "built for local customers"}.`,
+    howItWorks: `${name} posts consistently without spending hours writing — posterboy drafts in this voice.`,
     whoItsFor: answers.targetClient,
     howWeSound: voice.hero.split("—")[0].trim() + ".",
   };
@@ -737,16 +628,21 @@ export function generateBrandBook(
   const industry = resolveIndustry(answers);
   const title = resolveTitle(answers, industry);
 
-  const palette = answers.brandColors?.length
-    ? inferPaletteFromColors(answers.brandColors, answers)
-    : pickPalette(answers);
+  const paletteId = resolvePaletteIdFromAnswers(answers, options.paletteId);
+  const palette = paletteToBrandPalette(paletteId);
 
-  const typography = pickFonts(answers);
+  const fontPairing =
+    answers.fontPairing ??
+    (answers.dressCode && answers.dressCode in DRESS_CODE_TO_FONT_PAIRING
+      ? DRESS_CODE_TO_FONT_PAIRING[answers.dressCode as DressCodeChoice]
+      : undefined);
+  const typography = pickFonts({ ...answers, fontPairing });
   typography.scale = buildTypographyScale(typography, answers, industry);
 
-  // Voice: pre-synthesized (Claude) if provided, otherwise the
-  // deterministic 4-archetype lookup. Both produce the same shape.
-  const voice = options.voice ?? buildVoice(answers);
+  // Voice: Claude-synthesized if provided; else industry-native deterministic voice.
+  const voice =
+    options.voice ??
+    (industry ? buildIndustryVoice(answers, industry) : buildGenericVoice(answers));
 
   // Industry-aware post templates / pillars / photography when we have
   // a typed IndustryDef; otherwise fall back to the legacy realtor-derived
@@ -777,8 +673,11 @@ export function generateBrandBook(
     identity: {
       name: answers.name,
       title,
-      brokerage: answers.brokerage,
-      company: answers.brokerage,
+      company: answers.company ?? answers.brokerage,
+      brokerage:
+        industry?.id === "real-estate"
+          ? answers.brokerage ?? answers.company
+          : undefined,
       location: answers.location,
       markets: answers.markets,
       phone: answers.phone,
@@ -791,6 +690,7 @@ export function generateBrandBook(
       industry: industry?.id,
       profession: answers.profession,
       mission: answers.mission,
+      paletteId,
     },
 
     glance: buildGlance(answers, industry, title, voice),
@@ -831,11 +731,11 @@ export function generateBrandBook(
           },
           {
             role: "agent",
-            text: "First, what's your name, your business, and what area you work in?",
+            text: `First — your ${industry?.shortLabel.toLowerCase() ?? "business"} name and where you operate?`,
           },
           {
             role: "user",
-            text: `${answers.name}. ${answers.markets[0] || answers.location}.`,
+            text: `${answers.company ?? answers.name}. ${answers.markets[0] || answers.location}.`,
           },
           {
             role: "agent",

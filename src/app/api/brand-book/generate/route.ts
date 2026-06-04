@@ -2,25 +2,21 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { requireAuthContext } from "@/lib/api-auth";
 import { generateBrandBook } from "@/lib/onboarding-agent";
-import { synthesizeVoice, toBrandVoice } from "@/lib/voice-synthesis";
+import {
+  brandVoiceAiToBrandVoice,
+  generateBrandVoiceStructured,
+} from "@/lib/brand-book-voice-ai";
 import type { OnboardingAnswers } from "@/lib/brand-book-schema";
 
 // ─────────────────────────────────────────────────────────────
 //  POST /api/brand-book/generate
 //
-//  Server-side endpoint that runs the brand-book generator with
-//  optional Claude-synthesized voice. Falls back to deterministic
-//  voice (existing `buildVoice()` inside the generator) if the
-//  Claude call fails for any reason — so onboarding never bricks.
+//  Structured brand voice via Vercel AI SDK generateObject + Zod,
+//  then assembles the full BrandBook. Falls back to deterministic
+//  industry voice if the model call fails.
 //
-//  Auth: gated by proxy.ts (no explicit auth check here). Per-IP
-//  rate-limited to prevent abuse since this hits Claude.
-//
-//  Body shape:
-//    { userId: string, answers: OnboardingAnswers }
-//
-//  Response shape:
-//    { brandBook: BrandBook, voice: "synthesized" | "fallback" }
+//  Body: { answers: OnboardingAnswers }
+//  Response: { brandBook, voice: "structured" | "fallback" }
 // ─────────────────────────────────────────────────────────────
 
 interface RequestBody {
@@ -43,8 +39,6 @@ function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
 }
 
 export async function POST(req: NextRequest) {
-  // Derive the user from the session — never trust a userId in the body
-  // (this route spends Claude credits and writes a per-user brand book).
   let userId: string;
   try {
     const auth = await requireAuthContext();
@@ -76,39 +70,26 @@ export async function POST(req: NextRequest) {
   }
   const answers = body.answers;
 
-  // Decide whether to even attempt synthesis: only when the user actually
-  // provided samples OR a mission to ground voice in. Without either,
-  // the deterministic fallback is just as good and avoids a needless
-  // API call + ~2s latency.
-  const hasSynthesisSignal =
-    (Array.isArray(answers.voiceSamples) && answers.voiceSamples.length > 0) ||
-    (typeof answers.mission === "string" && answers.mission.trim().length > 0);
+  const shouldAttemptAi =
+    Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
+    (Boolean(answers.industry?.trim()) ||
+      (answers.voiceSamples?.length ?? 0) > 0 ||
+      Boolean(answers.mission?.trim()));
 
-  let voiceSource: "synthesized" | "fallback" = "fallback";
+  let voiceSource: "structured" | "fallback" = "fallback";
 
-  if (hasSynthesisSignal) {
+  if (shouldAttemptAi) {
     try {
-      const synth = await synthesizeVoice({
-        industry: answers.industry,
-        profession: answers.profession,
-        mission: answers.mission,
-        personalityTraits: answers.personalityTraits,
-        tonePreference: answers.tonePreference,
-        targetClient: answers.targetClient,
-        voiceSamples: answers.voiceSamples ?? [],
-        antiVoice: answers.antiVoice,
-      });
+      const structured = await generateBrandVoiceStructured(answers);
       const brandBook = generateBrandBook(userId, answers, {
-        voice: toBrandVoice(synth),
+        voice: brandVoiceAiToBrandVoice(structured),
+        paletteId: structured.paletteId,
       });
-      voiceSource = "synthesized";
+      voiceSource = "structured";
       return NextResponse.json({ brandBook, voice: voiceSource });
     } catch (err) {
-      // Synthesis failed (missing key, API error, invalid JSON, schema mismatch).
-      // Log and fall through to deterministic generation.
-      // eslint-disable-next-line no-console
       console.warn(
-        "[brand-book/generate] voice synthesis failed, falling back:",
+        "[brand-book/generate] structured voice failed, falling back:",
         err instanceof Error ? err.message : err,
       );
     }

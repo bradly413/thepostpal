@@ -353,6 +353,20 @@ export async function saveDashboardBrandBook(input: {
   });
 }
 
+export interface GenerateDashboardBrandBookResult {
+  brandBook: BrandBook;
+  voice: "structured" | "fallback";
+}
+
+export async function generateDashboardBrandBook(
+  answers: OnboardingAnswers,
+): Promise<GenerateDashboardBrandBookResult> {
+  return apiRequest<GenerateDashboardBrandBookResult>("/api/brand-book/generate", {
+    method: "POST",
+    body: JSON.stringify({ answers }),
+  });
+}
+
 export interface GenerateDashboardImageResult {
   success: boolean;
   image: string;

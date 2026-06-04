@@ -1,40 +1,22 @@
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode } from "react";
+import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } from "react";
 import { useRouter } from "next/navigation";
 import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
 import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
+import PosterboyLogo from "@/components/PosterboyLogo";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import type { OnboardingAnswers } from "@/lib/brand-book-schema";
-import { Fraunces, Syne } from "next/font/google";
-
-// Real type specimens for the typography engine.
-const fraunces = Fraunces({ subsets: ["latin"], weight: ["400", "500"], style: ["normal", "italic"] });
-const syne = Syne({ subsets: ["latin"], weight: ["500", "700"] });
-
-const TYPE_PAIRS = [
-  {
-    id: "serif-editorial",
-    label: "Fraunces — Editorial Serif",
-    preview: "The Art of Space",
-    className: fraunces.className,
-    style: { fontStyle: "italic", fontWeight: 400 } as const,
-  },
-  {
-    id: "brutalist-sans",
-    label: "Syne — Brutalist Display",
-    preview: "SCALE_01 // SYSTEM",
-    className: syne.className,
-    style: { fontWeight: 700, letterSpacing: "0.06em", textTransform: "uppercase" } as const,
-  },
-  {
-    id: "clean-minimal",
-    label: "Inter — Clean Minimal",
-    preview: "Less is premium.",
-    className: "font-sans",
-    style: { fontWeight: 300 } as const,
-  },
-];
+import {
+  COMPLIMENT_OPTIONS,
+  DRESS_CODE_OPTIONS,
+  DRESS_CODE_TO_FONT_PAIRING,
+  DRESS_CODE_TO_TONE,
+  GREETING_OPTIONS,
+  type ComplimentChoice,
+  type DressCodeChoice,
+  type GreetingChoice,
+} from "@/lib/onboarding-choices";
 
 // Social platforms the user can connect (Step 1). Profile URLs are captured in
 // local state; backend persistence (Meta OAuth / profile store) is a follow-up.
@@ -97,15 +79,74 @@ const SOCIAL_PLATFORMS: SocialPlatform[] = [
 // Frosted workspace panel — mirrors the dashboard .panel/.tile card system
 // (rgba(255,255,255,0.72), blur(22px) saturate(1.5), 24px radius, white/62 hairline).
 const CARD = "w-full arch-panel";
+// Clean Pinterest-style bordered input.
+const FIELD =
+  "w-full px-4 py-3 rounded-xl bg-white/85 border border-black/[0.1] text-[15px] text-[#1c1c1e] placeholder:text-black/35 focus:border-[#ee2532]/60 focus:outline-none focus:ring-2 focus:ring-[#ee2532]/12 transition-colors";
+
+function BehavioralPicker<T extends string>({
+  question,
+  options,
+  value,
+  onChange,
+  onNext,
+  nextDisabled,
+  nextLabel = "Next",
+}: {
+  question: string;
+  options: readonly T[];
+  value: T | "";
+  onChange: (v: T) => void;
+  onNext: () => void;
+  nextDisabled?: boolean;
+  nextLabel?: string;
+}) {
+  return (
+    <div className="architect-fade w-full max-w-xl">
+      <p className="text-[15px] text-[#76767e] mb-8 leading-relaxed">{question}</p>
+      <div className="flex flex-col divide-y divide-black/[0.06]">
+        {options.map((opt) => {
+          const on = value === opt;
+          return (
+            <button
+              key={opt}
+              type="button"
+              onClick={() => onChange(opt)}
+              className="group flex items-start gap-4 py-4 text-left"
+            >
+              <span
+                className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition-colors ${
+                  on ? "border-[#ee2532]" : "border-black/25 group-hover:border-black/45"
+                }`}
+              >
+                {on && <span className="h-2.5 w-2.5 rounded-full bg-[#ee2532]" />}
+              </span>
+              <span className="text-[16px] font-medium text-[#1c1c1e] leading-snug">{opt}</span>
+            </button>
+          );
+        })}
+      </div>
+      <div className="mt-9 flex items-center justify-end gap-2">
+        {nextLabel.includes("Building") && (
+          <span
+            className="inline-block h-3.5 w-3.5 rounded-full border-2 border-[#323232]/25 border-t-[#323232] animate-spin"
+            aria-hidden
+          />
+        )}
+        <button
+          type="button"
+          disabled={nextDisabled}
+          onClick={onNext}
+          className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+        >
+          {nextLabel}
+        </button>
+      </div>
+    </div>
+  );
+}
 
 export default function BrandArchitect() {
-  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 niche · 3 tone · 4 typography+vibe
-  const [brandData, setBrandData] = useState({
-    niche: "",
-    pivotAnswer: "",
-    paletteVibe: 50, // 0 = clinical / neutral, 100 = vibrant / contrast
-    typographyPairing: "",
-  });
+  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4–6 behavioral
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -133,23 +174,18 @@ export default function BrandArchitect() {
   const [industryId, setIndustryId] = useState("");
   const [bookState, setBookState] = useState<"idle" | "generating" | "error">("idle");
 
-  // Map the collected flow → OnboardingAnswers. Target client + content focus
-  // are derived from the chosen industry's taxonomy defaults (Stage 2 will let
-  // the user refine these + add personality/voice samples).
+  const [dressCode, setDressCode] = useState<DressCodeChoice | "">("");
+  const [greeting, setGreeting] = useState<GreetingChoice | "">("");
+  const [compliment, setCompliment] = useState<ComplimentChoice | "">("");
+
   const buildAnswers = (): OnboardingAnswers => {
     const ind = getIndustry(industryId);
-    const toneMap: Record<string, OnboardingAnswers["tonePreference"]> = {
-      "Warm & personal": "warm",
-      "Polished & professional": "professional",
-      "Bold & playful": "playful",
-      "Refined & premium": "authoritative",
-    };
-    const tone = toneMap[brandData.pivotAnswer] ?? "warm";
+    const tone = dressCode ? DRESS_CODE_TO_TONE[dressCode] : "warm";
     const traitLabel: Record<OnboardingAnswers["tonePreference"], string> = {
-      warm: "Warm",
-      professional: "Professional",
-      playful: "Energetic",
-      authoritative: "Premium",
+      warm: "Welcoming",
+      professional: "Polished",
+      playful: "Upbeat",
+      authoritative: "Refined",
     };
     const social = selectedPlatforms
       .map((p) => profiles[p.id])
@@ -157,7 +193,7 @@ export default function BrandArchitect() {
       .join(", ");
     return {
       name: name.trim() || "Owner",
-      brokerage: business.trim() || undefined,
+      company: business.trim() || undefined,
       industry: industryId || undefined,
       profession: ind?.defaultProfessionTitle,
       location: location.trim() || "Local Area",
@@ -168,7 +204,11 @@ export default function BrandArchitect() {
       personalityTraits: [traitLabel[tone]],
       tonePreference: tone,
       contentFocus: ind ? ind.contentFocus.slice(0, 4).map((c) => c.label) : ["Updates"],
-      fontPairing: brandData.typographyPairing || undefined,
+      dressCode: dressCode || undefined,
+      greeting: greeting || undefined,
+      compliment: compliment || undefined,
+      fontPairing: dressCode ? DRESS_CODE_TO_FONT_PAIRING[dressCode] : undefined,
+      mission: compliment ? `What customers say: ${compliment}` : undefined,
       social: social || undefined,
     };
   };
@@ -183,33 +223,25 @@ export default function BrandArchitect() {
     try {
       const dna = (await fetchBrandEngine()) as
         | {
-            niche?: string;
-            primaryTone?: string;
-            contrastVibe?: string | number;
-            paletteVibe?: number;
-            typographyPairing?: string;
+            dressCode?: string;
+            greeting?: string;
+            compliment?: string;
+            industryId?: string;
           }
         | null;
       if (dna && typeof dna === "object") {
-        setBrandData((prev) => ({
-          niche: typeof dna.niche === "string" ? dna.niche : prev.niche,
-          pivotAnswer:
-            typeof dna.primaryTone === "string" ? dna.primaryTone : prev.pivotAnswer,
-          paletteVibe:
-            typeof dna.contrastVibe === "number"
-              ? dna.contrastVibe
-              : typeof dna.contrastVibe === "string" &&
-                  dna.contrastVibe.trim() !== "" &&
-                  !Number.isNaN(Number(dna.contrastVibe))
-                ? Number(dna.contrastVibe)
-                : typeof dna.paletteVibe === "number"
-                  ? dna.paletteVibe
-                  : prev.paletteVibe,
-          typographyPairing:
-            typeof dna.typographyPairing === "string"
-              ? dna.typographyPairing
-              : prev.typographyPairing,
-        }));
+        if (DRESS_CODE_OPTIONS.includes(dna.dressCode as DressCodeChoice)) {
+          setDressCode(dna.dressCode as DressCodeChoice);
+        }
+        if (GREETING_OPTIONS.includes(dna.greeting as GreetingChoice)) {
+          setGreeting(dna.greeting as GreetingChoice);
+        }
+        if (COMPLIMENT_OPTIONS.includes(dna.compliment as ComplimentChoice)) {
+          setCompliment(dna.compliment as ComplimentChoice);
+        }
+        if (typeof dna.industryId === "string") {
+          setIndustryId(dna.industryId);
+        }
       }
       setHydrate("ready");
     } catch {
@@ -221,20 +253,27 @@ export default function BrandArchitect() {
     void loadBrandEngine();
   }, [loadBrandEngine]);
 
-  const next = () => setStep((s) => Math.min(s + 1, 4));
-  const back = () => setStep((s) => Math.max(s - 1, 0));
+  const next = () => setStep((s) => Math.min(s + 1, 6));
+  const back = () => setStep((s) => (s === 3 ? 1 : Math.max(s - 1, 0)));
 
-  // Generic tone question (decoupled from the old demo niches). The chosen
-  // option maps to OnboardingAnswers.tonePreference in buildAnswers().
-  const currentPivot = {
-    title: "03 / Your Tone",
-    question: "When you talk to your customers, what feels most like you?",
-    options: [
-      "Warm & personal",
-      "Polished & professional",
-      "Bold & playful",
-      "Refined & premium",
-    ],
+  // Auto-advance the "analyzing your social media" loader once it has played.
+  useEffect(() => {
+    if (step !== 2) return;
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    const t = setTimeout(() => setStep((s) => (s === 2 ? 3 : s)), reduce ? 1000 : 7600);
+    return () => clearTimeout(t);
+  }, [step]);
+
+  const saveBrandDna = () => {
+    saveBrandEngine({
+      niche: getIndustry(industryId)?.label ?? "",
+      industryId,
+      dressCode: dressCode || undefined,
+      greeting: greeting || undefined,
+      compliment: compliment || undefined,
+    }).catch(() => {});
   };
 
   return (
@@ -312,6 +351,27 @@ export default function BrandArchitect() {
         }
         .arch-field-input::placeholder { color: #a3a3ab; }
         @media (prefers-reduced-motion: reduce) { .arch-social { animation: none; opacity: 1; } }
+        /* "Analyzing your social media" file-fly loader (adapted from Uiverse, brand red). */
+        .pfile-loader { position: relative; width: 720px; max-width: 90vw; height: 210px; overflow: hidden; }
+        .pfile {
+          position: absolute; bottom: 50px; width: 96px; height: 120px;
+          background: linear-gradient(90deg, #ee2532, #f59aa0);
+          border-radius: 14px; transform-origin: center; opacity: 0;
+          box-shadow: 0 24px 46px -18px rgba(238,37,50,0.5);
+          animation: pfileFly 6s ease-in-out infinite;
+          animation-delay: calc(var(--i) * 0.95s);
+        }
+        .pfile::before { content: ""; position: absolute; top: 22px; left: 18px; width: 58px; height: 8px; background: #fff; border-radius: 3px; }
+        .pfile::after { content: ""; position: absolute; top: 40px; left: 18px; width: 40px; height: 8px; background: #fff; border-radius: 3px; }
+        @keyframes pfileFly {
+          0%   { left: -12%; transform: scale(0); opacity: 0; }
+          50%  { left: 45%; transform: scale(1.15); opacity: 1; }
+          100% { left: 100%; transform: scale(0); opacity: 0; }
+        }
+        @media (prefers-reduced-motion: reduce) { .pfile { animation: none; opacity: 0.5; } }
+        /* Font specimens animate in with a stagger. */
+        .fontspec { opacity: 0; animation: architectFade 0.55s cubic-bezier(0.22,1,0.36,1) both; }
+        @media (prefers-reduced-motion: reduce) { .fontspec { animation: none !important; opacity: 1; } }
         @keyframes architectFade {
           from { opacity: 0; transform: translateY(14px); }
           to   { opacity: 1; transform: none; }
@@ -322,16 +382,17 @@ export default function BrandArchitect() {
         }
       `}</style>
 
-      {/* Progress */}
-      <div className="absolute top-8 left-1/2 -translate-x-1/2 flex gap-2">
-        {[0, 1, 2, 3, 4].map((i) => (
-          <div
-            key={i}
-            className={`h-[3px] w-10 rounded-full transition-all duration-500 ${
-              i <= step ? "bg-[#ee2532]" : "bg-black/10"
-            }`}
-          />
-        ))}
+      {/* Brand mark — persistent across every step */}
+      <div className="absolute top-6 left-8 z-20 text-[#1c1c1e]">
+        <PosterboyLogo href={null} size="header" />
+      </div>
+
+      {/* Progress — Pinterest-style determinate bar, bottom-left */}
+      <div className="absolute bottom-8 left-8 z-20 h-1.5 w-44 overflow-hidden rounded-full bg-black/[0.08]">
+        <div
+          className="h-full rounded-full bg-[#ee2532] transition-all duration-500 ease-out"
+          style={{ width: `${((step + 1) / 7) * 100}%` }}
+        />
       </div>
 
       {/* Back */}
@@ -339,7 +400,7 @@ export default function BrandArchitect() {
         <button
           type="button"
           onClick={back}
-          className="absolute top-7 left-8 text-[11px] uppercase tracking-[0.2em] text-black/40 hover:text-black/75 transition-colors"
+          className="absolute top-16 left-8 z-20 text-[11px] uppercase tracking-[0.2em] text-black/40 hover:text-black/75 transition-colors"
         >
           &larr; Back
         </button>
@@ -387,16 +448,15 @@ export default function BrandArchitect() {
         )}
 
         {step === 1 && (
-          <div className={`${CARD} max-w-2xl p-12`}>
-            <h2 className="arch-eyebrow mb-3" style={{ letterSpacing: "0.2em" }}>
-              01 / Connect Your Profiles
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Connect your channels
             </h2>
-            <p className="arch-title text-xl font-medium tracking-tight mb-8">
-              Select the profiles you want to connect.
+            <p className="text-[15px] text-[#76767e] mb-7">
+              Pick the platforms you post on — Posterboy learns your style from them.
             </p>
 
-            {/* Icon picker — fades in with a stagger */}
-            <div className="flex flex-wrap justify-center gap-4">
+            <div className="flex flex-wrap gap-3">
               {SOCIAL_PLATFORMS.map((p, i) => {
                 const on = p.id in profiles;
                 return (
@@ -415,12 +475,13 @@ export default function BrandArchitect() {
               })}
             </div>
 
-            {/* URL field per selected profile — revealed below the picker */}
             {selectedPlatforms.length > 0 && (
-              <div className="mt-8 space-y-3">
+              <div className="mt-6 space-y-3">
                 {selectedPlatforms.map((p) => (
-                  <div key={p.id} className="arch-field architect-fade">
-                    <span className="arch-field-ic">{p.icon}</span>
+                  <div key={p.id} className="flex items-center gap-3 architect-fade">
+                    <span className="h-5 w-5 flex-none text-[#76767e] [&_svg]:h-full [&_svg]:w-full">
+                      {p.icon}
+                    </span>
                     <input
                       type="url"
                       inputMode="url"
@@ -429,7 +490,7 @@ export default function BrandArchitect() {
                       value={profiles[p.id]}
                       onChange={(e) => setProfileUrl(p.id, e.target.value)}
                       placeholder={p.placeholder}
-                      className="arch-field-input"
+                      className={FIELD}
                       aria-label={`${p.label} profile URL`}
                     />
                   </div>
@@ -437,226 +498,187 @@ export default function BrandArchitect() {
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={next}
-              className="mt-10 w-full bg-[#ee2532] text-white rounded-2xl py-4 text-xs font-medium uppercase tracking-[0.2em] shadow-[0_18px_38px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
-            >
-              {selectedPlatforms.length > 0 ? "Continue" : "Skip for now"}
-            </button>
+            <div className="mt-9 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
+              >
+                {selectedPlatforms.length > 0 ? "Next" : "Skip for now"}
+              </button>
+            </div>
           </div>
         )}
 
         {step === 2 && (
-          <div className={`${CARD} max-w-2xl p-12`}>
-            <h2 className="arch-eyebrow mb-2" style={{ letterSpacing: "0.2em" }}>
-              02 / Tell us about your business
-            </h2>
-            <p className="arch-title text-xl font-medium tracking-tight mb-6">
-              The basics — so your posts actually sound like you.
+          <div className="architect-fade w-full flex flex-col items-center text-center">
+            <div className="arch-eyebrow mb-4" style={{ letterSpacing: "0.2em" }}>
+              Posterboy is studying your channels
+            </div>
+            <p className="arch-title text-2xl sm:text-3xl font-semibold tracking-tight mb-12">
+              Analyzing your current social media…
             </p>
-
-            <div className="grid sm:grid-cols-2 gap-3 mb-3">
-              <div className="arch-field">
-                <input
-                  className="arch-field-input"
-                  placeholder="Your name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  aria-label="Your name"
-                />
-              </div>
-              <div className="arch-field">
-                <input
-                  className="arch-field-input"
-                  placeholder="Business name"
-                  value={business}
-                  onChange={(e) => setBusiness(e.target.value)}
-                  aria-label="Business name"
-                />
-              </div>
-            </div>
-            <div className="arch-field mb-7">
-              <input
-                className="arch-field-input"
-                placeholder="City / area you serve"
-                value={location}
-                onChange={(e) => setLocation(e.target.value)}
-                aria-label="City or area you serve"
-              />
-            </div>
-
-            <div className="arch-eyebrow mb-3" style={{ letterSpacing: "0.2em" }}>
-              What kind of business?
-            </div>
-            <div className="grid sm:grid-cols-2 gap-3 max-h-[42vh] overflow-y-auto pr-1">
-              {INDUSTRIES.filter((i) => i.id !== "other-general").map((ind) => (
-                <button
-                  key={ind.id}
-                  type="button"
-                  onClick={() => {
-                    setIndustryId(ind.id);
-                    setBrandData((prev) => ({ ...prev, niche: ind.label }));
-                  }}
-                  className={`arch-opt text-left p-4 ${industryId === ind.id ? "on" : ""}`}
-                >
-                  <div className="font-medium text-[15px] tracking-tight">{ind.label}</div>
-                  <div className="text-[12px] text-[#76767e] mt-0.5 leading-snug">{ind.description}</div>
-                </button>
+            <div className="pfile-loader">
+              {[0, 1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="pfile" style={{ "--i": i } as CSSProperties} />
               ))}
             </div>
-
-            <button
-              type="button"
-              disabled={!name.trim() || !industryId}
-              onClick={next}
-              className="mt-7 w-full bg-[#ee2532] text-white rounded-2xl py-4 text-xs font-medium uppercase tracking-[0.2em] shadow-[0_18px_38px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-50"
-            >
-              Continue
-            </button>
           </div>
         )}
 
         {step === 3 && (
-          <div className={`${CARD} max-w-2xl p-12`}>
-            <h2 className="arch-eyebrow mb-6" style={{ letterSpacing: "0.2em" }}>
-              {currentPivot.title}
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Describe your business
             </h2>
-            <p className="arch-title text-xl font-medium tracking-tight leading-relaxed mb-8">
-              {currentPivot.question}
+            <p className="text-[15px] text-[#76767e] mb-7">
+              Pick the best fit — it tunes how Posterboy writes and designs for you.
             </p>
-            <div className="grid grid-cols-2 gap-4">
-              {currentPivot.options.map((option) => (
-                <button
-                  key={option}
-                  type="button"
-                  onClick={() => {
-                    setBrandData((prev) => ({ ...prev, pivotAnswer: option }));
-                    next();
-                  }}
-                  className={`arch-opt py-6 px-4 text-center tracking-tight font-light ${
-                    brandData.pivotAnswer === option ? "on" : ""
-                  }`}
-                >
-                  {option}
-                </button>
-              ))}
+
+            <div className="grid sm:grid-cols-2 gap-3 mb-3">
+              <input className={FIELD} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Your name" />
+              <input className={FIELD} placeholder="Business name" value={business} onChange={(e) => setBusiness(e.target.value)} aria-label="Business name" />
+            </div>
+            <input className={`${FIELD} mb-8`} placeholder="City / area you serve" value={location} onChange={(e) => setLocation(e.target.value)} aria-label="City or area you serve" />
+
+            <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-1">
+              What kind of business?
+            </div>
+            <div className="flex flex-col divide-y divide-black/[0.06] max-h-[40vh] overflow-y-auto -mx-1 px-1">
+              {INDUSTRIES.filter((i) => i.id !== "other-general").map((ind) => {
+                const on = industryId === ind.id;
+                return (
+                  <button
+                    key={ind.id}
+                    type="button"
+                    onClick={() => setIndustryId(ind.id)}
+                    className="group flex items-start gap-4 py-3.5 text-left"
+                  >
+                    <span
+                      className={`mt-0.5 flex h-5 w-5 flex-none items-center justify-center rounded-full border-2 transition-colors ${
+                        on ? "border-[#ee2532]" : "border-black/25 group-hover:border-black/45"
+                      }`}
+                    >
+                      {on && <span className="h-2.5 w-2.5 rounded-full bg-[#ee2532]" />}
+                    </span>
+                    <span className="min-w-0">
+                      <div className="text-[16px] font-semibold text-[#1c1c1e] leading-tight">{ind.label}</div>
+                      <div className="text-[13px] text-[#76767e] mt-0.5 leading-snug">{ind.description}</div>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-9 flex items-center justify-end">
+              <button
+                type="button"
+                disabled={!name.trim() || !industryId}
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Next
+              </button>
             </div>
           </div>
         )}
 
         {step === 4 && (
-          <div className="w-full max-w-5xl arch-panel p-16 grid md:grid-cols-2 gap-12 md:gap-20">
-            {/* Left: type-pairing selectors */}
-            <div className="space-y-5">
-              <div>
-                <h2 className="arch-eyebrow" style={{ letterSpacing: "0.2em" }}>
-                  04 / Typography Engine
-                </h2>
-                <p className="text-sm font-light text-[#76767e] mt-2">
-                  Choose the visual architecture of your messaging.
-                </p>
-              </div>
-              {TYPE_PAIRS.map((pair) => (
-                <button
-                  key={pair.id}
-                  type="button"
-                  onClick={() =>
-                    setBrandData((prev) => ({ ...prev, typographyPairing: pair.id }))
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              The Dress Code
+            </h2>
+            <BehavioralPicker
+              question="If your business had a dress code, what would it be?"
+              options={DRESS_CODE_OPTIONS}
+              value={dressCode}
+              onChange={(v) => {
+                setDressCode(v);
+                saveBrandEngine({
+                  industryId,
+                  dressCode: v,
+                  greeting: greeting || undefined,
+                  compliment: compliment || undefined,
+                }).catch(() => {});
+              }}
+              onNext={next}
+              nextDisabled={!dressCode}
+            />
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              The Greeting
+            </h2>
+            <BehavioralPicker
+              question="A new customer walks through the door. How do you greet them?"
+              options={GREETING_OPTIONS}
+              value={greeting}
+              onChange={(v) => {
+                setGreeting(v);
+                saveBrandDna();
+              }}
+              onNext={next}
+              nextDisabled={!greeting}
+            />
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              The Compliment
+            </h2>
+            <BehavioralPicker
+              question="What is the best 5-star review a customer could leave you?"
+              options={COMPLIMENT_OPTIONS}
+              value={compliment}
+              onChange={(v) => {
+                setCompliment(v);
+                saveBrandDna();
+              }}
+              onNext={() => {
+                void (async () => {
+                  setBookState("generating");
+                  setSaving(true);
+                  setSaveNote(null);
+                  saveBrandDna();
+                  try {
+                    const answers = buildAnswers();
+                    const res = await fetch("/api/brand-book/generate", {
+                      method: "POST",
+                      headers: { "Content-Type": "application/json" },
+                      body: JSON.stringify({ answers }),
+                    });
+                    const data = await res.json();
+                    if (!res.ok || data.error || !data.brandBook) {
+                      throw new Error(data.error || "generate failed");
+                    }
+                    const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
+                    await persistBrandBookToWorkspace({
+                      brandBook: data.brandBook,
+                      onboardingAnswers: answers,
+                    });
+                    const { syncBrandBookToOrganization } = await import("@/lib/onboarding-brand-sync");
+                    syncBrandBookToOrganization(data.brandBook);
+                    router.push("/dashboard/brand");
+                  } catch {
+                    setBookState("error");
+                    setSaving(false);
+                    setSaveNote("Couldn't build your brand book — sign in and try again.");
                   }
-                  className={`arch-opt block w-full text-left rounded-2xl p-6 ${
-                    brandData.typographyPairing === pair.id ? "on" : ""
-                  }`}
-                >
-                  <div className="text-[11px] font-mono text-[#76767e] mb-2 tracking-tight">
-                    {pair.label}
-                  </div>
-                  <div
-                    className={`${pair.className} text-2xl tracking-tight text-black/85`}
-                    style={pair.style}
-                  >
-                    {pair.preview}
-                  </div>
-                </button>
-              ))}
-            </div>
-
-            {/* Right: contrast slider + synthesize */}
-            <div className="flex flex-col justify-between gap-10 md:border-l border-black/5 md:pl-12">
-              <div className="space-y-8">
-                <h2 className="arch-eyebrow" style={{ letterSpacing: "0.2em" }}>
-                  05 / Visual Contrast Matrix
-                </h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between text-[11px] tracking-wider uppercase text-[#76767e]">
-                    <span>Clinical / Neutral</span>
-                    <span>Vibrant / Contrast</span>
-                  </div>
-                  <input
-                    type="range"
-                    min="0"
-                    max="100"
-                    value={brandData.paletteVibe}
-                    onChange={(e) =>
-                      setBrandData((prev) => ({
-                        ...prev,
-                        paletteVibe: parseInt(e.target.value, 10),
-                      }))
-                    }
-                    className="arch-range w-full h-[2px] appearance-none rounded-lg bg-black/15 cursor-ew-resize"
-                  />
-                  <div className="text-center text-xs font-mono text-[#76767e]">
-                    {brandData.paletteVibe}
-                  </div>
-                </div>
-              </div>
-
-              <div className="space-y-3">
-                <button
-                  type="button"
-                  disabled={saving || !industryId || !name.trim()}
-                  onClick={async () => {
-                    // Build the brand book: assemble OnboardingAnswers → generate
-                    // (Claude voice) → persist to the workspace → into the app.
-                    setBookState("generating");
-                    setSaving(true);
-                    setSaveNote(null);
-                    try {
-                      // Also save the brand DNA — feeds the AI caption/image voice.
-                      saveBrandEngine(brandData).catch(() => {});
-                      const answers = buildAnswers();
-                      const res = await fetch("/api/brand-book/generate", {
-                        method: "POST",
-                        headers: { "Content-Type": "application/json" },
-                        body: JSON.stringify({ answers }),
-                      });
-                      const data = await res.json();
-                      if (!res.ok || data.error || !data.brandBook) {
-                        throw new Error(data.error || "generate failed");
-                      }
-                      const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
-                      await persistBrandBookToWorkspace({
-                        brandBook: data.brandBook,
-                        onboardingAnswers: answers,
-                      });
-                      const { syncBrandBookToOrganization } = await import("@/lib/onboarding-brand-sync");
-                      syncBrandBookToOrganization(data.brandBook);
-                      router.push("/dashboard/brand");
-                    } catch {
-                      setBookState("error");
-                      setSaving(false);
-                      setSaveNote("Couldn't build your brand book — sign in and try again.");
-                    }
-                  }}
-                  className="w-full bg-[#ee2532] text-white rounded-2xl py-5 text-xs font-medium uppercase tracking-[0.2em] shadow-[0_22px_44px_-20px_rgba(238,37,50,0.75)] hover:bg-[#c81e2a] transition-all disabled:opacity-50"
-                >
-                  {bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
-                </button>
-                {bookState === "error" && saveNote && (
-                  <div className="text-[11px] tracking-wide text-[#76767e] text-center">{saveNote}</div>
-                )}
-              </div>
-            </div>
+                })();
+              }}
+              nextDisabled={
+                saving || !compliment || !dressCode || !greeting || !industryId || !name.trim()
+              }
+              nextLabel={bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
+            />
+            {bookState === "error" && saveNote && (
+              <p className="text-[12px] text-[#76767e] text-right mt-3">{saveNote}</p>
+            )}
           </div>
         )}
       </div>

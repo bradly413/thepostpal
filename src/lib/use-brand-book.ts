@@ -1,12 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import type { BrandBook } from "@/lib/brand-book-schema";
+import type { BrandBook, OnboardingAnswers } from "@/lib/brand-book-schema";
 import {
   fetchDashboardBrandBook,
   formatDashboardApiMessage,
 } from "@/lib/dashboard-api";
-import { cacheStoredBrandBook } from "@/lib/onboarding-brand-sync";
+import {
+  cacheStoredBrandBook,
+  cacheStoredOnboardingAnswers,
+} from "@/lib/onboarding-brand-sync";
 import {
   getStoredActiveLocationId,
   onStoredActiveLocationChange,
@@ -14,6 +17,7 @@ import {
 
 export function useBrandBook() {
   const [book, setBook] = useState<BrandBook | null>(null);
+  const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -30,12 +34,17 @@ export function useBrandBook() {
       const data = await fetchDashboardBrandBook(activeLocationId);
       setLocationId(data.locationId);
       setBook(data.brandBook);
+      setOnboardingAnswers(data.onboardingAnswers ?? null);
       if (data.brandBook) {
         cacheStoredBrandBook(data.brandBook);
+      }
+      if (data.onboardingAnswers) {
+        cacheStoredOnboardingAnswers(data.onboardingAnswers);
       }
     } catch (err) {
       setError(formatDashboardApiMessage(err, "Could not load brand book."));
       setBook(null);
+      setOnboardingAnswers(null);
     } finally {
       setLoading(false);
     }
@@ -48,5 +57,5 @@ export function useBrandBook() {
     });
   }, [load]);
 
-  return { book, locationId, loading, error, reload: load };
+  return { book, locationId, onboardingAnswers, loading, error, reload: load };
 }

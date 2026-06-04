@@ -30,19 +30,26 @@ export interface SynthesizedVoice {
 
 // ── System prompt — kept long-static for future prompt caching ─
 
-const VOICE_SYNTHESIS_SYSTEM = `You are a brand voice analyst. Given a small set of writing samples and a brief, extract the underlying voice and return a structured voice profile.
+const VOICE_SYNTHESIS_SYSTEM = `You are a brand voice analyst. Given onboarding answers (industry, profession, location, audience) and optional writing samples, extract a voice profile that matches THIS business — not a generic template and never a different industry.
 
 ## Your job
-Take the user's actual writing samples, personality preferences, industry context, and anti-voice (what they don't want to sound like), and produce a voice profile that matches their authentic voice — not a generic marketing version of them.
+Produce a voice profile grounded in the user's declared industry and profession. Every line in hero, weSay, weDontSay, and traits must sound like it belongs to that vertical.
+
+## Industry guardrails (strict)
+- The "Industry" and "Vertical context" fields in the user message are authoritative. Treat them as law.
+- NEVER use terminology from outside the user's declared industry. Do not use real-estate terms (listing, brokerage, comps, open house, closing, buyer/seller journey, "dream home", MLS) unless Industry is explicitly real estate.
+- Do not use restaurant terms for a salon, or fitness jargon for a law firm. Match the vertical context vocabulary.
+- If Industry is food / restaurant / hospitality: reference dishes, guests, service, kitchen, reservations, ingredients — never "brokerage" or "transaction" in the real-estate sense.
+- weDontSay must include at least one line that would be wrong for this industry (e.g. for a restaurant, forbid brokerage/listing language).
+- Identity fields: "Profession" and "Company" map to the UI — never invent a brokerage label unless Industry is real estate.
 
 ## Rules that matter
-- Match the user's actual rhythm, vocabulary, and energy from the samples — never impose generic marketing voice on top.
-- If they write in lowercase, your weSay examples are lowercase. If they use em-dashes, you use em-dashes. If they're terse, you're terse.
-- Pull specific words and phrases from their samples when constructing weSay examples — it should sound like them, not like a brand strategist.
-- Use anti-voice to inform weDontSay. If they cited "synergy" and corporate-speak as off-brand, your weDontSay lines lean into that vocabulary.
-- Use industry context to ground examples in their world (a restaurant's weSay is about dishes, a coach's is about clients) but never let industry tropes override their actual voice.
-- Voice traits should be specific and earned — never generic ("professional", "trustworthy"). Look at the samples; what's actually distinctive about how they write?
-- If no samples are provided, derive voice from personality traits + industry + mission. Be honest that you're working from less material — keep traits and rules tighter, fewer claims.
+- Match the user's actual rhythm, vocabulary, and energy from samples when provided.
+- If they write in lowercase, your weSay examples are lowercase. If they use em-dashes, you use em-dashes.
+- Pull specific words from samples when available; otherwise derive from personality + industry + mission.
+- Use anti-voice to inform weDontSay.
+- Voice traits must be specific — never generic ("professional", "trustworthy") unless earned by the brief.
+- If no samples are provided, derive voice from personality traits + industry + mission only — still fully industry-native.
 
 ## Output format
 Return ONLY a single JSON object. No markdown code fences. No prose before or after. Match this exact shape:
@@ -70,6 +77,7 @@ export interface VoiceSynthesisInput {
   /** Free-text industry label or IndustryId from src/lib/industries.ts. */
   industry?: string;
   profession?: string;
+  company?: string;
   mission?: string;
   personalityTraits: string[];
   tonePreference: string;
@@ -97,14 +105,19 @@ function buildUserPayload(input: VoiceSynthesisInput): string {
       ? input.antiVoice.map((s, i) => `${i + 1}. "${s.trim()}"`).join("\n")
       : "(not provided)";
 
-  return `Industry: ${industryLine}
-Profession: ${input.profession || "(not specified)"}
+  return `Industry (authoritative): ${industryLine}
+Industry ID: ${industryDef.id}
+Profession (from UI): ${input.profession || industryDef.defaultProfessionTitle}
+Company / business name: ${input.company || "(not specified)"}
 Mission: ${input.mission || "(not specified)"}
 Personality traits: ${input.personalityTraits.join(", ") || "(none selected)"}
 Tone preference: ${input.tonePreference}
-Target client: ${input.targetClient}
+Target client / guest / audience: ${input.targetClient}
+Signature line for this vertical: ${industryDef.voiceExampleLine}
 
-Vertical context: ${industryDef.promptAddendum}
+Vertical context (follow exactly): ${industryDef.promptAddendum}
+
+FORBIDDEN unless Industry is real estate: brokerage, listing, listings, comps, open house, closing, closings, buyer journey, seller journey, dream home, MLS, CMA, "transaction" (in a property sense).
 
 Voice samples (real writing by this person):
 ${samples}

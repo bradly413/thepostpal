@@ -4,6 +4,15 @@
 //  the PostPal AI onboarding agent. Mirrors Brand Guide v2.
 // ─────────────────────────────────────────────────────────────
 
+import { z } from "zod";
+import type {
+  ComplimentChoice,
+  DressCodeChoice,
+  GreetingChoice,
+} from "@/lib/onboarding-choices";
+
+export type { ComplimentChoice, DressCodeChoice, GreetingChoice } from "@/lib/onboarding-choices";
+
 // ── 01 At a Glance ──────────────────────────────────────────
 
 export interface BrandGlance {
@@ -136,6 +145,7 @@ export interface BrandColophon {
 // ── Agent Identity ──────────────────────────────────────────
 
 import type { IndustryId } from "@/lib/industries";
+import type { CuratedPaletteId } from "@/lib/color-registry";
 
 export interface AgentIdentity {
   name: string;
@@ -169,6 +179,8 @@ export interface AgentIdentity {
   profession?: string;
   /** 1–2 sentence "why we do this" — feeds glance.story + voice.hero. */
   mission?: string;
+  /** Curated palette from color-registry — never AI-invented hex codes. */
+  paletteId?: CuratedPaletteId;
 }
 
 // ── Photography ─────────────────────────────────────────────
@@ -234,6 +246,9 @@ export interface BrandBook {
 
 export interface OnboardingAnswers {
   name: string;
+  /** Business / venue / practice name (preferred). */
+  company?: string;
+  /** @deprecated Use `company`. Kept for legacy flows. */
   brokerage?: string;
   location: string;
   markets: string[];
@@ -270,7 +285,61 @@ export interface OnboardingAnswers {
   antiVoice?: string[];
   /** ≤3 URLs or @handles they admire visually (optional v1 reference only). */
   visualRefs?: string[];
+
+  // ── Behavioral onboarding (plain-English, no jargon) ───────
+  /** "If your business had a dress code…" → curated palette + visual vibe. */
+  dressCode?: DressCodeChoice;
+  /** "A new customer walks through the door…" → weSay / weDontSay tone. */
+  greeting?: GreetingChoice;
+  /** "Best 5-star review…" → hero positioning. */
+  compliment?: ComplimentChoice;
 }
+
+// ═══════════════════════════════════════════════════════════
+//  AI structured output (Vercel AI SDK + Zod)
+// ═══════════════════════════════════════════════════════════
+
+export const curatedPaletteIdSchema = z.enum([
+  "sharp-professional",
+  "smart-casual",
+  "jeans-tshirt",
+  "boots-flannel",
+]);
+
+/** Strict schema for `generateObject` — voice + paletteId only (no free-form colors). */
+export const brandVoiceAiSchema = z.object({
+  paletteId: curatedPaletteIdSchema.describe(
+    "Pick exactly one curated palette ID that matches the user's Dress Code and industry vibe. Never invent hex codes or color names — only these four IDs exist.",
+  ),
+  hero: z
+    .string()
+    .min(12)
+    .max(320)
+    .describe(
+      "One-sentence positioning statement anchored in the user's Compliment choice (best 5-star review theme). Industry-native language only.",
+    ),
+  weSay: z
+    .array(z.string().min(8).max(280))
+    .min(3)
+    .max(5)
+    .describe(
+      "Example social lines shaped by the user's Greeting — how they actually talk when someone walks in.",
+    ),
+  weDontSay: z
+    .array(z.string().min(8).max(280))
+    .min(3)
+    .max(6)
+    .describe(
+      "Off-brand lines — include tones that contradict the Greeting and forbidden industry words.",
+    ),
+  traits: z
+    .array(z.string().min(2).max(80))
+    .min(3)
+    .max(5)
+    .describe("Short voice trait labels grounded in Dress Code + Greeting, not generic adjectives."),
+});
+
+export type BrandVoiceAiOutput = z.infer<typeof brandVoiceAiSchema>;
 
 // ═══════════════════════════════════════════════════════════
 //  Defaults — thepostpal's own brand values

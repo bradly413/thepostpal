@@ -4,12 +4,16 @@
 // Feeds the AI generate pipelines (captions + images).
 
 export interface BrandEngineInput {
-  niche: string;
+  niche?: string;
   pivotAnswer?: string;
   primaryTone?: string;
   paletteVibe?: number;
   contrastVibe?: string | number;
   typographyPairing?: string;
+  dressCode?: string;
+  greeting?: string;
+  compliment?: string;
+  industryId?: string;
 }
 
 export async function saveBrandEngine(input: BrandEngineInput): Promise<unknown> {

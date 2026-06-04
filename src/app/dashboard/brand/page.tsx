@@ -1,7 +1,16 @@
 "use client";
 
-import { useState, useEffect, useRef, type CSSProperties } from "react";
+import { useState, useEffect, useRef, createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
+import {
+  type BrandBookTier,
+  TIER_LABEL,
+  TIER_BLURB,
+  isSectionUnlocked,
+  sectionRequiredTier,
+  nextTier,
+  parseTier,
+} from "@/lib/brand-book-tiers";
 import type {
   BrandBook,
   BrandPalette,
@@ -14,7 +23,9 @@ import type {
   Tagline,
 } from "@/lib/brand-book-schema";
 import { SITE_NAME } from "@/lib/site";
+import { applyCuratedPaletteToBook } from "@/lib/color-registry";
 import { useBrandBook } from "@/lib/use-brand-book";
+import RegenerateBrandButton from "@/components/dashboard/brand/RegenerateBrandButton";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -24,6 +35,43 @@ import { useBrandBook } from "@/lib/use-brand-book";
    editorial spec: 4-color system, 0.5px hairlines, wide-tracked
    caps, giant serif headlines, two directions.
    ═══════════════════════════════════════════════════════════════ */
+
+function essenceHeadline(industry?: string): ReactNode {
+  if (industry === "real-estate") {
+    return (
+      <>
+        It&rsquo;s never just <em style={{ fontStyle: "italic", color: "var(--accent)" }}>about</em> the listing.
+      </>
+    );
+  }
+  if (industry === "food-restaurant") {
+    return (
+      <>
+        It&rsquo;s never just <em style={{ fontStyle: "italic", color: "var(--accent)" }}>about</em> the menu.
+      </>
+    );
+  }
+  return (
+    <>
+      It&rsquo;s never just <em style={{ fontStyle: "italic", color: "var(--accent)" }}>about</em> the post.
+    </>
+  );
+}
+
+function photographyHeadline(industry?: string): ReactNode {
+  if (industry === "real-estate") {
+    return (
+      <>
+        Less listing photo, more <em style={{ fontStyle: "italic", color: "var(--accent)" }}>editorial</em> spread.
+      </>
+    );
+  }
+  return (
+    <>
+      Less stock, more <em style={{ fontStyle: "italic", color: "var(--accent)" }}>real</em> moments.
+    </>
+  );
+}
 
 const SECTIONS = [
   { id: "essence", no: "01", label: "Essence" },
@@ -52,9 +100,15 @@ function useTokens(palette: BrandPalette) {
 }
 
 export default function BrandPage() {
-  const { book, loading } = useBrandBook();
+  const { book, locationId, onboardingAnswers, loading, reload } = useBrandBook();
   const [activeSec, setActiveSec] = useState("essence");
+  const [userTier, setUserTier] = useState<BrandBookTier>("basic");
   const observerRef = useRef<IntersectionObserver | null>(null);
+
+  // Tier source is a follow-up (Organization/billing) — preview via ?tier=mid|premium.
+  useEffect(() => {
+    setUserTier(parseTier(new URLSearchParams(window.location.search).get("tier")));
+  }, []);
 
   useEffect(() => {
     document.title = `My Brand | ${SITE_NAME}`;
@@ -112,13 +166,14 @@ export default function BrandPage() {
     );
   }
 
-  const migrated = migrateBrandBook(book);
+  const migrated = migrateBrandBook(applyCuratedPaletteToBook(book));
   const { identity, glance, palette, typography, voice, mark, photography, pillars, applications } = migrated;
   const tokens = useTokens(palette);
   const serif = `'${typography.display.family}', Georgia, serif`;
   const sans = `'${typography.body.family}', system-ui, sans-serif`;
 
   return (
+    <TierContext.Provider value={userTier}>
     <main role="article" aria-label="Brand Guidelines" style={{ ...tokens, "--font-serif": serif, "--font-sans": sans, background: "var(--canvas)", color: "var(--ink)", fontFamily: "var(--font-sans)", fontWeight: 400, lineHeight: 1.55, WebkitFontSmoothing: "antialiased" } as CSSProperties}>
       <SideToc active={activeSec} palette={palette} />
 
@@ -126,9 +181,27 @@ export default function BrandPage() {
       <CoverEditorial identity={identity} palette={palette} typography={typography} createdAt={migrated.createdAt} voice={voice} />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 clamp(24px, 4vw, 64px)" }}>
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "flex-end",
+            padding: "20px 0 8px",
+            position: "sticky",
+            top: 12,
+            zIndex: 30,
+          }}
+        >
+          <RegenerateBrandButton
+            book={migrated}
+            locationId={locationId}
+            onboardingAnswers={onboardingAnswers}
+            onRegenerated={reload}
+          />
+        </div>
+        <UpgradeBanner tier={userTier} />
         {/* 01 · ESSENCE */}
         <Section id="essence">
-          <SecHead no="01" eyebrow="The Essence" title={<>It&rsquo;s never just <em style={{ fontStyle: "italic", color: "var(--accent)" }}>about</em> the listing.</>} lede={glance.howWeSound} palette={palette} />
+          <SecHead no="01" eyebrow="The Essence" title={essenceHeadline(identity.industry)} lede={glance.howWeSound} palette={palette} />
           <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(32px, 5vw, 80px)", alignItems: "start" }}>
             <div style={{ fontSize: 15, lineHeight: 1.72, color: "var(--ink)", maxWidth: "60ch" }}>
               <p style={{ margin: "0 0 1.1em" }}>{glance.story}</p>
@@ -138,7 +211,14 @@ export default function BrandPage() {
               <div style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "18px 28px", fontSize: 13.5 }}>
                 <LabelSm>Target</LabelSm><div>{identity.target || glance.whoItsFor}</div>
                 <LabelSm>Markets</LabelSm><div>{identity.markets?.join(", ") || identity.location}</div>
-                {identity.brokerage && <><LabelSm>Brokerage</LabelSm><div>{identity.brokerage}</div></>}
+                {(identity.company ?? identity.brokerage) && (
+                  <>
+                    <LabelSm>
+                      {identity.industry === "real-estate" ? "Brokerage" : "Business"}
+                    </LabelSm>
+                    <div>{identity.company ?? identity.brokerage}</div>
+                  </>
+                )}
                 {identity.experience && <><LabelSm>Experience</LabelSm><div>{identity.experience}</div></>}
               </div>
             </div>
@@ -249,7 +329,7 @@ export default function BrandPage() {
 
         {/* 06 · PHOTOGRAPHY */}
         <Section id="photography">
-          <SecHead no="06" eyebrow="Photography" title={<>Less listing photo, more <em style={{ fontStyle: "italic", color: "var(--accent)" }}>editorial</em> spread.</>} lede={photography.description} palette={palette} />
+          <SecHead no="06" eyebrow="Photography" title={photographyHeadline(identity.industry)} lede={photography.description} palette={palette} />
           <div style={{ marginTop: "clamp(48px, 6vw, 84px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(24px, 2.5vw, 40px)", borderTop: ".5px solid var(--rule)", paddingTop: 36 }}>
             {photography.principles.map((p, i) => (
               <div key={i} style={{ display: "grid", gap: 10 }}>
@@ -312,7 +392,7 @@ export default function BrandPage() {
               </p>
             </div>
             <div style={{ display: "grid", gap: 6, fontSize: 12.5, lineHeight: 1.7, opacity: 0.82 }}>
-              <div><strong style={{ fontWeight: 600 }}>{identity.name}</strong> &middot; {identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+              <div><strong style={{ fontWeight: 600 }}>{identity.name}</strong> &middot; {identity.title || "Owner"}{(identity.company ?? identity.brokerage) ? ` · ${identity.company ?? identity.brokerage}` : ""}</div>
               <div>{identity.location}</div>
               {identity.phone && <div>{identity.phone}</div>}
               {identity.email && <div>{identity.email}</div>}
@@ -327,6 +407,7 @@ export default function BrandPage() {
         </footer>
       </div>
     </main>
+    </TierContext.Provider>
   );
 }
 
@@ -334,8 +415,70 @@ export default function BrandPage() {
    PRIMITIVES
    ───────────────────────────────────────────────────────────── */
 
+const TierContext = createContext<BrandBookTier>("basic");
+
+function LockIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true" style={{ display: "inline-block", verticalAlign: "-3px", marginRight: 8 }}>
+      <rect x="5" y="11" width="14" height="9" rx="2" />
+      <path d="M8 11V8a4 4 0 0 1 8 0v3" />
+    </svg>
+  );
+}
+
+function LockedSection({ sectionId }: { sectionId: string }) {
+  const req = sectionRequiredTier(sectionId);
+  return (
+    <div
+      style={{
+        position: "relative",
+        borderRadius: 18,
+        border: "1px solid var(--rule)",
+        background: "rgba(0,0,0,0.018)",
+        padding: "clamp(44px, 6vw, 84px)",
+        textAlign: "center",
+      }}
+    >
+      <div style={{ fontSize: 11, fontWeight: 500, letterSpacing: ".3em", textTransform: "uppercase", color: "var(--neutral)", marginBottom: 16 }}>
+        <LockIcon />Locked &middot; {TIER_LABEL[req]}
+      </div>
+      <h3 style={{ fontFamily: "var(--font-serif)", fontWeight: 400, fontSize: "clamp(28px, 3.4vw, 46px)", lineHeight: 1.05, color: "var(--primary)", margin: 0 }}>
+        Unlock with {TIER_LABEL[req]}
+      </h3>
+      <p style={{ color: "var(--neutral)", maxWidth: "46ch", margin: "16px auto 0", lineHeight: 1.6, fontSize: 15 }}>{TIER_BLURB[req]}</p>
+      <Link
+        href="/dashboard/settings?upgrade=brandbook"
+        style={{ display: "inline-block", marginTop: 26, padding: "12px 30px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none" }}
+      >
+        Upgrade to {TIER_LABEL[req]}
+      </Link>
+    </div>
+  );
+}
+
+function UpgradeBanner({ tier }: { tier: BrandBookTier }) {
+  const up = nextTier(tier);
+  if (!up) return null;
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 16, marginTop: 28, padding: "15px 22px", borderRadius: 14, border: "1px solid var(--rule)", background: "rgba(0,0,0,0.018)" }}>
+      <div style={{ fontSize: 13.5, color: "var(--neutral)", lineHeight: 1.5, maxWidth: "62ch" }}>
+        You&rsquo;re on the <strong style={{ color: "var(--primary)", fontWeight: 600 }}>{TIER_LABEL[tier]}</strong> brand book. Unlock <strong style={{ color: "var(--ink)" }}>{TIER_LABEL[up]}</strong> — {TIER_BLURB[up]}
+      </div>
+      <Link href="/dashboard/settings?upgrade=brandbook" style={{ flexShrink: 0, padding: "10px 24px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}>
+        Upgrade to {TIER_LABEL[up]}
+      </Link>
+    </div>
+  );
+}
+
 function Section({ id, children }: { id: string; children: React.ReactNode }) {
-  return <section id={id} style={{ padding: "clamp(80px, 10vw, 140px) 0", scrollMarginTop: 40 }}>{children}</section>;
+  const userTier = useContext(TierContext);
+  const unlocked = isSectionUnlocked(id, userTier);
+  return (
+    <section id={id} style={{ padding: "clamp(80px, 10vw, 140px) 0", scrollMarginTop: 40 }}>
+      {unlocked ? children : <LockedSection sectionId={id} />}
+    </section>
+  );
 }
 
 function SecHead({ no, eyebrow, title, lede, palette }: { no: string; eyebrow: string; title: React.ReactNode; lede?: string; palette: BrandPalette }) {
@@ -693,7 +836,7 @@ function BusinessCard({ identity, palette, typography }: { identity: BrandBook["
           <div style={{ fontFamily: `'${typography.display.family}', serif`, fontStyle: "italic", color: palette.signal.hex, fontSize: 56, lineHeight: 1 }}>{identity.name.charAt(0)}</div>
           <div style={{ display: "grid", gap: 6, fontSize: 12.5 }}>
             <div style={{ fontFamily: `'${typography.display.family}', serif`, fontSize: 22, color: palette.ink.hex }}>{identity.name}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{(identity.company ?? identity.brokerage) ? ` · ${identity.company ?? identity.brokerage}` : ""}</div>
             <div style={{ color: "#34302A", lineHeight: 1.6, marginTop: 6 }}>
               {identity.phone && <>{identity.phone}<br /></>}
               {identity.email && <>{identity.email}<br /></>}
@@ -721,7 +864,7 @@ function EmailSig({ identity, palette, typography, voice }: { identity: BrandBoo
         </div>
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontFamily: `'${typography.display.family}', serif`, fontSize: 22, color: palette.ink.hex, lineHeight: 1 }}>{identity.name}</div>
-          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{(identity.company ?? identity.brokerage) ? ` · ${identity.company ?? identity.brokerage}` : ""}</div>
           <div style={{ height: 0.5, background: "var(--rule)", margin: "8px 0" }} />
           <div style={{ fontSize: 12, color: "#34302A", lineHeight: 1.7 }}>
             {identity.phone && <>{identity.phone} &middot; </>}{identity.email}<br />
