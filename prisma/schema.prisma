@@ -76,6 +76,7 @@ model Organization {
   locationCount Int      @default(1)
   plan          PlanTier @default(solo)
   brandEngine   Json?
+  accountSettings Json?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 

@@ -10,7 +10,6 @@ import {
   Send,
   Bell,
   Sun,
-  ChevronDown,
   Sun as SunIcon,
   CloudSun,
   Cloud,
@@ -42,15 +41,6 @@ const MEDIA = [
   "https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=240&q=80&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1531722569936-825d3dd91b15?w=240&q=80&auto=format&fit=crop",
   "https://images.unsplash.com/photo-1505228395891-9a51e7e86bf6?w=240&q=80&auto=format&fit=crop",
-];
-
-const AUDIENCE = [
-  { name: "Sara", img: "https://randomuser.me/api/portraits/women/2.jpg", ring: "#34c759" },
-  { name: "Maya", img: "https://randomuser.me/api/portraits/women/3.jpg", ring: "#5ac8fa" },
-  { name: "Ken", img: "https://randomuser.me/api/portraits/men/4.jpg", ring: "#c7c7cc" },
-  { name: "Omar", img: "https://randomuser.me/api/portraits/men/5.jpg", ring: "#007aff" },
-  { name: "Lia", img: "https://randomuser.me/api/portraits/women/6.jpg", ring: "#ff9500" },
-  { name: "Rae", img: "https://randomuser.me/api/portraits/women/7.jpg", ring: "#ff2d55" },
 ];
 
 const POST_PLATFORMS = ["instagram", "facebook", "x"] as const;
@@ -298,9 +288,9 @@ export default function DashboardHome() {
 
             {/* Total reach */}
             <div className="mod reach2 anim">
-              <div className="mhead"><span className="mtitle2">Total Reach</span><span className="period">This Month <ChevronDown size={13} /></span></div>
-              <div className="bignum">2.4K</div>
-              <div className="delta up">▲ 18.6% <span>vs last month</span></div>
+              <div className="mhead"><span className="mtitle2">Posts This Week</span><span className="period">{data?.weeklyOverview?.rangeLabel ?? "This week"}</span></div>
+              <div className="bignum">{data?.weeklyOverview?.postsCount ?? 0}</div>
+              <div className={`delta ${data?.weeklyOverview?.engagementPositive === false ? "down" : "up"}`}>{data?.weeklyOverview?.engagementLabel ?? "On track"} <span>vs last week</span></div>
               <div className="spark">
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
@@ -345,14 +335,11 @@ export default function DashboardHome() {
             </div>
 
             <div className="mod friends2 anim">
-              <div className="mhead"><span className="mtitle2">Audience</span><Link href="/dashboard/analytics" className="viewall">View all</Link></div>
-              <div className="audrow">
-                {AUDIENCE.map((a) => (
-                  <span key={a.name} className="aud" style={{ ["--ring" as string]: a.ring }}>
-                    <img src={a.img} alt={a.name} loading="lazy" />
-                  </span>
-                ))}
-                <button type="button" className="audadd" aria-label="Add"><Plus size={18} /></button>
+              <div className="mhead"><span className="mtitle2">This Week</span><Link href="/dashboard/drafts" className="viewall">View all</Link></div>
+              <div className="audstats">
+                <div><b>{data?.scheduledCount ?? 0}</b><small>Scheduled</small></div>
+                <div><b>{data?.pendingCount ?? 0}</b><small>In review</small></div>
+                <div><b>{data?.hoursSaved ?? 0}</b><small>Hrs saved</small></div>
               </div>
             </div>
           </div>

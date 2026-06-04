@@ -61,19 +61,43 @@ function SettingsContent() {
   }, [searchParams, router, reloadMeta]);
 
   useEffect(() => {
-    try {
-      const s = localStorage.getItem("app-settings");
-      if (s) {
-        const data = JSON.parse(s);
-        if (data.profile) setProfile(data.profile);
-        if (data.posting) setPosting(data.posting);
-        if (data.notifications) setNotifications(data.notifications);
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/account/settings", { credentials: "same-origin" });
+        if (!res.ok) return;
+        const data = (await res.json()) as {
+          settings?: {
+            profile?: Partial<typeof profile>;
+            posting?: Partial<typeof posting>;
+            notifications?: Partial<typeof notifications>;
+          } | null;
+        };
+        const s = data.settings;
+        if (cancelled || !s) return;
+        if (s.profile) setProfile((p) => ({ ...p, ...s.profile }));
+        if (s.posting) setPosting((p) => ({ ...p, ...s.posting }));
+        if (s.notifications) setNotifications((n) => ({ ...n, ...s.notifications }));
+      } catch {
+        /* keep defaults */
       }
-    } catch {}
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
-  function handleSave() {
-    localStorage.setItem("app-settings", JSON.stringify({ profile, posting, notifications }));
+  async function handleSave() {
+    try {
+      await fetch("/api/account/settings", {
+        method: "PUT",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ profile, posting, notifications }),
+      });
+    } catch {
+      /* optimistic — keep the confirmation even if the network blips */
+    }
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }

@@ -203,6 +203,12 @@ export function DashboardHomeStyles() {
     .mediathumb { border-radius: 14px; background-size: cover; background-position: center; background-color: #e5e7eb; transition: transform .2s; }
     .mediathumb:hover { transform: scale(1.04); }
 
+    /* Workspace stats (real counts) */
+    .audstats { display: flex; align-items: center; gap: 28px; flex: 1; }
+    .audstats > div { display: flex; flex-direction: column; gap: 2px; }
+    .audstats b { font-size: 28px; font-weight: 800; letter-spacing: -1px; color: var(--ink); line-height: 1; }
+    .audstats small { font-size: 11.5px; color: var(--ink-soft); }
+
     /* Audience */
     .audrow { display: flex; align-items: center; gap: 12px; flex: 1; }
     .aud { width: 52px; height: 52px; border-radius: 50%; padding: 2.5px; background: var(--ring, #34c759); display: inline-block; }

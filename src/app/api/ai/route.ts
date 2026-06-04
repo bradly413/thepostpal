@@ -2,7 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { buildKnowledgeContext } from "@/lib/knowledge-store";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { loadTemplateCatalog } from "@/lib/template-catalog";
-import { requireAuthContext } from "@/lib/api-auth";
+import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
+import { withTenantDb } from "@/lib/db";
+import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
 
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
@@ -79,9 +81,9 @@ ${templateInfo}`;
 }
 
 export async function POST(req: Request) {
-  let tenantId: string;
+  let auth: AuthContext;
   try {
-    tenantId = (await requireAuthContext()).tenantId;
+    auth = await requireAuthContext();
   } catch {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -110,12 +112,36 @@ export async function POST(req: Request) {
   }
 
   const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
-  const knowledgeContext = lastUserMsg ? buildKnowledgeContext(tenantId, lastUserMsg.content) : "";
+  const knowledgeContext = lastUserMsg ? buildKnowledgeContext(auth.tenantId, lastUserMsg.content) : "";
+
+  // Per-tenant brand voice from Organization.brandEngine (falls back to the
+  // neutral voice baked into SYSTEM_PROMPT when the tenant has no brand engine).
+  let tenantBrandContext = "";
+  try {
+    await withTenantDb(auth, async (tx) => {
+      const org = await tx.organization.findUnique({
+        where: { id: auth.tenantId },
+        select: { brandEngine: true, name: true, businessType: true },
+      });
+      const dna = readBrandEngineImageContext(org?.brandEngine);
+      const lines: string[] = [];
+      if (org?.name) lines.push(`- Business: ${org.name}${org.businessType ? ` (${org.businessType})` : ""}`);
+      if (dna?.niche) lines.push(`- Niche / focus: ${dna.niche}`);
+      if (dna?.primaryTone) lines.push(`- Voice & tone: ${dna.primaryTone}`);
+      if (dna?.contrastVibe) lines.push(`- Visual vibe: ${dna.contrastVibe}`);
+      if (lines.length > 0) {
+        tenantBrandContext = `\n\n## This Business's Brand\n${lines.join("\n")}\nWrite all content in this business's voice, for this niche and audience.`;
+      }
+    });
+  } catch {
+    /* fall back to the neutral brand voice */
+  }
+
   const templateCatalog = await loadTemplateCatalog();
   const templateContext = lastUserMsg
     ? buildTemplateContext(lastUserMsg.content, templateCatalog)
     : "";
-  const systemPrompt = SYSTEM_PROMPT + knowledgeContext + templateContext;
+  const systemPrompt = SYSTEM_PROMPT + tenantBrandContext + knowledgeContext + templateContext;
   const chat = messages.filter(
     (m: { role: string }) => m.role === "user" || m.role === "assistant",
   );
