@@ -36,6 +36,9 @@ and catalogued here so they can be pulled on demand.
 | Gradient Text | text | text, gradient, animated, heading | `text/GradientText.tsx` | — | original |
 | Tilt Card | cards | card, 3d, tilt, pointer, hover | `cards/TiltCard.tsx` | JS (no lib) | original |
 | Animated Gradient Background | backgrounds | background, gradient, animated, hero | `backgrounds/AnimatedGradientBg.tsx` | — | original |
+| Border Draw Box | borders | border, draw, trace, hover, 4-side | `borders/BorderDrawBox.tsx` | — | adapted from user CodePen |
+| Rotating Gradient Border | borders | border, conic, radial, rotate, @property | `borders/RotatingGradientBorder.tsx` | — | adapted from user CodePen |
+| Animated Post Frame | frames | frame, social, post, border, glow, rounded | `frames/AnimatedPostFrame.tsx` | — | original (combination) |
 
 _All seed snippets are authored from scratch (no third-party code) and use the
 brand red `#ee2532` as the default accent. All respect `prefers-reduced-motion`._

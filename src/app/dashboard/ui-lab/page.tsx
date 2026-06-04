@@ -1,5 +1,6 @@
 "use client";
 
+import { Heart, MessageCircle, Send, Bookmark } from "lucide-react";
 import AnimatedBorderButton from "@/lib/ui-snippets/buttons/AnimatedBorderButton";
 import ShimmerButton from "@/lib/ui-snippets/buttons/ShimmerButton";
 import GradientBorderButton from "@/lib/ui-snippets/buttons/GradientBorderButton";
@@ -10,6 +11,9 @@ import Marquee from "@/lib/ui-snippets/animations/Marquee";
 import GradientText from "@/lib/ui-snippets/text/GradientText";
 import TiltCard from "@/lib/ui-snippets/cards/TiltCard";
 import AnimatedGradientBg from "@/lib/ui-snippets/backgrounds/AnimatedGradientBg";
+import BorderDrawBox from "@/lib/ui-snippets/borders/BorderDrawBox";
+import RotatingGradientBorder from "@/lib/ui-snippets/borders/RotatingGradientBorder";
+import AnimatedPostFrame from "@/lib/ui-snippets/frames/AnimatedPostFrame";
 
 // Live gallery of the UI snippet library. Reachable at /dashboard/ui-lab.
 // Each tile shows an effect + its file path so it's easy to pick one.
@@ -87,6 +91,46 @@ export default function UiLabPage() {
             <Chip label="X" />
           </Marquee>
         </Demo>
+        <Demo title="Border Draw (hover)" file="borders/BorderDrawBox.tsx">
+          <BorderDrawBox className="max-w-[200px] p-4 text-center text-xs text-black/60">
+            Hover me — the border draws itself in.
+          </BorderDrawBox>
+        </Demo>
+        <Demo title="Rotating Gradient Border" file="borders/RotatingGradientBorder.tsx">
+          <div className="flex gap-4">
+            <RotatingGradientBorder variant="conic" className="flex h-20 w-24 items-center justify-center text-[11px] text-black/60">
+              conic
+            </RotatingGradientBorder>
+            <RotatingGradientBorder variant="radial" className="flex h-20 w-24 items-center justify-center text-[11px] text-black/60">
+              radial
+            </RotatingGradientBorder>
+          </div>
+        </Demo>
+      </div>
+
+      {/* Combined: the social post frame Brad described */}
+      <h2 className="pb-app-header mt-8" style={{ marginBottom: "1rem" }}>
+        <span style={{ fontSize: "1.25rem", fontWeight: 700 }}>Combination — animated social post frame</span>
+      </h2>
+      <div className="pb-panel flex flex-col items-center gap-4">
+        <code className="self-start text-[11px] opacity-45">frames/AnimatedPostFrame.tsx — rotating conic glow + brand glow, radius-safe</code>
+        <AnimatedPostFrame radius={26} className="w-[300px]">
+          <div className="flex items-center gap-2 px-3 py-2.5">
+            <span className="h-7 w-7 rounded-full bg-gradient-to-br from-[#ee2532] to-[#ff7a59]" />
+            <span className="text-xs font-semibold">posterboy</span>
+            <span className="ml-auto text-black/30">•••</span>
+          </div>
+          <div className="h-52 bg-gradient-to-br from-[#ffd2c2] via-[#ff7a59] to-[#ee2532]" />
+          <div className="flex items-center gap-4 px-3 py-2.5 text-black/55">
+            <Heart size={16} />
+            <MessageCircle size={16} />
+            <Send size={16} />
+            <Bookmark size={16} className="ml-auto" />
+          </div>
+          <p className="px-3 pb-3 text-[11px] text-black/60">
+            <b className="text-black/80">posterboy</b> Happy 4th of July
+          </p>
+        </AnimatedPostFrame>
       </div>
     </div>
   );
