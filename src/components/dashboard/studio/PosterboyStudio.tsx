@@ -158,23 +158,13 @@ export default function PosterboyStudio() {
       const border = card.querySelector<HTMLElement>(".glass-border");
       const sheen = card.querySelector<HTMLElement>(".glass-sheen");
       const chrome = card.querySelectorAll(".ptpl-head, .ptpl-foot");
-      const angle = { v: 0 };
-
       const tl = gsap.timeline();
-      tl.from(card, { autoAlpha: 0, duration: 0.4, ease: "power2.out" }, 0);
+      tl.from(card, { autoAlpha: 0, duration: 0.45, ease: "power2.out" }, 0);
 
       if (border) {
-        gsap.set(border, { autoAlpha: 1 });
-        tl.to(
-          angle,
-          {
-            v: 360,
-            duration: 1.15,
-            ease: "power2.inOut",
-            onUpdate: () => card.style.setProperty("--glass-angle", `${angle.v}deg`),
-          },
-          0,
-        ).to(border, { autoAlpha: 0, duration: 0.45, ease: "power2.out" }, ">-0.25");
+        // The illuminated white border glows + orbits continuously via CSS
+        // (pbsBorderSpin); the entrance just fades it in around the image.
+        tl.from(border, { autoAlpha: 0, duration: 0.6, ease: "power2.out" }, 0.05);
       }
 
       if (sheen) {
@@ -1442,19 +1432,32 @@ function StudioStyles() {
       inset 0 1px 0 rgba(255,255,255,0.95);
     color: rgba(22,22,28,0.92);
     font-size: 13px;
-  }.pb-studio .frame-wrap.as-post .glass-border {
+  }@property --glass-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  @keyframes pbsBorderSpin { to { --glass-angle: 360deg; } }
+  .pb-studio .frame-wrap.as-post .glass-border {
     position: absolute;
     inset: 0;
     border-radius: inherit;
-    padding: 1.5px;
+    padding: 2px;
     pointer-events: none;
     z-index: 7;
-    background: conic-gradient(from var(--glass-angle, 0deg), transparent 0deg, transparent 280deg, rgba(255,255,255,0.4) 318deg, rgba(255,255,255,1) 350deg, rgba(255,255,255,0.45) 358deg, transparent 360deg);
+    background: conic-gradient(from var(--glass-angle, 0deg),
+      rgba(255,255,255,0.55) 0deg,
+      rgba(255,255,255,0.55) 200deg,
+      rgba(255,255,255,0.9) 288deg,
+      rgba(255,255,255,1) 322deg,
+      rgba(255,255,255,1) 340deg,
+      rgba(255,255,255,0.6) 360deg);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask-composite: exclude;
-  }.pb-studio .frame-wrap.as-post .glass-sheen {
+    filter: drop-shadow(0 0 5px rgba(255,255,255,0.85)) drop-shadow(0 0 2px rgba(255,255,255,0.9));
+    animation: pbsBorderSpin 4s linear infinite;
+  }@media (prefers-reduced-motion: reduce) {
+    .pb-studio .frame-wrap.as-post .glass-border { animation: none; }
+  }
+  .pb-studio .frame-wrap.as-post .glass-sheen {
     position: absolute;
     inset: 0;
     border-radius: inherit;
