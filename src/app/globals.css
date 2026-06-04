@@ -1043,6 +1043,9 @@ html[data-theme] body {
 /* Content pages share the home page's foundation (.pb-home2): cool-gray
    frosted background, sans typography, frosted-glass cards. The ONLY serif
    in the dashboard is the logo — page titles are sans. */
+/* .pb-app renders inside the shared .pb-home2 frame (DashboardShell), which
+   provides the cool-gray frosted background + 22px gutter. The page itself is
+   transparent and just sets typography tokens. */
 .pb-app {
   --pb-ink: #1c1c1e;
   --pb-ink-soft: #76767e;
@@ -1051,13 +1054,9 @@ html[data-theme] body {
   --pb-press-deep: #c81e2a;
   --pb-card: rgba(255, 255, 255, 0.72);
   min-height: 100%;
-  padding: 22px;
   color: var(--pb-ink);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
-  background:
-    radial-gradient(1100px 520px at 88% -8%, rgba(238, 37, 50, 0.06), transparent 60%),
-    linear-gradient(165deg, #eef0f2 0%, #e9ebee 55%, #edeff1 100%);
 }
 
 .pb-app-header {

@@ -5,14 +5,8 @@ import Link from "next/link";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
 import {
-  Home,
   Plus,
-  CalendarDays,
   CalendarPlus,
-  Image as ImageIcon,
-  BarChart3,
-  User,
-  Settings,
   Send,
   Bell,
   Sun,
@@ -26,6 +20,7 @@ import {
   CloudFog,
 } from "lucide-react";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
+import AppSidebar from "@/components/dashboard/AppSidebar";
 import {
   loadDashboardHomeSnapshot,
   type DashboardHomeSnapshot,
@@ -221,18 +216,6 @@ export default function DashboardHome() {
   const cur = SLIDES[slide];
   const wxI = wxIcon(wx.code);
 
-  const NAV_TOP = [
-    { label: "Home", href: "/dashboard", Icon: Home, active: true },
-    { label: "Create", href: "/dashboard/studio", Icon: Plus },
-    { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays },
-    { label: "Media", href: "/dashboard/photos", Icon: ImageIcon },
-    { label: "Reports", href: "/dashboard/analytics", Icon: BarChart3 },
-  ];
-  const NAV_BOTTOM = [
-    { label: "Account", href: "/dashboard/settings", Icon: User },
-    { label: "Settings", href: "/dashboard/settings", Icon: Settings },
-    { label: "Profile", href: "/dashboard/brand", Icon: User },
-  ];
   const SHORTCUTS = [
     { label: "Create", sub: "Design a new post", href: "/dashboard/studio", Icon: Plus },
     { label: "Schedule", sub: "Plan your content", href: "/dashboard/calendar", Icon: CalendarPlus },
@@ -243,27 +226,8 @@ export default function DashboardHome() {
     <div className="pb-home2" ref={root}>
       <DashboardHomeStyles />
       <div className="home2">
-        {/* Sidebar */}
-        <aside className="side2 anim">
-          <Link href="/dashboard" className="logo" aria-label="Posterboy">
-            poster<em>boy</em><span className="tm">®</span>
-          </Link>
-          <nav>
-            {NAV_TOP.map(({ label, href, Icon, active }) => (
-              <Link key={label} href={href} className={active ? "active" : ""}><Icon /> <span>{label}</span></Link>
-            ))}
-            <div className="grp-gap" />
-            {NAV_BOTTOM.map(({ label, href, Icon }) => (
-              <Link key={label} href={href}><Icon /> <span>{label}</span></Link>
-            ))}
-          </nav>
-          <div className="spacer" />
-          <button type="button" className="foot">
-            <span className="av">{data.userInitials}</span>
-            <span><div className="nm">{data.userName}</div><div className="rl">{data.userRole}</div></span>
-            <ChevronDown size={15} style={{ marginLeft: "auto", color: "var(--ink-soft)" }} />
-          </button>
-        </aside>
+        {/* Shared sidebar — identical on every dashboard page */}
+        <AppSidebar />
 
         {/* Main */}
         <main className="main2">
