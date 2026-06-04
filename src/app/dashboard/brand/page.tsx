@@ -312,7 +312,7 @@ export default function BrandPage() {
               </p>
             </div>
             <div style={{ display: "grid", gap: 6, fontSize: 12.5, lineHeight: 1.7, opacity: 0.82 }}>
-              <div><strong style={{ fontWeight: 600 }}>{identity.name}</strong> &middot; {identity.title || "Realtor"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+              <div><strong style={{ fontWeight: 600 }}>{identity.name}</strong> &middot; {identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
               <div>{identity.location}</div>
               {identity.phone && <div>{identity.phone}</div>}
               {identity.email && <div>{identity.email}</div>}
@@ -401,7 +401,7 @@ function CoverEditorial({ identity, palette, typography, createdAt, voice }: { i
         {/* Left — type */}
         <div style={{ padding: "clamp(48px, 6vw, 96px) clamp(36px, 5vw, 88px)", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 32 }}>
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}99` }}>{identity.name} &middot; {identity.title || "Realtor"}</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}99` }}>{identity.name} &middot; {identity.title || "Owner"}</span>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}66` }}>{identity.location}</span>
           </div>
 
@@ -636,7 +636,7 @@ function SansSpecimen({ typography, identity }: { typography: BrandTypography; i
       </div>
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "clamp(28px, 3vw, 56px)" }}>
         <div>
-          <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, letterSpacing: ".32em", textTransform: "uppercase" as const, color: "var(--primary)", fontWeight: 500, marginBottom: 10 }}>{identity.name} &middot; {identity.title || "Realtor"}</div>
+          <div style={{ fontFamily: "var(--font-sans)", fontSize: 11, letterSpacing: ".32em", textTransform: "uppercase" as const, color: "var(--primary)", fontWeight: 500, marginBottom: 10 }}>{identity.name} &middot; {identity.title || "Owner"}</div>
           <LabelSm>Eyebrow — tracking .32em</LabelSm>
         </div>
         <div>
@@ -684,7 +684,7 @@ function BusinessCard({ identity, palette, typography }: { identity: BrandBook["
       <div style={{ display: "grid", gap: 16 }}>
         {/* Front */}
         <div style={{ background: palette.ink.hex, color: palette.bone.hex, aspectRatio: "1.75", padding: "clamp(20px, 2.5vw, 32px)", display: "flex", flexDirection: "column", justifyContent: "space-between" }}>
-          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, opacity: 0.55 }}>{identity.title || "Realtor"} &middot; {identity.location}</span>
+          <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, opacity: 0.55 }}>{identity.title || "Owner"} &middot; {identity.location}</span>
           <div style={{ fontFamily: `'${typography.display.family}', serif`, fontSize: "clamp(22px, 2.5vw, 34px)", lineHeight: 1.05, letterSpacing: "-.01em" }}>{identity.name}</div>
           <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, opacity: 0.4, alignSelf: "flex-end" }}>Vol. I</span>
         </div>
@@ -693,7 +693,7 @@ function BusinessCard({ identity, palette, typography }: { identity: BrandBook["
           <div style={{ fontFamily: `'${typography.display.family}', serif`, fontStyle: "italic", color: palette.signal.hex, fontSize: 56, lineHeight: 1 }}>{identity.name.charAt(0)}</div>
           <div style={{ display: "grid", gap: 6, fontSize: 12.5 }}>
             <div style={{ fontFamily: `'${typography.display.family}', serif`, fontSize: 22, color: palette.ink.hex }}>{identity.name}</div>
-            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Realtor"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+            <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
             <div style={{ color: "#34302A", lineHeight: 1.6, marginTop: 6 }}>
               {identity.phone && <>{identity.phone}<br /></>}
               {identity.email && <>{identity.email}<br /></>}
@@ -721,7 +721,7 @@ function EmailSig({ identity, palette, typography, voice }: { identity: BrandBoo
         </div>
         <div style={{ display: "grid", gap: 4 }}>
           <div style={{ fontFamily: `'${typography.display.family}', serif`, fontSize: 22, color: palette.ink.hex, lineHeight: 1 }}>{identity.name}</div>
-          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Realtor"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
+          <div style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: palette.muted.hex }}>{identity.title || "Owner"}{identity.brokerage ? ` · ${identity.brokerage}` : ""}</div>
           <div style={{ height: 0.5, background: "var(--rule)", margin: "8px 0" }} />
           <div style={{ fontSize: 12, color: "#34302A", lineHeight: 1.7 }}>
             {identity.phone && <>{identity.phone} &middot; </>}{identity.email}<br />

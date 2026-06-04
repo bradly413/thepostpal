@@ -78,7 +78,7 @@ export const coreTemplates: Template[] = [
   {
     id: "quote-personal",
     name: "Quote & Personal Card",
-    pillar: "Angie Personal",
+    pillar: "Personal",
     description: "Photo background with centered serif headline. For personal posts and values.",
     width: 1080,
     height: 1080,
