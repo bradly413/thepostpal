@@ -17,6 +17,7 @@ import {
   CloudSnow,
   CloudLightning,
   CloudFog,
+  User,
 } from "lucide-react";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
 import AppSidebar from "@/components/dashboard/AppSidebar";
@@ -93,9 +94,10 @@ export default function DashboardHome() {
   const [slide, setSlide] = useState(0);
   const [wx, setWx] = useState<Weather>({ temp: 72, high: 78, low: 61, code: 2 });
 
-  // Recent Media — live workspace photos, falling back to the static set.
+  // Recent Media — live workspace photos only (no stock fallback: stock images
+  // looked like another account's photos to beta users).
   const { photos: livePhotos } = useDashboardPhotos();
-  const recentMedia = livePhotos.length > 0 ? livePhotos.slice(0, 4).map((p) => p.src) : MEDIA;
+  const recentMedia = livePhotos.slice(0, 4).map((p) => p.src);
 
   const refresh = useCallback(async () => {
     try {
@@ -144,7 +146,7 @@ export default function DashboardHome() {
       if (!data) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
       // tiny scale entrance — frozen mid-tween (bg tab) stays fully visible
-      gsap.from(".anim", { scale: 0.985, duration: 0.45, ease: "power2.out", stagger: 0.05, transformOrigin: "50% 50%", clearProps: "transform" });
+      gsap.from(".anim", { scale: 0.985, duration: 0.45, ease: "power2.out", stagger: 0.05, transformOrigin: "50% 50%", clearProps: "transform,willChange" });
     },
     { scope: root, dependencies: [!!data] },
   );
@@ -162,13 +164,7 @@ export default function DashboardHome() {
 
   // Upcoming posts
   const upcoming = useMemo(() => {
-    const fallback = [
-      { title: "Beach Day Essentials", when: "Jun 3 · 10:00 AM" },
-      { title: "Palm Paradise", when: "Jun 5 · 2:00 PM" },
-      { title: "Ride the Waves", when: "Jun 7 · 11:30 AM" },
-    ];
     const posts = (data?.recentPosts || []).slice(0, 3);
-    if (posts.length === 0) return fallback.map((f, i) => ({ ...f, img: MEDIA[i % MEDIA.length], platform: POST_PLATFORMS[i % 3] }));
     return posts.map((p, i) => ({
       title: p.copy.length > 26 ? p.copy.slice(0, 26) + "…" : p.copy || "Untitled post",
       when: p.scheduledFor
@@ -232,7 +228,7 @@ export default function DashboardHome() {
             <button type="button" className="ut" aria-label="Theme"><Sun size={18} /></button>
             <button type="button" className="ut" aria-label="Notifications"><Bell size={18} /><span className="dot" /></button>
             <Link href="/dashboard/settings" className="ut avatar" aria-label="Account">
-              <img src="https://randomuser.me/api/portraits/men/32.jpg" alt="" />
+              <User size={18} />
             </Link>
           </div>
 
@@ -276,7 +272,11 @@ export default function DashboardHome() {
             <div className="mod up2 anim">
               <div className="mhead"><span className="mtitle2">Upcoming Posts</span><Link href="/dashboard/calendar" className="viewall">View all</Link></div>
               <div className="uplist">
-                {upcoming.map((u, i) => (
+                {upcoming.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
+                    No upcoming posts yet. <Link href="/dashboard/studio" className="viewall">Create one</Link>.
+                  </div>
+                ) : upcoming.map((u, i) => (
                   <div className="uprow" key={i}>
                     <span className="upthumb" style={{ backgroundImage: `url('${u.img}')` }} />
                     <span className="upinfo"><span className="upt">{u.title}</span><span className="upd">{u.when}</span></span>
@@ -328,7 +328,11 @@ export default function DashboardHome() {
             <div className="mod media2 anim">
               <div className="mhead"><span className="mtitle2">Recent Media</span><Link href="/dashboard/photos" className="viewall">View all</Link></div>
               <div className="mediastrip">
-                {recentMedia.map((m, i) => (
+                {recentMedia.length === 0 ? (
+                  <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
+                    No media yet. <Link href="/dashboard/photos" className="viewall">Add some</Link>.
+                  </div>
+                ) : recentMedia.map((m, i) => (
                   <Link key={i} href="/dashboard/photos" className="mediathumb" style={{ backgroundImage: `url('${m}')` }} aria-label={`Open media ${i + 1}`} />
                 ))}
               </div>

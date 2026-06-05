@@ -27,7 +27,7 @@ export function DashboardHomeStyles() {
     .pb-home2 * { box-sizing: border-box; }
 
     .home2 {
-      display: grid; grid-template-columns: 250px 1fr; gap: 22px;
+      display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px;
       max-width: 1520px; margin: 0 auto; padding: 22px; min-height: 100%;
     }
     @media (max-width: 980px) { .home2 { grid-template-columns: 1fr; } }
