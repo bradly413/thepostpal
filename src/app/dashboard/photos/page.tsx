@@ -76,7 +76,12 @@ export default function PhotosPage() {
     (files: FileList) => {
       if (!locationId) return;
       Array.from(files).forEach(async (file) => {
-        if (!file.type.startsWith("image/")) return;
+        // Only reject files that explicitly declare a non-image MIME; some
+        // screenshots/blobs report an empty type, so let the server validate those.
+        if (file.type && !file.type.startsWith("image/")) {
+          showToast(`${file.name} isn't an image file.`);
+          return;
+        }
 
         // Optimistic: show the photo immediately from a local data URL.
         const tempId = `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;

@@ -113,6 +113,10 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   png: "image/png",
   gif: "image/gif",
   webp: "image/webp",
+  avif: "image/avif",
+  bmp: "image/bmp",
+  heic: "image/heic",
+  heif: "image/heif",
 };
 
 export function contentTypeForExtension(ext: string): string {
