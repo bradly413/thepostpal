@@ -367,6 +367,7 @@ html[data-theme] body {
 
 [data-theme="light"] .text-text-secondary\/40,
 [data-theme="light"] .text-text-secondary\/50,
+[data-theme="light"] .text-text-secondary\/60,
 [data-theme="light"] .text-white\/40,
 [data-theme="light"] .text-white\/45 {
   color: rgba(0,0,0,0.55) !important;
@@ -817,7 +818,7 @@ html[data-theme] body {
 
 .pb-btn-press {
   background: var(--pb-press);
-  color: var(--pb-paper);
+  color: var(--pb-paper, #faf7f1);
 }
 
 .pb-section {

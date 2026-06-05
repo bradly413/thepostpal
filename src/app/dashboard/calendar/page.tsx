@@ -539,7 +539,7 @@ export default function CalendarPage() {
                   <div key={d} className="px-2 py-2.5 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7">
+              <div className="grid grid-cols-7 grid-rows-6">
                 {cells.map((cell, i) => {
                   const cellPosts = postsMap.get(cell.dateKey) || [];
                   const cellEvents = eventsMap.get(cell.dateKey) || [];
@@ -550,7 +550,7 @@ export default function CalendarPage() {
                     <button
                       key={i}
                       onClick={() => openDayDetail(cell.dateKey)}
-                      className={`min-h-[110px] border-b border-r border-black/10 p-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
+                      className={`h-[110px] overflow-hidden border-b border-r border-black/10 p-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
                     >

@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMetaConnection } from "@/lib/use-meta-connection";
-import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
+import { getStoredActiveLocationId, clearStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { SITE_NAME } from "@/lib/site";
 
 export default function SettingsPage() {
@@ -103,23 +103,12 @@ function SettingsContent() {
   }
 
   function handleConnectMeta() {
-    const appId = process.env.NEXT_PUBLIC_META_APP_ID;
-    if (!appId) {
-      setMetaError("Meta App ID not configured. Add NEXT_PUBLIC_META_APP_ID to .env.local");
-      return;
-    }
-    const redirect = encodeURIComponent(window.location.origin + "/api/meta/callback");
-    const scopes = "pages_show_list,pages_manage_posts,pages_read_engagement,instagram_basic,instagram_content_publish";
-    // Generate a random state for CSRF protection and store it in a cookie
-    const state = crypto.randomUUID();
     const locationId = getStoredActiveLocationId();
     if (!locationId) {
       setMetaError("Choose a location in the dashboard before connecting Meta.");
       return;
     }
-    document.cookie = `meta_oauth_state=${state}; path=/; max-age=600; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
-    document.cookie = `meta_oauth_location_id=${locationId}; path=/; max-age=600; samesite=lax${window.location.protocol === "https:" ? "; secure" : ""}`;
-    window.location.href = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${appId}&redirect_uri=${redirect}&scope=${scopes}&response_type=code&state=${state}`;
+    window.location.href = `/api/auth/meta/login?locationId=${encodeURIComponent(locationId)}`;
   }
 
   async function handleDisconnectMeta() {
@@ -133,6 +122,9 @@ function SettingsContent() {
 
   function handleLogout() {
     document.cookie = "session=; path=/; max-age=0";
+    // Clear per-browser state so the next account on this device doesn't inherit
+    // the prior user's active location.
+    clearStoredActiveLocationId();
     router.push("/sign-in");
   }
 
