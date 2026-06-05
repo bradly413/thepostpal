@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
+import { toPng } from "html-to-image";
 import {
   Sparkles,
   Calendar,
@@ -23,6 +24,8 @@ import {
   Move,
   RotateCw,
   SlidersHorizontal,
+  Download,
+  Undo2,
 } from "lucide-react";
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
@@ -137,6 +140,34 @@ export default function PosterboyStudio() {
 
   const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
   const [edit, setEdit] = useState(EDIT_DEFAULT);
+  // Undo history for image edits — debounced so a full drag/slide collapses to a
+  // single step. Additive: it only records & restores, never alters edit behavior.
+  const editHistory = useRef<(typeof EDIT_DEFAULT)[]>([]);
+  const lastCommittedEdit = useRef(EDIT_DEFAULT);
+  const undoingEdit = useRef(false);
+  const editCommitTimer = useRef<number | null>(null);
+  const [canUndoEdit, setCanUndoEdit] = useState(false);
+  useEffect(() => {
+    if (undoingEdit.current) { undoingEdit.current = false; lastCommittedEdit.current = edit; return; }
+    const prev = lastCommittedEdit.current;
+    if (editCommitTimer.current) clearTimeout(editCommitTimer.current);
+    editCommitTimer.current = window.setTimeout(() => {
+      if (JSON.stringify(prev) !== JSON.stringify(edit)) {
+        editHistory.current.push(prev);
+        if (editHistory.current.length > 50) editHistory.current.shift();
+        setCanUndoEdit(true);
+      }
+      lastCommittedEdit.current = edit;
+    }, 350);
+    return () => { if (editCommitTimer.current) clearTimeout(editCommitTimer.current); };
+  }, [edit]);
+  function undoEdit() {
+    const prev = editHistory.current.pop();
+    if (!prev) return;
+    undoingEdit.current = true;
+    setEdit(prev);
+    setCanUndoEdit(editHistory.current.length > 0);
+  }
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const toolRailRef = useRef<HTMLDivElement>(null);
@@ -305,6 +336,22 @@ export default function PosterboyStudio() {
   const onImagePointerUp = () => {
     dragRef.current = null;
   };
+
+  // Export the framed image (WYSIWYG) — pan / zoom / rotate / filters baked in.
+  async function handleDownloadImage() {
+    const node = frameWrapRef.current;
+    if (!node || genState !== "done" || !generatedUrl) return;
+    try {
+      const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
+      const a = document.createElement("a");
+      a.download = `posterboy-${Date.now()}.png`;
+      a.href = dataUrl;
+      a.click();
+    } catch (err) {
+      console.error("Image download failed:", err);
+      setError("Couldn't export the image. Try again.");
+    }
+  }
 
   // Image edit transforms — applied to the preview, carry into the post mockup.
   const previewStyle = {
@@ -741,6 +788,8 @@ export default function PosterboyStudio() {
                 )}
               </div>
               <button type="button" className="rail-ico" title="Crop (coming soon)" disabled><Crop size={19} /></button>
+              <button type="button" className="rail-ico" title="Download image" aria-label="Download image" onClick={handleDownloadImage}><Download size={19} /></button>
+              <button type="button" className="rail-ico" title="Undo edit" aria-label="Undo edit" onClick={undoEdit} disabled={!canUndoEdit}><Undo2 size={19} /></button>
 
               <div className="rail-item">
                 <button type="button" className={`rail-ico${activeEdit === "scale" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "scale" ? null : "scale"))} title="Scale"><Maximize2 size={19} /></button>
