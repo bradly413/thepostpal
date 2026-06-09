@@ -186,7 +186,7 @@ export default function BrandPage() {
 
   const migrated = migrateBrandBook(applyCuratedPaletteToBook(book));
   const {
-    identity,
+    identity: rawIdentity,
     glance,
     palette,
     typography,
@@ -197,6 +197,14 @@ export default function BrandPage() {
     applications,
     collateralPrompts,
   } = migrated;
+  // Title-case the display name so lowercase input ("brad") doesn't read as
+  // "the brad brand". Only fully-lowercase words are capitalized (McDonald, iPhone stay).
+  const identity = {
+    ...rawIdentity,
+    name: (rawIdentity.name ?? "").replace(/\S+/g, (w) =>
+      w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1) : w,
+    ),
+  };
   const tokens = useTokens(palette);
   const serif = `'${typography.display.family}', Georgia, serif`;
   const sans = `'${typography.body.family}', system-ui, sans-serif`;

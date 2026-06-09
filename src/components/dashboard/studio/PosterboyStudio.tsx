@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, type CSSProperties } from "react";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
-import { toPng } from "html-to-image";
 import {
   Sparkles,
   Calendar,
@@ -337,20 +336,47 @@ export default function PosterboyStudio() {
     dragRef.current = null;
   };
 
-  // Export the framed image (WYSIWYG) — pan / zoom / rotate / filters baked in.
-  async function handleDownloadImage() {
-    const node = frameWrapRef.current;
-    if (!node || genState !== "done" || !generatedUrl) return;
-    try {
-      const dataUrl = await toPng(node, { cacheBust: true, pixelRatio: 2 });
-      const a = document.createElement("a");
-      a.download = `posterboy-${Date.now()}.png`;
-      a.href = dataUrl;
-      a.click();
-    } catch (err) {
-      console.error("Image download failed:", err);
-      setError("Couldn't export the image. Try again.");
-    }
+  // Crop to the post's aspect ratio — center-crop the generated image to the
+  // current platform frame (e.g. square source -> 4:5 portrait) on a canvas.
+  // Canvas drawImage of a data-URL source is reliable (no DOM rasterization,
+  // no CORS taint) — html-to-image does NOT reliably capture a CSS background-image.
+  function handleCropToFrame() {
+    if (genState !== "done" || !generatedUrl) return;
+    const img = new window.Image();
+    img.onload = () => {
+      const targetAR = platform.w / platform.h;
+      const srcAR = img.width / img.height;
+      let sw = img.width;
+      let sh = img.height;
+      if (srcAR > targetAR) sw = sh * targetAR; // too wide -> trim sides
+      else sh = sw / targetAR; // too tall -> trim top/bottom
+      const sx = (img.width - sw) / 2;
+      const sy = (img.height - sh) / 2;
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.round(sw);
+      canvas.height = Math.round(sh);
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+      editHistory.current = [];
+      setCanUndoEdit(false);
+      setEdit(EDIT_DEFAULT);
+      lastCommittedEdit.current = EDIT_DEFAULT;
+      setActiveEdit(null);
+      setGeneratedUrl(canvas.toDataURL("image/png"));
+    };
+    img.onerror = () => setError("Couldn't crop the image. Try again.");
+    img.src = generatedUrl;
+  }
+
+  // Download the generated image. The source is a base64 data URL, so a direct
+  // anchor download is reliable (and reflects any prior crop).
+  function handleDownloadImage() {
+    if (genState !== "done" || !generatedUrl) return;
+    const a = document.createElement("a");
+    a.download = `posterboy-${Date.now()}.png`;
+    a.href = generatedUrl;
+    a.click();
   }
 
   // Image edit transforms — applied to the preview, carry into the post mockup.
@@ -787,7 +813,7 @@ export default function PosterboyStudio() {
                   </div>
                 )}
               </div>
-              <button type="button" className="rail-ico" title="Crop (coming soon)" disabled><Crop size={19} /></button>
+              <button type="button" className="rail-ico" title="Crop to frame" aria-label="Crop to frame" onClick={handleCropToFrame}><Crop size={19} /></button>
               <button type="button" className="rail-ico" title="Download image" aria-label="Download image" onClick={handleDownloadImage}><Download size={19} /></button>
               <button type="button" className="rail-ico" title="Undo edit" aria-label="Undo edit" onClick={undoEdit} disabled={!canUndoEdit}><Undo2 size={19} /></button>
 
