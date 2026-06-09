@@ -138,7 +138,8 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const msg = err instanceof Error ? err.message : "Connection failed";
+    console.error("[api/auth/meta/callback] connection failed:", err instanceof Error ? err.message : err);
+    const msg = "Couldn't connect to Meta — please try again.";
     return NextResponse.redirect(
       new URL(`/dashboard/settings?meta_error=${encodeURIComponent(msg)}`, req.url),
     );

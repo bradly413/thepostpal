@@ -3,6 +3,7 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { resolveAccess } from "@/lib/authz";
 import { loadApprovalByScheduledPostId, applyAndPersistTransition } from "@/lib/post-approval-service";
+import { handleRouteError } from "@/lib/route-errors";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -32,7 +33,7 @@ export async function POST(_: NextRequest, { params }: Params) {
 
       return NextResponse.json({ approval: result.approval });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (err) {
+    return handleRouteError("api.posts.approve", err);
   }
 }

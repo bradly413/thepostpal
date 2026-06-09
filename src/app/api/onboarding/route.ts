@@ -45,7 +45,10 @@ export async function POST(req: Request) {
 
     return Response.json({ message: text });
   } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    return Response.json({ error: message }, { status: 500 });
+    console.error("[api/onboarding] request failed:", err instanceof Error ? err.message : err);
+    return Response.json(
+      { error: "Something went wrong. Please try again." },
+      { status: 500 },
+    );
   }
 }

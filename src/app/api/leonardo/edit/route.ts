@@ -1,10 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuthContext } from "@/lib/api-auth";
 
 const LEONARDO_BASE = "https://cloud.leonardo.ai/api/rest/v1";
 
 type EditAction = "upscale" | "remove-bg" | "inpaint";
 
 export async function POST(req: NextRequest) {
+  try { await requireAuthContext(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+
   const apiKey = process.env.LEONARDO_API_KEY;
   if (!apiKey) {
     return NextResponse.json(

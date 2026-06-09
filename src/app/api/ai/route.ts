@@ -182,8 +182,9 @@ export async function POST(req: Request) {
     );
     const data = await res.json();
     if (!res.ok) {
+      console.error("[api/ai] gemini request failed:", data?.error?.message || res.statusText);
       return Response.json(
-        { error: data?.error?.message || "AI request failed" },
+        { error: "AI request failed" },
         { status: res.status },
       );
     }

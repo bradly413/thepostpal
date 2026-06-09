@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireLocationAccess } from "@/lib/location-api";
 import { syncLocationBilling } from "@/lib/location-billing";
+import { handleRouteError } from "@/lib/route-errors";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -19,8 +20,8 @@ export async function GET(_: NextRequest, { params }: Params) {
       if (!location) return NextResponse.json({ error: "Not found" }, { status: 404 });
       return NextResponse.json({ location });
     });
-  } catch {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } catch (err) {
+    return handleRouteError("api.locations.GET", err);
   }
 }
 
@@ -28,9 +29,15 @@ export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
     const { auth } = await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN" });
-    return await withTenantDb(auth, async (tx) => {
-      const body = await request.json();
 
+    let body: Record<string, unknown>;
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
+    }
+
+    return await withTenantDb(auth, async (tx) => {
       const updated = await tx.location.update({
         where: { id },
         data: {
@@ -48,8 +55,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
       return NextResponse.json({ location: updated });
     });
-  } catch {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } catch (err) {
+    return handleRouteError("api.locations.PUT", err);
   }
 }
 
@@ -67,7 +74,7 @@ export async function DELETE(_: NextRequest, { params }: Params) {
 
       return NextResponse.json({ location: archived, billingSync });
     });
-  } catch {
-    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  } catch (err) {
+    return handleRouteError("api.locations.DELETE", err);
   }
 }
