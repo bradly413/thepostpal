@@ -2275,13 +2275,20 @@ function StudioStyles() {
     padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
     border: 1px solid rgba(238,37,50,0.2); z-index: 8;
   }.pb-studio .studio-caption-tools {
-    position: absolute; bottom: 10px; right: 10px; z-index: 12; width: 248px;
-    max-height: calc(100% - 20px); overflow-y: auto; padding: 10px; border-radius: 14px;
+    position: absolute; top: 50%; left: calc(100% + 20px); transform: translateY(-50%);
+    z-index: 12; width: 264px; max-height: 100%; overflow-y: auto;
+    padding: 12px; border-radius: 16px;
     background: rgba(255,255,255,0.97);
-    -webkit-backdrop-filter: blur(14px) saturate(1.4);
-    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    backdrop-filter: blur(16px) saturate(1.4);
     border: 1px solid rgba(0,0,0,0.07);
-    box-shadow: 0 14px 34px -10px rgba(15,15,20,0.32);
+    box-shadow: 0 16px 38px -12px rgba(15,15,20,0.34);
+  }
+  @media (max-width: 1180px) {
+    .pb-studio .studio-caption-tools {
+      top: auto; bottom: 12px; left: 50%; transform: translateX(-50%);
+      width: min(320px, 86%); max-height: 60%;
+    }
   }.pb-studio .canvas-theme-grid::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
     background-image:
