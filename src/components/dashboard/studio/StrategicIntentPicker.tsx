@@ -176,22 +176,6 @@ export default function StrategicIntentPicker({
           display: block; font-size: 11px; line-height: 1.38; color: rgba(22,22,28,0.55);
         }
 
-        @media (max-width: 1379px) {
-          /* Tablet: rail drops to a horizontal strip under the canvas controls. */
-          .pb-intent-rail {
-            position: static; transform: none; flex-direction: row; flex-wrap: wrap;
-            justify-content: center; gap: 6px; margin: 4px 0 2px;
-          }
-          .pb-intent-pop {
-            right: auto; left: 50%; top: auto; bottom: calc(100% + 8px);
-            transform: translateX(-50%) translateY(6px); text-align: center;
-          }
-          .pb-intent-item:hover .pb-intent-pop,
-          .pb-intent-ico:focus-visible + .pb-intent-pop {
-            transform: translateX(-50%) translateY(0);
-          }
-          .pb-intent-div { width: 1px; height: 20px; margin: 0 4px; }
-        }
         @media (prefers-reduced-motion: reduce) {
           .pb-intent-ico, .pb-intent-pop { transition: none; }
         }
