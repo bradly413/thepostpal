@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
@@ -29,6 +30,11 @@ import {
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
+import CaptionVariantPicker from "@/components/dashboard/composer/CaptionVariantPicker";
+import VideoComposer from "@/components/dashboard/composer/VideoComposer";
+import { createDashboardPost } from "@/lib/dashboard-api";
+import { useActiveLocation } from "@/lib/use-active-location";
+import type { SocialPlatform } from "@/lib/posterboy-types";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -64,6 +70,25 @@ const PLATFORMS = [
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
 type GenState = "idle" | "generating" | "done";
+type ComposerMode = "image" | "video";
+type MediaKind = "image" | "video";
+
+function defaultScheduleDate(): string {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return d.toISOString().slice(0, 10);
+}
+
+function studioPlatforms(platformId: string): SocialPlatform[] {
+  if (platformId === "facebook") return ["facebook"];
+  if (platformId === "instagram" || platformId === "tiktok") return ["instagram"];
+  return ["facebook", "instagram"];
+}
+
+function buildPostCaption(body: string, tags: string, fallback: string): string {
+  const combined = [body.trim(), tags.trim()].filter(Boolean).join(" ");
+  return combined || fallback.trim();
+}
 
 // Short example prompts that typewriter-rotate through the composer placeholder.
 const PROMPT_EXAMPLES = [
@@ -89,11 +114,19 @@ export default function PosterboyStudio() {
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
   const [progress, setProgress] = useState(0);
   const [showTemplate, setShowTemplate] = useState(false);
-  const [captionState, setCaptionState] = useState<"idle" | "loading" | "done">("idle");
+  const [captionState, setCaptionState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
-  const [activeTool, setActiveTool] = useState<null | "type" | "tools">(null);
+  const [captionError, setCaptionError] = useState("");
+  const [composerMode, setComposerMode] = useState<ComposerMode>("image");
+  const [mediaKind, setMediaKind] = useState<MediaKind>("image");
+  const [scheduleDate, setScheduleDate] = useState(defaultScheduleDate);
+  const [scheduleTime, setScheduleTime] = useState("10:00");
+  const [publishing, setPublishing] = useState(false);
+  const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
   const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
+  const { locationId } = useActiveLocation();
+  const searchParams = useSearchParams();
 
   // Typewriter-rotate short example prompts in the placeholder while it's empty.
   useEffect(() => {
@@ -181,6 +214,20 @@ export default function PosterboyStudio() {
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
   }, []);
+
+  useEffect(() => {
+    const mediaUrl = searchParams.get("mediaUrl");
+    const type = searchParams.get("mediaType");
+    if (!mediaUrl) return;
+    setGeneratedUrl(mediaUrl);
+    setGenState("done");
+    setShowTemplate(true);
+    if (type === "video") {
+      setMediaKind("video");
+      setComposerMode("video");
+      setPlatformIdx(PLATFORMS.findIndex((p) => p.id === "tiktok") >= 0 ? PLATFORMS.findIndex((p) => p.id === "tiktok") : 0);
+    }
+  }, [searchParams]);
 
   // Track the canvas size so the board can be sized in exact pixels — both
   // width and height then animate smoothly between platform aspect ratios.
@@ -613,6 +660,7 @@ export default function PosterboyStudio() {
     setCaptionState("loading");
     setCaptionText("");
     setCaptionTags("");
+    setCaptionError("");
     try {
       const res = await fetch("/api/ai", {
         method: "POST",
@@ -628,26 +676,32 @@ export default function PosterboyStudio() {
       });
       const data = await res.json();
       if (!res.ok || data.error || !data.message) {
-        setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
-        setCaptionTags("#posterboy");
-        setCaptionState("done");
+        setCaptionState("error");
+        setCaptionError(data.error || "Could not generate a caption. Try Generate options instead.");
         return;
       }
       const { body, tags } = parseCaption(data.message);
-      setCaptionText(body || "Lorem ipsum dolor sit amet, consectetur adipiscing.");
+      setCaptionText(body);
       setCaptionTags(tags);
       setCaptionState("done");
     } catch {
-      setCaptionText("Lorem ipsum dolor sit amet, consectetur adipiscing.");
-      setCaptionTags("#posterboy");
-      setCaptionState("done");
+      setCaptionState("error");
+      setCaptionError("Caption assist failed. Try again or use Generate options.");
     }
   };
 
   const confirmToTemplate = () => {
     if (genState !== "done" || !generatedUrl) return;
     setShowTemplate(true);
-    void generateCaption();
+    if (!captionText.trim()) void generateCaption();
+  };
+
+  const handleVideoReady = (url: string) => {
+    setGeneratedUrl(url);
+    setMediaKind("video");
+    setGenState("done");
+    setShowTemplate(true);
+    setCaptionState("idle");
   };
 
   const publish = async () => {
@@ -655,33 +709,98 @@ export default function PosterboyStudio() {
       inputRef.current?.focus();
       return;
     }
-    const target = platform.id === "facebook" ? "facebook" : platform.id === "instagram" ? "instagram" : null;
-    if (!target) {
-      setError(`Direct publishing to ${platform.label} isn't available yet — it posts to Instagram or Facebook.`);
+    if (!locationId) {
+      setError("Choose a location before publishing.");
       return;
     }
 
-    try {
-      const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
-      const payload = await buildMetaPublishPayload({
-        platform: target,
-        caption: prompt.trim() || "Posted with Posterboy Studio",
-        imageUrl: generatedUrl,
-      });
-      const res = await fetch("/api/meta/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setError(data.error || "Publish failed. Connect Meta in Settings.");
+    const fullCaption = buildPostCaption(captionText, captionTags, prompt);
+    const platforms = studioPlatforms(platform.id);
+    const isVideo = mediaKind === "video";
+
+    if (when === "schedule") {
+      if (!scheduleDate || !scheduleTime) {
+        setError("Pick a date and time for scheduling.");
         return;
       }
+      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
+      if (Number.isNaN(Date.parse(scheduledFor))) {
+        setError("Invalid schedule date or time.");
+        return;
+      }
+      setPublishing(true);
+      setError("");
+      try {
+        await createDashboardPost({
+          locationId,
+          copy: fullCaption,
+          platforms,
+          status: "scheduled",
+          scheduledFor,
+          mediaUrl: generatedUrl,
+          mediaUrls: [generatedUrl],
+          mediaType: isVideo ? "video" : "image",
+        });
+        setPublishState("published");
+        setTimeout(() => setPublishState("idle"), 2200);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not schedule post.");
+      } finally {
+        setPublishing(false);
+      }
+      return;
+    }
+
+    const metaTarget =
+      platform.id === "facebook"
+        ? "facebook"
+        : platform.id === "instagram" || platform.id === "tiktok"
+          ? "instagram"
+          : null;
+
+    setPublishing(true);
+    setError("");
+    try {
+      if (metaTarget) {
+        const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
+        const payload = await buildMetaPublishPayload({
+          platform: metaTarget,
+          caption: fullCaption,
+          ...(isVideo
+            ? { videoUrl: generatedUrl, mediaType: "video" as const }
+            : { imageUrl: generatedUrl, mediaType: "image" as const }),
+        });
+        const res = await fetch("/api/meta/publish", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+        const data = await res.json();
+        if (!res.ok) {
+          setError(data.error || "Publish failed. Connect Meta in Settings.");
+          return;
+        }
+      } else {
+        setError(`Direct publishing to ${platform.label} isn't available yet — it posts to Instagram or Facebook.`);
+        return;
+      }
+
+      await createDashboardPost({
+        locationId,
+        copy: fullCaption,
+        platforms,
+        status: "published",
+        scheduledFor: new Date().toISOString(),
+        mediaUrl: generatedUrl,
+        mediaUrls: [generatedUrl],
+        mediaType: isVideo ? "video" : "image",
+      });
       setPublishState("published");
       setTimeout(() => setPublishState("idle"), 2200);
-    } catch {
-      setError("Could not publish right now.");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not publish right now.");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -746,8 +865,16 @@ export default function PosterboyStudio() {
               type="button"
               className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
               onClick={() => void publish()}
-              disabled={genState !== "done" || !generatedUrl}
-              title={publishState === "published" ? "Published" : "Publish"}
+              disabled={genState !== "done" || !generatedUrl || publishing}
+              title={
+                publishState === "published"
+                  ? when === "schedule"
+                    ? "Scheduled"
+                    : "Published"
+                  : when === "schedule"
+                    ? "Schedule"
+                    : "Publish"
+              }
             >
               {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
             </button>
@@ -762,16 +889,58 @@ export default function PosterboyStudio() {
               <>
                 <div className="glass-border" aria-hidden="true" />
                 <div className="glass-sheen" aria-hidden="true" />
-                <StudioPostChrome
-                  platform={platform.id}
-                  mediaStyle={previewStyle}
-                  aspect={`${platform.w} / ${platform.h}`}
-                  caption={captionText}
-                  tags={captionTags}
-                  captionLoading={captionState === "loading"}
-                  onClose={() => setShowTemplate(false)}
-                />
+                {mediaKind === "video" ? (
+                  <div className="studio-video-preview">
+                    <video src={generatedUrl ?? undefined} controls playsInline className="studio-video-el" />
+                    <div className="studio-video-cap">
+                      {captionState === "loading" ? (
+                        <span className="pc-skel"><span /><span /></span>
+                      ) : (
+                        <>
+                          {captionText}
+                          {captionTags ? <span className="pc-tags"> {captionTags}</span> : null}
+                        </>
+                      )}
+                      {captionError ? <p className="studio-caption-error">{captionError}</p> : null}
+                    </div>
+                  </div>
+                ) : (
+                  <StudioPostChrome
+                    platform={platform.id}
+                    mediaStyle={previewStyle}
+                    aspect={`${platform.w} / ${platform.h}`}
+                    caption={captionState === "error" ? "" : captionText}
+                    tags={captionTags}
+                    captionLoading={captionState === "loading"}
+                    onClose={() => setShowTemplate(false)}
+                  />
+                )}
+                {captionState === "error" && mediaKind !== "video" ? (
+                  <p className="studio-caption-error-overlay">{captionError}</p>
+                ) : null}
+                {showTemplate ? (
+                  <div className="studio-caption-tools">
+                    <CaptionVariantPicker
+                      brief={prompt || captionText}
+                      platform={platform.id}
+                      disabled={genState === "generating"}
+                      onSelect={(v) => {
+                        setCaptionText(v.caption);
+                        setCaptionTags(v.hashtags.join(" "));
+                        setCaptionState("done");
+                        setCaptionError("");
+                      }}
+                    />
+                  </div>
+                ) : null}
               </>
+            ) : composerMode === "video" && genState === "idle" ? (
+              <div className="studio-video-compose">
+                <VideoComposer
+                  onComplete={handleVideoReady}
+                  onError={(msg) => setError(msg)}
+                />
+              </div>
             ) : (
               <div
                 className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
@@ -891,6 +1060,24 @@ export default function PosterboyStudio() {
             </div>
           )}
 
+          {when === "schedule" ? (
+            <div className="studio-schedule-row">
+              <Calendar size={14} />
+              <input
+                type="date"
+                value={scheduleDate}
+                onChange={(e) => setScheduleDate(e.target.value)}
+                aria-label="Schedule date"
+              />
+              <input
+                type="time"
+                value={scheduleTime}
+                onChange={(e) => setScheduleTime(e.target.value)}
+                aria-label="Schedule time"
+              />
+            </div>
+          ) : null}
+
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
             <button
               type="button"
@@ -900,6 +1087,22 @@ export default function PosterboyStudio() {
               aria-label={when === "now" ? "Post now" : "Scheduled"}
             >
               {when === "now" ? <Zap size={18} /> : <Calendar size={18} />}
+            </button>
+            <button
+              type="button"
+              className={`pb-util${composerMode === "video" ? " active" : ""}`}
+              onClick={() => {
+                setComposerMode((m) => (m === "image" ? "video" : "image"));
+                if (composerMode === "image") {
+                  setGenState("idle");
+                  setGeneratedUrl(null);
+                  setShowTemplate(false);
+                }
+              }}
+              title={composerMode === "image" ? "Switch to video" : "Switch to image"}
+              aria-label={composerMode === "image" ? "Video mode" : "Image mode"}
+            >
+              <ImageIcon size={18} />
             </button>
             <input
               ref={inputRef}
@@ -912,10 +1115,28 @@ export default function PosterboyStudio() {
             <div className="pb-tool" ref={promptToolsRef}>
               {activeTool === "tools" && (
                 <div className="pb-tools-pop">
-                  <button><span>AI enhance</span><span className="pro-tag">PRO</span></button>
-                  <button><span>Background remover</span><span className="pro-tag">PRO</span></button>
-                  <button><span>Caption assist</span></button>
-                  <button><span>Brand kit</span></button>
+                  <button type="button" onClick={() => { setActiveTool("captions"); setActiveEdit(null); }}>
+                    <span>Caption options</span>
+                  </button>
+                  <button type="button" onClick={() => void generateCaption()}>
+                    <span>Caption assist</span>
+                  </button>
+                  <button type="button"><span>Brand kit</span></button>
+                </div>
+              )}
+              {activeTool === "captions" && (
+                <div className="pb-tools-pop pb-tools-pop-wide">
+                  <CaptionVariantPicker
+                    brief={prompt || captionText}
+                    platform={platform.id}
+                    onSelect={(v) => {
+                      setCaptionText(v.caption);
+                      setCaptionTags(v.hashtags.join(" "));
+                      setCaptionState("done");
+                      setCaptionError("");
+                      setActiveTool(null);
+                    }}
+                  />
                 </div>
               )}
               <button
@@ -932,7 +1153,7 @@ export default function PosterboyStudio() {
               type="button"
               className="magic-wand"
               onClick={() => void composeFromIntent()}
-              disabled={genState === "generating"}
+              disabled={genState === "generating" || composerMode === "video"}
               aria-label="Make a post"
             >
               <Wand2 size={20} />
@@ -1882,7 +2103,31 @@ function StudioStyles() {
     color: rgba(20, 20, 25, 0.85);
   }.pb-studio .prompt-bar input::placeholder {
     color: rgba(20, 20, 25, 0.5);
-  }.pb-studio .magic-wand {
+  }.pb-studio .studio-schedule-row {
+    position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+    display: flex; align-items: center; gap: 8px; padding: 8px 12px;
+    border-radius: 12px; background: rgba(255,255,255,0.88);
+    border: 1px solid rgba(0,0,0,0.08); font-size: 12px; z-index: 6;
+  }.pb-studio .studio-schedule-row input {
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px 8px; font-size: 12px;
+  }.pb-studio .studio-video-compose {
+    display: flex; align-items: center; justify-content: center;
+    width: 100%; height: 100%; padding: 24px;
+  }.pb-studio .studio-video-preview {
+    width: 100%; height: 100%; display: flex; flex-direction: column;
+    background: #fff; border-radius: inherit; overflow: hidden;
+  }.pb-studio .studio-video-el { width: 100%; flex: 1; object-fit: contain; background: #000; }
+  .pb-studio .studio-video-cap { padding: 10px 14px; font-size: 13px; line-height: 1.4; }
+  .pb-studio .studio-caption-error, .pb-studio .studio-caption-error-overlay {
+    font-size: 11.5px; color: #c41e2a; margin: 6px 0 0;
+  }.pb-studio .studio-caption-error-overlay {
+    position: absolute; bottom: 12px; left: 14px; right: 14px;
+    padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
+    border: 1px solid rgba(238,37,50,0.2); z-index: 8;
+  }.pb-studio .studio-caption-tools {
+    position: absolute; bottom: 10px; right: 10px; z-index: 8; max-width: 240px;
+  .pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
+  .pb-studio .magic-wand {
     width: 44px; height: 44px;
     border-radius: 12px;
     display: grid;

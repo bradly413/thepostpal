@@ -23,6 +23,8 @@ export async function POST(req: NextRequest) {
     platform?: string;
     caption?: string;
     imageUrl?: string;
+    videoUrl?: string;
+    mediaType?: "image" | "video";
     scheduledTime?: number;
     locationId?: string;
   };
@@ -33,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
   }
 
-  const { platform, caption, imageUrl, scheduledTime, locationId } = body;
+  const { platform, caption, imageUrl, videoUrl, mediaType, scheduledTime, locationId } = body;
 
   if (!locationId || typeof locationId !== "string") {
     return NextResponse.json({ error: "locationId is required" }, { status: 400 });
@@ -60,6 +62,8 @@ export async function POST(req: NextRequest) {
         platform,
         caption,
         imageUrl,
+        videoUrl,
+        mediaType,
         scheduledTime,
       });
 

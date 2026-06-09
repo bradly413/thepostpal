@@ -117,14 +117,26 @@ const CONTENT_TYPE_BY_EXT: Record<string, string> = {
   bmp: "image/bmp",
   heic: "image/heic",
   heif: "image/heif",
+  mp4: "video/mp4",
+  mov: "video/quicktime",
+  webm: "video/webm",
 };
 
 export function contentTypeForExtension(ext: string): string {
   return CONTENT_TYPE_BY_EXT[ext.toLowerCase()] || "application/octet-stream";
 }
 
-/** Max bytes for direct browser → S3 uploads (presigned PUT). */
+/** Max bytes for image presigned uploads. */
 export const PRESIGNED_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+
+/** Max bytes for video presigned uploads (Reels / short clips). */
+export const PRESIGNED_VIDEO_MAX_BYTES = 100 * 1024 * 1024;
+
+export function presignedMaxBytesForContentType(contentType: string): number {
+  return contentType.trim().toLowerCase().startsWith("video/")
+    ? PRESIGNED_VIDEO_MAX_BYTES
+    : PRESIGNED_UPLOAD_MAX_BYTES;
+}
 
 const PRESIGNED_CONTENT_TYPE_PREFIXES = ["image/", "video/"] as const;
 

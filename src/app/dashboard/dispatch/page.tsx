@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { useActiveLocation } from "@/lib/use-active-location";
@@ -12,6 +13,12 @@ import {
 import { splitScheduledFor } from "@/lib/scheduled-post-mappers";
 import type { Draft, DraftStatus } from "@/lib/posterboy-types";
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
+import {
+  SkeletonText,
+  EmptyState,
+  ErrorState,
+  NoLocationState,
+} from "@/components/dashboard/StateViews";
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
@@ -48,16 +55,20 @@ function toDispatchDraft(
 }
 
 export default function DispatchPage() {
-  const { locationId } = useActiveLocation();
+  const router = useRouter();
+  const { locationId, loading: locationLoading } = useActiveLocation();
   const [byDate, setByDate] = useState<Record<string, Draft[]>>({});
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!locationId) {
       setByDate({});
+      setLoading(false);
       return;
     }
     try {
+      setLoading(true);
       setError(null);
       const posts = await fetchDashboardPosts(locationId);
       const scheduled = posts.filter(
@@ -75,6 +86,8 @@ export default function DispatchPage() {
       setByDate(map);
     } catch (err) {
       setError(formatDashboardApiMessage(err, "Could not load dispatch."));
+    } finally {
+      setLoading(false);
     }
   }, [locationId]);
 
@@ -84,6 +97,7 @@ export default function DispatchPage() {
 
   const weekDates = getWeekDates();
   const hasAny = Object.values(byDate).some((d) => d.length > 0);
+  const busy = locationLoading || loading;
 
   return (
     <div className="pb-app">
@@ -95,10 +109,18 @@ export default function DispatchPage() {
         <LocationSwitcher />
       </div>
 
-      {error && <p className="text-sm text-danger mb-4">{error}</p>}
-
-      {!hasAny ? (
-        <div className="pb-empty">{MICROCOPY.emptyDispatch}</div>
+      {!locationLoading && !locationId ? (
+        <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
+      ) : busy ? (
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, idx) => (
+            <SkeletonText key={idx} className="h-28 w-full rounded-[24px]" />
+          ))}
+        </div>
+      ) : error ? (
+        <ErrorState message={error} onRetry={() => void load()} />
+      ) : !hasAny ? (
+        <EmptyState title="Nothing scheduled this week" sub={MICROCOPY.emptyDispatch} />
       ) : (
         <div className="grid gap-6">
           {weekDates.map((date, i) => {

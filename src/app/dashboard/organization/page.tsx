@@ -135,7 +135,10 @@ export default function OrganizationPage() {
                     <button
                       type="button"
                       className="pb-btn-secondary text-sm"
-                      onClick={() => setStoredActiveLocationId(loc.id)}
+                      onClick={() => {
+                        setStoredActiveLocationId(loc.id);
+                        void load();
+                      }}
                     >
                       Switch
                     </button>

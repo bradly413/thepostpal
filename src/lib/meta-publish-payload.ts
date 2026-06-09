@@ -4,7 +4,9 @@ import { resolvePublicImageUrl } from "@/lib/upload-public-image";
 export interface MetaPublishPayload {
   platform: "facebook" | "instagram" | "both";
   caption: string;
-  imageUrl: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  mediaType?: "image" | "video";
   locationId: string;
   scheduledTime?: number;
 }
@@ -12,7 +14,9 @@ export interface MetaPublishPayload {
 export async function buildMetaPublishPayload(options: {
   platform: "facebook" | "instagram" | "both";
   caption: string;
-  imageUrl: string;
+  imageUrl?: string;
+  videoUrl?: string;
+  mediaType?: "image" | "video";
   scheduledTime?: number;
 }): Promise<MetaPublishPayload> {
   const locationId = getStoredActiveLocationId();
@@ -20,12 +24,22 @@ export async function buildMetaPublishPayload(options: {
     throw new Error("Choose a location before publishing.");
   }
 
-  const publicImageUrl = await resolvePublicImageUrl(options.imageUrl);
+  const mediaType =
+    options.mediaType ||
+    (options.videoUrl ? "video" : "image");
+  const rawUrl = options.videoUrl || options.imageUrl;
+  if (!rawUrl) {
+    throw new Error("Add an image or video before publishing.");
+  }
+
+  const publicUrl = await resolvePublicImageUrl(rawUrl);
 
   return {
     platform: options.platform,
     caption: options.caption,
-    imageUrl: publicImageUrl,
+    ...(mediaType === "video"
+      ? { videoUrl: publicUrl, mediaType: "video" as const }
+      : { imageUrl: publicUrl, mediaType: "image" as const }),
     locationId,
     scheduledTime: options.scheduledTime,
   };

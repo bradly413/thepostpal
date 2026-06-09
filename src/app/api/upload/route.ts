@@ -13,8 +13,11 @@ import {
 
 export const runtime = "nodejs";
 
-const ALLOWED_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "heic", "heif"]);
-const MAX_FILE_SIZE = 25 * 1024 * 1024; // 25MB — modern phone photos / screenshots run large
+const IMAGE_EXTENSIONS = new Set(["jpg", "jpeg", "png", "gif", "webp", "avif", "bmp", "heic", "heif"]);
+const VIDEO_EXTENSIONS = new Set(["mp4", "mov", "webm"]);
+const ALLOWED_EXTENSIONS = new Set([...IMAGE_EXTENSIONS, ...VIDEO_EXTENSIONS]);
+const MAX_IMAGE_SIZE = 25 * 1024 * 1024;
+const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
   const ip = getClientIp(req.headers);
@@ -31,15 +34,22 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    if (file.size > MAX_FILE_SIZE) {
-      return NextResponse.json({ error: "File too large (10MB max)" }, { status: 400 });
-    }
-
     const ext = (file.name.split(".").pop() || "").toLowerCase();
     const isImageMime = (file.type || "").startsWith("image/");
-    if (!isImageMime && !ALLOWED_EXTENSIONS.has(ext)) {
+    const isVideoMime = (file.type || "").startsWith("video/");
+    const isVideo = isVideoMime || VIDEO_EXTENSIONS.has(ext);
+    const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
+
+    if (file.size > maxSize) {
       return NextResponse.json(
-        { error: `Unsupported file${file.type ? ` (${file.type})` : ""}. Upload an image — jpg, png, gif, webp, or heic.` },
+        { error: `File too large (${maxSize / (1024 * 1024)}MB max)` },
+        { status: 400 },
+      );
+    }
+
+    if (!isImageMime && !isVideoMime && !ALLOWED_EXTENSIONS.has(ext)) {
+      return NextResponse.json(
+        { error: `Unsupported file${file.type ? ` (${file.type})` : ""}. Upload an image (jpg, png, webp) or video (mp4, mov).` },
         { status: 400 },
       );
     }

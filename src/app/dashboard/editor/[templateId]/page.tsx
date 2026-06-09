@@ -1,6 +1,7 @@
 "use client";
 
-import { use, useState, useRef, useCallback, useEffect } from "react";
+import { use, useState, useRef, useCallback, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { templates as staticTemplates, type Template } from "@/lib/templates";
 import { toPng } from "html-to-image";
@@ -12,7 +13,6 @@ import {
   scheduledForIso,
 } from "@/lib/scheduled-post-mappers";
 import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
-import { BRAND_PHOTOS } from "@/lib/brand-photo-assets";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
@@ -65,12 +65,13 @@ function useCanvasScale(template: { width: number; height: number } | undefined)
   return { containerRef, scale };
 }
 
-export default function EditorPage({
+function EditorPageInner({
   params,
 }: {
   params: Promise<{ templateId: string }>;
 }) {
   const { templateId } = use(params);
+  const searchParams = useSearchParams();
   const [template, setTemplate] = useState<Template | undefined>(() =>
     staticTemplates.find((item) => item.id === templateId)
   );
@@ -135,6 +136,15 @@ export default function EditorPage({
     setFields(buildInitialFields(template));
     setFieldsTemplateId(template.id);
   }, [template, fieldsTemplateId]);
+
+  useEffect(() => {
+    const photoUrl = searchParams.get("photoUrl");
+    if (!photoUrl) return;
+    setPhoto(photoUrl);
+    setPhotoPos({ x: 50, y: 50 });
+    setPhotoZoom(100);
+    setPhotoRotate(0);
+  }, [searchParams]);
 
   useEffect(() => {
     if (caption) return;
@@ -517,7 +527,7 @@ export default function EditorPage({
                   />
                 </div>
                 <div className="mt-2 flex gap-1.5">
-                  {[...BRAND_PHOTOS.slice(0, 2), ...workspacePhotos.slice(0, 2)].map((p) => (
+                  {workspacePhotos.slice(0, 4).map((p) => (
                     <button
                       key={p.id}
                       type="button"
@@ -775,26 +785,9 @@ export default function EditorPage({
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
-              <div>
-                <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">Brand Photos</p>
-                <div className="grid grid-cols-4 gap-2">
-                  {BRAND_PHOTOS.map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
-                      className="group relative aspect-square rounded-lg overflow-hidden border border-black/10 hover:border-[#ee2532] transition-colors"
-                    >
-                      <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
-                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
-                        <span className="w-full px-1 py-0.5 text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity truncate bg-black/50">{p.name}</span>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-              </div>
-              {workspacePhotos.length > 0 && (
+              {workspacePhotos.length > 0 ? (
                 <div>
-                  <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">My Uploads</p>
+                  <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">Media library</p>
                   <div className="grid grid-cols-4 gap-2">
                     {workspacePhotos.map((p) => (
                       <button
@@ -810,11 +803,21 @@ export default function EditorPage({
                     ))}
                   </div>
                 </div>
+              ) : (
+                <p className="text-sm text-black/55">Upload photos in Media to use them here.</p>
               )}
             </div>
           </div>
         </div>
       )}
     </div>
+  );
+}
+
+export default function EditorPage(props: { params: Promise<{ templateId: string }> }) {
+  return (
+    <Suspense fallback={<div className="p-6 text-sm opacity-60">Loading editor…</div>}>
+      <EditorPageInner {...props} />
+    </Suspense>
   );
 }

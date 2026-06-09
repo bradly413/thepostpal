@@ -7,6 +7,8 @@ export interface MetaPublishRequest {
   platform: "facebook" | "instagram" | "both";
   caption?: string;
   imageUrl?: string;
+  videoUrl?: string;
+  mediaType?: "image" | "video";
   scheduledTime?: number;
 }
 
@@ -33,17 +35,20 @@ export async function executeMetaPublish(
   credentials: { pageId: string; pageToken: string; igAccountId: string | null },
   input: MetaPublishRequest,
 ): Promise<MetaPublishServiceResult> {
-  const { platform, caption, imageUrl, scheduledTime } = input;
+  const { platform, caption, imageUrl, videoUrl, mediaType, scheduledTime } = input;
+  const mediaUrl = videoUrl || imageUrl;
+  const resolvedType =
+    mediaType || (videoUrl ? "video" : imageUrl ? "image" : null);
 
-  if (imageUrl?.startsWith("data:")) {
-    throw new Error("Upload the image first — Meta requires a public image URL.");
+  if (mediaUrl?.startsWith("data:")) {
+    throw new Error("Upload the media first — Meta requires a public URL.");
   }
 
   const wantsFacebook = platform === "facebook" || platform === "both";
   const wantsInstagram = platform === "instagram" || platform === "both";
 
-  if (wantsInstagram && !imageUrl) {
-    throw new Error("Instagram requires an image.");
+  if (wantsInstagram && !mediaUrl) {
+    throw new Error("Instagram requires an image or video.");
   }
 
   const results: MetaPublishServiceResult = { warnings: [] };
@@ -51,7 +56,9 @@ export async function executeMetaPublish(
   if (wantsFacebook) {
     results.facebook = await publishToFacebook(credentials.pageId, credentials.pageToken, {
       message: caption,
-      imageUrl,
+      imageUrl: resolvedType === "image" ? imageUrl : undefined,
+      videoUrl: resolvedType === "video" ? videoUrl || imageUrl : undefined,
+      mediaType: resolvedType ?? undefined,
       scheduledTime,
     });
   }
@@ -70,7 +77,9 @@ export async function executeMetaPublish(
         credentials.pageToken,
         {
           caption,
-          imageUrl: imageUrl!,
+          imageUrl: resolvedType === "image" ? mediaUrl : undefined,
+          videoUrl: resolvedType === "video" ? mediaUrl : undefined,
+          mediaType: resolvedType ?? undefined,
           scheduledTime,
         },
       );

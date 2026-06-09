@@ -9,7 +9,7 @@ import {
   getS3Config,
   getS3PublicUrl,
   isAllowedPresignedContentType,
-  PRESIGNED_UPLOAD_MAX_BYTES,
+  presignedMaxBytesForContentType,
 } from "@/lib/storage";
 
 export const runtime = "nodejs";
@@ -68,9 +68,10 @@ export async function POST(request: NextRequest) {
       if (fileSize <= 0) {
         return NextResponse.json({ error: "fileSize must be positive" }, { status: 400 });
       }
-      if (fileSize > PRESIGNED_UPLOAD_MAX_BYTES) {
+      const maxBytes = presignedMaxBytesForContentType(contentType);
+      if (fileSize > maxBytes) {
         return NextResponse.json(
-          { error: `File too large (${PRESIGNED_UPLOAD_MAX_BYTES / (1024 * 1024)}MB max)` },
+          { error: `File too large (${maxBytes / (1024 * 1024)}MB max)` },
           { status: 400 },
         );
       }

@@ -110,7 +110,42 @@ export async function getInstagramAccount(pageId: string, pageToken: string) {
   return data.instagram_business_account?.id as string | undefined;
 }
 
-export async function publishToFacebook(pageId: string, pageToken: string, options: { message?: string; imageUrl?: string; scheduledTime?: number }) {
+export async function publishToFacebook(
+  pageId: string,
+  pageToken: string,
+  options: {
+    message?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    mediaType?: "image" | "video";
+    scheduledTime?: number;
+  },
+) {
+  const mediaUrl = options.videoUrl || options.imageUrl;
+  const isVideo =
+    options.mediaType === "video" ||
+    Boolean(options.videoUrl) ||
+    (mediaUrl ? /\.(mp4|mov|webm|m4v)(\?|$)/i.test(mediaUrl) : false);
+
+  if (mediaUrl && isVideo) {
+    const body: Record<string, unknown> = {
+      file_url: mediaUrl,
+      description: options.message || "",
+      access_token: pageToken,
+    };
+    if (options.scheduledTime) {
+      body.published = false;
+      body.scheduled_publish_time = options.scheduledTime;
+    }
+    const res = await fetch(`${GRAPH}/${pageId}/videos`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(body),
+    });
+    if (!res.ok) throw new Error(`FB video post failed: ${await res.text()}`);
+    return res.json();
+  }
+
   if (options.imageUrl) {
     const body: Record<string, unknown> = {
       url: options.imageUrl,
@@ -146,12 +181,36 @@ export async function publishToFacebook(pageId: string, pageToken: string, optio
   return res.json();
 }
 
-export async function publishToInstagram(igAccountId: string, pageToken: string, options: { caption?: string; imageUrl: string; scheduledTime?: number }) {
+export async function publishToInstagram(
+  igAccountId: string,
+  pageToken: string,
+  options: {
+    caption?: string;
+    imageUrl?: string;
+    videoUrl?: string;
+    mediaType?: "image" | "video";
+    scheduledTime?: number;
+  },
+) {
+  const mediaUrl = options.videoUrl || options.imageUrl;
+  if (!mediaUrl) {
+    throw new Error("Instagram requires an image or video URL.");
+  }
+  const isVideo =
+    options.mediaType === "video" ||
+    Boolean(options.videoUrl) ||
+    /\.(mp4|mov|webm|m4v)(\?|$)/i.test(mediaUrl);
+
   const containerBody: Record<string, unknown> = {
-    image_url: options.imageUrl,
     caption: options.caption || "",
     access_token: pageToken,
   };
+  if (isVideo) {
+    containerBody.media_type = "REELS";
+    containerBody.video_url = mediaUrl;
+  } else {
+    containerBody.image_url = mediaUrl;
+  }
   if (options.scheduledTime) {
     containerBody.published = false;
     containerBody.scheduled_publish_time = options.scheduledTime;

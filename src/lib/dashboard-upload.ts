@@ -1,7 +1,8 @@
 "use client";
 
 const PRESIGN_PATH = "/api/upload/presigned";
-const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 export interface PresignedUploadResponse {
   uploadUrl: string;
@@ -33,14 +34,21 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
  * Upload a file directly to S3 via a short-lived presigned PUT URL.
  * Bypasses the Next.js request body limit entirely.
  */
+function maxBytesForFile(file: File): number {
+  const isVideo =
+    file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name);
+  return isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+}
+
 export async function uploadMediaToS3(file: File): Promise<string> {
   if (!file || file.size <= 0) {
     throw new DashboardUploadError("Choose a file to upload.");
   }
 
-  if (file.size > MAX_UPLOAD_BYTES) {
+  const maxBytes = maxBytesForFile(file);
+  if (file.size > maxBytes) {
     throw new DashboardUploadError(
-      `File is too large (${MAX_UPLOAD_BYTES / (1024 * 1024)}MB max).`,
+      `File is too large (${maxBytes / (1024 * 1024)}MB max).`,
     );
   }
 
@@ -88,3 +96,5 @@ export async function uploadMediaToS3(file: File): Promise<string> {
 
 /** @deprecated Use uploadMediaToS3 — kept for existing dashboard imports. */
 export const uploadDashboardImage = uploadMediaToS3;
+
+export const uploadDashboardVideo = uploadMediaToS3;
