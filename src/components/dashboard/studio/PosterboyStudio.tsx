@@ -5,7 +5,6 @@ import { useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
-  Sparkles,
   Calendar,
   Image as ImageIcon,
   Settings,
@@ -15,7 +14,6 @@ import {
   LayoutGrid,
   AlignLeft,
   Tag,
-  Zap,
   Wand2,
   Send,
   Check,
@@ -1236,15 +1234,6 @@ export default function PosterboyStudio() {
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
             <button
               type="button"
-              className="pb-util"
-              onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
-              title={when === "now" ? "Post now" : "Scheduled"}
-              aria-label={when === "now" ? "Post now" : "Scheduled"}
-            >
-              {when === "now" ? <Zap size={18} /> : <Calendar size={18} />}
-            </button>
-            <button
-              type="button"
               className={`pb-util${composerMode === "video" ? " active" : ""}`}
               onClick={() => {
                 setComposerMode((m) => (m === "image" ? "video" : "image"));
@@ -1259,18 +1248,7 @@ export default function PosterboyStudio() {
             >
               <ImageIcon size={18} />
             </button>
-            {freeFormMode ? (
-              <input
-                ref={inputRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
-                }
-                placeholder={placeholderText}
-                disabled={genState === "generating"}
-              />
-            ) : selectedIntent ? (
+            {selectedIntent ? (
               <input
                 ref={inputRef}
                 value={intentDetail}
@@ -1283,65 +1261,24 @@ export default function PosterboyStudio() {
                 aria-label={`Details for ${selectedIntent.label}`}
               />
             ) : (
-              <span className="prompt-intent-hint">
-                Pick an intent above, or{" "}
-                <button
-                  type="button"
-                  onClick={() => setFreeFormMode(true)}
-                  disabled={genState === "generating"}
-                >
-                  write your own
-                </button>
-              </span>
+              <input
+                ref={inputRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                }
+                placeholder={placeholderText}
+                disabled={genState === "generating"}
+                aria-label="Describe your post"
+              />
             )}
-            <div className="pb-tool" ref={promptToolsRef}>
-              {activeTool === "tools" && (
-                <div className="pb-tools-pop">
-                  <button type="button" onClick={() => { setActiveTool("captions"); setActiveEdit(null); }}>
-                    <span>Caption options</span>
-                  </button>
-                  <button type="button" onClick={() => void generateCaption()}>
-                    <span>Caption assist</span>
-                  </button>
-                  <button type="button"><span>Brand kit</span></button>
-                </div>
-              )}
-              {activeTool === "captions" && (
-                <div className="pb-tools-pop pb-tools-pop-wide">
-                  <CaptionVariantPicker
-                    brief={composerBrief || captionText}
-                    platform={platform.id}
-                    approvalPipeline={features.approvalPipeline}
-                    locationId={locationId}
-                    platforms={studioPlatforms(platform.id)}
-                    onSelect={(v) => {
-                      setCaptionText(v.caption);
-                      setCaptionTags(v.hashtags.join(" "));
-                      setCaptionState("done");
-                      setCaptionError("");
-                      setActiveTool(null);
-                    }}
-                  />
-                </div>
-              )}
-              <button
-                type="button"
-                className={`pb-util${activeTool === "tools" ? " active" : ""}`}
-                onClick={() => { setActiveEdit(null); setActiveTool((t) => (t === "tools" ? null : "tools")); }}
-                data-tooltrigger
-                title="Tools"
-              >
-                <Sparkles size={18} />
-              </button>
-            </div>
             <button
               type="button"
               className="magic-wand"
               onClick={() => void composeFromIntent()}
               disabled={
-                genState === "generating" ||
-                composerMode === "video" ||
-                (!freeFormMode && !selectedIntentId && !composerBrief)
+                genState === "generating" || composerMode === "video" || !composerBrief
               }
               aria-label="Make a post"
             >
