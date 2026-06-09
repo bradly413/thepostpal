@@ -1,14 +1,23 @@
 /**
- * Idempotent seed for the compliance & brand guardrail registry (VerticalSeed).
+ * Authoritative seed for the compliance & brand guardrail registry (VerticalSeed).
  *
- * Universal — covers the whole network: regulated showcase verticals (real estate,
- * healthcare, beauty) plus generic SMB parents so no tenant is boxed out. Upserts by
- * slug, so re-running is safe. Parents are upserted first, then children link to their
- * parent via a slug -> id lookup.
+ * Source data: research-backed taxonomy (Gemini) — see docs/COMPLIANCE-VERTICALS.md
+ * for the regulatory rationale (HUD/FHA, TILA, FDA/OPDP, DSHEA, FTC, FINRA 2210,
+ * EEOC, Food Code) and the legal-positioning disclaimer.
  *
- * Standalone admin seed (not tenant-scoped): uses a raw PrismaClient, NOT withTenantDb.
+ * AUTHORITATIVE: upserts the taxonomy below, then deletes any VerticalSeed row whose
+ * slug is NOT in this set — so re-running fully replaces the registry. Safe because
+ * Organization.verticalSlug is a plain string (no FK); a dangling slug just resolves
+ * to no guardrails. Parents first, then children link via slug -> id.
  *
- * Run: npm run seed:verticals  (against LOCAL — exports DATABASE_URL from .env.local)
+ * Integrator note: a few real-estate banned terms from the source ("white","black",
+ * "asian","hispanic") were dropped — as standalone words our word-boundary matcher
+ * would false-flag innocent listings ("white cabinets","black granite"). Multi-word
+ * steering phrases + clearly-problematic terms are kept. Nuanced/context-aware
+ * detection of those is a future enhancement.
+ *
+ * Standalone admin seed (raw PrismaClient, NOT withTenantDb).
+ * Run: npm run seed:verticals  (exports DATABASE_URL from .env.local for LOCAL).
  */
 import { PrismaClient } from "@prisma/client";
 
@@ -25,108 +34,173 @@ interface SeedNode {
   complianceNotes?: string;
 }
 
-// Parents first (no parentSlug), then children (parentSlug set). Order matters so
-// the slug -> id map is populated before children resolve their parentId.
 const PARENTS: SeedNode[] = [
   {
-    slug: "real-estate",
-    name: "Real Estate",
+    slug: "real-estate-parent",
+    name: "Real Estate & Housing",
     enforcementLevel: "warn",
-    regulatoryBody: "HUD/Fair Housing",
+    regulatoryBody: "HUD (Fair Housing Act)",
     bannedPhrases: [
-      "safe neighborhood",
-      "perfect for families",
-      "exclusive area",
-      "ideal for families",
-      "no kids",
-      "great for couples",
-      "close to churches",
+      "exclusive neighborhood", "safe neighborhood", "ideal for families", "perfect for singles",
+      "empty nesters", "walking distance", "active lifestyle", "traditional neighborhood",
+      "christian", "jewish", "catholic", "mosque", "church",
+      "no kids", "adults only", "bachelor pad", "physically fit",
     ],
+    preferredPhrases: [
+      "convenient access to", "spacious", "quiet street", "great location", "welcome",
+      "equal housing opportunity", "accessible",
+    ],
+    complianceNotes:
+      "HUD prohibits demographic steering or language implying a preference for/against protected classes (race, religion, familial status, disability).",
   },
   {
-    slug: "healthcare",
-    name: "Healthcare",
+    slug: "healthcare-parent",
+    name: "Healthcare & Pharma",
     enforcementLevel: "block",
-    regulatoryBody: "FDA",
+    regulatoryBody: "FDA / FTC / HIPAA",
     bannedPhrases: [
-      "cure",
-      "guaranteed",
-      "100% safe",
-      "no side effects",
-      "off-label",
-      "miracle",
+      "cure", "guaranteed outcome", "100% safe", "miracle", "risk-free", "completely safe",
+      "no side effects", "better than", "proven to cure", "instant healing",
     ],
+    preferredPhrases: [
+      "may help", "supports", "clinically studied", "ask your doctor", "treatment options",
+      "patient care", "consult a healthcare professional",
+    ],
+    complianceNotes:
+      "Base FDA/FTC block list. Prohibits absolute claims, guarantees, and unauthorized comparative-superiority claims.",
   },
   {
-    slug: "beauty",
-    name: "Beauty",
+    slug: "beauty-parent",
+    name: "Beauty & Personal Care",
     enforcementLevel: "warn",
-    regulatoryBody: "FTC",
-    bannedPhrases: [
-      "clinically proven",
-      "anti-aging cure",
-      "eliminates wrinkles",
-      "FDA approved",
+    regulatoryBody: "FTC / FDA",
+    bannedPhrases: ["permanent", "miracle anti-aging", "cures acne", "heals", "medical grade"],
+    preferredPhrases: [
+      "improves the appearance of", "visibly reduces", "dermatologist-tested", "formulation", "prestige",
     ],
+    complianceNotes:
+      "Cosmetics cannot make drug-like claims (altering the body's structure/function); claims must be substantiated.",
   },
   {
-    slug: "hospitality",
-    name: "Hospitality",
-    enforcementLevel: "suggest",
+    slug: "finance-parent",
+    name: "Financial & Wealth Services",
+    enforcementLevel: "block",
+    regulatoryBody: "FINRA / SEC",
+    bannedPhrases: [
+      "guaranteed returns", "risk-free investment", "can't lose", "get rich quick",
+      "sure thing", "promise to double", "no risk",
+    ],
+    preferredPhrases: [
+      "wealth management", "financial planning", "historical performance", "investment strategies",
+      "portfolio diversification",
+    ],
+    complianceNotes:
+      "FINRA Rule 2210 prohibits promissory language, guarantees, or downplaying the inherent risks of investing.",
   },
-  // Generic SMB parents — keep everyone at "suggest" so nobody is boxed out.
   {
-    slug: "local-services",
-    name: "Local Services",
+    slug: "smb-parent",
+    name: "General SMB & Local Business",
     enforcementLevel: "suggest",
-  },
-  {
-    slug: "fitness",
-    name: "Fitness",
-    enforcementLevel: "suggest",
-  },
-  {
-    slug: "professional-services",
-    name: "Professional Services",
-    enforcementLevel: "suggest",
+    regulatoryBody: "FTC (Truth in Advertising)",
+    bannedPhrases: ["best in the world", "voted #1 anywhere", "guaranteed cheapest"],
+    preferredPhrases: [
+      "local favorite", "community trusted", "premium quality", "satisfaction guarantee (see terms)",
+    ],
+    complianceNotes: "General FTC guidance against deceptive advertising and unsubstantiated objective claims.",
   },
 ];
 
 const CHILDREN: SeedNode[] = [
-  // Real Estate
-  { slug: "real-estate-residential-sales", name: "Residential Sales", parentSlug: "real-estate" },
-  { slug: "real-estate-commercial", name: "Commercial", parentSlug: "real-estate" },
-
-  // Healthcare
+  // Real Estate & Housing
   {
-    slug: "healthcare-pharma-sales",
-    name: "Pharma Sales",
-    parentSlug: "healthcare",
-    preferredPhrases: ["clinical trials", "indicated for", "consult prescribing information"],
-  },
-  {
-    slug: "healthcare-hospital-recruiting",
-    name: "Hospital Recruiting",
-    parentSlug: "healthcare",
+    slug: "real-estate-residential",
+    name: "Residential Real Estate",
+    parentSlug: "real-estate-parent",
     enforcementLevel: "warn",
-    preferredPhrases: ["shift-differential", "BSN", "RN", "sign-on bonus", "nurse residency"],
+    regulatoryBody: "HUD / Local MLS",
+    bannedPhrases: ["guaranteed approval", "no credit check"],
+    preferredPhrases: ["move-in ready", "open floor plan", "natural light", "schedule a tour", "just listed"],
+    complianceNotes: "Focuses on property features, avoiding all buyer-demographic profiling.",
+  },
+  {
+    slug: "real-estate-mortgage",
+    name: "Mortgage & Lending",
+    parentSlug: "real-estate-parent",
+    enforcementLevel: "block",
+    regulatoryBody: "CFPB (TILA/RESPA)",
+    bannedPhrases: ["guaranteed lowest rate", "free money", "no fees", "fixed rate for life", "instant approval"],
+    preferredPhrases: ["competitive rates", "pre-qualification available", "explore your options", "NMLS #"],
+    complianceNotes:
+      "Truth in Lending Act: trigger terms (specific rates) require heavy disclosures. Blocked to prevent trigger-term violations in captions.",
   },
 
-  // Beauty
-  { slug: "beauty-cosmetics-skincare", name: "Cosmetics / Skincare", parentSlug: "beauty" },
-  { slug: "beauty-salon-services", name: "Salon / Services", parentSlug: "beauty" },
+  // Healthcare & Pharma
+  {
+    slug: "pharma-sales",
+    name: "Pharmaceutical Sales",
+    parentSlug: "healthcare-parent",
+    enforcementLevel: "block",
+    regulatoryBody: "FDA (OPDP)",
+    bannedPhrases: ["off-label", "safe for everyone", "eliminates"],
+    preferredPhrases: [
+      "efficacy", "clinical trials", "FDA-approved", "mechanism of action", "ISI", "Important Safety Information",
+    ],
+    complianceNotes:
+      "High-risk. Must maintain Fair Balance (risks presented with benefits); blocked from off-label claims.",
+  },
+  {
+    slug: "hospital-recruiting",
+    name: "Hospital & Healthcare Recruiting",
+    parentSlug: "healthcare-parent",
+    enforcementLevel: "warn",
+    regulatoryBody: "EEOC",
+    bannedPhrases: ["young and energetic", "recent graduates only", "digital native", "perfect health"],
+    preferredPhrases: [
+      "shift-differential", "BSN", "RN", "Magnet status", "sign-on bonus", "EOE",
+      "equal opportunity employer", "join our care team",
+    ],
+    complianceNotes:
+      "Avoids age/disability discrimination in hiring while leaning into premium nursing-recruitment vocabulary.",
+  },
+  {
+    slug: "supplements-wellness",
+    name: "Dietary Supplements & Wellness",
+    parentSlug: "healthcare-parent",
+    enforcementLevel: "block",
+    regulatoryBody: "FDA / FTC",
+    bannedPhrases: ["treats", "prevents", "cures disease", "reverses", "diagnoses"],
+    preferredPhrases: ["supports", "promotes", "maintains", "dietary supplement", "overall wellness"],
+    complianceNotes: "DSHEA: supplements cannot claim to diagnose, treat, cure, or prevent any disease.",
+  },
 
-  // Hospitality
-  { slug: "hospitality-restaurants", name: "Restaurants", parentSlug: "hospitality" },
-  { slug: "hospitality-hotels", name: "Hotels", parentSlug: "hospitality" },
-  { slug: "hospitality-salons", name: "Salons", parentSlug: "hospitality" },
+  // Beauty & Personal Care
+  {
+    slug: "beauty-med-spa",
+    name: "Med-Spa & Aesthetic Clinics",
+    parentSlug: "beauty-parent",
+    enforcementLevel: "block",
+    regulatoryBody: "FDA / State Medical Boards",
+    bannedPhrases: ["pain-free", "permanent results", "risk-free injections", "cheap botox"],
+    preferredPhrases: ["board-certified", "consultation", "FDA-cleared", "aesthetic treatments", "rejuvenation"],
+    complianceNotes:
+      "Injectables (Botox, fillers) are medical procedures; strict blocking of pain-free/risk-free claims.",
+  },
+
+  // SMB
+  {
+    slug: "smb-hospitality",
+    name: "Restaurants & Hospitality",
+    parentSlug: "smb-parent",
+    enforcementLevel: "suggest",
+    regulatoryBody: "FDA (Food Code) / Local Health",
+    bannedPhrases: ["100% allergen-free", "zero calories", "cures hangovers"],
+    preferredPhrases: ["allergy-friendly", "gluten-friendly", "scratch-made", "chef-curated", "locally sourced"],
+    complianceNotes:
+      "Mitigates food-allergy liability — 'allergy-friendly' is far safer than 'allergen-free'.",
+  },
 ];
 
-async function upsertNode(
-  db: PrismaClient,
-  node: SeedNode,
-  parentId: string | null,
-): Promise<string> {
+async function upsertNode(db: PrismaClient, node: SeedNode, parentId: string | null): Promise<string> {
   const data = {
     name: node.name,
     parentId,
@@ -150,22 +224,23 @@ async function main() {
     const slugToId = new Map<string, string>();
 
     for (const parent of PARENTS) {
-      const id = await upsertNode(db, parent, null);
-      slugToId.set(parent.slug, id);
+      slugToId.set(parent.slug, await upsertNode(db, parent, null));
     }
-
     for (const child of CHILDREN) {
       const parentId = child.parentSlug ? slugToId.get(child.parentSlug) ?? null : null;
       if (child.parentSlug && !parentId) {
         throw new Error(`Missing parent "${child.parentSlug}" for child "${child.slug}"`);
       }
-      const id = await upsertNode(db, child, parentId);
-      slugToId.set(child.slug, id);
+      slugToId.set(child.slug, await upsertNode(db, child, parentId));
     }
+
+    // Authoritative: drop any row not in the current taxonomy (replaces old draft slugs).
+    const validSlugs = [...PARENTS, ...CHILDREN].map((n) => n.slug);
+    const removed = await db.verticalSeed.deleteMany({ where: { slug: { notIn: validSlugs } } });
 
     const total = await db.verticalSeed.count();
     console.log(
-      `Seeded ${PARENTS.length} parents + ${CHILDREN.length} children. VerticalSeed row count: ${total}`,
+      `Seeded ${PARENTS.length} parents + ${CHILDREN.length} children; removed ${removed.count} stale. VerticalSeed row count: ${total}`,
     );
   } finally {
     await db.$disconnect();
