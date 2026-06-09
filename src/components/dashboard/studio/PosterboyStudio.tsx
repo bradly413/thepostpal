@@ -922,6 +922,22 @@ export default function PosterboyStudio() {
             </button>
           </div>
 
+          {/* Intent rail — mirrors the tool-rail on the opposite (right) edge */}
+          {genState === "idle" && composerMode === "image" && !freeFormMode ? (
+            <StrategicIntentPicker
+              selectedId={selectedIntentId}
+              onSelect={(id) => {
+                setSelectedIntentId(id);
+                setIntentDetail("");
+              }}
+              onFreeForm={() => {
+                setFreeFormMode(true);
+                setSelectedIntentId(null);
+                setIntentDetail("");
+              }}
+            />
+          ) : null}
+
           <div
             ref={frameWrapRef}
             className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}`}
@@ -1030,20 +1046,7 @@ export default function PosterboyStudio() {
                 )}
                 {genState === "idle" && composerMode === "image" ? (
                   <div className="studio-intent-stage">
-                    {!freeFormMode ? (
-                      <StrategicIntentPicker
-                        selectedId={selectedIntentId}
-                        onSelect={(id) => {
-                          setSelectedIntentId(id);
-                          setIntentDetail("");
-                        }}
-                        onFreeForm={() => {
-                          setFreeFormMode(true);
-                          setSelectedIntentId(null);
-                          setIntentDetail("");
-                        }}
-                      />
-                    ) : (
+                    {freeFormMode ? (
                       <p className="studio-freeform-hint">
                         Free-form brief — describe the post in your own words below.
                         <button
@@ -1055,6 +1058,10 @@ export default function PosterboyStudio() {
                         >
                           Back to intents
                         </button>
+                      </p>
+                    ) : (
+                      <p className="studio-intent-stage-lead">
+                        Pick an angle on the right, or drop a photo to elevate.
                       </p>
                     )}
                     <TrashToTreasureUploadZone
@@ -1943,6 +1950,9 @@ function StudioStyles() {
   }.pb-studio .studio-freeform-hint {
     font-size: 12.5px; line-height: 1.45; color: rgba(22,22,28,0.55); text-align: center;
     max-width: 360px; margin: 0 0 8px;
+  }.pb-studio .studio-intent-stage-lead {
+    font-size: 12.5px; color: rgba(22,22,28,0.5); text-align: center;
+    max-width: 320px; margin: 0 0 10px; font-weight: 500;
   }.pb-studio .studio-freeform-hint button {
     display: block; margin: 8px auto 0; font-size: 12px; font-weight: 600;
     color: #c41e2a; text-decoration: underline; text-underline-offset: 3px;
