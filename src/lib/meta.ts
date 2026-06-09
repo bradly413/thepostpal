@@ -211,10 +211,12 @@ export async function publishToInstagram(
   } else {
     containerBody.image_url = mediaUrl;
   }
-  if (options.scheduledTime) {
-    containerBody.published = false;
-    containerBody.scheduled_publish_time = options.scheduledTime;
-  }
+  // NOTE: Instagram's Content Publishing API does NOT support
+  // `scheduled_publish_time` (only Facebook Pages do). Passing it makes Graph
+  // either reject the container or silently ignore the schedule and publish
+  // immediately. IG scheduling is handled by the internal cron queue
+  // (src/lib/cron-publish.ts), which dispatches when a post is due. So we
+  // intentionally ignore `options.scheduledTime` here and always publish now.
 
   const containerRes = await fetch(`${GRAPH}/${igAccountId}/media`, {
     method: "POST",
@@ -223,10 +225,6 @@ export async function publishToInstagram(
   });
   if (!containerRes.ok) throw new Error(`IG container failed: ${await containerRes.text()}`);
   const { id: containerId } = await containerRes.json();
-
-  if (options.scheduledTime) {
-    return { id: containerId, scheduled: true };
-  }
 
   const publishRes = await fetch(`${GRAPH}/${igAccountId}/media_publish`, {
     method: "POST",
