@@ -31,7 +31,6 @@ import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
 import FacebookPreview from "@/components/dashboard/studio/FacebookPreview";
 import StrategicIntentPicker from "@/components/dashboard/studio/StrategicIntentPicker";
-import ProactiveNudgeBanner from "@/components/dashboard/studio/ProactiveNudgeBanner";
 import TrashToTreasureUploadZone from "@/components/dashboard/studio/TrashToTreasureUploadZone";
 import CaptionVariantPicker from "@/components/dashboard/composer/CaptionVariantPicker";
 import {
@@ -857,7 +856,6 @@ export default function PosterboyStudio() {
         <main className="canvas" ref={canvasRef}>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
-          <ProactiveNudgeBanner />
 
           <div className="canvas-top">
             {genState === "done" ? (
