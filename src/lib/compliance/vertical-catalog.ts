@@ -11,7 +11,7 @@ export const VERTICAL_CATALOG_FALLBACK: VerticalOption[] = [
   { slug: "real-estate-mortgage", name: "Mortgage & Lending", parentSlug: "real-estate-parent", enforcementLevel: "block", regulatoryBody: "CFPB (TILA/RESPA)", guardrailSummary: "TILA — trigger-term claims blocked" },
   { slug: "healthcare-parent", name: "Healthcare & Pharma", parentSlug: null, enforcementLevel: "block", regulatoryBody: "FDA / FTC / HIPAA", guardrailSummary: "FDA — restricted claims blocked" },
   { slug: "pharma-sales", name: "Pharmaceutical Sales", parentSlug: "healthcare-parent", enforcementLevel: "block", regulatoryBody: "FDA (OPDP)", guardrailSummary: "FDA — fair balance enforced" },
-  { slug: "hospital-recruiting", name: "Hospital & Healthcare Recruiting", parentSlug: "healthcare-parent", enforcementLevel: "warn", regulatoryBody: "EEOC", guardrailSummary: "EEOC — recruiting guardrails active" },
+  { slug: "hospital-recruiting", name: "Hospital & Healthcare Recruiting", parentSlug: null, enforcementLevel: "warn", regulatoryBody: "EEOC", guardrailSummary: "EEOC — recruiting guardrails active" },
   { slug: "supplements-wellness", name: "Dietary Supplements & Wellness", parentSlug: "healthcare-parent", enforcementLevel: "block", regulatoryBody: "FDA / FTC", guardrailSummary: "DSHEA — disease claims blocked" },
   { slug: "beauty-parent", name: "Beauty & Personal Care", parentSlug: null, enforcementLevel: "warn", regulatoryBody: "FTC / FDA", guardrailSummary: "FTC — claim substantiation warnings" },
   { slug: "beauty-med-spa", name: "Med-Spa & Aesthetic Clinics", parentSlug: "beauty-parent", enforcementLevel: "block", regulatoryBody: "FDA / State Medical Boards", guardrailSummary: "Medical-procedure claims blocked" },

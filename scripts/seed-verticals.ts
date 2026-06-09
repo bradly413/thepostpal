@@ -108,6 +108,21 @@ const PARENTS: SeedNode[] = [
     ],
     complianceNotes: "General FTC guidance against deceptive advertising and unsubstantiated objective claims.",
   },
+  // Recruiting is EEOC (employment law), NOT FDA medical-claims — kept top-level so it does
+  // not inherit the healthcare-parent `block`. A nurse-recruiting post makes no drug claims.
+  {
+    slug: "hospital-recruiting",
+    name: "Hospital & Healthcare Recruiting",
+    enforcementLevel: "warn",
+    regulatoryBody: "EEOC",
+    bannedPhrases: ["young and energetic", "recent graduates only", "digital native", "perfect health"],
+    preferredPhrases: [
+      "shift-differential", "BSN", "RN", "Magnet status", "sign-on bonus", "EOE",
+      "equal opportunity employer", "join our care team",
+    ],
+    complianceNotes:
+      "Avoids age/disability discrimination in hiring (EEOC) while leaning into premium nursing-recruitment vocabulary.",
+  },
 ];
 
 const CHILDREN: SeedNode[] = [
@@ -147,20 +162,6 @@ const CHILDREN: SeedNode[] = [
     ],
     complianceNotes:
       "High-risk. Must maintain Fair Balance (risks presented with benefits); blocked from off-label claims.",
-  },
-  {
-    slug: "hospital-recruiting",
-    name: "Hospital & Healthcare Recruiting",
-    parentSlug: "healthcare-parent",
-    enforcementLevel: "warn",
-    regulatoryBody: "EEOC",
-    bannedPhrases: ["young and energetic", "recent graduates only", "digital native", "perfect health"],
-    preferredPhrases: [
-      "shift-differential", "BSN", "RN", "Magnet status", "sign-on bonus", "EOE",
-      "equal opportunity employer", "join our care team",
-    ],
-    complianceNotes:
-      "Avoids age/disability discrimination in hiring while leaning into premium nursing-recruitment vocabulary.",
   },
   {
     slug: "supplements-wellness",
