@@ -1,4 +1,5 @@
 import Link from "next/link";
+import CheckoutQueryToast from "@/components/billing/CheckoutQueryToast";
 import PosterboyLogo from "@/components/PosterboyLogo";
 import PricingCards from "@/components/PricingCards";
 import { getPublicTiers, getPremiumTiers } from "@/lib/pricing";
@@ -55,6 +56,7 @@ export default function PricingPage() {
         </p>
       </section>
       </main>
+      <CheckoutQueryToast />
     </div>
   );
 }

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { SITE_NAME } from "@/lib/site";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
+import BillingSettingsPanel from "@/components/dashboard/settings/BillingSettingsPanel";
 import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
 import Link from "next/link";
 import { useActiveLocation } from "@/lib/use-active-location";
@@ -53,6 +54,11 @@ function SettingsContent() {
   useEffect(() => {
     const connected = searchParams.get("meta_connected");
     const error = searchParams.get("meta_error");
+    const tab = searchParams.get("tab");
+    const upgrade = searchParams.get("upgrade");
+    if (tab === "billing" || upgrade) {
+      setActiveTab("billing");
+    }
     if (connected) {
       void reloadMeta();
       setActiveTab("account");
@@ -143,6 +149,7 @@ function SettingsContent() {
     { id: "profile", label: "Profile" },
     { id: "brand", label: "Brand voice" },
     { id: "compliance", label: "Compliance" },
+    { id: "billing", label: "Billing" },
     { id: "account", label: "Account" },
     { id: "posting", label: "Posting" },
     { id: "notifications", label: "Notifications" },
@@ -238,6 +245,10 @@ function SettingsContent() {
 
           {activeTab === "compliance" && (
             <VerticalCompliancePanel compact />
+          )}
+
+          {activeTab === "billing" && (
+            <BillingSettingsPanel accountEmail={profile.email} />
           )}
 
           {activeTab === "posting" && (

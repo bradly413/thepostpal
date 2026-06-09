@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
+import UpgradeToCommandButton from "@/components/billing/UpgradeToCommandButton";
 import { useRouter, useSearchParams } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlan } from "@/components/dashboard/PlanProvider";
@@ -176,9 +176,7 @@ export default function MetaAdsBuilderPage() {
           <p className="text-sm opacity-65 mb-5">
             Upgrade to Command and enable META_ADS_ENABLED to access the ad builder.
           </p>
-          <Link href="/pricing" className="pb-btn-primary text-sm py-2 px-4 inline-flex">
-            View pricing
-          </Link>
+          <UpgradeToCommandButton />
         </div>
       </div>
     );

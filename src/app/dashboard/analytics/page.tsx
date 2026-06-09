@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
+import UpgradeToCommandButton from "@/components/billing/UpgradeToCommandButton";
 import { useRouter } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlan } from "@/components/dashboard/PlanProvider";
@@ -165,11 +166,9 @@ export default function AnalyticsPage() {
           <TopPostsList posts={insights.topPosts} />
 
           {!features.locationRollup ? (
-            <p className="text-xs opacity-45 mt-6">
-              Upgrade to Command for multi-location roll-up reports.{" "}
-              <Link href="/pricing" className="underline">
-                View plans
-              </Link>
+            <p className="text-xs opacity-45 mt-6 flex flex-wrap items-center gap-2">
+              <span>Upgrade to Command for multi-location roll-up reports.</span>
+              <UpgradeToCommandButton variant="link" label="Upgrade to Command" />
             </p>
           ) : null}
         </>

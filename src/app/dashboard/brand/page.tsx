@@ -507,12 +507,12 @@ function LockedSection({ sectionId }: { sectionId: string }) {
         Unlock with {TIER_LABEL[req]}
       </h3>
       <p style={{ color: "var(--neutral)", maxWidth: "46ch", margin: "16px auto 0", lineHeight: 1.6, fontSize: 15 }}>{TIER_BLURB[req]}</p>
-      <Link
-        href="/dashboard/settings?upgrade=brandbook"
+      <a
+        href="/dashboard/settings?tab=billing"
         style={{ display: "inline-block", marginTop: 26, padding: "12px 30px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: 14, textDecoration: "none" }}
       >
         Upgrade to {TIER_LABEL[req]}
-      </Link>
+      </a>
     </div>
   );
 }
@@ -525,9 +525,9 @@ function UpgradeBanner({ tier }: { tier: BrandBookTier }) {
       <div style={{ fontSize: 13.5, color: "var(--neutral)", lineHeight: 1.5, maxWidth: "62ch" }}>
         You&rsquo;re on the <strong style={{ color: "var(--primary)", fontWeight: 600 }}>{TIER_LABEL[tier]}</strong> brand book. Unlock <strong style={{ color: "var(--ink)" }}>{TIER_LABEL[up]}</strong> — {TIER_BLURB[up]}
       </div>
-      <Link href="/dashboard/settings?upgrade=brandbook" style={{ flexShrink: 0, padding: "10px 24px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}>
+      <a href="/dashboard/settings?tab=billing" style={{ flexShrink: 0, padding: "10px 24px", borderRadius: 999, background: "var(--primary)", color: "#fff", fontWeight: 600, fontSize: 13.5, textDecoration: "none" }}>
         Upgrade to {TIER_LABEL[up]}
-      </Link>
+      </a>
     </div>
   );
 }
