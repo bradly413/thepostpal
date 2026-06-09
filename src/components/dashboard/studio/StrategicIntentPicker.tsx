@@ -26,6 +26,16 @@ const INTENT_ICONS: Record<StrategicIntentId, LucideIcon> = {
   story: MessageSquareQuote,
 };
 
+/** Short rail labels (the long `label` still drives the AI brief). */
+const SHORT_LABEL: Record<StrategicIntentId, string> = {
+  launch: "Launch",
+  event: "Promote",
+  educate: "Educate",
+  recruit: "Recruit",
+  seasonal: "Holiday",
+  story: "Highlight",
+};
+
 interface Props {
   selectedId: StrategicIntentId | null;
   onSelect: (id: StrategicIntentId) => void;
@@ -89,7 +99,7 @@ export default function StrategicIntentPicker({
               <Icon size={19} strokeWidth={1.6} aria-hidden />
             </button>
             <span className="pb-intent-pop" role="tooltip">
-              <span className="pb-intent-pop-label">{intent.label}</span>
+              <span className="pb-intent-pop-label">{SHORT_LABEL[intent.id]}</span>
               <span className="pb-intent-pop-desc">{intent.description}</span>
             </span>
           </div>
@@ -113,15 +123,18 @@ export default function StrategicIntentPicker({
         .pb-intent-ico {
           width: 50px; height: 50px; display: grid; place-items: center;
           border-radius: 14px; color: var(--ink-2, #2a2a2e); background: transparent;
-          transition: color .16s ease, transform .16s ease, filter .16s ease;
+          transition: color .16s ease, transform .16s ease, filter .2s ease;
         }
         .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .2s ease; }
-        .pb-intent-ico:hover:not(:disabled):not(.active) {
-          color: var(--ink, #0d0d10); transform: translateY(-1px);
+        .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #0d0d10); }
+        .pb-intent-ico:hover:not(:disabled) svg {
+          filter: drop-shadow(0 0 4px rgba(255,255,255,0.6));
         }
-        .pb-intent-ico.active { color: var(--red, #ee2532); }
+        .pb-intent-ico.active { color: #fff; }
         .pb-intent-ico.active svg {
-          filter: drop-shadow(0 2px 9px rgba(238,37,50,0.45));
+          filter: drop-shadow(0 0 5px rgba(255,255,255,0.95))
+            drop-shadow(0 0 11px rgba(255,255,255,0.7))
+            drop-shadow(0 0 1px rgba(0,0,0,0.35));
         }
         .pb-intent-ico:active:not(:disabled) { transform: scale(0.93); }
         .pb-intent-ico:disabled { opacity: 0.4; cursor: not-allowed; }

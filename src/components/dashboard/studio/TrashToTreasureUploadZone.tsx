@@ -151,7 +151,7 @@ export default function TrashToTreasureUploadZone({
         </button>
         <span className="pb-intent-pop" role="tooltip">
           <span className="pb-intent-pop-label">
-            {uploading ? "Uploading…" : elevating ? "Captioning…" : "Add a photo"}
+            {uploading ? "Uploading…" : elevating ? "Captioning…" : "Upload"}
           </span>
           <span className="pb-intent-pop-desc" style={err ? { color: "#c41e2a" } : undefined}>
             {err || "Drop or pick a raw photo — AI captions + elevates it."}
