@@ -41,31 +41,46 @@ When writing a platform-specific post (Instagram, Facebook, LinkedIn, Twitter), 
 
 This separator format helps the platform mockup extract and display your content correctly.`;
 
+// Industry-agnostic stopwords so generic words ("the", "post", "make") don't
+// produce spurious matches against template names/pillars.
+const TEMPLATE_MATCH_STOPWORDS = new Set([
+  "the", "a", "an", "and", "or", "for", "to", "of", "in", "on", "with", "my",
+  "our", "your", "me", "i", "we", "us", "this", "that", "it", "is", "are", "be",
+  "make", "create", "write", "post", "posts", "caption", "content", "about",
+  "new", "please", "want", "need", "help", "can", "you", "some", "draft", "card",
+]);
+
+function tokenize(value: string): string[] {
+  return value
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length > 2 && !TEMPLATE_MATCH_STOPWORDS.has(word));
+}
+
+// Match the user's message against the ACTUAL pillar/name strings in the loaded
+// template catalog — no hardcoded industry assumptions. A template is included
+// when any of its name/pillar keywords appears in the user's message. Returns
+// "" when nothing matches so we don't push irrelevant context to the model.
 function buildTemplateContext(userMessage: string, templates: Awaited<ReturnType<typeof loadTemplateCatalog>>): string {
-  const lower = userMessage.toLowerCase();
-  const matched: typeof templates = [];
+  const messageTokens = new Set(tokenize(userMessage));
+  if (messageTokens.size === 0) return "";
 
-  if (/new listing|just listed|listing announce/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "New Listing"));
-  } else if (/just sold|sold|closing/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Just Sold"));
-  } else if (/market|stats|data|update|snapshot/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Market Clarity"));
-  } else if (/tip|checklist|buyer|seller|staging/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Buyer / Seller Tips"));
-  } else if (/neighborhood|community|spotlight/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Neighborhood Life"));
-  } else if (/holiday|memorial|christmas|thanksgiving|halloween|fourth|labor day/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Holiday"));
-  } else if (/season|spring|summer|fall|winter/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Seasonal"));
-  } else if (/event|festival/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Local Life"));
-  } else if (/story|reel|stories/i.test(lower)) {
-    matched.push(...templates.filter((t) => t.pillar === "Stories / Reels"));
-  }
+  const scored = templates
+    .map((t) => {
+      const templateTokens = new Set([...tokenize(t.name), ...tokenize(t.pillar)]);
+      let score = 0;
+      for (const token of templateTokens) {
+        if (messageTokens.has(token)) score += 1;
+      }
+      return { template: t, score };
+    })
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score);
 
-  if (matched.length === 0) return "";
+  if (scored.length === 0) return "";
+
+  // Cap the context to the strongest matches to keep the prompt focused.
+  const matched = scored.slice(0, 4).map((entry) => entry.template);
 
   const templateInfo = matched
     .map((t) => {

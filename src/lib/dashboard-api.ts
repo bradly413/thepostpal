@@ -34,6 +34,10 @@ export interface DashboardLocationRecord {
     offers?: string;
     recurringThemes?: string[];
   } | null;
+  city?: string | null;
+  state?: string | null;
+  country?: string | null;
+  address?: string | null;
   membershipRole?: string;
   createdAt?: string;
   updatedAt?: string;
@@ -51,6 +55,9 @@ export interface DashboardPostRecord {
   pillar?: string | null;
   note?: string | null;
   reviewerNotes?: string | null;
+  mediaUrl?: string | null;
+  mediaUrls?: string[] | null;
+  mediaType?: "image" | "video" | null;
   createdAt: string;
   updatedAt: string;
 }

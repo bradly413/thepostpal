@@ -17,17 +17,20 @@ import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
 
+// Industry-agnostic caption starters shown as rotating placeholders. These are
+// generic prompts that work for any business (bakery, gym, salon, agency, …) —
+// no hardcoded industry. The AI assistant and brand engine handle specifics.
 const CAPTION_SUGGESTIONS = [
-  "Just listed! This stunning home won't last long. Schedule your private showing today 🏡",
-  "New on the market in [neighborhood]! 4 BD · 3 BA · Move-in ready. DM for details ✨",
-  "Welcome home! Everything you've been looking for — and then some. Link in bio 🔑",
-  "JUST SOLD 🎉 Congrats to my amazing buyers on their beautiful new home!",
-  "Thinking about selling? The market is hot right now. Let's chat about your home's value 📈",
-  "Happy to hand over the keys to another wonderful family! #JustSold #RealEstate",
-  "Open house this weekend! Come see this gem in person. Details in comments 👇",
-  "Home is where the heart is ❤️ Let me help you find yours. Call or text anytime!",
-  "Price improvement! Don't miss this opportunity — schedule a tour today 🏠",
-  "Another beautiful listing hitting the market! Swipe for more photos →",
+  "Something new just landed — come see what we've been working on ✨",
+  "Big news to share with you all today. Here's what's happening 👇",
+  "Thank you to everyone who showed up this week. We appreciate you ❤️",
+  "Behind the scenes of what we do — a little look at our process.",
+  "We'd love to hear from you. Drop a comment or send us a message!",
+  "This week's highlight — swipe to see more →",
+  "Mark your calendar — you won't want to miss what's coming up.",
+  "A quick tip we think you'll find useful. Save this for later 📌",
+  "Proud of the work that went into this one. Tell us what you think!",
+  "New here? Here's a little about who we are and what we offer.",
 ];
 
 function buildInitialFields(template: Template | undefined): Record<string, string> {

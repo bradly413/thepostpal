@@ -27,28 +27,23 @@ import {
 } from "@/lib/dashboard-home-data";
 import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
+import { useActiveLocation } from "@/lib/use-active-location";
 
 // ── Hero slideshow (seasonal hooks) ──────────────────────────
+// Local seasonal slides only — stock imagery looked like another tenant's
+// photos to beta users, so remote Unsplash slides were removed.
 const SLIDES = [
   { title: "Father's Day", date: "June 21st", img: "/hero/fathers-day.jpg", baked: false },
   { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", baked: false },
-  { title: "Summer Kickoff", date: "June 20", img: "https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=1300&q=80&auto=format&fit=crop", baked: false },
-  { title: "Shop Local", date: "Every Week", img: "https://images.unsplash.com/photo-1441986300917-64674bd600d8?w=1300&q=80&auto=format&fit=crop", baked: false },
-];
-
-// Placeholder media (recent media + post thumbnails) — wire to /api/photos later
-const MEDIA = [
-  "https://images.unsplash.com/photo-1502933691298-84fc14542831?w=240&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1527004013197-933c4bb611b3?w=240&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1531722569936-825d3dd91b15?w=240&q=80&auto=format&fit=crop",
-  "https://images.unsplash.com/photo-1505228395891-9a51e7e86bf6?w=240&q=80&auto=format&fit=crop",
 ];
 
 const POST_PLATFORMS = ["instagram", "facebook", "x"] as const;
 
 // ── Weather (Open-Meteo) ─────────────────────────────────────
-const WX_LAT = 38.627;
-const WX_LON = -90.199;
+// Lat/lon + label are derived per-tenant from the active location's geo.
+// When the active location has no usable geo, the weather widget is hidden
+// rather than defaulting to any one city.
+interface WxPlace { lat: number; lon: number; label: string; }
 function wxIcon(code: number) {
   if (code === 0 || code === 1) return { Icon: SunIcon, label: "Clear", color: "#f5a524" };
   if (code === 2) return { Icon: CloudSun, label: "Partly Cloudy", color: "#f5a524" };
@@ -92,12 +87,20 @@ export default function DashboardHome() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [slide, setSlide] = useState(0);
-  const [wx, setWx] = useState<Weather>({ temp: 72, high: 78, low: 61, code: 2 });
+  const [wx, setWx] = useState<Weather | null>(null);
+  const [wxPlace, setWxPlace] = useState<WxPlace | null>(null);
 
   // Recent Media — live workspace photos only (no stock fallback: stock images
   // looked like another account's photos to beta users).
   const { photos: livePhotos } = useDashboardPhotos();
   const recentMedia = livePhotos.slice(0, 4).map((p) => p.src);
+
+  // Active location drives the weather widget's geo + label (per-tenant).
+  const { locationId, locations } = useActiveLocation();
+  const activeLocation = useMemo(
+    () => locations.find((l) => l.id === locationId) ?? null,
+    [locations, locationId],
+  );
 
   const refresh = useCallback(async () => {
     try {
@@ -122,24 +125,63 @@ export default function DashboardHome() {
     return () => window.clearInterval(t);
   }, []);
 
+  // Resolve lat/lon + a display label from the active location's geo. We use
+  // Open-Meteo's free geocoding API on the location's city (scoped by state /
+  // country when present). If there's nothing geocodable, leave wxPlace null so
+  // the widget hides instead of defaulting to a single city for every tenant.
   useEffect(() => {
+    let cancelled = false;
+    setWxPlace(null);
+    setWx(null);
+
+    const city = activeLocation?.city?.trim();
+    const state = activeLocation?.state?.trim();
+    const country = activeLocation?.country?.trim();
+    if (!city) return;
+
+    (async () => {
+      try {
+        const params = new URLSearchParams({ name: city, count: "10", language: "en", format: "json" });
+        const r = await fetch(`https://geocoding-api.open-meteo.com/v1/search?${params.toString()}`);
+        if (!r.ok) return;
+        const j = await r.json();
+        if (cancelled) return;
+        const results: Array<{ latitude: number; longitude: number; name?: string; admin1?: string; country_code?: string; country?: string }> = Array.isArray(j?.results) ? j.results : [];
+        if (results.length === 0) return;
+        // Prefer a result whose region/country matches the location, when given.
+        const match =
+          (state && results.find((x) => x.admin1?.toLowerCase() === state.toLowerCase())) ||
+          (country && results.find((x) => x.country?.toLowerCase() === country.toLowerCase() || x.country_code?.toLowerCase() === country.toLowerCase())) ||
+          results[0];
+        const labelParts = [match.name ?? city];
+        if (state) labelParts.push(state);
+        else if (match.admin1) labelParts.push(match.admin1);
+        setWxPlace({ lat: match.latitude, lon: match.longitude, label: labelParts.join(", ") });
+      } catch { /* no geo → widget stays hidden */ }
+    })();
+    return () => { cancelled = true; };
+  }, [activeLocation?.city, activeLocation?.state, activeLocation?.country]);
+
+  // Fetch the forecast once we have geo for the active location.
+  useEffect(() => {
+    if (!wxPlace) return;
     let cancelled = false;
     (async () => {
       try {
-        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${WX_LAT}&longitude=${WX_LON}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`);
+        const r = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${wxPlace.lat}&longitude=${wxPlace.lon}&current=temperature_2m,weather_code&daily=temperature_2m_max,temperature_2m_min&temperature_unit=fahrenheit&timezone=auto&forecast_days=1`);
         if (!r.ok) return;
         const j = await r.json();
         if (cancelled) return;
         setWx({
-          temp: Math.round(j.current?.temperature_2m ?? 72),
-          code: j.current?.weather_code ?? 2,
-          high: Math.round(j.daily?.temperature_2m_max?.[0] ?? 78),
-          low: Math.round(j.daily?.temperature_2m_min?.[0] ?? 61),
+          temp: Math.round(j.current?.temperature_2m ?? 0),
+          code: j.current?.weather_code ?? 0,
+          high: Math.round(j.daily?.temperature_2m_max?.[0] ?? 0),
+          low: Math.round(j.daily?.temperature_2m_min?.[0] ?? 0),
         });
-      } catch { /* keep fallback */ }
+      } catch { /* leave wx null → widget hides */ }
     })();
     return () => { cancelled = true; };
-  }, []);
+  }, [wxPlace]);
 
   useGSAP(
     () => {
@@ -170,7 +212,9 @@ export default function DashboardHome() {
       when: p.scheduledFor
         ? new Date(p.scheduledFor).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
         : "Unscheduled",
-      img: MEDIA[i % MEDIA.length],
+      // Real posts use their own media (no stock fallback — that looked like
+      // someone else's photo). Empty string → neutral placeholder thumbnail.
+      img: p.mediaUrl || p.mediaUrls?.[0] || "",
       platform: (p.platforms?.[0] as string) || POST_PLATFORMS[i % 3],
     }));
   }, [data]);
@@ -206,7 +250,9 @@ export default function DashboardHome() {
   }
 
   const cur = SLIDES[slide];
-  const wxI = wxIcon(wx.code);
+  // Weather widget only renders when the active location has geo + a forecast.
+  const showWeather = wxPlace !== null && wx !== null;
+  const wxI = wx ? wxIcon(wx.code) : null;
 
   const SHORTCUTS = [
     { label: "Create", sub: "Design a new post", href: "/dashboard/studio", Icon: Plus },
@@ -278,7 +324,7 @@ export default function DashboardHome() {
                   </div>
                 ) : upcoming.map((u, i) => (
                   <div className="uprow" key={i}>
-                    <span className="upthumb" style={{ backgroundImage: `url('${u.img}')` }} />
+                    <span className="upthumb" style={u.img ? { backgroundImage: `url('${u.img}')` } : undefined} />
                     <span className="upinfo"><span className="upt">{u.title}</span><span className="upd">{u.when}</span></span>
                     <span className="upplat"><PlatformIcon p={u.platform} /></span>
                   </div>
@@ -305,22 +351,24 @@ export default function DashboardHome() {
               </div>
             </div>
 
-            {/* Weather */}
-            <div className="mod wx2 anim">
-              <div className="wtop">
-                <div>
-                  <div className="temp">{wx.temp}<span className="deg">°</span></div>
-                  <div className="cond">{wxI.label}</div>
-                  <div className="loc">St. Louis, MO</div>
+            {/* Weather — per-tenant, hidden when the active location has no geo */}
+            {showWeather && wx && wxI && wxPlace && (
+              <div className="mod wx2 anim">
+                <div className="wtop">
+                  <div>
+                    <div className="temp">{wx.temp}<span className="deg">°</span></div>
+                    <div className="cond">{wxI.label}</div>
+                    <div className="loc">{wxPlace.label}</div>
+                  </div>
+                  <span className="wicon"><wxI.Icon style={{ color: wxI.color }} strokeWidth={1.5} /></span>
                 </div>
-                <span className="wicon"><wxI.Icon style={{ color: wxI.color }} strokeWidth={1.5} /></span>
+                <div className="wfoot">
+                  <span>H <b>{wx.high}°</b></span>
+                  <span>L <b>{wx.low}°</b></span>
+                  <Link href="/dashboard/calendar" className="wlink">Clear skies to post</Link>
+                </div>
               </div>
-              <div className="wfoot">
-                <span>H <b>{wx.high}°</b></span>
-                <span>L <b>{wx.low}°</b></span>
-                <Link href="/dashboard/calendar" className="wlink">Clear skies to post</Link>
-              </div>
-            </div>
+            )}
           </div>
 
           {/* Bottom row */}
