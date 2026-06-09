@@ -39,6 +39,25 @@ export async function withTenantDb<T>(
   });
 }
 
+/**
+ * Signup/login provisioning — sets tenant GUC so RLS allows org/user/location inserts.
+ */
+export async function withProvisioningDb<T>(
+  context: { tenantId: string; userId: string },
+  run: (tx: TenantDbClient) => Promise<T>,
+): Promise<T> {
+  return db.$transaction(async (tx) => {
+    await tx.$executeRaw`
+      SELECT
+        set_config('app.current_tenant_id', ${context.tenantId}, true),
+        set_config('app.current_user_id', ${context.userId}, true),
+        set_config('app.current_is_superadmin', 'false', true)
+    `;
+
+    return run(tx);
+  });
+}
+
 /** Cross-tenant jobs (Vercel Cron) — RLS bypass via superadmin GUC. */
 export async function withCronDb<T>(run: (tx: TenantDbClient) => Promise<T>): Promise<T> {
   return db.$transaction(async (tx) => {

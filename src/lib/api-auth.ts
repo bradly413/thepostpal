@@ -1,4 +1,5 @@
 import { getSessionData } from "@/lib/auth";
+import { ensureTenantReadyFromSession } from "@/lib/session-provision";
 
 export interface AuthContext {
   userId: string;
@@ -14,6 +15,8 @@ export async function requireAuthContext(): Promise<AuthContext> {
   if (!session?.sub || !tenantId) {
     throw new Error("UNAUTHORIZED");
   }
+
+  await ensureTenantReadyFromSession(session);
 
   return {
     userId: session.sub,

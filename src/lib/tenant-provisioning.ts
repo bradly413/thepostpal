@@ -1,7 +1,7 @@
 import "server-only";
 
 import { Prisma, type PlanTier } from "@prisma/client";
-import { db } from "@/lib/db";
+import { withProvisioningDb } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth-store";
 import {
   normalizePricingTierId,
@@ -41,7 +41,9 @@ export async function ensureTenantProvisioned(
 ): Promise<void> {
   const plan = resolveProvisionPlan(selectedPlan);
 
-  await db.$transaction(async (tx) => {
+  await withProvisioningDb(
+    { tenantId: user.accountId, userId: user.userId },
+    async (tx) => {
     await tx.organization.upsert({
       where: { id: user.accountId },
       update: {
@@ -145,5 +147,6 @@ export async function ensureTenantProvisioned(
       where: { id: user.accountId },
       data: { locationCount: activeCount },
     });
-  });
+    },
+  );
 }

@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { randomUUID } from "crypto";
-import { getSession } from "@/lib/auth";
+import { requireAuthContext } from "@/lib/api-auth";
 import { getAuthLoginUrl } from "@/lib/meta";
+import { resolveMetaConnectLocationId } from "@/lib/session-provision";
 
 function cookieOpts(maxAge: number) {
   const secure = process.env.NODE_ENV === "production";
@@ -14,13 +15,24 @@ function cookieOpts(maxAge: number) {
   };
 }
 
+function redirectWithError(req: NextRequest, message: string) {
+  return NextResponse.redirect(
+    new URL(
+      `/dashboard/settings?meta_error=${encodeURIComponent(message)}`,
+      req.url,
+    ),
+  );
+}
+
 /**
  * GET /api/auth/meta/login?locationId=...
  * Starts Meta OAuth for Facebook Page + Instagram Business publishing.
  */
 export async function GET(req: NextRequest) {
-  const session = await getSession();
-  if (!session) {
+  let auth;
+  try {
+    auth = await requireAuthContext();
+  } catch {
     const next = encodeURIComponent("/dashboard/settings");
     return NextResponse.redirect(new URL(`/sign-in?next=${next}`, req.url));
   }
@@ -28,23 +40,23 @@ export async function GET(req: NextRequest) {
   const appId =
     process.env.META_CLIENT_ID || process.env.NEXT_PUBLIC_META_APP_ID || "";
   if (!appId) {
-    return NextResponse.redirect(
-      new URL(
-        "/dashboard/settings?meta_error=" +
-          encodeURIComponent("Meta App ID not configured (META_CLIENT_ID)"),
-        req.url,
-      ),
+    return redirectWithError(
+      req,
+      "Meta App ID not configured (META_CLIENT_ID)",
     );
   }
 
-  const locationId = req.nextUrl.searchParams.get("locationId");
+  const requestedLocationId = req.nextUrl.searchParams.get("locationId");
+  const locationId = await resolveMetaConnectLocationId(
+    auth.tenantId,
+    auth.userId,
+    requestedLocationId,
+  );
+
   if (!locationId) {
-    return NextResponse.redirect(
-      new URL(
-        "/dashboard/settings?meta_error=" +
-          encodeURIComponent("locationId is required to connect Meta"),
-        req.url,
-      ),
+    return redirectWithError(
+      req,
+      "Your workspace is still setting up. Refresh the page, then try Connect again.",
     );
   }
 

@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { deleteTenantOrganization } from "@/lib/account-delete";
+import { clearAuthSessionCookies } from "@/lib/session-cookies";
 
 export async function DELETE(req: NextRequest) {
   try {
@@ -21,16 +21,8 @@ export async function DELETE(req: NextRequest) {
       await deleteTenantOrganization(auth, tx);
     });
 
-    const cookieStore = await cookies();
-    cookieStore.delete("session");
-
     const response = NextResponse.json({ success: true });
-    response.cookies.set("session", "", {
-      path: "/",
-      maxAge: 0,
-      httpOnly: true,
-      sameSite: "lax",
-    });
+    clearAuthSessionCookies(response);
     return response;
   } catch (error) {
     if (error instanceof Error) {

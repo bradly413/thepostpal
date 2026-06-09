@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 import { clearStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
@@ -17,7 +16,6 @@ export default function AccountSecurityPanel({
   onConnectMeta: () => void;
   onDisconnectMeta: () => void;
 }) {
-  const router = useRouter();
   const [showPasswordForm, setShowPasswordForm] = useState(false);
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
@@ -28,6 +26,7 @@ export default function AccountSecurityPanel({
   const [deleteConfirm, setDeleteConfirm] = useState("");
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   async function handleChangePassword() {
     setPasswordLoading(true);
@@ -65,8 +64,7 @@ export default function AccountSecurityPanel({
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error || "Could not delete account");
       clearStoredActiveLocationId();
-      document.cookie = "session=; path=/; max-age=0";
-      router.push("/sign-in");
+      window.location.href = "/sign-in";
     } catch (err) {
       setDeleteError(err instanceof Error ? err.message : "Could not delete account");
     } finally {
@@ -74,10 +72,18 @@ export default function AccountSecurityPanel({
     }
   }
 
-  function handleLogout() {
-    document.cookie = "session=; path=/; max-age=0";
+  async function handleLogout() {
+    setLogoutLoading(true);
+    try {
+      await fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      });
+    } catch {
+      /* still redirect — cookie clear is best-effort if network fails */
+    }
     clearStoredActiveLocationId();
-    router.push("/sign-in");
+    window.location.href = "/sign-in";
   }
 
   return (
@@ -194,11 +200,12 @@ export default function AccountSecurityPanel({
           </div>
           <button
             type="button"
-            onClick={handleLogout}
-            className="rounded-xl px-4 py-2 text-xs font-semibold pb-press-text transition-all"
+            disabled={logoutLoading}
+            onClick={() => void handleLogout()}
+            className="rounded-xl px-4 py-2 text-xs font-semibold pb-press-text transition-all disabled:opacity-50"
             style={{ border: "1px solid rgba(238,37,50,0.3)" }}
           >
-            Sign Out
+            {logoutLoading ? "Signing out…" : "Sign Out"}
           </button>
         </div>
         <div className="flex items-center justify-between gap-4 pt-2 border-t border-[rgba(238,37,50,0.15)]">

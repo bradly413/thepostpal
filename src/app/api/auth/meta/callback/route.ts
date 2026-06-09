@@ -12,6 +12,7 @@ import { withTenantDb } from "@/lib/db";
 import { persistMetaSocialAccounts } from "@/lib/social/social-account-db";
 import { persistMetaBundle } from "@/lib/meta-social-db";
 import { SOLO_MAX_CONNECTED_PROFILES } from "@/lib/social-profile-limits";
+import { resolveMetaConnectLocationId } from "@/lib/session-provision";
 
 /**
  * GET /api/auth/meta/callback
@@ -50,17 +51,25 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const locationId = req.cookies.get("meta_oauth_location_id")?.value;
-  if (!locationId) {
-    return NextResponse.redirect(
-      new URL(
-        "/dashboard/settings?meta_error=Choose+a+location+before+connecting+Meta",
-        req.url,
-      ),
-    );
-  }
+  const cookieLocationId = req.cookies.get("meta_oauth_location_id")?.value;
 
   try {
+    const auth = await requireAuthContext();
+    const locationId = await resolveMetaConnectLocationId(
+      auth.tenantId,
+      auth.userId,
+      cookieLocationId,
+    );
+
+    if (!locationId) {
+      return NextResponse.redirect(
+        new URL(
+          `/dashboard/settings?meta_error=${encodeURIComponent("Finish setting up your workspace before connecting Meta.")}`,
+          req.url,
+        ),
+      );
+    }
+
     const { access_token: shortToken } = await exchangeCode(code, META_AUTH_REDIRECT_URI);
     const long = await getLongLivedToken(shortToken);
     const pages = await getPages(long.access_token);
@@ -77,7 +86,6 @@ export async function GET(req: NextRequest) {
       ? new Date(Date.now() + long.expires_in * 1000)
       : null;
 
-    const auth = await requireAuthContext();
     await withTenantDb(auth, async (tx) => {
       await persistMetaSocialAccounts(auth, tx, {
         locationId,
@@ -103,10 +111,28 @@ export async function GET(req: NextRequest) {
     response.cookies.delete("meta_oauth_location_id");
     return response;
   } catch (err) {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      return NextResponse.redirect(
+        new URL(
+          "/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+Meta",
+          req.url,
+        ),
+      );
+    }
+
     if (err instanceof Error && err.message === "SOLO_PROFILE_LIMIT") {
       return NextResponse.redirect(
         new URL(
           `/dashboard/settings?meta_error=${encodeURIComponent(`Solo includes up to ${SOLO_MAX_CONNECTED_PROFILES} connected social profiles.`)}`,
+          req.url,
+        ),
+      );
+    }
+
+    if (err instanceof Error && err.message === "FORBIDDEN") {
+      return NextResponse.redirect(
+        new URL(
+          `/dashboard/settings?meta_error=${encodeURIComponent("You don't have access to this location. Switch locations in the dashboard and try again.")}`,
           req.url,
         ),
       );

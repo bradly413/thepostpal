@@ -3,10 +3,11 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMetaConnection } from "@/lib/use-meta-connection";
-import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { SITE_NAME } from "@/lib/site";
 import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
 import Link from "next/link";
+import { useActiveLocation } from "@/lib/use-active-location";
+import { setStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
 export default function SettingsPage() {
   return (
@@ -23,6 +24,7 @@ function SettingsContent() {
   const [activeTab, setActiveTab] = useState("profile");
   const [saved, setSaved] = useState(false);
   const { meta, reload: reloadMeta, disconnect: disconnectMeta } = useMetaConnection();
+  const { locationId, locations, loading: locationLoading } = useActiveLocation();
   const [metaError, setMetaError] = useState<string | null>(null);
 
   const [profile, setProfile] = useState({
@@ -105,12 +107,26 @@ function SettingsContent() {
   }
 
   function handleConnectMeta() {
-    const locationId = getStoredActiveLocationId();
-    if (!locationId) {
-      setMetaError("Choose a location in the dashboard before connecting Meta.");
+    if (locationLoading) {
+      setMetaError("Loading your workspace…");
       return;
     }
-    window.location.href = `/api/auth/meta/login?locationId=${encodeURIComponent(locationId)}`;
+
+    const validLocation =
+      locationId && locations.some((l) => l.id === locationId)
+        ? locationId
+        : locations[0]?.id ?? null;
+
+    if (!validLocation) {
+      setMetaError(
+        "Your workspace is still setting up. Refresh this page, then try Connect again.",
+      );
+      return;
+    }
+
+    setStoredActiveLocationId(validLocation);
+    setMetaError(null);
+    window.location.href = `/api/auth/meta/login?locationId=${encodeURIComponent(validLocation)}`;
   }
 
   async function handleDisconnectMeta() {
