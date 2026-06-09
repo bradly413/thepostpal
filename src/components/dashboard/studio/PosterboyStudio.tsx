@@ -2285,9 +2285,11 @@ function StudioStyles() {
   }.pb-studio .canvas-theme-grid::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
     background-image:
-      linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
-    background-size: 46px 46px;
+      linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.16) 1px, transparent 1px);
+    background-size: 44px 44px;
+    -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 92%);
+    mask-image: radial-gradient(ellipse at center, #000 55%, transparent 92%);
   }.pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
   .pb-studio .magic-wand {
     width: 44px; height: 44px;
