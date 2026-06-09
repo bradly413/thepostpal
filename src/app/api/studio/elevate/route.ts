@@ -52,7 +52,9 @@ function parseElevate(text: string): ElevateResult | null {
 async function fetchImageAsBase64(
   imageUrl: string,
 ): Promise<{ mediaType: string; data: string }> {
-  const res = await fetch(imageUrl);
+  const res = await fetch(imageUrl, {
+    headers: { "User-Agent": "PosterboySocial/1.0 (+https://www.posterboysocial.com)" },
+  });
   if (!res.ok) throw new Error(`Could not fetch image (${res.status})`);
   const contentType = (res.headers.get("content-type") || "").split(";")[0].trim();
   const mediaType = ALLOWED_MEDIA.has(contentType) ? contentType : "image/jpeg";
@@ -203,7 +205,16 @@ Include 5-8 relevant hashtags. The altText must describe what is actually visibl
     // "warn" / "suggest" (or "block" that didn't actually violate) → additive flag.
     return Response.json({ ...result, compliance: { level, flaggedPhrases } });
   } catch (err) {
-    console.error("[api/studio/elevate] failed:", err instanceof Error ? err.message : err);
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[api/studio/elevate] failed:", msg);
+    // An un-fetchable image (private/blocked host, 403/404) is a user-input issue,
+    // not a server fault — return a clear, non-500 message.
+    if (/could not fetch image|fetch failed|enotfound|getaddrinfo|\b40[34]\b/i.test(msg)) {
+      return Response.json(
+        { error: "Couldn't load that photo. Use a public image and try again." },
+        { status: 502 },
+      );
+    }
     return Response.json({ error: "AI request failed" }, { status: 500 });
   }
 }
