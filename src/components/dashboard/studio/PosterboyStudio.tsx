@@ -853,7 +853,7 @@ export default function PosterboyStudio() {
         </div>
 
         {/* CANVAS */}
-        <main className="canvas" ref={canvasRef}>
+        <main className={`canvas canvas-theme-${theme}`} ref={canvasRef}>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
 
@@ -2275,8 +2275,20 @@ function StudioStyles() {
     padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
     border: 1px solid rgba(238,37,50,0.2); z-index: 8;
   }.pb-studio .studio-caption-tools {
-    position: absolute; bottom: 10px; right: 10px; z-index: 8; max-width: 240px;
-  .pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
+    position: absolute; bottom: 10px; right: 10px; z-index: 12; width: 248px;
+    max-height: calc(100% - 20px); overflow-y: auto; padding: 10px; border-radius: 14px;
+    background: rgba(255,255,255,0.97);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
+    backdrop-filter: blur(14px) saturate(1.4);
+    border: 1px solid rgba(0,0,0,0.07);
+    box-shadow: 0 14px 34px -10px rgba(15,15,20,0.32);
+  }.pb-studio .canvas-theme-grid::after {
+    content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
+    background-image:
+      linear-gradient(rgba(255,255,255,0.07) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(255,255,255,0.07) 1px, transparent 1px);
+    background-size: 46px 46px;
+  }.pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
   .pb-studio .magic-wand {
     width: 44px; height: 44px;
     border-radius: 12px;
