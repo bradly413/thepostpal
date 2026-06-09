@@ -11,6 +11,7 @@
     "test": "vitest run",
     "db:studio": "export $(grep -h '^DATABASE_URL=' .env.local | sed 's/\"//g') && prisma studio --port 5555 --browser none",
     "tokens:migrate:social": "export $(grep -h -E '^(DATABASE_URL|TOKEN_ENC_KEY)=' .env.local | sed 's/\"//g') && tsx scripts/migrate-social-account-tokens.ts",
+    "seed:verticals": "tsx scripts/seed-verticals.ts",
     "claude:sync": "bash scripts/generate-claude-catchup.sh"
   },
   "dependencies": {

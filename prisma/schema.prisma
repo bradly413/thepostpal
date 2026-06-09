@@ -83,6 +83,7 @@ model Organization {
   plan          PlanTier @default(solo)
   brandEngine   Json?
   accountSettings Json?
+  verticalSlug  String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -551,4 +552,30 @@ model Subscription {
 
   @@unique([organizationId])
   @@index([stripeCustomerId])
+}
+
+/**
+ * Compliance & brand guardrail registry — a parent-child vertical taxonomy.
+ * DB-backed so legal/ops can maintain blacklists without a code deploy.
+ * Additive + standalone: not referenced by any tenant FK. Organizations link to
+ * a leaf vertical by slug via Organization.verticalSlug (nullable, no FK).
+ */
+model VerticalSeed {
+  id       String  @id @default(cuid())
+  slug     String  @unique
+  name     String
+  parentId String?
+  parent   VerticalSeed?  @relation("Hierarchy", fields: [parentId], references: [id])
+  children VerticalSeed[] @relation("Hierarchy")
+
+  bannedPhrases    String[]
+  preferredPhrases String[]
+  enforcementLevel String   @default("suggest")
+  regulatoryBody   String?
+  complianceNotes  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([parentId])
 }
