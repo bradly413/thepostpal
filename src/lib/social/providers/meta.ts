@@ -77,10 +77,14 @@ export const metaProvider: SocialProvider = {
    * Returns the same (decrypted) token with no expiry.
    */
   async refreshToken(
-    encryptedToken: string,
-  ): Promise<{ newAccessToken: string; newExpiresAt?: Date | null }> {
+    account: SocialAccount,
+  ): Promise<{
+    newAccessToken: string;
+    newRefreshToken?: string;
+    newExpiresAt?: Date | null;
+  }> {
     return {
-      newAccessToken: decryptToken(encryptedToken),
+      newAccessToken: decryptToken(account.accessToken),
       newExpiresAt: null,
     };
   },

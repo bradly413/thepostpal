@@ -41,9 +41,8 @@ export async function GET(request: NextRequest) {
       processed += 1;
       try {
         const provider = getProvider(account.provider);
-        const { newAccessToken, newExpiresAt } = await provider.refreshToken(
-          account.accessToken,
-        );
+        const { newAccessToken, newRefreshToken, newExpiresAt } =
+          await provider.refreshToken(account);
 
         await withCronDb((tx) =>
           tx.socialAccount.update({
@@ -51,6 +50,11 @@ export async function GET(request: NextRequest) {
             data: {
               accessToken: encryptToken(newAccessToken),
               tokenExpiresAt: newExpiresAt ?? null,
+              // Persist a rotated refresh token when the provider returns one;
+              // otherwise leave the stored value untouched.
+              ...(newRefreshToken?.trim()
+                ? { refreshToken: encryptToken(newRefreshToken) }
+                : {}),
             },
           }),
         );

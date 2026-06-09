@@ -80,6 +80,7 @@ export async function GET(req: NextRequest) {
         accountId: account.accountId,
         accountName: account.accountName,
         accessToken: account.accessToken,
+        refreshToken: account.refreshToken ?? null,
         tokenExpiresAt: account.expiresAt ?? null,
       });
     });

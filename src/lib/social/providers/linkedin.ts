@@ -102,16 +102,55 @@ export const linkedinProvider: SocialProvider = {
   },
 
   async refreshToken(
-    encryptedToken: string,
-  ): Promise<{ newAccessToken: string; newExpiresAt?: Date | null }> {
-    // LinkedIn's refresh grant requires the refresh_token, not the access token.
-    // We do not have it here (this signature only receives the stored access
-    // token), so we cannot silently refresh. Surface as a failure so the cron
-    // flags the account for reconnect.
-    void encryptedToken;
-    throw new Error(
-      "LinkedIn token refresh requires a stored refresh_token; reconnect required",
-    );
+    account: SocialAccount,
+  ): Promise<{
+    newAccessToken: string;
+    newRefreshToken?: string;
+    newExpiresAt?: Date | null;
+  }> {
+    // LinkedIn's refresh grant requires the stored refresh_token. If we never
+    // captured one (legacy connection, or a member who didn't grant it), there
+    // is nothing to refresh — surface as a failure so the cron flags the account
+    // for reconnect.
+    if (!account.refreshToken) {
+      throw new Error(
+        "LinkedIn token refresh requires a stored refresh_token; reconnect required",
+      );
+    }
+
+    const refreshToken = decryptToken(account.refreshToken);
+    if (!refreshToken.trim()) {
+      throw new Error(
+        "LinkedIn token refresh requires a stored refresh_token; reconnect required",
+      );
+    }
+
+    const tokenRes = await fetch(TOKEN_URL, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: new URLSearchParams({
+        grant_type: "refresh_token",
+        refresh_token: refreshToken,
+        client_id: clientId(),
+        client_secret: clientSecret(),
+      }),
+    });
+
+    if (!tokenRes.ok) {
+      throw new Error(`LinkedIn token refresh failed: HTTP ${tokenRes.status}`);
+    }
+
+    const token = (await tokenRes.json()) as LinkedInTokenResponse;
+    if (!token.access_token) {
+      throw new Error("LinkedIn token refresh returned no access_token");
+    }
+
+    return {
+      newAccessToken: token.access_token,
+      // LinkedIn may rotate the refresh token; persist the new one when returned.
+      newRefreshToken: token.refresh_token,
+      newExpiresAt: expiresAtFrom(token.expires_in),
+    };
   },
 
   async publish(

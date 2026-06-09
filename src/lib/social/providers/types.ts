@@ -23,13 +23,18 @@ export interface SocialProvider {
   getAuthUrl(state: string, redirectUri: string): string;
   exchangeCode(code: string, redirectUri: string): Promise<ExchangedAccount[]>;
   /**
-   * Refresh an (encrypted) access token. Implementations decrypt internally and
-   * return a fresh PLAINTEXT access token — the caller is responsible for
-   * re-encrypting before persistence.
+   * Refresh an account's access token. Implementations receive the full
+   * SocialAccount row (so they can read both the encrypted `accessToken` and the
+   * encrypted `refreshToken`), decrypt internally, and return fresh PLAINTEXT
+   * token(s) — the caller is responsible for re-encrypting before persistence.
    */
   refreshToken(
-    encryptedToken: string,
-  ): Promise<{ newAccessToken: string; newExpiresAt?: Date | null }>;
+    account: import("@prisma/client").SocialAccount,
+  ): Promise<{
+    newAccessToken: string;
+    newRefreshToken?: string;
+    newExpiresAt?: Date | null;
+  }>;
   publish(
     account: SocialAccount,
     payload: PublishPayload,

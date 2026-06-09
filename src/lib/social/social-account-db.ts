@@ -88,6 +88,7 @@ export interface PersistLinkedInSocialAccountInput {
   accountId: string;
   accountName: string;
   accessToken: string;
+  refreshToken?: string | null;
   tokenExpiresAt?: Date | null;
 }
 
@@ -132,6 +133,9 @@ export async function persistLinkedInSocialAccount(
       accountId: input.accountId,
       accountName: input.accountName,
       accessToken: encryptToken(input.accessToken),
+      refreshToken: input.refreshToken?.trim()
+        ? encryptToken(input.refreshToken)
+        : null,
       tokenExpiresAt: input.tokenExpiresAt ?? null,
     },
   });
