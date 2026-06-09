@@ -1064,6 +1064,12 @@ export default function PosterboyStudio() {
                         setMediaKind("image");
                         setShowTemplate(false);
                       }}
+                      onElevated={(caption, hashtags) => {
+                        setCaptionText(caption);
+                        setCaptionTags(hashtags.join(" "));
+                        setCaptionState("done");
+                        setCaptionError("");
+                      }}
                     />
                     {composerBrief ? (
                       <div className="studio-intent-captions">

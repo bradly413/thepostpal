@@ -6,22 +6,27 @@ import { ImagePlus, Sparkles } from "lucide-react";
 interface Props {
   disabled?: boolean;
   onUploaded?: (url: string) => void;
+  /** Called with the AI-elevated caption + hashtags so the studio can populate its composer. */
+  onElevated?: (caption: string, hashtags: string[]) => void;
 }
 
-export default function TrashToTreasureUploadZone({ disabled, onUploaded }: Props) {
+export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElevated }: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [elevateStub, setElevateStub] = useState<string | null>(null);
+  const [elevating, setElevating] = useState(false);
+  const [elevateError, setElevateError] = useState<string | null>(null);
+  const [elevateNote, setElevateNote] = useState<string | null>(null);
 
   const uploadFile = useCallback(
     async (file: File) => {
       if (disabled || uploading) return;
       setUploading(true);
       setError(null);
-      setElevateStub(null);
+      setElevateError(null);
+      setElevateNote(null);
       try {
         const form = new FormData();
         form.append("file", file);
@@ -52,13 +57,45 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded }: Prop
     if (file) void uploadFile(file);
   }
 
-  function handleElevateStub() {
-    // Phase 2 scaffold — future vision endpoint uses PINNED model claude-sonnet-4-6
-    // (has vision), NOT "Claude 3.5". Will auto-caption + elevate the raw upload.
-    setElevateStub(
-      "Elevate is coming soon — vision analysis via claude-sonnet-4-6 will auto-caption and polish this photo.",
-    );
-  }
+  const handleElevate = useCallback(async () => {
+    if (disabled || elevating || !uploadedUrl) return;
+    setElevating(true);
+    setElevateError(null);
+    setElevateNote(null);
+    try {
+      const res = await fetch("/api/studio/elevate", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ imageUrl: uploadedUrl }),
+      });
+      const data = (await res.json()) as {
+        caption?: string;
+        hashtags?: string[];
+        altText?: string;
+        error?: string;
+        compliance?: { blocked?: boolean; message?: string };
+      };
+      if (!res.ok) {
+        throw new Error(data.error || "Couldn't elevate that photo.");
+      }
+      if (data.compliance?.blocked) {
+        setElevateError(data.compliance.message || "Caption blocked by compliance guardrails.");
+        return;
+      }
+      if (!data.caption) {
+        throw new Error("No caption came back. Try again.");
+      }
+      onElevated?.(data.caption, data.hashtags ?? []);
+      if (data.compliance?.message) {
+        setElevateNote(data.compliance.message);
+      }
+    } catch (err) {
+      setElevateError(err instanceof Error ? err.message : "Couldn't elevate that photo.");
+    } finally {
+      setElevating(false);
+    }
+  }, [disabled, elevating, onElevated, uploadedUrl]);
 
   return (
     <div className="pb-trash-treasure">
@@ -103,15 +140,17 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded }: Prop
         <button
           type="button"
           className="pb-trash-elevate"
-          onClick={handleElevateStub}
-          disabled={disabled}
+          onClick={() => void handleElevate()}
+          disabled={disabled || elevating}
+          aria-busy={elevating}
         >
           <Sparkles size={14} />
-          Elevate with AI
+          {elevating ? "Elevating…" : "Elevate with AI"}
         </button>
       ) : null}
       {error ? <p className="pb-trash-error">{error}</p> : null}
-      {elevateStub ? <p className="pb-trash-stub">{elevateStub}</p> : null}
+      {elevateError ? <p className="pb-trash-error">{elevateError}</p> : null}
+      {elevateNote ? <p className="pb-trash-stub">{elevateNote}</p> : null}
       <style>{`
         .pb-trash-treasure { width: 100%; max-width: 320px; margin-top: 16px; }
         .pb-trash-drop {
@@ -134,7 +173,10 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded }: Prop
           display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
           padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
           border: 1px solid rgba(238,37,50,0.25); background: rgba(238,37,50,0.06); color: #c41e2a;
+          cursor: pointer; transition: background 0.15s, opacity 0.15s;
         }
+        .pb-trash-elevate:hover:not(:disabled) { background: rgba(238,37,50,0.1); }
+        .pb-trash-elevate:disabled { opacity: 0.6; cursor: default; }
         .pb-trash-error { font-size: 11px; color: #c41e2a; margin: 8px 0 0; }
         .pb-trash-stub {
           font-size: 11px; line-height: 1.4; color: rgba(22,22,28,0.55);
