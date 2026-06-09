@@ -141,6 +141,64 @@ export async function persistLinkedInSocialAccount(
   });
 }
 
+export interface PersistTikTokSocialAccountInput {
+  locationId: string;
+  accountId: string;
+  accountName: string;
+  accessToken: string;
+  refreshToken?: string | null;
+  tokenExpiresAt?: Date | null;
+}
+
+/**
+ * Persist (upsert-by-replace) a TikTok SocialAccount row. Mirrors the access +
+ * plan-limit checks of persistLinkedInSocialAccount, scoped to provider
+ * "tiktok" only so it never disturbs existing Meta/LinkedIn rows.
+ */
+export async function persistTikTokSocialAccount(
+  auth: AuthContext,
+  tx: TenantDbClient,
+  input: PersistTikTokSocialAccountInput,
+): Promise<void> {
+  const access = await resolveAccess(auth.userId, input.locationId, tx);
+  if (!access.hasAccess) {
+    throw new Error("FORBIDDEN");
+  }
+
+  const organization = await tx.organization.findFirst({
+    where: { id: auth.tenantId },
+    select: { plan: true },
+  });
+  if (!organization) {
+    throw new Error("ORG_NOT_FOUND");
+  }
+
+  await tx.socialAccount.deleteMany({
+    where: {
+      organizationId: auth.tenantId,
+      locationId: input.locationId,
+      provider: "tiktok",
+    },
+  });
+
+  await assertCanConnectSocialProfile(tx, auth.tenantId, organization.plan);
+
+  await tx.socialAccount.create({
+    data: {
+      organizationId: auth.tenantId,
+      locationId: input.locationId,
+      provider: "tiktok",
+      accountId: input.accountId,
+      accountName: input.accountName,
+      accessToken: encryptToken(input.accessToken),
+      refreshToken: input.refreshToken?.trim()
+        ? encryptToken(input.refreshToken)
+        : null,
+      tokenExpiresAt: input.tokenExpiresAt ?? null,
+    },
+  });
+}
+
 export async function loadSocialAccountById(
   tx: TenantDbClient,
   organizationId: string,
