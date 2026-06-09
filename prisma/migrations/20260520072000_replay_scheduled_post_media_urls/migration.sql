@@ -1,0 +1,2 @@
+ALTER TABLE "ScheduledPost"
+  ADD COLUMN IF NOT EXISTS "mediaUrls" JSONB;

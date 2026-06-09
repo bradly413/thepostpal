@@ -93,6 +93,7 @@ model Organization {
   templates         Template[]
   scheduledPosts    ScheduledPost[]
   socialConnections SocialConnection[]
+  socialAccounts    SocialAccount[]
   photoAssets       PhotoAsset[]
   calendarEvents    CalendarEvent[]
   knowledgeEntries  KnowledgeBaseEntry[]
@@ -140,6 +141,7 @@ model Location {
 
   memberships       LocationMembership[]
   socialConnections SocialConnection[]
+  socialAccounts    SocialAccount[]
   scheduledPosts    ScheduledPost[]
   photoAssets       PhotoAsset[]
   calendarEvents    CalendarEvent[]
@@ -275,6 +277,28 @@ model SocialConnection {
   @@index([externalAccountId])
 }
 
+/// Meta Facebook Page / Instagram Business account for publishing (OAuth).
+model SocialAccount {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+
+  provider       String
+  accountId      String
+  accountName    String
+  accessToken    String
+  tokenExpiresAt DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([locationId, provider, accountId])
+  @@index([organizationId])
+  @@index([locationId, provider])
+}
+
 model MetaAdAccount {
   id             String       @id @default(cuid())
   organizationId String
@@ -311,6 +335,8 @@ model ScheduledPost {
   note           String?
   reviewerNotes  String?
   mediaUrl       String?
+  /** Carousel groundwork — ordered public image URLs (single-image posts use mediaUrl). */
+  mediaUrls      Json?
   mediaType      ScheduledPostMediaType?
   errorLog       String?
   createdAt      DateTime         @default(now())

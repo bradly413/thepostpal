@@ -1,0 +1,6 @@
+-- Intentionally left as a no-op for replay safety.
+--
+-- The SocialAccount table depends on Organization + Location, which are created
+-- later in the current migration chain (`20260520061525_location_model`).
+-- The real table creation now replays safely in
+-- `20260520073000_replay_social_account`.

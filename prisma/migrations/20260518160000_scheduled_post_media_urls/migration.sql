@@ -1,0 +1,5 @@
+-- Intentionally left as a no-op for replay safety.
+--
+-- `ScheduledPost` is introduced later in the chain
+-- (`20260520061525_location_model`). The real column addition now replays in
+-- `20260520072000_replay_scheduled_post_media_urls`.

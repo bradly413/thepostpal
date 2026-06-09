@@ -10,6 +10,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "db:studio": "export $(grep -h '^DATABASE_URL=' .env.local | sed 's/\"//g') && prisma studio --port 5555 --browser none",
+    "tokens:migrate:social": "export $(grep -h -E '^(DATABASE_URL|TOKEN_ENC_KEY)=' .env.local | sed 's/\"//g') && tsx scripts/migrate-social-account-tokens.ts",
     "claude:sync": "bash scripts/generate-claude-catchup.sh"
   },
   "dependencies": {
@@ -22,6 +23,7 @@
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
     "@remotion/player": "^4.0.464",
+    "@sentry/nextjs": "^10.57.0",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.92",
     "@types/three": "^0.184.1",
@@ -39,6 +41,7 @@
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
     "remotion": "^4.0.464",
+    "server-only": "^0.0.1",
     "stripe": "^17.7.0",
     "three": "^0.184.0",
     "zod": "^4.4.3"

@@ -25,17 +25,7 @@ BEGIN
   END IF;
 END $$;
 
-DO $$
-BEGIN
-  IF EXISTS (
-    SELECT 1
-    FROM information_schema.tables
-    WHERE table_schema = 'public'
-      AND table_name = 'ScheduledPost'
-  ) THEN
-    ALTER TABLE "ScheduledPost"
-      ADD COLUMN IF NOT EXISTS "mediaUrl" TEXT,
-      ADD COLUMN IF NOT EXISTS "mediaType" "ScheduledPostMediaType",
-      ADD COLUMN IF NOT EXISTS "errorLog" TEXT;
-  END IF;
-END $$;
+ALTER TABLE "ScheduledPost"
+  ADD COLUMN IF NOT EXISTS "mediaUrl" TEXT,
+  ADD COLUMN IF NOT EXISTS "mediaType" "ScheduledPostMediaType",
+  ADD COLUMN IF NOT EXISTS "errorLog" TEXT;
