@@ -46,13 +46,18 @@ export default function Footer() {
         {columns.map((col) => (
           <div key={col.title}>
             <span className="type-label" style={{ display: 'block', marginBottom: '1em', color: 'var(--newsprint)' }}>{col.title}</span>
-            {col.items.map((item) => (
-              <a key={item.label} href={item.href} className="type-caption" style={{ display: 'block', color: 'var(--paper)', marginBottom: '0.5em', opacity: 0.55, transition: 'opacity 0.2s' }}
+            {col.items.map((item) => {
+              const isExternal = item.href.startsWith("http");
+              return (
+              <a key={item.label} href={item.href} className="type-caption"
+                {...(isExternal ? { target: "_blank", rel: "noopener noreferrer" } : {})}
+                style={{ display: 'block', color: 'var(--paper)', marginBottom: '0.5em', opacity: 0.55, transition: 'opacity 0.2s' }}
                 onMouseEnter={(e) => { e.currentTarget.style.opacity = '1'; }}
                 onMouseLeave={(e) => { e.currentTarget.style.opacity = '0.55'; }}>
                 {item.label}
               </a>
-            ))}
+              );
+            })}
           </div>
         ))}
       </div>

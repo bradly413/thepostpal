@@ -63,6 +63,12 @@ export const metadata: Metadata = {
     type: "website",
     locale: "en_US",
   },
+  twitter: {
+    card: "summary_large_image",
+    title: `${SITE_NAME} | Post less. Sell more.`,
+    description:
+      "A calm social-media tool for businesses that don't want one. Your week is drafted.",
+  },
 };
 
 export default function RootLayout({

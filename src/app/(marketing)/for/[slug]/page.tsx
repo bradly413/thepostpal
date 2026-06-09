@@ -1,8 +1,43 @@
+import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import MarketingSubpageChrome from "@/components/marketing/MarketingSubpageChrome";
 import { getVertical, getVerticalAliases, VERTICALS } from "@/lib/verticals";
 import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ slug: string }>;
+}): Promise<Metadata> {
+  const { slug } = await params;
+  const vertical = getVertical(slug);
+
+  if (!vertical) {
+    return {
+      title: "Social media that sells | Posterboy",
+      description:
+        "A calm social-media tool for businesses that don't want one. Your week is drafted.",
+    };
+  }
+
+  const title = `${vertical.name} social media that sells | Posterboy`;
+  const description = `${vertical.painPoint} ${vertical.headline}`.trim();
+
+  return {
+    title,
+    description,
+    alternates: {
+      canonical: `/for/${slug}`,
+    },
+    openGraph: {
+      title,
+      description,
+      url: `/for/${slug}`,
+      type: "website",
+    },
+  };
+}
 
 export function generateStaticParams() {
   const slugs = [
