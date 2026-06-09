@@ -4,6 +4,7 @@ import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { SITE_NAME } from "@/lib/site";
+import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
 import Link from "next/link";
 import { useActiveLocation } from "@/lib/use-active-location";
@@ -141,6 +142,7 @@ function SettingsContent() {
   const tabs = [
     { id: "profile", label: "Profile" },
     { id: "brand", label: "Brand voice" },
+    { id: "compliance", label: "Compliance" },
     { id: "account", label: "Account" },
     { id: "posting", label: "Posting" },
     { id: "notifications", label: "Notifications" },
@@ -232,6 +234,10 @@ function SettingsContent() {
                 Open brand intake
               </a>
             </div>
+          )}
+
+          {activeTab === "compliance" && (
+            <VerticalCompliancePanel compact />
           )}
 
           {activeTab === "posting" && (

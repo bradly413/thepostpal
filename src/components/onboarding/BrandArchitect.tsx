@@ -18,10 +18,12 @@ import {
   type GreetingChoice,
 } from "@/lib/onboarding-choices";
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
+import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
   cacheStoredBrandBook,
   cacheStoredOnboardingAnswers,
   markOnboardingComplete,
+  syncPendingVerticalSlug,
 } from "@/lib/onboarding-brand-sync";
 
 // Social platforms the user can connect (Step 1). Profile URLs are captured in
@@ -163,7 +165,7 @@ function BehavioralPicker<T extends string>({
 }
 
 export default function BrandArchitect() {
-  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4 topics · 5–7 behavioral
+  const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4 compliance · 5 topics · 6–8 behavioral
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
@@ -326,7 +328,7 @@ export default function BrandArchitect() {
     void loadBrandEngine();
   }, [loadBrandEngine]);
 
-  const next = () => setStep((s) => Math.min(s + 1, 7));
+  const next = () => setStep((s) => Math.min(s + 1, 8));
   const back = () => setStep((s) => (s === 3 ? 1 : Math.max(s - 1, 0)));
 
   // Auto-advance the "analyzing your social media" loader once it has played.
@@ -464,7 +466,7 @@ export default function BrandArchitect() {
       <div className="absolute bottom-8 left-8 z-20 h-1.5 w-44 overflow-hidden rounded-full bg-black/[0.08]">
         <div
           className="h-full rounded-full bg-[#ee2532] transition-all duration-500 ease-out"
-          style={{ width: `${((step + 1) / 7) * 100}%` }}
+          style={{ width: `${((step + 1) / 9) * 100}%` }}
         />
       </div>
 
@@ -678,6 +680,21 @@ export default function BrandArchitect() {
         {step === 4 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Compliance vertical
+            </h2>
+            <p className="text-[15px] text-[#76767e] mb-6">
+              We matched a guardrail profile from your industry. Confirm or pick a different vertical before you draft.
+            </p>
+            <VerticalCompliancePanel
+              suggestedIndustryId={industryId}
+              onSaved={() => next()}
+            />
+          </div>
+        )}
+
+        {step === 5 && (
+          <div className="architect-fade w-full max-w-xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               Your audience &amp; topics
             </h2>
             <p className="text-[15px] text-[#76767e] mb-6">
@@ -724,7 +741,7 @@ export default function BrandArchitect() {
           </div>
         )}
 
-        {step === 5 && (
+        {step === 6 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               The Dress Code
@@ -750,7 +767,7 @@ export default function BrandArchitect() {
           </div>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               The Greeting
@@ -771,7 +788,7 @@ export default function BrandArchitect() {
           </div>
         )}
 
-        {step === 7 && (
+        {step === 8 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               The Compliment
@@ -818,6 +835,7 @@ export default function BrandArchitect() {
                         brandBook: data.brandBook,
                         onboardingAnswers: answers,
                       });
+                      await syncPendingVerticalSlug();
                     } catch {
                       /* local cache is enough until they sign in */
                     }

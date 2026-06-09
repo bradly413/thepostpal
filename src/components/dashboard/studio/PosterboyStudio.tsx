@@ -36,6 +36,7 @@ import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost } from "@/lib/dashboard-api";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import type { SocialPlatform } from "@/lib/posterboy-types";
 
@@ -129,6 +130,7 @@ export default function PosterboyStudio() {
   const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
   const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
   const { locationId } = useActiveLocation();
+  const features = usePlanFeatures();
   const searchParams = useSearchParams();
   const studioLayerKey = locationId ? compositionStorageKey(locationId, "studio") : null;
   const {
@@ -937,6 +939,16 @@ export default function PosterboyStudio() {
                       brief={prompt || captionText}
                       platform={platform.id}
                       disabled={genState === "generating"}
+                      approvalPipeline={features.approvalPipeline}
+                      locationId={locationId}
+                      platforms={
+                        platform.id === "facebook" ||
+                        platform.id === "instagram" ||
+                        platform.id === "linkedin" ||
+                        platform.id === "tiktok"
+                          ? [platform.id]
+                          : ["instagram"]
+                      }
                       onSelect={(v) => {
                         setCaptionText(v.caption);
                         setCaptionTags(v.hashtags.join(" "));
@@ -1170,6 +1182,16 @@ export default function PosterboyStudio() {
                   <CaptionVariantPicker
                     brief={prompt || captionText}
                     platform={platform.id}
+                    approvalPipeline={features.approvalPipeline}
+                    locationId={locationId}
+                    platforms={
+                      platform.id === "facebook" ||
+                      platform.id === "instagram" ||
+                      platform.id === "linkedin" ||
+                      platform.id === "tiktok"
+                        ? [platform.id]
+                        : ["instagram"]
+                    }
                     onSelect={(v) => {
                       setCaptionText(v.caption);
                       setCaptionTags(v.hashtags.join(" "));

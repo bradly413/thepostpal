@@ -1,6 +1,7 @@
 "use client";
 
 import type { BrandBook, OnboardingAnswers } from "@/lib/brand-book-schema";
+import type { TenantVerticalState, VerticalOption } from "@/lib/compliance/client-types";
 import type { DraftStatus, SocialPlatform } from "@/lib/posterboy-types";
 import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 
@@ -217,6 +218,24 @@ export async function updateDashboardPost(
 export async function submitDashboardPost(id: string): Promise<void> {
   await apiRequest(`/api/posts/${id}/submit-for-approval`, {
     method: "POST",
+  });
+}
+
+// ── Compliance vertical (tenant-scoped) ───────────────────
+
+export async function fetchDashboardVerticalOptions(): Promise<VerticalOption[]> {
+  const data = await apiRequest<{ verticals: VerticalOption[] }>("/api/verticals");
+  return data.verticals;
+}
+
+export async function fetchDashboardVerticalState(): Promise<TenantVerticalState> {
+  return apiRequest<TenantVerticalState>("/api/me/vertical");
+}
+
+export async function updateDashboardVertical(slug: string): Promise<TenantVerticalState> {
+  return apiRequest<TenantVerticalState>("/api/me/vertical", {
+    method: "POST",
+    body: JSON.stringify({ slug }),
   });
 }
 

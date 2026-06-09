@@ -2,6 +2,9 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
+import { withTenantDb } from "@/lib/db";
+import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
+import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
 
 export const runtime = "nodejs";
 
@@ -115,10 +118,75 @@ Respond with ONLY a JSON array (no prose, no code fences) of this exact shape:
     });
     const text = response.content[0]?.type === "text" ? response.content[0].text : "";
     const variants = parseVariants(text);
+
+    // Resolve compliance guardrails (null = tenant has no vertical → behave
+    // exactly as before). Best-effort: never throws.
+    let guardrails: ResolvedGuardrails | null = null;
+    try {
+      guardrails = await withTenantDb(auth, (tx) => resolveTenantGuardrails(tx, auth.tenantId));
+    } catch {
+      guardrails = null;
+    }
+
+    // No vertical → preserve the existing response shape byte-for-byte, including
+    // the legacy 502 for a genuine generation failure (model returned junk).
+    if (!guardrails) {
+      if (variants.length === 0) {
+        return Response.json({ error: "Couldn't generate options. Try again." }, { status: 502 });
+      }
+      return Response.json({ variants });
+    }
+
+    const level = guardrails.enforcementLevel;
+    const variantText = (v: CaptionVariant) => `${v.caption} ${v.hashtags.join(" ")}`;
+
+    if (level === "block") {
+      const kept = variants.filter((v) => checkViolations(variantText(v), guardrails!).length === 0);
+      if (kept.length === 0) {
+        // Compliance-driven refusal — NEVER a bare 502. 200 with an explicit
+        // compliance payload so the caption picker can surface a clear message.
+        const flaggedPhrases = [
+          ...new Set(
+            variants.flatMap((v) =>
+              checkViolations(variantText(v), guardrails!).map((x) => x.phrase),
+            ),
+          ),
+        ];
+        const bodies = guardrails.regulatoryBodies.join(", ");
+        return Response.json({
+          variants: [],
+          compliance: {
+            blocked: true,
+            level: "block",
+            flaggedPhrases,
+            message: `This request conflicts with your compliance guardrails${
+              bodies ? ` (${bodies})` : ""
+            }. Rephrase without restricted claims, or send for compliance review.`,
+          },
+        });
+      }
+      return Response.json({ variants: kept });
+    }
+
+    // "warn" / "suggest": keep ALL variants unchanged; add an additive top-level
+    // compliance flag list (only for variants that actually violated).
     if (variants.length === 0) {
       return Response.json({ error: "Couldn't generate options. Try again." }, { status: 502 });
     }
-    return Response.json({ variants });
+    const flags = variants
+      .map((v, variantIndex) => {
+        const phrases = [
+          ...new Set(checkViolations(variantText(v), guardrails!).map((x) => x.phrase)),
+        ];
+        return phrases.length ? { variantIndex, phrases } : null;
+      })
+      .filter((f): f is { variantIndex: number; phrases: string[] } => f !== null);
+
+    if (flags.length === 0) {
+      // Nothing flagged — keep the exact legacy shape (no compliance key).
+      return Response.json({ variants });
+    }
+    return Response.json({ variants, compliance: { level, flags } });
   } catch (err) {
     console.error("[api/ai/captions] failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "AI request failed" }, { status: 500 });

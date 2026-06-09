@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { Prisma } from "@prisma/client";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
+import { mapIndustryToVerticalSlug } from "@/lib/compliance/vertical-mapping";
 
 // ─────────────────────────────────────────────────────────────
 //  /api/brand-engine  — read/write the tenant's Brand Engine DNA
@@ -60,9 +61,29 @@ export async function PUT(request: NextRequest) {
         updatedAt: new Date().toISOString(),
       };
 
+      // Map the tenant's industry/niche to a compliance vertical and persist it
+      // alongside the brand engine. Idempotent + non-destructive: we only SET a
+      // verticalSlug when the mapping is confident AND the org doesn't already
+      // have one — never overwrite an existing non-null verticalSlug with null.
+      const mappedSlug =
+        mapIndustryToVerticalSlug(str(body.industryId)) ?? mapIndustryToVerticalSlug(niche);
+
+      const data: Prisma.OrganizationUpdateInput = {
+        brandEngine: brandEngine as Prisma.InputJsonValue,
+      };
+      if (mappedSlug) {
+        const existing = await tx.organization.findUnique({
+          where: { id: auth.tenantId },
+          select: { verticalSlug: true },
+        });
+        if (!existing?.verticalSlug) {
+          data.verticalSlug = mappedSlug;
+        }
+      }
+
       const org = await tx.organization.update({
         where: { id: auth.tenantId },
-        data: { brandEngine: brandEngine as Prisma.InputJsonValue },
+        data,
         select: { brandEngine: true },
       });
 
