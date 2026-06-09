@@ -139,7 +139,7 @@ export default function DraftsPage() {
           <h1>{headline}</h1>
           <p>{CORE.weekDrafted}</p>
           <p className="text-sm opacity-70 mt-1">
-            Five posts, three captions, one photo of the dog. {CORE.approveLeisure}
+            Posts and captions land here for your review. {CORE.approveLeisure}
           </p>
         </div>
         {features.multiLocation && (

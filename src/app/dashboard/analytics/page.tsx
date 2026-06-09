@@ -108,7 +108,10 @@ export default function AnalyticsPage() {
               { label: "Draft-to-approval", value: `${stats.draftToApproval}%` },
               {
                 label: "Time saved (est.)",
-                value: `${Math.max(1, Math.min(14, stats.approved * 2))} hrs`,
+                value: (() => {
+                  const h = Math.max(1, Math.min(14, stats.approved * 2));
+                  return `${h} ${h === 1 ? "hr" : "hrs"}`;
+                })(),
               },
             ].map((m) => (
               <div

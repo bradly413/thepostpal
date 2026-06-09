@@ -2,7 +2,6 @@
 
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
-import { BRAND_PHOTOS } from "@/lib/brand-photo-assets";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
@@ -251,24 +250,9 @@ export default function PhotosPage() {
           </div>
         )}
 
-        {/* Brand starter set — static reference imagery, separate from the live library */}
-        {!busy && !error && locationId && BRAND_PHOTOS.length > 0 && (
-          <div className="mt-8">
-            <p className="mb-3 text-xs font-medium uppercase tracking-wide opacity-55">Brand starter set</p>
-            <div className="flex gap-3 overflow-x-auto pb-2" style={{ scrollbarWidth: "none" }}>
-              {BRAND_PHOTOS.map((bp) => (
-                <button
-                  key={bp.id}
-                  onClick={() => setSelectedPhoto({ id: bp.id, src: bp.src, name: bp.name })}
-                  className="relative h-20 w-28 shrink-0 overflow-hidden rounded-lg border border-black/10 bg-black/5"
-                  title={bp.name}
-                >
-                  <img src={bp.src} alt={bp.name} className="h-full w-full object-cover" />
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        {/* Brand starter set removed — was static realtor demo imagery (interiors + a
+            stock person), which read as another account's photos to beta users and is
+            off-brand for non-realtor accounts. */}
       </div>
 
       {/* Photo detail modal */}

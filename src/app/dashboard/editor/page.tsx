@@ -18,7 +18,7 @@ import {
 import type { SocialPlatform } from "@/lib/posterboy-types";
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
 
-const PLATFORMS: SocialPlatform[] = ["instagram", "facebook", "linkedin"];
+const PLATFORMS: SocialPlatform[] = ["instagram", "facebook"];
 
 function EditorInner() {
   const router = useRouter();

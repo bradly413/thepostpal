@@ -619,7 +619,7 @@ function CoverEditorial({ identity, palette, typography, createdAt, voice }: { i
           </div>
 
           <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
-            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}80` }}>Prepared by PostPal</span>
+            <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}80` }}>Prepared by Posterboy</span>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}66` }}>v1.0 &middot; {year}</span>
           </div>
         </div>
