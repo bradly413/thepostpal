@@ -8,9 +8,16 @@ interface Props {
   onUploaded?: (url: string) => void;
   /** Called with the AI-elevated caption + hashtags so the studio can populate its composer. */
   onElevated?: (caption: string, hashtags: string[]) => void;
+  /** "card" = full drop card (default); "icon" = a single rail icon that auto-elevates. */
+  variant?: "card" | "icon";
 }
 
-export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElevated }: Props) {
+export default function TrashToTreasureUploadZone({
+  disabled,
+  onUploaded,
+  onElevated,
+  variant = "card",
+}: Props) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -20,9 +27,46 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElev
   const [elevateError, setElevateError] = useState<string | null>(null);
   const [elevateNote, setElevateNote] = useState<string | null>(null);
 
+  const elevateUrl = useCallback(
+    async (url: string) => {
+      if (disabled) return;
+      setElevating(true);
+      setElevateError(null);
+      setElevateNote(null);
+      try {
+        const res = await fetch("/api/studio/elevate", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: url }),
+        });
+        const data = (await res.json()) as {
+          caption?: string;
+          hashtags?: string[];
+          altText?: string;
+          error?: string;
+          compliance?: { blocked?: boolean; message?: string };
+        };
+        if (!res.ok) throw new Error(data.error || "Couldn't elevate that photo.");
+        if (data.compliance?.blocked) {
+          setElevateError(data.compliance.message || "Caption blocked by compliance guardrails.");
+          return;
+        }
+        if (!data.caption) throw new Error("No caption came back. Try again.");
+        onElevated?.(data.caption, data.hashtags ?? []);
+        if (data.compliance?.message) setElevateNote(data.compliance.message);
+      } catch (err) {
+        setElevateError(err instanceof Error ? err.message : "Couldn't elevate that photo.");
+      } finally {
+        setElevating(false);
+      }
+    },
+    [disabled, onElevated],
+  );
+
   const uploadFile = useCallback(
-    async (file: File) => {
-      if (disabled || uploading) return;
+    async (file: File): Promise<string | null> => {
+      if (disabled || uploading) return null;
       setUploading(true);
       setError(null);
       setElevateError(null);
@@ -36,13 +80,13 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElev
           body: form,
         });
         const data = (await res.json()) as { url?: string; error?: string };
-        if (!res.ok || !data.url) {
-          throw new Error(data.error || "Upload failed.");
-        }
+        if (!res.ok || !data.url) throw new Error(data.error || "Upload failed.");
         setUploadedUrl(data.url);
         onUploaded?.(data.url);
+        return data.url;
       } catch (err) {
         setError(err instanceof Error ? err.message : "Could not upload that file.");
+        return null;
       } finally {
         setUploading(false);
       }
@@ -50,53 +94,82 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElev
     [disabled, onUploaded, uploading],
   );
 
+  // icon variant: upload, then auto-elevate in one shot. card variant: upload only (manual elevate).
+  const handleFile = useCallback(
+    async (file: File) => {
+      const url = await uploadFile(file);
+      if (url && variant === "icon") await elevateUrl(url);
+    },
+    [uploadFile, elevateUrl, variant],
+  );
+
   function onDrop(e: React.DragEvent) {
     e.preventDefault();
     setDragging(false);
     const file = e.dataTransfer.files?.[0];
-    if (file) void uploadFile(file);
+    if (file) void handleFile(file);
   }
 
-  const handleElevate = useCallback(async () => {
-    if (disabled || elevating || !uploadedUrl) return;
-    setElevating(true);
-    setElevateError(null);
-    setElevateNote(null);
-    try {
-      const res = await fetch("/api/studio/elevate", {
-        method: "POST",
-        credentials: "same-origin",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ imageUrl: uploadedUrl }),
-      });
-      const data = (await res.json()) as {
-        caption?: string;
-        hashtags?: string[];
-        altText?: string;
-        error?: string;
-        compliance?: { blocked?: boolean; message?: string };
-      };
-      if (!res.ok) {
-        throw new Error(data.error || "Couldn't elevate that photo.");
-      }
-      if (data.compliance?.blocked) {
-        setElevateError(data.compliance.message || "Caption blocked by compliance guardrails.");
-        return;
-      }
-      if (!data.caption) {
-        throw new Error("No caption came back. Try again.");
-      }
-      onElevated?.(data.caption, data.hashtags ?? []);
-      if (data.compliance?.message) {
-        setElevateNote(data.compliance.message);
-      }
-    } catch (err) {
-      setElevateError(err instanceof Error ? err.message : "Couldn't elevate that photo.");
-    } finally {
-      setElevating(false);
-    }
-  }, [disabled, elevating, onElevated, uploadedUrl]);
+  const fileInput = (
+    <input
+      ref={inputRef}
+      type="file"
+      accept="image/jpeg,image/png,image/webp,image/gif"
+      className="sr-only"
+      disabled={disabled || uploading}
+      onChange={(e) => {
+        const file = e.target.files?.[0];
+        if (file) void handleFile(file);
+        e.target.value = "";
+      }}
+    />
+  );
 
+  // ── Icon variant — a single rail glyph (matches .pb-intent-ico) that auto-elevates ──
+  if (variant === "icon") {
+    const busy = uploading || elevating;
+    const err = error || elevateError;
+    return (
+      <div className="pb-intent-item">
+        <button
+          type="button"
+          className="pb-intent-ico pb-intent-ico-upload"
+          disabled={disabled || busy}
+          aria-busy={busy}
+          aria-label="Add a photo — AI captions and elevates it"
+          onClick={() => inputRef.current?.click()}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setDragging(true);
+          }}
+          onDragLeave={() => setDragging(false)}
+          onDrop={onDrop}
+          data-dragging={dragging || undefined}
+        >
+          {fileInput}
+          <ImagePlus size={22} aria-hidden />
+        </button>
+        <span className="pb-intent-pop" role="tooltip">
+          <span className="pb-intent-pop-label">
+            {uploading ? "Uploading…" : elevating ? "Captioning…" : "Add a photo"}
+          </span>
+          <span className="pb-intent-pop-desc" style={err ? { color: "#c41e2a" } : undefined}>
+            {err || "Drop or pick a raw photo — AI captions + elevates it."}
+          </span>
+        </span>
+        <style>{`
+          .pb-intent-ico-upload[data-dragging] { color: var(--red, #ee2532); }
+          .pb-intent-ico-upload[aria-busy="true"] { animation: pbsUploadPulse 1s ease-in-out infinite; }
+          @keyframes pbsUploadPulse { 0%,100% { opacity: 1; } 50% { opacity: 0.45; } }
+          @media (prefers-reduced-motion: reduce) {
+            .pb-intent-ico-upload[aria-busy="true"] { animation: none; opacity: 0.6; }
+          }
+        `}</style>
+      </div>
+    );
+  }
+
+  // ── Card variant (default) ──
   return (
     <div className="pb-trash-treasure">
       <div
@@ -114,18 +187,7 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElev
           if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
         }}
       >
-        <input
-          ref={inputRef}
-          type="file"
-          accept="image/jpeg,image/png,image/webp,image/gif"
-          className="sr-only"
-          disabled={disabled || uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) void uploadFile(file);
-            e.target.value = "";
-          }}
-        />
+        {fileInput}
         {uploadedUrl ? (
           <img src={uploadedUrl} alt="Uploaded preview" className="pb-trash-preview" />
         ) : (
@@ -140,7 +202,7 @@ export default function TrashToTreasureUploadZone({ disabled, onUploaded, onElev
         <button
           type="button"
           className="pb-trash-elevate"
-          onClick={() => void handleElevate()}
+          onClick={() => void elevateUrl(uploadedUrl)}
           disabled={disabled || elevating}
           aria-busy={elevating}
         >

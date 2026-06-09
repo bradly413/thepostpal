@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import gsap from "gsap";
 import {
   Rocket,
@@ -9,7 +9,6 @@ import {
   Users,
   Sparkles,
   MessageSquareQuote,
-  PenLine,
   type LucideIcon,
 } from "lucide-react";
 import {
@@ -30,8 +29,9 @@ const INTENT_ICONS: Record<StrategicIntentId, LucideIcon> = {
 interface Props {
   selectedId: StrategicIntentId | null;
   onSelect: (id: StrategicIntentId) => void;
-  onFreeForm: () => void;
   disabled?: boolean;
+  /** Rendered as the last rail item below a divider (e.g. the photo-upload icon). */
+  uploadSlot?: ReactNode;
 }
 
 /**
@@ -44,8 +44,8 @@ interface Props {
 export default function StrategicIntentPicker({
   selectedId,
   onSelect,
-  onFreeForm,
   disabled,
+  uploadSlot,
 }: Props) {
   const railRef = useRef<HTMLDivElement>(null);
 
@@ -96,23 +96,12 @@ export default function StrategicIntentPicker({
         );
       })}
 
-      <span className="pb-intent-div" aria-hidden />
-
-      <div className="pb-intent-item">
-        <button
-          type="button"
-          className="pb-intent-ico pb-intent-ico-free"
-          disabled={disabled}
-          aria-label="Write your own brief"
-          onClick={onFreeForm}
-        >
-          <PenLine size={18} strokeWidth={1.6} aria-hidden />
-        </button>
-        <span className="pb-intent-pop" role="tooltip">
-          <span className="pb-intent-pop-label">Write your own brief</span>
-          <span className="pb-intent-pop-desc">Describe the post in your own words.</span>
-        </span>
-      </div>
+      {uploadSlot ? (
+        <>
+          <span className="pb-intent-div" aria-hidden />
+          {uploadSlot}
+        </>
+      ) : null}
 
       <style>{`
         .pb-intent-rail {

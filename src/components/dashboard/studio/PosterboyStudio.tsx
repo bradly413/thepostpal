@@ -928,11 +928,23 @@ export default function PosterboyStudio() {
                 setSelectedIntentId(id);
                 setIntentDetail("");
               }}
-              onFreeForm={() => {
-                setFreeFormMode(true);
-                setSelectedIntentId(null);
-                setIntentDetail("");
-              }}
+              uploadSlot={
+                <TrashToTreasureUploadZone
+                  variant="icon"
+                  onUploaded={(url) => {
+                    setGeneratedUrl(url);
+                    setGenState("done");
+                    setMediaKind("image");
+                    setShowTemplate(false);
+                  }}
+                  onElevated={(caption, hashtags) => {
+                    setCaptionText(caption);
+                    setCaptionTags(hashtags.join(" "));
+                    setCaptionState("done");
+                    setCaptionError("");
+                  }}
+                />
+              }
             />
           ) : null}
 
@@ -1058,20 +1070,6 @@ export default function PosterboyStudio() {
                         </button>
                       </p>
                     ) : null}
-                    <TrashToTreasureUploadZone
-                      onUploaded={(url) => {
-                        setGeneratedUrl(url);
-                        setGenState("done");
-                        setMediaKind("image");
-                        setShowTemplate(false);
-                      }}
-                      onElevated={(caption, hashtags) => {
-                        setCaptionText(caption);
-                        setCaptionTags(hashtags.join(" "));
-                        setCaptionState("done");
-                        setCaptionError("");
-                      }}
-                    />
                     {composerBrief ? (
                       <div className="studio-intent-captions">
                         <CaptionVariantPicker
