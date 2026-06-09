@@ -117,24 +117,32 @@ export default function StrategicIntentPicker({
       <style>{`
         .pb-intent-rail {
           position: absolute; right: 26px; top: 50%; transform: translateY(-54%);
-          display: flex; flex-direction: column; align-items: center; gap: 4px;
+          display: flex; flex-direction: column; align-items: center; gap: 7px;
           z-index: 18;
         }
         .pb-intent-item { position: relative; display: flex; }
         .pb-intent-ico {
-          width: 46px; height: 46px; display: grid; place-items: center;
-          border-radius: 13px; color: var(--ink-2, #2a2a2e); background: transparent;
-          transition: color .16s ease, background .16s ease, transform .16s ease, box-shadow .16s ease;
+          width: 52px; height: 52px; display: grid; place-items: center;
+          border-radius: 16px; color: var(--ink-2, #2a2a2e);
+          background: rgba(255,255,255,0.62);
+          border: 1px solid rgba(0,0,0,0.05);
+          box-shadow: 0 2px 10px -3px rgba(15,15,20,0.12);
+          -webkit-backdrop-filter: blur(10px) saturate(1.3);
+          backdrop-filter: blur(10px) saturate(1.3);
+          transition: color .16s ease, background .16s ease, transform .16s ease,
+            box-shadow .16s ease, border-color .16s ease;
         }
-        .pb-intent-ico svg { width: 19px; height: 19px; }
+        .pb-intent-ico svg { width: 22px; height: 22px; }
         .pb-intent-ico:hover:not(:disabled):not(.active) {
-          color: var(--ink, #0d0d10); background: rgba(0,0,0,0.045);
+          color: var(--ink, #0d0d10); transform: translateY(-1px);
+          box-shadow: 0 9px 22px -6px rgba(15,15,20,0.22);
+          border-color: rgba(0,0,0,0.08);
         }
         .pb-intent-ico.active {
-          color: var(--red, #ee2532); background: rgba(238,37,50,0.10);
-          box-shadow: 0 4px 14px -4px rgba(238,37,50,0.45);
+          color: #fff; background: var(--red, #ee2532); border-color: transparent;
+          box-shadow: 0 9px 22px -6px rgba(238,37,50,0.6);
         }
-        .pb-intent-ico:active:not(:disabled) { transform: scale(0.94); }
+        .pb-intent-ico:active:not(:disabled) { transform: scale(0.93); }
         .pb-intent-ico:disabled { opacity: 0.4; cursor: not-allowed; }
         .pb-intent-ico-free { color: var(--muted, #6b6b73); }
 

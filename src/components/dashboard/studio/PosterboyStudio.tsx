@@ -1059,11 +1059,7 @@ export default function PosterboyStudio() {
                           Back to intents
                         </button>
                       </p>
-                    ) : (
-                      <p className="studio-intent-stage-lead">
-                        Pick an angle on the right, or drop a photo to elevate.
-                      </p>
-                    )}
+                    ) : null}
                     <TrashToTreasureUploadZone
                       onUploaded={(url) => {
                         setGeneratedUrl(url);
@@ -1950,9 +1946,6 @@ function StudioStyles() {
   }.pb-studio .studio-freeform-hint {
     font-size: 12.5px; line-height: 1.45; color: rgba(22,22,28,0.55); text-align: center;
     max-width: 360px; margin: 0 0 8px;
-  }.pb-studio .studio-intent-stage-lead {
-    font-size: 12.5px; color: rgba(22,22,28,0.5); text-align: center;
-    max-width: 320px; margin: 0 0 10px; font-weight: 500;
   }.pb-studio .studio-freeform-hint button {
     display: block; margin: 8px auto 0; font-size: 12px; font-weight: 600;
     color: #c41e2a; text-decoration: underline; text-underline-offset: 3px;
