@@ -1936,7 +1936,18 @@ function StudioStyles() {
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 4;
-  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio .studio-intent-stage {
+  }.pb-studio .frame:hover .frame-hint { opacity: 1; }
+  .pb-studio .frame { transition: filter 0.85s cubic-bezier(0.2,0.7,0.2,1); }
+  .pb-studio .frame:not(.generating):not(.done) { filter: brightness(0.88) saturate(0.92); }
+  @media (prefers-reduced-motion: no-preference) {
+    .pb-studio .frame.done { animation: pbsIlluminate 1.15s ease; }
+  }
+  @keyframes pbsIlluminate {
+    0% { filter: brightness(0.88) saturate(0.92); }
+    42% { filter: brightness(1.13) saturate(1.05) drop-shadow(0 0 26px rgba(238,37,50,0.26)); }
+    100% { filter: brightness(1); }
+  }
+  .pb-studio .studio-intent-stage {
     position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
     align-items: center; justify-content: center; padding: 24px 16px 16px;
     overflow-y: auto; background: rgba(255,255,255,0.55); backdrop-filter: blur(8px);
