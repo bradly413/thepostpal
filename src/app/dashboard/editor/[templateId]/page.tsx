@@ -6,6 +6,13 @@ import Link from "next/link";
 import { templates as staticTemplates, type Template } from "@/lib/templates";
 import { toPng } from "html-to-image";
 import TemplateCanvas from "@/components/TemplateCanvas";
+import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
+import LayerPanel, {
+  createShapeLayer,
+  createTextLayer,
+} from "@/components/dashboard/editor/LayerPanel";
+import { useCompositionLayers } from "@/hooks/use-composition-layers";
+import { compositionStorageKey } from "@/lib/composition-layers";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { createDashboardPost } from "@/lib/dashboard-api";
 import {
@@ -21,15 +28,15 @@ import { uploadDashboardImage } from "@/lib/dashboard-upload";
 // generic prompts that work for any business (bakery, gym, salon, agency, …) —
 // no hardcoded industry. The AI assistant and brand engine handle specifics.
 const CAPTION_SUGGESTIONS = [
-  "Something new just landed — come see what we've been working on ✨",
-  "Big news to share with you all today. Here's what's happening 👇",
-  "Thank you to everyone who showed up this week. We appreciate you ❤️",
+  "Something new just landed — come see what we've been working on.",
+  "Big news to share with you all today. Here's what's happening.",
+  "Thank you to everyone who showed up this week. We appreciate you.",
   "Behind the scenes of what we do — a little look at our process.",
-  "We'd love to hear from you. Drop a comment or send us a message!",
-  "This week's highlight — swipe to see more →",
+  "We'd love to hear from you. Drop a comment or send us a message.",
+  "This week's highlight — swipe to see more.",
   "Mark your calendar — you won't want to miss what's coming up.",
-  "A quick tip we think you'll find useful. Save this for later 📌",
-  "Proud of the work that went into this one. Tell us what you think!",
+  "A quick tip we think you'll find useful. Save this for later.",
+  "Proud of the work that went into this one. Tell us what you think.",
   "New here? Here's a little about who we are and what we offer.",
 ];
 
@@ -76,7 +83,7 @@ function EditorPageInner({
     staticTemplates.find((item) => item.id === templateId)
   );
   const [templateResolved, setTemplateResolved] = useState(false);
-  const canvasRef = useRef<HTMLDivElement>(null);
+  const exportRef = useRef<HTMLDivElement>(null);
   const [fieldsTemplateId, setFieldsTemplateId] = useState(template?.id || "");
   const [fields, setFields] = useState<Record<string, string>>(() => buildInitialFields(template));
 
@@ -162,6 +169,54 @@ function EditorPageInner({
   const { locationId } = useActiveLocation();
   const { photos: workspacePhotos, uploadAndCreate } = useDashboardPhotos(locationId);
   const { containerRef, scale } = useCanvasScale(template);
+  const storageKey =
+    locationId && template ? compositionStorageKey(locationId, template.id) : null;
+  const {
+    layers,
+    selected,
+    selectedId,
+    setSelectedId,
+    updateLayer,
+    setAllLayers,
+    addLayer,
+    removeLayer,
+    undo,
+    canUndo,
+  } = useCompositionLayers(storageKey);
+
+  async function cropPhotoToFrame() {
+    if (!photo || !template) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.src = photo;
+    await new Promise<void>((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = () => reject(new Error("Could not load image"));
+    });
+    const targetRatio = template.width / template.height;
+    const imageRatio = img.width / img.height;
+    let sx = 0;
+    let sy = 0;
+    let sw = img.width;
+    let sh = img.height;
+    if (imageRatio > targetRatio) {
+      sw = img.height * targetRatio;
+      sx = (img.width - sw) / 2;
+    } else {
+      sh = img.width / targetRatio;
+      sy = (img.height - sh) / 2;
+    }
+    const canvas = document.createElement("canvas");
+    canvas.width = template.width;
+    canvas.height = template.height;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    ctx.drawImage(img, sx, sy, sw, sh, 0, 0, template.width, template.height);
+    setPhoto(canvas.toDataURL("image/png"));
+    setPhotoPos({ x: 50, y: 50 });
+    setPhotoZoom(100);
+    setPhotoRotate(0);
+  }
 
   const handlePhoto = useCallback(
     async (file: File) => {
@@ -231,10 +286,10 @@ function EditorPageInner({
   }
 
   async function handleDownload() {
-    if (!canvasRef.current) return;
+    if (!exportRef.current) return;
     setGenerating(true);
     try {
-      const dataUrl = await toPng(canvasRef.current, {
+      const dataUrl = await toPng(exportRef.current, {
         width: template!.width,
         height: template!.height,
         pixelRatio: 1,
@@ -251,7 +306,7 @@ function EditorPageInner({
   }
 
   async function handlePublish() {
-    if (!canvasRef.current) return;
+    if (!exportRef.current) return;
     if (!meta?.connected) {
       setPublishResult({
         type: "error",
@@ -262,7 +317,7 @@ function EditorPageInner({
     setPublishing(true);
     setPublishResult(null);
     try {
-      const dataUrl = await toPng(canvasRef.current, {
+      const dataUrl = await toPng(exportRef.current, {
         width: template!.width,
         height: template!.height,
         pixelRatio: 1,
@@ -310,7 +365,7 @@ function EditorPageInner({
   }
 
   async function handleSchedule() {
-    if (!canvasRef.current || !scheduleDate || !scheduleTime) return;
+    if (!exportRef.current || !scheduleDate || !scheduleTime) return;
     if (!meta?.connected) {
       setPublishResult({
         type: "error",
@@ -328,7 +383,7 @@ function EditorPageInner({
       }
       const unixTime = Math.floor(scheduledAt.getTime() / 1000);
 
-      const dataUrl = await toPng(canvasRef.current, {
+      const dataUrl = await toPng(exportRef.current, {
         width: template!.width,
         height: template!.height,
         pixelRatio: 1,
@@ -421,15 +476,28 @@ function EditorPageInner({
                 }}
               >
                 <div style={{ transform: `scale(${scale})`, transformOrigin: "top left" }}>
-                  <TemplateCanvas
-                    ref={canvasRef}
-                    template={template}
-                    fields={fields}
-                    photo={photo}
-                    photoPos={photoPos}
-                    photoZoom={photoZoom}
-                    photoRotate={photoRotate}
-                  />
+                  <div
+                    ref={exportRef}
+                    className="relative"
+                    style={{ width: template.width, height: template.height }}
+                  >
+                    <TemplateCanvas
+                      template={template}
+                      fields={fields}
+                      photo={photo}
+                      photoPos={photoPos}
+                      photoZoom={photoZoom}
+                      photoRotate={photoRotate}
+                    />
+                    <CompositionOverlay
+                      width={template.width}
+                      height={template.height}
+                      layers={layers}
+                      selectedId={selectedId}
+                      onSelect={setSelectedId}
+                      onUpdate={updateLayer}
+                    />
+                  </div>
                 </div>
               </div>
             </div>
@@ -552,15 +620,24 @@ function EditorPageInner({
                 {/* Photo position & zoom controls */}
                 {photo && (
                   <div className="mt-3 space-y-3 rounded-xl border border-black/10 bg-white p-3">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-2">
                       <span className="text-[11px] font-medium text-black/55">Adjust Photo</span>
-                      <button
-                        type="button"
-                        onClick={() => { setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); }}
-                        className="text-[10px] text-black/35 hover:text-[#ee2532] transition-colors"
-                      >
-                        Reset
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void cropPhotoToFrame()}
+                          className="text-[10px] text-black/35 hover:text-[#ee2532] transition-colors"
+                        >
+                          Crop to frame
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); }}
+                          className="text-[10px] text-black/35 hover:text-[#ee2532] transition-colors"
+                        >
+                          Reset
+                        </button>
+                      </div>
                     </div>
                     <div>
                       <label className="flex items-center justify-between text-[10px] text-black/55 mb-1">
@@ -622,6 +699,19 @@ function EditorPageInner({
                 )}
               </div>
             )}
+
+            <LayerPanel
+              layers={layers}
+              selected={selected}
+              canUndo={canUndo}
+              onAddText={() => addLayer(createTextLayer())}
+              onAddShape={() => addLayer(createShapeLayer("rect"))}
+              onSelect={setSelectedId}
+              onUpdate={updateLayer}
+              onRemove={removeLayer}
+              onReorder={setAllLayers}
+              onUndo={undo}
+            />
 
             {/* Text fields */}
             {template.fields.map((field) => (

@@ -32,6 +32,9 @@ import AppSidebar from "@/components/dashboard/AppSidebar";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 import CaptionVariantPicker from "@/components/dashboard/composer/CaptionVariantPicker";
 import VideoComposer from "@/components/dashboard/composer/VideoComposer";
+import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
+import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
+import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost } from "@/lib/dashboard-api";
 import { useActiveLocation } from "@/lib/use-active-location";
 import type { SocialPlatform } from "@/lib/posterboy-types";
@@ -127,6 +130,16 @@ export default function PosterboyStudio() {
   const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
   const { locationId } = useActiveLocation();
   const searchParams = useSearchParams();
+  const studioLayerKey = locationId ? compositionStorageKey(locationId, "studio") : null;
+  const {
+    layers: studioLayers,
+    selectedId: studioSelectedId,
+    setSelectedId: setStudioSelectedId,
+    updateLayer: updateStudioLayer,
+    addLayer: addStudioLayer,
+    undo: undoStudioLayers,
+    canUndo: canUndoStudioLayers,
+  } = useCompositionLayers(studioLayerKey);
 
   // Typewriter-rotate short example prompts in the placeholder while it's empty.
   useEffect(() => {
@@ -944,7 +957,7 @@ export default function PosterboyStudio() {
             ) : (
               <div
                 className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
-                style={{ width: "100%", height: "100%" }}
+                style={{ width: "100%", height: "100%", position: "relative" }}
                 onPointerDown={onImagePointerDown}
                 onPointerMove={onImagePointerMove}
                 onPointerUp={onImagePointerUp}
@@ -952,6 +965,16 @@ export default function PosterboyStudio() {
               >
                 <div className="emerge" style={{ opacity: emergeOpacity }} />
                 <div className="preview" style={previewStyle} />
+                {genState === "done" && mediaKind === "image" ? (
+                  <CompositionOverlay
+                    width={platform.w}
+                    height={platform.h}
+                    layers={studioLayers}
+                    selectedId={studioSelectedId}
+                    onSelect={setStudioSelectedId}
+                    onUpdate={updateStudioLayer}
+                  />
+                ) : null}
                 {genState === "generating" && (
                   <div className="gen-progress">{Math.round(progress)}%</div>
                 )}
@@ -983,8 +1006,26 @@ export default function PosterboyStudio() {
                 )}
               </div>
               <button type="button" className="rail-ico" title="Crop to frame" aria-label="Crop to frame" onClick={handleCropToFrame}><Crop size={19} /></button>
+              <button
+                type="button"
+                className="rail-ico"
+                title="Add text layer"
+                aria-label="Add text layer"
+                onClick={() => addStudioLayer(createTextLayer({ zIndex: 20 }))}
+              >
+                <AlignLeft size={19} />
+              </button>
               <button type="button" className="rail-ico" title="Download image" aria-label="Download image" onClick={handleDownloadImage}><Download size={19} /></button>
-              <button type="button" className="rail-ico" title="Undo edit" aria-label="Undo edit" onClick={undoEdit} disabled={!canUndoEdit}><Undo2 size={19} /></button>
+              <button
+                type="button"
+                className="rail-ico"
+                title="Undo"
+                aria-label="Undo"
+                onClick={() => { if (canUndoStudioLayers) undoStudioLayers(); else undoEdit(); }}
+                disabled={!canUndoEdit && !canUndoStudioLayers}
+              >
+                <Undo2 size={19} />
+              </button>
 
               <div className="rail-item">
                 <button type="button" className={`rail-ico${activeEdit === "scale" ? " open" : ""}`} onClick={() => setActiveEdit((t) => (t === "scale" ? null : "scale"))} title="Scale"><Maximize2 size={19} /></button>

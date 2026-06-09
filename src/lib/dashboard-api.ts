@@ -240,6 +240,15 @@ export async function disconnectDashboardMetaConnection(
   );
 }
 
+export async function fetchDashboardMetaInsights(
+  locationId: string,
+): Promise<import("@/lib/meta-insights-types").DashboardMetaInsights> {
+  const data = await apiRequest<{
+    insights: import("@/lib/meta-insights-types").DashboardMetaInsights;
+  }>(`/api/meta/insights?locationId=${encodeURIComponent(locationId)}`);
+  return data.insights;
+}
+
 // ── Photos ──────────────────────────────────────────────────
 
 export interface DashboardPhotoRecord {

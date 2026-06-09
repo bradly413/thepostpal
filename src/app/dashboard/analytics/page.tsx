@@ -4,131 +4,174 @@ import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
-import { ErrorState, NoLocationState, SkeletonText } from "@/components/dashboard/StateViews";
+import { usePlan } from "@/components/dashboard/PlanProvider";
+import MetricBarChart from "@/components/dashboard/analytics/MetricBarChart";
+import TopPostsList from "@/components/dashboard/analytics/TopPostsList";
 import {
-  fetchDashboardPosts,
+  EmptyState,
+  ErrorState,
+  NoLocationState,
+  SkeletonText,
+} from "@/components/dashboard/StateViews";
+import {
+  fetchDashboardMetaInsights,
   formatDashboardApiMessage,
 } from "@/lib/dashboard-api";
-import {
-  countPostsByStatus,
-  filterPostsForLocation,
-} from "@/lib/dashboard-post-helpers";
+import type { DashboardMetaInsights } from "@/lib/meta-insights-types";
 import { useActiveLocation } from "@/lib/use-active-location";
-import {
-  onStoredActiveLocationChange,
-} from "@/lib/dashboard-browser-state";
-import { ANALYTICS } from "@/lib/posterboy-copy";
+import { useMetaConnection } from "@/lib/use-meta-connection";
+import { onStoredActiveLocationChange } from "@/lib/dashboard-browser-state";
 
 export default function AnalyticsPage() {
   const router = useRouter();
+  const { features, loading: planLoading } = usePlan();
   const { locationId, loading: locationLoading } = useActiveLocation();
-  const [stats, setStats] = useState({
-    approved: 0,
-    published: 0,
-    needsReview: 0,
-    consistency: 0,
-    draftToApproval: 0,
-  });
+  const { meta, loading: metaLoading } = useMetaConnection();
+
+  const [insights, setInsights] = useState<DashboardMetaInsights | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (preferredLocationId?: string | null) => {
-    const activeLocationId =
-      preferredLocationId === undefined ? locationId : preferredLocationId;
+  const load = useCallback(
+    async (preferredLocationId?: string | null) => {
+      const activeLocationId =
+        preferredLocationId === undefined ? locationId : preferredLocationId;
 
-    if (!activeLocationId) {
-      setLoading(false);
-      return;
-    }
+      if (!activeLocationId) {
+        setInsights(null);
+        setLoading(false);
+        return;
+      }
 
-    try {
-      setLoading(true);
-      setError(null);
-      const posts = await fetchDashboardPosts(activeLocationId);
-      const scoped = filterPostsForLocation(posts, activeLocationId);
-      const counts = countPostsByStatus(posts, activeLocationId);
-      const reviewed = scoped.filter((post) => post.status !== "draft").length;
-      const approved = counts.approved + counts.scheduled + counts.published;
+      if (!meta?.connected) {
+        setInsights(null);
+        setLoading(false);
+        setError(null);
+        return;
+      }
 
-      setStats({
-        approved,
-        published: counts.published,
-        needsReview: counts.needs_review + counts.needs_revision,
-        consistency: scoped.length > 0 ? Math.round((approved / scoped.length) * 100) : 0,
-        draftToApproval: reviewed > 0 ? Math.round((approved / reviewed) * 100) : 0,
-      });
-    } catch (err) {
-      setError(formatDashboardApiMessage(err, "Could not load workflow metrics."));
-    } finally {
-      setLoading(false);
-    }
-  }, [locationId]);
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await fetchDashboardMetaInsights(activeLocationId);
+        setInsights(data);
+      } catch (err) {
+        setInsights(null);
+        setError(formatDashboardApiMessage(err, "Could not load Meta insights."));
+      } finally {
+        setLoading(false);
+      }
+    },
+    [locationId, meta?.connected],
+  );
 
   useEffect(() => {
-    void load();
-    return onStoredActiveLocationChange(() => {
-      void load();
-    });
-  }, [load]);
+    if (!metaLoading) void load();
+    return onStoredActiveLocationChange(() => void load());
+  }, [load, metaLoading]);
+
+  const busy = planLoading || locationLoading || metaLoading || loading;
 
   return (
     <div className="pb-app">
       <div className="pb-app-header flex flex-wrap items-start gap-4">
         <div className="flex-1">
-          <h1>Workflow metrics</h1>
-          <p>Draft and approval activity — not Meta reach.</p>
+          <h1>Reports</h1>
+          <p>Reach, engagement, and top posts from your connected Meta accounts.</p>
         </div>
-        <LocationSwitcher onChange={(id) => void load(id)} />
+        {features.multiLocation ? (
+          <LocationSwitcher onChange={(id) => void load(id)} />
+        ) : null}
       </div>
 
-      {locationLoading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonText key={i} className="h-24 w-full rounded-xl" />
+      {planLoading || locationLoading ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <SkeletonText key={i} className="h-40 w-full rounded-xl" />
           ))}
         </div>
       ) : !locationId ? (
         <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
-      ) : loading ? (
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+      ) : metaLoading || busy ? (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
-            <SkeletonText key={i} className="h-24 w-full rounded-xl" />
+            <SkeletonText key={i} className="h-40 w-full rounded-xl" />
           ))}
         </div>
+      ) : !meta?.connected ? (
+        <EmptyState
+          title="Meta not connected"
+          sub="Connect this location to Facebook in Settings to load insights for the last 28 days."
+          action={
+            <Link href="/dashboard/settings" className="pb-btn-primary text-sm px-4 py-2">
+              Connect Meta
+            </Link>
+          }
+        />
       ) : error ? (
         <ErrorState message={error} onRetry={() => void load()} />
+      ) : !insights ? (
+        <EmptyState
+          title="No insights yet"
+          sub="Meta may need a few days of activity before charts populate."
+        />
       ) : (
         <>
-          <div className="grid grid-cols-2 md:grid-cols-3 gap-4 mb-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
             {[
-              { label: "Posts approved", value: stats.approved },
-              { label: "Posts published", value: stats.published },
-              { label: "Awaiting review", value: stats.needsReview },
-              { label: "Consistency", value: `${stats.consistency}%` },
-              { label: "Draft-to-approval", value: `${stats.draftToApproval}%` },
+              { label: "Impressions (28d)", value: insights.summary.totals.impressions.toLocaleString() },
+              { label: "Reach (28d)", value: insights.summary.totals.reach.toLocaleString() },
+              { label: "Engagement (28d)", value: insights.summary.totals.engagement.toLocaleString() },
               {
-                label: "Time saved (est.)",
-                value: (() => {
-                  const h = Math.max(1, Math.min(14, stats.approved * 2));
-                  return `${h} ${h === 1 ? "hr" : "hrs"}`;
-                })(),
+                label: "Followers",
+                value: [
+                  insights.summary.pageFollowers > 0
+                    ? `${insights.summary.pageFollowers.toLocaleString()} FB`
+                    : null,
+                  insights.summary.igFollowers != null
+                    ? `${insights.summary.igFollowers.toLocaleString()} IG`
+                    : null,
+                ]
+                  .filter(Boolean)
+                  .join(" · ") || "—",
               },
             ].map((m) => (
-              <div
-                key={m.label}
-                className="pb-draft-card"
-                style={{ gridTemplateColumns: "1fr", alignItems: "stretch" }}
-              >
+              <div key={m.label} className="pb-draft-card" style={{ gridTemplateColumns: "1fr" }}>
                 <p className="text-xs uppercase tracking-widest opacity-50">{m.label}</p>
-                <p className="text-2xl mt-2 font-serif" style={{ fontFamily: "var(--font-instrument-serif)" }}>{m.value}</p>
+                <p
+                  className="text-xl mt-2"
+                  style={{ fontFamily: "var(--font-instrument-serif)" }}
+                >
+                  {m.value}
+                </p>
               </div>
             ))}
           </div>
 
-          <p className="text-sm opacity-60">{ANALYTICS.showedUp}</p>
-          <Link href="/dashboard/drafts" className="text-sm underline opacity-70 mt-4 inline-block">
-            Review drafts
-          </Link>
+          <p className="text-xs opacity-45 mb-4">
+            {insights.summary.pageName}
+            {insights.summary.igUsername ? ` · @${insights.summary.igUsername}` : ""}
+            {" · "}
+            Last 28 days
+          </p>
+
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-6">
+            <MetricBarChart title="Reach" points={insights.series.reach} color="#c41e2a" />
+            <MetricBarChart title="Impressions" points={insights.series.impressions} color="#1a1a1e" />
+            <MetricBarChart title="Engagement" points={insights.series.engagement} color="#1f9d4d" />
+            <MetricBarChart title="Follower growth" points={insights.series.followers} color="#4a6fa5" />
+          </div>
+
+          <TopPostsList posts={insights.topPosts} />
+
+          {!features.locationRollup ? (
+            <p className="text-xs opacity-45 mt-6">
+              Upgrade to Command for multi-location roll-up reports.{" "}
+              <Link href="/pricing" className="underline">
+                View plans
+              </Link>
+            </p>
+          ) : null}
         </>
       )}
     </div>
