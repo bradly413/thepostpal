@@ -43,6 +43,12 @@ S3_BUCKET   S3_REGION   AWS_ACCESS_KEY_ID   AWS_SECRET_ACCESS_KEY
 ```
 Optional for R2/MinIO: `S3_ENDPOINT`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE=true`.
 
+If you are using AWS credentials in Vercel, also set:
+```
+AWS_REGION
+```
+The app code already prefers `S3_REGION`, but Vercel flags the AWS keypair as incomplete when no AWS region is present in project env.
+
 ## 🟠 TIER 1 — monitoring / alerting
 
 Error monitoring is wired through Next.js instrumentation + Sentry. Set:
@@ -53,7 +59,8 @@ SENTRY_ENVIRONMENT                 # optional override; defaults to VERCEL_ENV/N
 SENTRY_TRACES_SAMPLE_RATE          # optional, default 0.1
 NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
 ```
-Brad still needs to create the actual alert rules in Sentry (for example: any new issue on prod, and cron-publish failures).
+As of 2026-06-09, the production Vercel project was still missing both `SENTRY_DSN` and `NEXT_PUBLIC_SENTRY_DSN`, so issue capture and alert verification could not be proven live yet.
+Brad still needs to create the actual alert rules in Sentry (for example: any new issue on prod, and cron-publish failures). See `docs/SENTRY-ALERTS-RUNBOOK.md`.
 
 ## 🟠 TIER 1 — Stripe billing (new since this branch)
 
