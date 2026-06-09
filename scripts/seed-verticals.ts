@@ -108,11 +108,13 @@ const PARENTS: SeedNode[] = [
     ],
     complianceNotes: "General FTC guidance against deceptive advertising and unsubstantiated objective claims.",
   },
-  // Recruiting is EEOC (employment law), NOT FDA medical-claims — kept top-level so it does
-  // not inherit the healthcare-parent `block`. A nurse-recruiting post makes no drug claims.
+  // Mercy fix: EEOC recruiting is employment law, NOT FDA medical-claims — MUST stay
+  // top-level (parentSlug: null). Nesting under healthcare-parent would inherit `block`
+  // and force nurse recruiters through pharma-grade blocking pipelines.
   {
     slug: "hospital-recruiting",
     name: "Hospital & Healthcare Recruiting",
+    parentSlug: undefined,
     enforcementLevel: "warn",
     regulatoryBody: "EEOC",
     bannedPhrases: ["young and energetic", "recent graduates only", "digital native", "perfect health"],

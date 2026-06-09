@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
-import { resolveTenantVertical, loadVerticalRegistry } from "@/lib/compliance/resolve-vertical-server";
+import { resolveTenantVertical, loadVerticalRegistry } from "@/lib/compliance/resolve";
 
 /** GET /api/me/vertical — current tenant compliance vertical + guardrails. */
 export async function GET() {

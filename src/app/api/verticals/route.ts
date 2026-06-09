@@ -2,9 +2,9 @@ import { NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import type { VerticalOption } from "@/lib/compliance/client-types";
-import { VERTICAL_CATALOG_FALLBACK, guardrailSummaryFor } from "@/lib/compliance/vertical-catalog";
-import { loadVerticalRegistry } from "@/lib/compliance/resolve-vertical-server";
-import { resolveGuardrails } from "@/lib/compliance/guardrails";
+import { VERTICAL_CATALOG_FALLBACK } from "@/lib/compliance/vertical-catalog";
+import { loadVerticalRegistry } from "@/lib/compliance/resolve";
+import { activeGuardrailsForSlug } from "@/lib/compliance/registry";
 
 /** GET /api/verticals — list assignable compliance verticals (tenant-authed). */
 export async function GET() {
@@ -18,19 +18,8 @@ export async function GET() {
 
       const verticals: VerticalOption[] = [];
       for (const node of registry.values()) {
-        const resolved = resolveGuardrails(node.slug, registry);
-        verticals.push({
-          slug: node.slug,
-          name: node.name,
-          parentSlug: node.parentSlug ?? null,
-          enforcementLevel: resolved.enforcementLevel,
-          regulatoryBody: resolved.regulatoryBodies[0] ?? node.regulatoryBody ?? null,
-          guardrailSummary: guardrailSummaryFor(
-            resolved.enforcementLevel,
-            resolved.regulatoryBodies[0] ?? node.regulatoryBody ?? null,
-            node.name,
-          ),
-        });
+        const state = activeGuardrailsForSlug(node.slug, registry);
+        if (state) verticals.push(state.vertical);
       }
 
       verticals.sort((a, b) => a.name.localeCompare(b.name));

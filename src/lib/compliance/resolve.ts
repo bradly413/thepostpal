@@ -1,19 +1,13 @@
 import "server-only";
 
 import type { TenantDbClient } from "@/lib/db";
-import {
-  resolveGuardrails,
-  type EnforcementLevel,
-  type ResolvedGuardrails,
-  type VerticalGuardrailNode,
-} from "@/lib/compliance/guardrails";
+import { resolveGuardrails, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
 import { findTenantBrandBook } from "@/lib/brand-book-db";
-
-const VALID_ENFORCEMENT: ReadonlySet<string> = new Set(["block", "warn", "suggest"]);
-
-function normalizeEnforcement(value: string): EnforcementLevel {
-  return VALID_ENFORCEMENT.has(value) ? (value as EnforcementLevel) : "suggest";
-}
+import {
+  activeGuardrailsForSlug,
+  loadVerticalRegistry,
+} from "@/lib/compliance/registry";
+import type { VerticalOption } from "@/lib/compliance/client-types";
 
 /**
  * Resolve a tenant's effective compliance guardrails.
@@ -42,43 +36,11 @@ export async function resolveTenantGuardrails(
     const verticalSlug = org?.verticalSlug?.trim();
     if (!verticalSlug) return null;
 
-    const rows = await tx.verticalSeed.findMany({
-      select: {
-        id: true,
-        slug: true,
-        name: true,
-        parentId: true,
-        bannedPhrases: true,
-        preferredPhrases: true,
-        enforcementLevel: true,
-        regulatoryBody: true,
-      },
-    });
-    if (rows.length === 0) return null;
-
-    // id -> slug, so we can map each node's parentId to a parentSlug.
-    const idToSlug = new Map<string, string>();
-    for (const r of rows) idToSlug.set(r.id, r.slug);
-
-    const registry = new Map<string, VerticalGuardrailNode>();
-    for (const r of rows) {
-      registry.set(r.slug, {
-        slug: r.slug,
-        name: r.name,
-        parentSlug: r.parentId ? idToSlug.get(r.parentId) ?? null : null,
-        bannedPhrases: r.bannedPhrases,
-        preferredPhrases: r.preferredPhrases,
-        enforcementLevel: normalizeEnforcement(r.enforcementLevel),
-        regulatoryBody: r.regulatoryBody,
-      });
-    }
-
-    if (!registry.has(verticalSlug)) return null;
+    const registry = await loadVerticalRegistry(tx);
+    if (registry.size === 0 || !registry.has(verticalSlug)) return null;
 
     const resolved = resolveGuardrails(verticalSlug, registry);
 
-    // Merge the tenant's own brand-book phrases (best-effort) so per-tenant voice
-    // guardrails ride alongside the vertical's regulatory ones.
     try {
       const { brandBook } = await findTenantBrandBook(tx, tenantId);
       const ownBanned = brandBook?.voice?.weDontSay ?? [];
@@ -100,3 +62,36 @@ export async function resolveTenantGuardrails(
     return null;
   }
 }
+
+/** Tenant-facing vertical assignment state for settings / onboarding APIs. */
+export async function resolveTenantVertical(
+  tx: TenantDbClient,
+  tenantId: string,
+): Promise<{
+  verticalSlug: string | null;
+  vertical: VerticalOption | null;
+  activeGuardrails: string[];
+}> {
+  const org = await tx.organization.findUnique({
+    where: { id: tenantId },
+    select: { verticalSlug: true },
+  });
+  const verticalSlug = org?.verticalSlug?.trim() || null;
+  if (!verticalSlug) {
+    return { verticalSlug: null, vertical: null, activeGuardrails: [] };
+  }
+
+  const registry = await loadVerticalRegistry(tx);
+  const state = activeGuardrailsForSlug(verticalSlug, registry);
+  if (!state) {
+    return { verticalSlug, vertical: null, activeGuardrails: [] };
+  }
+
+  return {
+    verticalSlug,
+    vertical: state.vertical,
+    activeGuardrails: state.activeGuardrails,
+  };
+}
+
+export { loadVerticalRegistry, verticalOptionFromNode } from "@/lib/compliance/registry";

@@ -46,8 +46,9 @@ ALTER TABLE "VerticalSeed"
 -- INSERT INTO "VerticalSeed" (id, slug, name, "parentId", "enforcementLevel", "preferredPhrases") VALUES
 --   ('seed_pharma', 'pharma-sales', 'Pharma Sales', 'seed_health', 'block',
 --     ARRAY['clinical trials','indicated for','consult prescribing information']),
---   ('seed_recruit', 'hospital-recruiting', 'Hospital Recruiting', 'seed_health', 'warn',
+--   ('seed_recruit', 'hospital-recruiting', 'Hospital Recruiting', NULL, 'warn',
 --     ARRAY['shift-differential','BSN','RN','sign-on bonus']);
+--   ^ hospital-recruiting is top-level (no parentId) — must NOT inherit healthcare `block`.
 -- INSERT INTO "VerticalSeed" (id, slug, name, "enforcementLevel", "regulatoryBody", "bannedPhrases") VALUES
 --   ('seed_re', 'real-estate', 'Real Estate', 'warn', 'HUD/Fair Housing',
 --     ARRAY['safe neighborhood','perfect for families','exclusive area','no kids','ideal for']);

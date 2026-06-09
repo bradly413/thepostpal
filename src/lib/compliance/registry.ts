@@ -1,5 +1,6 @@
 import "server-only";
 
+import type { TenantDbClient } from "@/lib/db";
 import {
   resolveGuardrails,
   type EnforcementLevel,
@@ -10,14 +11,15 @@ import {
   activeGuardrailLines,
   guardrailSummaryFor,
 } from "@/lib/compliance/vertical-catalog";
-import type { TenantDbClient } from "@/lib/db";
 
 const VALID_ENFORCEMENT = new Set(["block", "warn", "suggest"]);
 
-function normalizeLevel(value: string): EnforcementLevel {
+/** Normalize a DB/registry enforcement string to a known level. */
+export function normalizeEnforcementLevel(value: string): EnforcementLevel {
   return VALID_ENFORCEMENT.has(value) ? (value as EnforcementLevel) : "suggest";
 }
 
+/** Load the full VerticalSeed registry as guardrail nodes keyed by slug. */
 export async function loadVerticalRegistry(
   tx: TenantDbClient,
 ): Promise<Map<string, VerticalGuardrailNode>> {
@@ -42,7 +44,7 @@ export async function loadVerticalRegistry(
       parentSlug: r.parentId ? idToSlug.get(r.parentId) ?? null : null,
       bannedPhrases: r.bannedPhrases,
       preferredPhrases: r.preferredPhrases,
-      enforcementLevel: normalizeLevel(r.enforcementLevel),
+      enforcementLevel: normalizeEnforcementLevel(r.enforcementLevel),
       regulatoryBody: r.regulatoryBody,
     });
   }
@@ -67,28 +69,15 @@ export function verticalOptionFromNode(
   };
 }
 
-export async function resolveTenantVertical(
-  tx: TenantDbClient,
-  tenantId: string,
-): Promise<{
-  verticalSlug: string | null;
-  vertical: VerticalOption | null;
+export function activeGuardrailsForSlug(
+  verticalSlug: string,
+  registry: Map<string, VerticalGuardrailNode>,
+): {
+  vertical: VerticalOption;
   activeGuardrails: string[];
-}> {
-  const org = await tx.organization.findUnique({
-    where: { id: tenantId },
-    select: { verticalSlug: true },
-  });
-  const verticalSlug = org?.verticalSlug?.trim() || null;
-  if (!verticalSlug) {
-    return { verticalSlug: null, vertical: null, activeGuardrails: [] };
-  }
-
-  const registry = await loadVerticalRegistry(tx);
+} | null {
   const node = registry.get(verticalSlug);
-  if (!node) {
-    return { verticalSlug, vertical: null, activeGuardrails: [] };
-  }
+  if (!node) return null;
 
   const resolved = resolveGuardrails(verticalSlug, registry);
   const vertical = verticalOptionFromNode(
@@ -99,7 +88,6 @@ export async function resolveTenantVertical(
     resolved.bannedPhrases,
   );
   return {
-    verticalSlug,
     vertical,
     activeGuardrails: activeGuardrailLines(
       resolved.enforcementLevel,

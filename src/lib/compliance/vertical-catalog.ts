@@ -1,5 +1,5 @@
-import type { IndustryId } from "@/lib/industries";
 import type { EnforcementLevel, VerticalOption } from "@/lib/compliance/client-types";
+import { mapIndustryToVerticalSlug } from "@/lib/compliance/vertical-mapping";
 
 /**
  * Fallback catalog when VerticalSeed rows are not yet seeded in the DB.
@@ -20,23 +20,9 @@ export const VERTICAL_CATALOG_FALLBACK: VerticalOption[] = [
   { slug: "smb-hospitality", name: "Restaurants & Hospitality", parentSlug: "smb-parent", enforcementLevel: "suggest", regulatoryBody: "FDA (Food Code) / Local Health", guardrailSummary: "Brand voice + allergen guardrails" },
 ];
 
-const INDUSTRY_TO_VERTICAL: Partial<Record<IndustryId, string>> = {
-  "real-estate": "real-estate-residential",
-  "food-restaurant": "smb-hospitality",
-  "fitness-wellness": "smb-parent",
-  "beauty-personal-care": "beauty-parent",
-  "professional-services": "smb-parent",
-  "creative-agency": "smb-parent",
-  "retail-ecommerce": "smb-parent",
-  "coaching-education": "smb-parent",
-  "home-services": "smb-parent",
-  "healthcare-practitioners": "healthcare-parent",
-  "hospitality-events": "smb-hospitality",
-  "other-general": "smb-parent",
-};
-
+/** UI default when onboarding industry has no confident vertical mapping. */
 export function suggestVerticalSlugForIndustry(industryId: string): string {
-  return INDUSTRY_TO_VERTICAL[industryId as IndustryId] ?? "smb-parent";
+  return mapIndustryToVerticalSlug(industryId) ?? "smb-parent";
 }
 
 export function guardrailSummaryFor(
