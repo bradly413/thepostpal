@@ -14,11 +14,22 @@ function getSecret() {
   return new TextEncoder().encode(secret);
 }
 
-const PUBLIC_EXACT = ["/", "/sign-in", "/privacy", "/terms"];
+const PUBLIC_EXACT = [
+  "/",
+  "/sign-in",
+  "/privacy",
+  "/terms",
+  // Crawler/metadata files must be reachable unauthenticated.
+  "/sitemap.xml",
+  "/robots.txt",
+  "/favicon.ico",
+];
 const PUBLIC_PREFIXES = [
   "/pricing",
   "/for/",
   "/tools/",
+  "/opengraph-image",
+  "/twitter-image",
   "/uploads/",
   "/images/",
   "/previews/",
