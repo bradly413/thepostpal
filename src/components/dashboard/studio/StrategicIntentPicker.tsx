@@ -98,10 +98,7 @@ export default function StrategicIntentPicker({
             >
               <Icon size={19} strokeWidth={1.6} aria-hidden />
             </button>
-            <span className="pb-intent-pop" role="tooltip">
-              <span className="pb-intent-pop-label">{SHORT_LABEL[intent.id]}</span>
-              <span className="pb-intent-pop-desc">{intent.description}</span>
-            </span>
+            <span className="pb-intent-pop" role="tooltip">{SHORT_LABEL[intent.id]}</span>
           </div>
         );
       })}
@@ -145,29 +142,21 @@ export default function StrategicIntentPicker({
         }
 
         /* Description reveal — frosted panel to the LEFT of the icon (right edge). */
+        /* Glowing white title — mirrors the platform rail's .rail-ico-label */
         .pb-intent-pop {
           position: absolute; right: calc(100% + 10px); top: 50%;
           transform: translateY(-50%) translateX(6px);
-          width: 184px; text-align: right; padding: 9px 12px; border-radius: 12px;
-          background: rgba(255,255,255,0.94);
-          -webkit-backdrop-filter: blur(12px) saturate(1.4);
-          backdrop-filter: blur(12px) saturate(1.4);
-          border: 1px solid rgba(0,0,0,0.06);
-          box-shadow: 0 10px 26px -8px rgba(15,15,20,0.22), 0 2px 6px rgba(15,15,20,0.06);
-          opacity: 0; visibility: hidden; pointer-events: none;
+          white-space: nowrap; font-size: 12.5px; font-weight: 600; letter-spacing: -0.01em;
+          color: #fff;
+          text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 11px rgba(255,255,255,0.65),
+            0 0 2px rgba(0,0,0,0.5);
+          opacity: 0; visibility: hidden; pointer-events: none; z-index: 19;
           transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
-          z-index: 19;
         }
         .pb-intent-item:hover .pb-intent-pop,
-        .pb-intent-ico:focus-visible + .pb-intent-pop {
+        .pb-intent-ico:focus-visible + .pb-intent-pop,
+        .pb-intent-ico.active + .pb-intent-pop {
           opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
-        }
-        .pb-intent-pop-label {
-          display: block; font-size: 12.5px; font-weight: 700;
-          letter-spacing: -0.01em; color: rgba(22,22,28,0.92); margin-bottom: 2px;
-        }
-        .pb-intent-pop-desc {
-          display: block; font-size: 11px; line-height: 1.38; color: rgba(22,22,28,0.55);
         }
 
         @media (prefers-reduced-motion: reduce) {
