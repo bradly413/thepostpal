@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { handleRouteError } from "@/lib/route-errors";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -42,8 +43,8 @@ export async function GET(_: NextRequest, { params }: Params) {
 
       return NextResponse.json({ post });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.posts.id.GET", error, { extra: { postId: id } });
   }
 }
 
@@ -112,6 +113,11 @@ export async function PUT(request: NextRequest, { params }: Params) {
               : typeof body.mediaUrl === "string"
                 ? body.mediaUrl
                 : undefined,
+          mediaUrls: Array.isArray(body.mediaUrls)
+            ? body.mediaUrls.filter((url: unknown) => typeof url === "string" && url.trim())
+            : body.mediaUrls === null
+              ? null
+              : undefined,
           mediaType:
             body.mediaType === null
               ? null
@@ -123,8 +129,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
       return NextResponse.json({ post: updated });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.posts.id.PUT", error, { extra: { postId: id } });
   }
 }
 
@@ -152,7 +158,7 @@ export async function DELETE(_: NextRequest, { params }: Params) {
 
       return NextResponse.json({ success: true });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.posts.id.DELETE", error, { extra: { postId: id } });
   }
 }

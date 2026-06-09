@@ -7,6 +7,19 @@ import {
   SOLO_MAX_CONNECTED_PROFILES,
 } from "@/lib/social-profile-limits";
 
+const SOCIAL_CONNECTION_PUBLIC_SELECT = {
+  id: true,
+  organizationId: true,
+  locationId: true,
+  platform: true,
+  handle: true,
+  externalAccountId: true,
+  connected: true,
+  expiresAt: true,
+  createdAt: true,
+  updatedAt: true,
+} as const;
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
@@ -21,6 +34,7 @@ export async function GET(request: NextRequest) {
 
         const connections = await tx.socialConnection.findMany({
           where: { organizationId: auth.tenantId, locationId },
+          select: SOCIAL_CONNECTION_PUBLIC_SELECT,
           orderBy: { createdAt: "desc" },
         });
         return NextResponse.json({ connections });
@@ -28,6 +42,7 @@ export async function GET(request: NextRequest) {
 
       const connections = await tx.socialConnection.findMany({
         where: { organizationId: auth.tenantId },
+        select: SOCIAL_CONNECTION_PUBLIC_SELECT,
         orderBy: { createdAt: "desc" },
       });
       return NextResponse.json({ connections });

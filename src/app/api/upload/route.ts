@@ -2,7 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
+import { requireAuthContext } from "@/lib/api-auth";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { handleRouteError } from "@/lib/route-errors";
 import {
   isS3Configured,
   uploadToS3,
@@ -21,6 +23,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
+    const auth = await requireAuthContext();
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 
@@ -52,7 +55,7 @@ export async function POST(req: NextRequest) {
     // an ephemeral filesystem, so local-disk writes do not survive deploys.
     if (isS3Configured()) {
       const { url } = await uploadToS3({
-        key: `uploads/${filename}`,
+        key: `tenants/${auth.tenantId}/uploads/${filename}`,
         body: buffer,
         contentType: contentTypeForExtension(safeExt),
       });
@@ -60,7 +63,7 @@ export async function POST(req: NextRequest) {
     }
 
     try {
-      const uploadDir = path.join(process.cwd(), "public", "uploads");
+      const uploadDir = path.join(process.cwd(), "public", "uploads", auth.tenantId);
       await mkdir(uploadDir, { recursive: true });
       await writeFile(path.join(uploadDir, filename), buffer);
     } catch {
@@ -75,9 +78,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    const publicUrl = `/uploads/${filename}`;
+    const publicUrl = `/uploads/${auth.tenantId}/${filename}`;
     return NextResponse.json({ url: publicUrl, filename, storage: "local" });
-  } catch {
-    return NextResponse.json({ error: "Upload failed" }, { status: 500 });
+  } catch (error) {
+    return handleRouteError("api.upload.POST", error);
   }
 }

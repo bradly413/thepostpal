@@ -1,5 +1,6 @@
 import "server-only";
 
+import * as Sentry from "@sentry/nextjs";
 import type { DraftStatus } from "@prisma/client";
 import type { TenantDbClient } from "@/lib/db";
 import { MetaApiError, publishToMeta } from "@/lib/meta-api";
@@ -13,6 +14,7 @@ export interface CronPublishResult {
   errors: Array<{ postId: string; message: string }>;
 }
 
+/** Internal queue only — native Meta-scheduled posts stay `scheduled` and are not re-dispatched. */
 const READY_STATUSES: DraftStatus[] = ["approved"];
 
 /**
@@ -89,6 +91,16 @@ export async function processDueScheduledPosts(tx: TenantDbClient): Promise<Cron
             : "Unknown publish error";
 
       console.error(`[CRON] Failed to publish post ${post.id}:`, error);
+      Sentry.captureException(error, {
+        tags: {
+          job: "cron_publish",
+        },
+        extra: {
+          postId: post.id,
+          organizationId: post.organizationId,
+          locationId: post.locationId,
+        },
+      });
 
       await tx.scheduledPost.update({
         where: { id: post.id },

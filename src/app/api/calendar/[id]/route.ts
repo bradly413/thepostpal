@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { handleRouteError } from "@/lib/route-errors";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -57,8 +58,8 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
       return NextResponse.json({ event: updated });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.calendar.id.DELETE", error);
   }
 }
 
@@ -86,7 +87,7 @@ export async function DELETE(_: NextRequest, { params }: Params) {
 
       return NextResponse.json({ success: true });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.calendar.id.PUT", error);
   }
 }

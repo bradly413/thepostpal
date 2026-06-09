@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { handleRouteError } from "@/lib/route-errors";
 
 const VALID_STATUSES = new Set([
   "draft",
@@ -50,8 +51,8 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ posts });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.posts.GET", error);
   }
 }
 
@@ -84,6 +85,9 @@ export async function POST(request: NextRequest) {
             typeof body.templateId === "string" ? body.templateId : null,
           pillar: typeof body.pillar === "string" ? body.pillar : null,
           mediaUrl: typeof body.mediaUrl === "string" ? body.mediaUrl : null,
+          mediaUrls: Array.isArray(body.mediaUrls)
+            ? body.mediaUrls.filter((url: unknown) => typeof url === "string" && url.trim())
+            : null,
           mediaType:
             typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
               ? body.mediaType
@@ -93,7 +97,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ post }, { status: 201 });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.posts.POST", error);
   }
 }

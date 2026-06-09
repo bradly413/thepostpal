@@ -33,6 +33,7 @@ DATABASE_URL="<prod-connection-string>" npx prisma migrate deploy
 | `LEONARDO_API_KEY` | Studio HD upscale + remove-bg 500 |
 | `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` | signups fall back to ephemeral `/tmp` (lost on redeploy). Or alias the existing `KV_REST_API_URL/_TOKEN` values. |
 | `NEXT_PUBLIC_APP_URL` | OAuth redirects / canonical URLs point wrong — set to `https://www.posterboysocial.com` |
+| `TOKEN_ENC_KEY` | Meta `SocialAccount.accessToken` encryption/decryption fails; OAuth connect and SocialAccount publish path break. Use a 32-byte AES key (hex or base64). |
 
 ## 🟠 TIER 1 — uploads (new since this branch)
 
@@ -41,6 +42,18 @@ Uploads fall back to **ephemeral local disk** on Vercel unless S3 is configured.
 S3_BUCKET   S3_REGION   AWS_ACCESS_KEY_ID   AWS_SECRET_ACCESS_KEY
 ```
 Optional for R2/MinIO: `S3_ENDPOINT`, `S3_PUBLIC_BASE_URL`, `S3_FORCE_PATH_STYLE=true`.
+
+## 🟠 TIER 1 — monitoring / alerting
+
+Error monitoring is wired through Next.js instrumentation + Sentry. Set:
+```
+SENTRY_DSN
+NEXT_PUBLIC_SENTRY_DSN
+SENTRY_ENVIRONMENT                 # optional override; defaults to VERCEL_ENV/NODE_ENV
+SENTRY_TRACES_SAMPLE_RATE          # optional, default 0.1
+NEXT_PUBLIC_SENTRY_TRACES_SAMPLE_RATE
+```
+Brad still needs to create the actual alert rules in Sentry (for example: any new issue on prod, and cron-publish failures).
 
 ## 🟠 TIER 1 — Stripe billing (new since this branch)
 

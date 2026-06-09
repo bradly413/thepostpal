@@ -3,6 +3,7 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { loadMetaBundleSecrets } from "@/lib/meta-social-db";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { handleRouteError } from "@/lib/route-errors";
 
 const GRAPH = "https://graph.facebook.com/v21.0";
 
@@ -69,7 +70,7 @@ export async function GET(req: NextRequest) {
         igMedia,
       });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.meta.insights.GET", error);
   }
 }

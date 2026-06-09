@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { handleRouteError } from "@/lib/route-errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -22,8 +23,8 @@ export async function GET(request: NextRequest) {
 
       return NextResponse.json({ events });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.calendar.GET", error);
   }
 }
 
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest) {
 
       return NextResponse.json({ event }, { status: 201 });
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.calendar.POST", error);
   }
 }

@@ -6,6 +6,7 @@ import { resolveAccess } from "@/lib/authz";
 import {
   assertCanConnectSocialProfile,
 } from "@/lib/social-profile-limits";
+import { decryptToken, encryptToken, isEncryptedToken } from "@/lib/social/token-crypto";
 import type {
   MetaConnectionPublic,
   MetaConnectionSecrets,
@@ -57,6 +58,7 @@ export async function persistMetaBundle(
   }
 
   const connectedAt = new Date();
+  const encryptedToken = encryptToken(input.pageToken);
 
   await tx.socialConnection.create({
     data: {
@@ -66,7 +68,7 @@ export async function persistMetaBundle(
       handle: input.pageName,
       externalAccountId: input.pageId,
       connected: true,
-      accessToken: input.pageToken,
+      accessToken: encryptedToken,
     },
   });
 
@@ -87,7 +89,7 @@ export async function persistMetaBundle(
         handle: "Instagram Business",
         externalAccountId: input.igAccountId,
         connected: true,
-        accessToken: input.pageToken,
+        accessToken: encryptedToken,
       },
     });
   }
@@ -167,7 +169,7 @@ export async function loadMetaBundleSecrets(
 
   return {
     pageId: facebook.externalAccountId,
-    pageToken: facebook.accessToken,
+    pageToken: decryptToken(facebook.accessToken),
     pageName: facebook.handle || "Facebook Page",
     igAccountId: instagram?.externalAccountId ?? null,
   };
@@ -197,7 +199,7 @@ export async function loadMetaBundleSecretsForCron(
 
   return {
     pageId: facebook.externalAccountId,
-    pageToken: facebook.accessToken,
+    pageToken: decryptToken(facebook.accessToken),
     pageName: facebook.handle || "Facebook Page",
     igAccountId: instagram?.externalAccountId ?? null,
   };
@@ -220,4 +222,61 @@ export async function disconnectMetaBundle(
       platform: { in: [...META_PLATFORMS] },
     },
   });
+}
+
+export async function migrateEncryptedSocialConnectionTokens(tx: TenantDbClient): Promise<{
+  total: number;
+  migratedAccessTokens: number;
+  migratedRefreshTokens: number;
+  skipped: number;
+}> {
+  const rows = await tx.socialConnection.findMany({
+    select: {
+      id: true,
+      accessToken: true,
+      refreshToken: true,
+    },
+  });
+
+  let migratedAccessTokens = 0;
+  let migratedRefreshTokens = 0;
+  let skipped = 0;
+
+  for (const row of rows) {
+    const nextAccessToken =
+      row.accessToken && !isEncryptedToken(row.accessToken)
+        ? encryptToken(row.accessToken)
+        : row.accessToken;
+    const nextRefreshToken =
+      row.refreshToken && !isEncryptedToken(row.refreshToken)
+        ? encryptToken(row.refreshToken)
+        : row.refreshToken;
+
+    if (nextAccessToken === row.accessToken && nextRefreshToken === row.refreshToken) {
+      skipped += 1;
+      continue;
+    }
+
+    await tx.socialConnection.update({
+      where: { id: row.id },
+      data: {
+        accessToken: nextAccessToken,
+        refreshToken: nextRefreshToken,
+      },
+    });
+
+    if (nextAccessToken !== row.accessToken) {
+      migratedAccessTokens += 1;
+    }
+    if (nextRefreshToken !== row.refreshToken) {
+      migratedRefreshTokens += 1;
+    }
+  }
+
+  return {
+    total: rows.length,
+    migratedAccessTokens,
+    migratedRefreshTokens,
+    skipped,
+  };
 }

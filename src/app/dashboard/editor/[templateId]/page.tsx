@@ -238,7 +238,14 @@ export default function EditorPage({
   }
 
   async function handlePublish() {
-    if (!canvasRef.current || !meta) return;
+    if (!canvasRef.current) return;
+    if (!meta?.connected) {
+      setPublishResult({
+        type: "error",
+        message: "Connect Facebook in Settings before publishing.",
+      });
+      return;
+    }
     setPublishing(true);
     setPublishResult(null);
     try {
@@ -267,6 +274,20 @@ export default function EditorPage({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Publish failed");
+      const locationId = getStoredActiveLocationId();
+      if (locationId) {
+        await createDashboardPost({
+          locationId,
+          copy: caption,
+          platforms: platformsFromCalendarPlatform(publishPlatform),
+          scheduledFor: new Date().toISOString(),
+          status: "published",
+          templateId: template!.id,
+          pillar: template!.pillar,
+          mediaUrl: imageUrl,
+          mediaType: "image",
+        }).catch(() => {});
+      }
       setPublishResult({ type: "success", message: "Posted successfully!" });
       setShowPublish(false);
     } catch (err) {
@@ -276,7 +297,14 @@ export default function EditorPage({
   }
 
   async function handleSchedule() {
-    if (!canvasRef.current || !meta || !scheduleDate || !scheduleTime) return;
+    if (!canvasRef.current || !scheduleDate || !scheduleTime) return;
+    if (!meta?.connected) {
+      setPublishResult({
+        type: "error",
+        message: "Connect Facebook in Settings before scheduling.",
+      });
+      return;
+    }
     setScheduling(true);
     setPublishResult(null);
     try {
@@ -323,6 +351,8 @@ export default function EditorPage({
           status: "scheduled",
           templateId: template!.id,
           pillar: template!.pillar,
+          mediaUrl: imageUrl,
+          mediaType: "image",
         });
       }
 

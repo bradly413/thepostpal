@@ -294,6 +294,70 @@ export default function CalendarPage() {
     setModalMode("event");
   }
 
+  async function handlePublishNow() {
+    if (!locationId || uploadingMedia || !mediaUrl) {
+      setPublishResult({ type: "error", message: "Add an image before publishing." });
+      return;
+    }
+    if (mediaType === "video") {
+      setPublishResult({ type: "error", message: "Video publish is not available in closed beta." });
+      return;
+    }
+    if (!meta?.connected) {
+      setPublishResult({ type: "error", message: "Connect Facebook in Settings before publishing." });
+      return;
+    }
+
+    const tmpl = templates.find((t) => t.id === formTemplate);
+    setPublishing(true);
+    setPublishResult(null);
+
+    try {
+      const payload = await buildMetaPublishPayload({
+        platform: formPlatform,
+        caption: formCaption,
+        imageUrl: mediaUrl,
+      });
+      const res = await fetch("/api/meta/publish", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Publish failed");
+
+      const postData = {
+        templateId: formTemplate,
+        templateName: tmpl?.name || "",
+        platform: formPlatform,
+        date: selectedDate,
+        time: formTime,
+        caption: formCaption,
+        status: "scheduled" as const,
+        pillar: tmpl?.pillar || "",
+      };
+      const base = mapCalendarPostToCreateInput(postData, locationId);
+      await createDashboardPost({
+        ...base,
+        status: "published",
+        scheduledFor: new Date().toISOString(),
+        mediaUrl,
+        mediaType: "image",
+        mediaUrls: [mediaUrl],
+      });
+      await loadPosts();
+      setPublishResult({ type: "success", message: "Published to Meta!" });
+      setModalMode(null);
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: err instanceof Error ? err.message : "Publish failed",
+      });
+    } finally {
+      setPublishing(false);
+    }
+  }
+
   async function handleSavePost(approve = false) {
     if (!locationId || uploadingMedia) return;
 
@@ -309,39 +373,15 @@ export default function CalendarPage() {
       pillar: tmpl?.pillar || "",
     };
 
-    try {
-      const base = mapCalendarPostToCreateInput(postData, locationId);
-      // Approve → status 'approved' (the cron dispatcher only publishes approved
-      // posts). Attach the absolute S3 publicUrl + media type for the dispatcher.
-      const payload = {
-        ...base,
-        status: approve ? ("approved" as const) : base.status,
-        mediaUrl: mediaUrl || null,
-        mediaType: mediaUrl ? mediaType : null,
-      };
-      if (editingPost) {
-        await updateDashboardPost(editingPost.id, payload);
-      } else {
-        await createDashboardPost(payload);
-      }
-      await loadPosts();
-    } catch (err) {
-      setPublishResult({
-        type: "error",
-        message: formatDashboardApiMessage(err, "Could not save this post."),
-      });
-      return;
-    }
+    const useMetaSchedule =
+      formStatus === "scheduled" && meta?.connected && !editingPost && !approve && mediaUrl;
 
-    // 'approved' posts are handed to the cron dispatcher — skip the immediate
-    // Meta call so we don't double-publish.
-    if (formStatus === "scheduled" && meta?.connected && !editingPost && !approve) {
+    if (useMetaSchedule) {
       setPublishing(true);
       setPublishResult(null);
       try {
         const scheduledAt = new Date(`${selectedDate}T${formTime}`);
         const unixTime = Math.floor(scheduledAt.getTime() / 1000);
-
         const payload = await buildMetaPublishPayload({
           platform: formPlatform,
           caption: formCaption,
@@ -355,14 +395,45 @@ export default function CalendarPage() {
         });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || "Scheduling failed");
+      } catch (err) {
+        setPublishResult({
+          type: "error",
+          message: err instanceof Error ? err.message : "Scheduling failed",
+        });
+        setPublishing(false);
+        return;
+      }
+      setPublishing(false);
+    }
+
+    try {
+      const base = mapCalendarPostToCreateInput(postData, locationId);
+      const payload = {
+        ...base,
+        status: approve ? ("approved" as const) : base.status,
+        mediaUrl: mediaUrl || null,
+        mediaUrls: mediaUrl ? [mediaUrl] : null,
+        mediaType: mediaUrl ? mediaType : null,
+      };
+      if (editingPost) {
+        await updateDashboardPost(editingPost.id, payload);
+      } else {
+        await createDashboardPost(payload);
+      }
+      await loadPosts();
+      if (useMetaSchedule) {
+        const scheduledAt = new Date(`${selectedDate}T${formTime}`);
         setPublishResult({
           type: "success",
           message: `Scheduled for ${scheduledAt.toLocaleDateString()} at ${scheduledAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
         });
-      } catch (err) {
-        setPublishResult({ type: "error", message: err instanceof Error ? err.message : "Scheduling failed" });
       }
-      setPublishing(false);
+    } catch (err) {
+      setPublishResult({
+        type: "error",
+        message: formatDashboardApiMessage(err, "Could not save this post."),
+      });
+      return;
     }
 
     setModalMode(null);
@@ -987,7 +1058,7 @@ export default function CalendarPage() {
               {mediaError && <p className="mt-1.5 text-[11px] text-[#ee2532]">{mediaError}</p>}
             </div>
 
-            <div className="flex gap-3 mt-6">
+            <div className="flex flex-wrap gap-3 mt-6">
               {editingPost && (
                 <button
                   onClick={handleDeletePost}
@@ -996,21 +1067,30 @@ export default function CalendarPage() {
                   Delete
                 </button>
               )}
-              <button onClick={() => setModalMode(null)} className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
+              <button onClick={() => setModalMode(null)} className="flex-1 min-w-[120px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Cancel
               </button>
+              {!editingPost && meta?.connected && formStatus === "scheduled" && mediaUrl && mediaType === "image" && (
+                <button
+                  onClick={() => void handlePublishNow()}
+                  disabled={publishing || uploadingMedia}
+                  className="pb-btn-primary flex-1 min-w-[120px] text-sm py-2.5 disabled:opacity-50"
+                >
+                  {publishing ? "Publishing…" : "Publish now"}
+                </button>
+              )}
               <button
-                onClick={() => handleSavePost(false)}
+                onClick={() => void handleSavePost(false)}
                 disabled={publishing || uploadingMedia}
-                className="flex-1 rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
+                className="flex-1 min-w-[120px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
               >
                 {publishing ? "Saving…" : editingPost ? "Update" : "Schedule"}
               </button>
               <button
-                onClick={() => handleSavePost(true)}
+                onClick={() => void handleSavePost(true)}
                 disabled={publishing || uploadingMedia}
-                className="pb-btn-primary flex-1 text-sm py-2.5 disabled:opacity-50"
-                title="Approve so the dispatcher publishes it"
+                className="flex-1 min-w-[140px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
+                title="Approve so the dispatcher publishes at the scheduled time"
               >
                 Schedule &amp; Approve
               </button>

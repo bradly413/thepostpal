@@ -17,6 +17,7 @@ export interface DashboardScheduledPostRecord {
   note?: string | null;
   reviewerNotes?: string | null;
   mediaUrl?: string | null;
+  mediaUrls?: string[] | null;
   mediaType?: "image" | "video" | null;
   errorLog?: string | null;
   createdAt: string;

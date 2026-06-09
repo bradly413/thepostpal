@@ -3,8 +3,10 @@
 import { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useMetaConnection } from "@/lib/use-meta-connection";
-import { getStoredActiveLocationId, clearStoredActiveLocationId } from "@/lib/dashboard-browser-state";
+import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { SITE_NAME } from "@/lib/site";
+import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
+import Link from "next/link";
 
 export default function SettingsPage() {
   return (
@@ -118,14 +120,6 @@ function SettingsContent() {
     } catch (err) {
       setMetaError(err instanceof Error ? err.message : "Could not disconnect Meta.");
     }
-  }
-
-  function handleLogout() {
-    document.cookie = "session=; path=/; max-age=0";
-    // Clear per-browser state so the next account on this device doesn't inherit
-    // the prior user's active location.
-    clearStoredActiveLocationId();
-    router.push("/sign-in");
   }
 
   const tabs = [
@@ -315,86 +309,12 @@ function SettingsContent() {
           )}
 
           {activeTab === "account" && (
-            <div className="space-y-4">
-              <div className="pb-panel">
-                <h2 className="pb-panel-h">Account</h2>
-                <p className="text-sm opacity-65 mb-4">Manage your account access and security</p>
-                <div className="space-y-3">
-                  <div className="pb-row">
-                    <div>
-                      <p className="text-sm font-medium">Change Password</p>
-                      <p className="text-xs opacity-55 mt-0.5">Update your account password</p>
-                    </div>
-                    <span className="pb-chip-soft">Coming soon</span>
-                  </div>
-                  <div className="pb-row" style={{ display: "block" }}>
-                    <div className="flex items-center justify-between">
-                      <div>
-                        <p className="text-sm font-medium">Connected Accounts</p>
-                        <p className="text-xs opacity-55 mt-0.5">Facebook and Instagram connections</p>
-                      </div>
-                    </div>
-                    {metaError && (
-                      <div className="rounded-lg px-3 py-2 mt-3" style={{ background: "rgba(238,37,50,0.08)", border: "1px solid rgba(238,37,50,0.2)" }}>
-                        <p className="text-xs pb-press-text">{metaError}</p>
-                      </div>
-                    )}
-                    {meta?.connected ? (
-                      <div className="space-y-2 mt-3">
-                        <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "rgba(59,130,246,0.12)" }}>
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#3b82f6" strokeWidth={1.5}><path strokeLinecap="round" strokeLinejoin="round" d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" /></svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium truncate">{meta.pageName}</p>
-                            <p className="text-[10px]" style={{ color: "#1f9d4d" }}>Connected</p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
-                          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: "rgba(236,72,153,0.12)" }}>
-                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#ec4899" strokeWidth={1.5}><rect x="2" y="2" width="20" height="20" rx="5" ry="5" /><path d="M16 11.37A4 4 0 1112.63 8 4 4 0 0116 11.37z" /><line x1="17.5" y1="6.5" x2="17.51" y2="6.5" /></svg>
-                          </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs font-medium">Instagram</p>
-                            <p className="text-[10px] opacity-55">{meta.igAccountId ? "Business account linked" : "No business account found"}</p>
-                          </div>
-                        </div>
-                        <button
-                          onClick={handleDisconnectMeta}
-                          className="w-full rounded-lg border border-black/10 py-2 text-xs font-medium opacity-65 hover:opacity-100 hover:pb-press-text transition-all"
-                        >
-                          Disconnect
-                        </button>
-                      </div>
-                    ) : (
-                      <button
-                        onClick={handleConnectMeta}
-                        className="pb-btn-primary w-full flex items-center justify-center gap-2 text-xs py-2.5 mt-3"
-                      >
-                        <svg width="16" height="16" fill="currentColor" viewBox="0 0 24 24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z" /></svg>
-                        Connect with Facebook
-                      </button>
-                    )}
-                  </div>
-                </div>
-              </div>
-              <div className="pb-panel pb-panel-danger">
-                <h2 className="pb-panel-h pb-press-text">Danger zone</h2>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">Sign Out</p>
-                    <p className="text-xs opacity-55 mt-0.5">Sign out of your account on this device</p>
-                  </div>
-                  <button
-                    onClick={handleLogout}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold pb-press-text transition-all"
-                    style={{ border: "1px solid rgba(238,37,50,0.3)" }}
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
-            </div>
+            <AccountSecurityPanel
+              meta={meta}
+              metaError={metaError}
+              onConnectMeta={handleConnectMeta}
+              onDisconnectMeta={() => void handleDisconnectMeta()}
+            />
           )}
 
           {activeTab === "legal" && (
@@ -403,19 +323,22 @@ function SettingsContent() {
               <p className="text-sm opacity-65 mb-5">Terms, privacy, and compliance information</p>
               <div className="space-y-3">
                 {[
-                  { label: "Terms of Service", desc: "Last updated May 1, 2026" },
-                  { label: "Privacy Policy", desc: "How we handle your data" },
-                  { label: "Data Processing Agreement", desc: "For business accounts" },
-                  { label: "Cookie Policy", desc: "How we use cookies and tracking" },
-                  { label: "Acceptable Use Policy", desc: "Content guidelines and restrictions" },
+                  { label: "Terms of Service", desc: "Last updated May 18, 2026", href: "/terms" },
+                  { label: "Privacy Policy", desc: "Data, Meta integrations, and cookies", href: "/privacy" },
                 ].map((item) => (
-                  <div key={item.label} className="pb-row cursor-pointer hover:bg-black/[0.04] transition-colors">
-                    <div>
-                      <p className="text-sm font-medium">{item.label}</p>
-                      <p className="text-xs opacity-55 mt-0.5">{item.desc}</p>
+                  <Link
+                    key={item.label}
+                    href={item.href}
+                    className="pb-row cursor-pointer hover:bg-black/[0.04] transition-colors block"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{item.label}</p>
+                        <p className="text-xs opacity-55 mt-0.5">{item.desc}</p>
+                      </div>
+                      <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="opacity-40"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                     </div>
-                    <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5} className="opacity-40"><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
-                  </div>
+                  </Link>
                 ))}
               </div>
             </div>

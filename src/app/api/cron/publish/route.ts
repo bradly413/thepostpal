@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import * as Sentry from "@sentry/nextjs";
 import { processDueScheduledPosts } from "@/lib/cron-publish";
 import { withCronDb } from "@/lib/db";
 
@@ -36,6 +37,13 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error("[CRON_PUBLISH_ERROR]", error);
+    Sentry.captureException(error, {
+      tags: {
+        route: "/api/cron/publish",
+        job: "cron_publish",
+      },
+    });
+    await Sentry.flush(2000);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
 }

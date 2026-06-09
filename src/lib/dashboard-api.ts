@@ -174,6 +174,7 @@ export async function createDashboardPost(input: {
   templateId?: string | null;
   pillar?: string | null;
   mediaUrl?: string | null;
+  mediaUrls?: string[] | null;
   mediaType?: "image" | "video" | null;
 }): Promise<DashboardPostRecord> {
   const data = await apiRequest<{ post: DashboardPostRecord }>("/api/posts", {
@@ -195,6 +196,7 @@ export async function updateDashboardPost(
     note: string | null;
     reviewerNotes: string | null;
     mediaUrl: string | null;
+    mediaUrls: string[] | null;
     mediaType: "image" | "video" | null;
   }>,
 ): Promise<DashboardPostRecord> {

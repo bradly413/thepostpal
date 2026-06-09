@@ -222,3 +222,91 @@ export async function authenticateStoredUser(identifier: string, password: strin
   const account = await getStoredAccountById(user.accountId);
   return toSessionUser(user, account);
 }
+
+export async function getStoredUserById(userId: string): Promise<AuthUserRecord | null> {
+  const redis = getRedis();
+  if (redis) {
+    return (await redis.get<AuthUserRecord | null>(`${USER_KEY_PREFIX}${userId}`)) || null;
+  }
+  const snapshot = await readFileSnapshot();
+  return snapshot.users.find((user) => user.id === userId) || null;
+}
+
+async function persistStoredUser(user: AuthUserRecord): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    await redis.set(`${USER_KEY_PREFIX}${user.id}`, user);
+    await redis.set(`${EMAIL_KEY_PREFIX}${user.email}`, user.id);
+    return;
+  }
+  const snapshot = await readFileSnapshot();
+  const index = snapshot.users.findIndex((entry) => entry.id === user.id);
+  if (index >= 0) {
+    snapshot.users[index] = user;
+  } else {
+    snapshot.users.push(user);
+  }
+  await writeFileSnapshot(snapshot);
+}
+
+async function removeStoredUser(user: AuthUserRecord): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    await redis.del(`${USER_KEY_PREFIX}${user.id}`);
+    await redis.del(`${EMAIL_KEY_PREFIX}${user.email}`);
+    return;
+  }
+  const snapshot = await readFileSnapshot();
+  snapshot.users = snapshot.users.filter((entry) => entry.id !== user.id);
+  await writeFileSnapshot(snapshot);
+}
+
+async function removeStoredAccount(accountId: string): Promise<void> {
+  const redis = getRedis();
+  if (redis) {
+    await redis.del(`${ACCOUNT_KEY_PREFIX}${accountId}`);
+    return;
+  }
+  const snapshot = await readFileSnapshot();
+  snapshot.accounts = snapshot.accounts.filter((entry) => entry.id !== accountId);
+  await writeFileSnapshot(snapshot);
+}
+
+export function isPasswordStrong(password: string): boolean {
+  return password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password);
+}
+
+export async function updateStoredUserPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+): Promise<{ ok: true } | { ok: false; reason: "not_found" | "invalid_current" | "weak_password" }> {
+  if (!isPasswordStrong(newPassword)) {
+    return { ok: false, reason: "weak_password" };
+  }
+
+  const user = await getStoredUserById(userId);
+  if (!user) return { ok: false, reason: "not_found" };
+
+  if (!verifyPassword(currentPassword, user.passwordSalt, user.passwordHash)) {
+    return { ok: false, reason: "invalid_current" };
+  }
+
+  const passwordState = hashPassword(newPassword);
+  await persistStoredUser({
+    ...user,
+    passwordHash: passwordState.passwordHash,
+    passwordSalt: passwordState.passwordSalt,
+  });
+
+  return { ok: true };
+}
+
+/** Removes auth-store credentials for a workspace owner (Postgres org is deleted separately). */
+export async function deleteAuthStoreForAccount(accountId: string, userId: string): Promise<void> {
+  const user = await getStoredUserById(userId);
+  if (user && user.accountId === accountId) {
+    await removeStoredUser(user);
+  }
+  await removeStoredAccount(accountId);
+}

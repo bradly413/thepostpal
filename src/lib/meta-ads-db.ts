@@ -5,6 +5,7 @@ import type { TenantDbClient } from "@/lib/db";
 import { resolveAccess } from "@/lib/authz";
 import { isMetaAdsFeatureActive } from "@/lib/plan-features";
 import { listAdAccounts } from "@/lib/meta-ads";
+import { decryptToken, encryptToken } from "@/lib/social/token-crypto";
 
 export class MetaAdsAccessError extends Error {
   constructor(
@@ -58,7 +59,7 @@ export async function loadMetaAdsUserToken(
   if (!row?.accessToken) {
     throw new MetaAdsAccessError("Connect Meta Ads for this location first", "NOT_CONNECTED");
   }
-  return row.accessToken;
+  return decryptToken(row.accessToken);
 }
 
 export async function loadFacebookPageForAds(
@@ -84,7 +85,7 @@ export async function loadFacebookPageForAds(
   }
   return {
     pageId: row.externalAccountId,
-    pageToken: row.accessToken,
+    pageToken: decryptToken(row.accessToken),
     pageName: row.handle || "Page",
   };
 }
@@ -107,11 +108,11 @@ export async function persistMetaAdsUserToken(
       platform: "meta_ads",
       handle: "Meta Ads",
       connected: true,
-      accessToken: userToken,
+      accessToken: encryptToken(userToken),
     },
     update: {
       connected: true,
-      accessToken: userToken,
+      accessToken: encryptToken(userToken),
     },
   });
 }

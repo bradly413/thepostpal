@@ -7,6 +7,7 @@ import {
   MetaAdsAccessError,
   syncMetaAdAccounts,
 } from "@/lib/meta-ads-db";
+import { handleRouteError } from "@/lib/route-errors";
 
 export async function GET(request: NextRequest) {
   try {
@@ -35,7 +36,7 @@ export async function GET(request: NextRequest) {
         throw err;
       }
     });
-  } catch {
-    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  } catch (error) {
+    return handleRouteError("api.meta.ad-accounts.GET", error);
   }
 }

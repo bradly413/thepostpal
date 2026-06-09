@@ -1,6 +1,21 @@
-const APP_ID = process.env.NEXT_PUBLIC_META_APP_ID || "";
-const APP_SECRET = process.env.META_APP_SECRET || "";
-const REDIRECT_URI = process.env.META_REDIRECT_URI || "http://localhost:3000/api/meta/callback";
+const APP_ID =
+  process.env.META_CLIENT_ID ||
+  process.env.NEXT_PUBLIC_META_APP_ID ||
+  "";
+const APP_SECRET =
+  process.env.META_CLIENT_SECRET ||
+  process.env.META_APP_SECRET ||
+  "";
+const REDIRECT_URI =
+  process.env.META_REDIRECT_URI ||
+  (process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/meta/callback`
+    : "http://localhost:3000/api/meta/callback");
+export const META_AUTH_REDIRECT_URI =
+  process.env.META_AUTH_REDIRECT_URI ||
+  (process.env.NEXT_PUBLIC_APP_URL
+    ? `${process.env.NEXT_PUBLIC_APP_URL.replace(/\/$/, "")}/api/auth/meta/callback`
+    : "http://localhost:3000/api/auth/meta/callback");
 export const ADS_REDIRECT_URI =
   process.env.META_ADS_REDIRECT_URI ||
   (process.env.NEXT_PUBLIC_APP_URL
@@ -25,15 +40,24 @@ export const META_ADS_SCOPES = [
 
 const ADS_OAUTH_SCOPES = [...META_ADS_SCOPES, "pages_show_list"].join(",");
 
-export function getLoginUrl(state: string) {
+function buildOAuthUrl(state: string, redirectUri: string) {
   const params = new URLSearchParams({
     client_id: APP_ID,
-    redirect_uri: REDIRECT_URI,
+    redirect_uri: redirectUri,
     scope: SCOPES,
     response_type: "code",
     state,
   });
-  return `https://www.facebook.com/v21.0/dialog/oauth?${params}`;
+  return `https://www.facebook.com/v25.0/dialog/oauth?${params}`;
+}
+
+export function getLoginUrl(state: string) {
+  return buildOAuthUrl(state, REDIRECT_URI);
+}
+
+/** Canonical Meta connect flow — `/api/auth/meta/callback`. */
+export function getAuthLoginUrl(state: string) {
+  return buildOAuthUrl(state, META_AUTH_REDIRECT_URI);
 }
 
 /** Ads-only OAuth — does not replace organic scopes on the standard connect flow. */
