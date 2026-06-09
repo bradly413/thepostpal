@@ -1,0 +1,150 @@
+"use client";
+
+import { useCallback, useRef, useState } from "react";
+import { ImagePlus, Sparkles } from "lucide-react";
+
+interface Props {
+  disabled?: boolean;
+  onUploaded?: (url: string) => void;
+}
+
+export default function TrashToTreasureUploadZone({ disabled, onUploaded }: Props) {
+  const inputRef = useRef<HTMLInputElement>(null);
+  const [dragging, setDragging] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [elevateStub, setElevateStub] = useState<string | null>(null);
+
+  const uploadFile = useCallback(
+    async (file: File) => {
+      if (disabled || uploading) return;
+      setUploading(true);
+      setError(null);
+      setElevateStub(null);
+      try {
+        const form = new FormData();
+        form.append("file", file);
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          credentials: "same-origin",
+          body: form,
+        });
+        const data = (await res.json()) as { url?: string; error?: string };
+        if (!res.ok || !data.url) {
+          throw new Error(data.error || "Upload failed.");
+        }
+        setUploadedUrl(data.url);
+        onUploaded?.(data.url);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : "Could not upload that file.");
+      } finally {
+        setUploading(false);
+      }
+    },
+    [disabled, onUploaded, uploading],
+  );
+
+  function onDrop(e: React.DragEvent) {
+    e.preventDefault();
+    setDragging(false);
+    const file = e.dataTransfer.files?.[0];
+    if (file) void uploadFile(file);
+  }
+
+  function handleElevateStub() {
+    // Phase 2 scaffold — future vision endpoint uses PINNED model claude-sonnet-4-6
+    // (has vision), NOT "Claude 3.5". Will auto-caption + elevate the raw upload.
+    setElevateStub(
+      "Elevate is coming soon — vision analysis via claude-sonnet-4-6 will auto-caption and polish this photo.",
+    );
+  }
+
+  return (
+    <div className="pb-trash-treasure">
+      <div
+        className={`pb-trash-drop${dragging ? " pb-trash-drop-active" : ""}${uploadedUrl ? " pb-trash-drop-has-file" : ""}`}
+        onDragOver={(e) => {
+          e.preventDefault();
+          setDragging(true);
+        }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        onClick={() => inputRef.current?.click()}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") inputRef.current?.click();
+        }}
+      >
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/jpeg,image/png,image/webp,image/gif"
+          className="sr-only"
+          disabled={disabled || uploading}
+          onChange={(e) => {
+            const file = e.target.files?.[0];
+            if (file) void uploadFile(file);
+            e.target.value = "";
+          }}
+        />
+        {uploadedUrl ? (
+          <img src={uploadedUrl} alt="Uploaded preview" className="pb-trash-preview" />
+        ) : (
+          <>
+            <ImagePlus size={22} />
+            <p className="pb-trash-label">Drop a raw photo — AI auto-captions and elevates it.</p>
+            <p className="pb-trash-sub">{uploading ? "Uploading…" : "JPG, PNG, or WebP"}</p>
+          </>
+        )}
+      </div>
+      {uploadedUrl ? (
+        <button
+          type="button"
+          className="pb-trash-elevate"
+          onClick={handleElevateStub}
+          disabled={disabled}
+        >
+          <Sparkles size={14} />
+          Elevate with AI
+        </button>
+      ) : null}
+      {error ? <p className="pb-trash-error">{error}</p> : null}
+      {elevateStub ? <p className="pb-trash-stub">{elevateStub}</p> : null}
+      <style>{`
+        .pb-trash-treasure { width: 100%; max-width: 320px; margin-top: 16px; }
+        .pb-trash-drop {
+          display: flex; flex-direction: column; align-items: center; justify-content: center;
+          gap: 6px; min-height: 120px; padding: 16px; border-radius: 16px; cursor: pointer;
+          border: 1.5px dashed rgba(0,0,0,0.14); background: rgba(255,255,255,0.72);
+          transition: border-color 0.15s, background 0.15s;
+        }
+        .pb-trash-drop:hover:not(:has(.pb-trash-preview)) {
+          border-color: rgba(238,37,50,0.35); background: rgba(238,37,50,0.04);
+        }
+        .pb-trash-drop-active {
+          border-color: rgba(238,37,50,0.5); background: rgba(238,37,50,0.06);
+        }
+        .pb-trash-drop-has-file { padding: 0; overflow: hidden; cursor: default; }
+        .pb-trash-label { font-size: 12.5px; font-weight: 600; text-align: center; margin: 0; }
+        .pb-trash-sub { font-size: 11px; color: rgba(22,22,28,0.45); margin: 0; }
+        .pb-trash-preview { width: 100%; height: 140px; object-fit: cover; display: block; }
+        .pb-trash-elevate {
+          display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
+          padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+          border: 1px solid rgba(238,37,50,0.25); background: rgba(238,37,50,0.06); color: #c41e2a;
+        }
+        .pb-trash-error { font-size: 11px; color: #c41e2a; margin: 8px 0 0; }
+        .pb-trash-stub {
+          font-size: 11px; line-height: 1.4; color: rgba(22,22,28,0.55);
+          margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.04);
+        }
+        .sr-only {
+          position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+          overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0;
+        }
+      `}</style>
+    </div>
+  );
+}

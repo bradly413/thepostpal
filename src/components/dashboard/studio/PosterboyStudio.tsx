@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
 import { useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -30,7 +30,17 @@ import {
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
+import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
+import FacebookPreview from "@/components/dashboard/studio/FacebookPreview";
+import StrategicIntentPicker from "@/components/dashboard/studio/StrategicIntentPicker";
+import ProactiveNudgeBanner from "@/components/dashboard/studio/ProactiveNudgeBanner";
+import TrashToTreasureUploadZone from "@/components/dashboard/studio/TrashToTreasureUploadZone";
 import CaptionVariantPicker from "@/components/dashboard/composer/CaptionVariantPicker";
+import {
+  buildStructuredBrief,
+  STRATEGIC_INTENTS,
+  type StrategicIntentId,
+} from "@/lib/studio/strategic-intents";
 import VideoComposer from "@/components/dashboard/composer/VideoComposer";
 import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
@@ -112,6 +122,9 @@ export default function PosterboyStudio() {
   const [postType, setPostType] = useState<PostType>("photo");
   const [when, setWhen] = useState<WhenOption>("now");
   const [prompt, setPrompt] = useState("");
+  const [selectedIntentId, setSelectedIntentId] = useState<StrategicIntentId | null>(null);
+  const [intentDetail, setIntentDetail] = useState("");
+  const [freeFormMode, setFreeFormMode] = useState(false);
   const [genState, setGenState] = useState<GenState>("idle");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -129,8 +142,21 @@ export default function PosterboyStudio() {
   const [publishing, setPublishing] = useState(false);
   const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
   const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
-  const { locationId } = useActiveLocation();
+  const { locationId, locations } = useActiveLocation();
   const features = usePlanFeatures();
+  const activeLocation = useMemo(
+    () => locations.find((l) => l.id === locationId) ?? null,
+    [locations, locationId],
+  );
+  const structuredBrief = useMemo(
+    () => (freeFormMode ? prompt.trim() : buildStructuredBrief(selectedIntentId, intentDetail)),
+    [freeFormMode, prompt, selectedIntentId, intentDetail],
+  );
+  const composerBrief = structuredBrief || prompt.trim();
+  const selectedIntent = STRATEGIC_INTENTS.find((i) => i.id === selectedIntentId) ?? null;
+  const previewHandle =
+    activeLocation?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "yourbrand";
+  const previewPageName = activeLocation?.name || "Your Page";
   const searchParams = useSearchParams();
   const studioLayerKey = locationId ? compositionStorageKey(locationId, "studio") : null;
   const {
@@ -546,7 +572,7 @@ export default function PosterboyStudio() {
   // finished post preview. Falls back to a raw image generation if the intent
   // router is unavailable.
   const composeFromIntent = async () => {
-    const intent = prompt.trim();
+    const intent = composerBrief;
     if (!intent || genState === "generating") {
       inputRef.current?.focus();
       return;
@@ -833,6 +859,7 @@ export default function PosterboyStudio() {
         <main className="canvas" ref={canvasRef}>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
+          <ProactiveNudgeBanner />
 
           <div className="canvas-top">
             {genState === "done" ? (
@@ -919,6 +946,24 @@ export default function PosterboyStudio() {
                       {captionError ? <p className="studio-caption-error">{captionError}</p> : null}
                     </div>
                   </div>
+                ) : platform.id === "instagram" ? (
+                  <InstagramPreview
+                    handle={previewHandle}
+                    caption={captionState === "error" ? "" : captionText}
+                    tags={captionTags}
+                    mediaStyle={previewStyle}
+                    aspectRatio={`${platform.w} / ${platform.h}`}
+                    captionLoading={captionState === "loading"}
+                  />
+                ) : platform.id === "facebook" ? (
+                  <FacebookPreview
+                    pageName={previewPageName}
+                    caption={captionState === "error" ? "" : captionText}
+                    tags={captionTags}
+                    mediaStyle={previewStyle}
+                    aspectRatio={`${platform.w} / ${platform.h}`}
+                    captionLoading={captionState === "loading"}
+                  />
                 ) : (
                   <StudioPostChrome
                     platform={platform.id}
@@ -936,19 +981,12 @@ export default function PosterboyStudio() {
                 {showTemplate ? (
                   <div className="studio-caption-tools">
                     <CaptionVariantPicker
-                      brief={prompt || captionText}
+                      brief={composerBrief || captionText}
                       platform={platform.id}
                       disabled={genState === "generating"}
                       approvalPipeline={features.approvalPipeline}
                       locationId={locationId}
-                      platforms={
-                        platform.id === "facebook" ||
-                        platform.id === "instagram" ||
-                        platform.id === "linkedin" ||
-                        platform.id === "tiktok"
-                          ? [platform.id]
-                          : ["instagram"]
-                      }
+                      platforms={studioPlatforms(platform.id)}
                       onSelect={(v) => {
                         setCaptionText(v.caption);
                         setCaptionTags(v.hashtags.join(" "));
@@ -990,7 +1028,62 @@ export default function PosterboyStudio() {
                 {genState === "generating" && (
                   <div className="gen-progress">{Math.round(progress)}%</div>
                 )}
-                {genState === "idle" && <div className="frame-hint">Type a prompt to generate</div>}
+                {genState === "idle" && composerMode === "image" ? (
+                  <div className="studio-intent-stage">
+                    {!freeFormMode ? (
+                      <StrategicIntentPicker
+                        selectedId={selectedIntentId}
+                        onSelect={(id) => {
+                          setSelectedIntentId(id);
+                          setIntentDetail("");
+                        }}
+                        onFreeForm={() => {
+                          setFreeFormMode(true);
+                          setSelectedIntentId(null);
+                          setIntentDetail("");
+                        }}
+                      />
+                    ) : (
+                      <p className="studio-freeform-hint">
+                        Free-form brief — describe the post in your own words below.
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setFreeFormMode(false);
+                            setPrompt("");
+                          }}
+                        >
+                          Back to intents
+                        </button>
+                      </p>
+                    )}
+                    <TrashToTreasureUploadZone
+                      onUploaded={(url) => {
+                        setGeneratedUrl(url);
+                        setGenState("done");
+                        setMediaKind("image");
+                        setShowTemplate(false);
+                      }}
+                    />
+                    {composerBrief ? (
+                      <div className="studio-intent-captions">
+                        <CaptionVariantPicker
+                          brief={composerBrief}
+                          platform={platform.id}
+                          approvalPipeline={features.approvalPipeline}
+                          locationId={locationId}
+                          platforms={studioPlatforms(platform.id)}
+                          onSelect={(v) => {
+                            setCaptionText(v.caption);
+                            setCaptionTags(v.hashtags.join(" "));
+                            setCaptionState("done");
+                            setCaptionError("");
+                          }}
+                        />
+                      </div>
+                    ) : null}
+                  </div>
+                ) : null}
               </div>
             )}
           </div>
@@ -1157,14 +1250,41 @@ export default function PosterboyStudio() {
             >
               <ImageIcon size={18} />
             </button>
-            <input
-              ref={inputRef}
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && genState !== "generating" && void composeFromIntent()}
-              placeholder={placeholderText}
-              disabled={genState === "generating"}
-            />
+            {freeFormMode ? (
+              <input
+                ref={inputRef}
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                }
+                placeholder={placeholderText}
+                disabled={genState === "generating"}
+              />
+            ) : selectedIntent ? (
+              <input
+                ref={inputRef}
+                value={intentDetail}
+                onChange={(e) => setIntentDetail(e.target.value)}
+                onKeyDown={(e) =>
+                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                }
+                placeholder={selectedIntent.detailPlaceholder}
+                disabled={genState === "generating"}
+                aria-label={`Details for ${selectedIntent.label}`}
+              />
+            ) : (
+              <span className="prompt-intent-hint">
+                Pick an intent above, or{" "}
+                <button
+                  type="button"
+                  onClick={() => setFreeFormMode(true)}
+                  disabled={genState === "generating"}
+                >
+                  write your own
+                </button>
+              </span>
+            )}
             <div className="pb-tool" ref={promptToolsRef}>
               {activeTool === "tools" && (
                 <div className="pb-tools-pop">
@@ -1180,18 +1300,11 @@ export default function PosterboyStudio() {
               {activeTool === "captions" && (
                 <div className="pb-tools-pop pb-tools-pop-wide">
                   <CaptionVariantPicker
-                    brief={prompt || captionText}
+                    brief={composerBrief || captionText}
                     platform={platform.id}
                     approvalPipeline={features.approvalPipeline}
                     locationId={locationId}
-                    platforms={
-                      platform.id === "facebook" ||
-                      platform.id === "instagram" ||
-                      platform.id === "linkedin" ||
-                      platform.id === "tiktok"
-                        ? [platform.id]
-                        : ["instagram"]
-                    }
+                    platforms={studioPlatforms(platform.id)}
                     onSelect={(v) => {
                       setCaptionText(v.caption);
                       setCaptionTags(v.hashtags.join(" "));
@@ -1216,7 +1329,11 @@ export default function PosterboyStudio() {
               type="button"
               className="magic-wand"
               onClick={() => void composeFromIntent()}
-              disabled={genState === "generating" || composerMode === "video"}
+              disabled={
+                genState === "generating" ||
+                composerMode === "video" ||
+                (!freeFormMode && !selectedIntentId && !composerBrief)
+              }
               aria-label="Make a post"
             >
               <Wand2 size={20} />
@@ -1810,7 +1927,24 @@ function StudioStyles() {
     opacity: 0;
     transition: opacity 0.2s;
     z-index: 4;
-  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio /* Confirm checkmark — appears after the image is generated */
+  }.pb-studio .frame:hover .frame-hint { opacity: 1; }.pb-studio .studio-intent-stage {
+    position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
+    align-items: center; justify-content: center; padding: 24px 16px 16px;
+    overflow-y: auto; background: rgba(255,255,255,0.55); backdrop-filter: blur(8px);
+  }.pb-studio .studio-intent-captions {
+    width: 100%; max-width: 420px; margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid rgba(0,0,0,0.06);
+  }.pb-studio .studio-freeform-hint {
+    font-size: 12.5px; line-height: 1.45; color: rgba(22,22,28,0.55); text-align: center;
+    max-width: 360px; margin: 0 0 8px;
+  }.pb-studio .studio-freeform-hint button {
+    display: block; margin: 8px auto 0; font-size: 12px; font-weight: 600;
+    color: #c41e2a; text-decoration: underline; text-underline-offset: 3px;
+  }.pb-studio .prompt-intent-hint {
+    flex: 1; min-width: 0; font-size: 14px; color: rgba(22,22,28,0.45); padding: 0 4px;
+  }.pb-studio .prompt-intent-hint button {
+    font-weight: 600; color: #c41e2a; text-decoration: underline; text-underline-offset: 3px;
+  }.pb-studio /* Confirm checkmark — appears after the image is generated */
   .confirm-check {
     position: absolute;
     bottom: -20px;
