@@ -1002,24 +1002,6 @@ export default function PosterboyStudio() {
                 {captionState === "error" && mediaKind !== "video" ? (
                   <p className="studio-caption-error-overlay">{captionError}</p>
                 ) : null}
-                {showTemplate ? (
-                  <div className="studio-caption-tools">
-                    <CaptionVariantPicker
-                      brief={composerBrief || captionText}
-                      platform={platform.id}
-                      disabled={genState === "generating"}
-                      approvalPipeline={features.approvalPipeline}
-                      locationId={locationId}
-                      platforms={studioPlatforms(platform.id)}
-                      onSelect={(v) => {
-                        setCaptionText(v.caption);
-                        setCaptionTags(v.hashtags.join(" "));
-                        setCaptionState("done");
-                        setCaptionError("");
-                      }}
-                    />
-                  </div>
-                ) : null}
               </>
             ) : composerMode === "video" && genState === "idle" ? (
               <div className="studio-video-compose">
@@ -1281,6 +1263,26 @@ export default function PosterboyStudio() {
               <Wand2 size={20} />
             </button>
           </div>
+
+          {/* Caption options — anchored to the canvas (right of the post), not the post itself */}
+          {showTemplate ? (
+            <div className="studio-caption-tools">
+              <CaptionVariantPicker
+                brief={composerBrief || captionText}
+                platform={platform.id}
+                disabled={genState === "generating"}
+                approvalPipeline={features.approvalPipeline}
+                locationId={locationId}
+                platforms={studioPlatforms(platform.id)}
+                onSelect={(v) => {
+                  setCaptionText(v.caption);
+                  setCaptionTags(v.hashtags.join(" "));
+                  setCaptionState("done");
+                  setCaptionError("");
+                }}
+              />
+            </div>
+          ) : null}
         </main>
 
       </div>
@@ -2275,8 +2277,8 @@ function StudioStyles() {
     padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
     border: 1px solid rgba(238,37,50,0.2); z-index: 8;
   }.pb-studio .studio-caption-tools {
-    position: absolute; top: 50%; left: calc(100% + 20px); transform: translateY(-50%);
-    z-index: 12; width: 264px; max-height: 100%; overflow-y: auto;
+    position: absolute; top: 50%; right: 32px; transform: translateY(-50%);
+    z-index: 16; width: 268px; max-height: 72%; overflow-y: auto;
     padding: 12px; border-radius: 16px;
     background: rgba(255,255,255,0.97);
     -webkit-backdrop-filter: blur(16px) saturate(1.4);
@@ -2284,10 +2286,10 @@ function StudioStyles() {
     border: 1px solid rgba(0,0,0,0.07);
     box-shadow: 0 16px 38px -12px rgba(15,15,20,0.34);
   }
-  @media (max-width: 1180px) {
+  @media (max-width: 1240px) {
     .pb-studio .studio-caption-tools {
-      top: auto; bottom: 12px; left: 50%; transform: translateX(-50%);
-      width: min(320px, 86%); max-height: 60%;
+      top: auto; bottom: 96px; right: 50%; transform: translateX(50%);
+      width: min(340px, 84%); max-height: 50%;
     }
   }.pb-studio .canvas-theme-grid::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
