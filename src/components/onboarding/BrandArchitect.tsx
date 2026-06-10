@@ -715,7 +715,7 @@ export default function BrandArchitect() {
         {step === 1 && (
           <div className="architect-fade w-full max-w-md">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              Let AI build your brand
+              Connect Posterboy
             </h2>
             <p className="text-[15px] text-[#76767e] mb-8">
               Connect an account and Posterboy reads your recent posts to draft your brand voice
