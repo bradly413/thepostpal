@@ -6,6 +6,7 @@ import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
 import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
 import PosterboyLogo from "@/components/PosterboyLogo";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
+import { getPublicTiers } from "@/lib/pricing";
 import type { OnboardingAnswers } from "@/lib/brand-book-schema";
 import {
   COMPLIMENT_OPTIONS,
@@ -19,7 +20,7 @@ import {
 } from "@/lib/onboarding-choices";
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
 import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
-import { Users, Sparkles } from "lucide-react";
+import { Users, Sparkles, MapPin, Check } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
   cacheStoredBrandBook,
@@ -92,6 +93,15 @@ const CARD = "w-full arch-panel";
 // Clean Pinterest-style bordered input.
 const FIELD =
   "w-full px-4 py-3 rounded-xl bg-white/85 border border-black/[0.1] text-[15px] text-[#1c1c1e] placeholder:text-black/35 focus:border-[#ee2532]/60 focus:outline-none focus:ring-2 focus:ring-[#ee2532]/12 transition-colors";
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
+const BIRTH_YEARS = Array.from({ length: 2008 - 1940 + 1 }, (_, i) => String(2008 - i));
+const CONSENTS: { key: "terms" | "privacy" | "emails"; label: string; required: boolean }[] = [
+  { key: "terms", label: "I agree to the Terms of Service", required: true },
+  { key: "privacy", label: "I agree to the Privacy Policy", required: true },
+  { key: "emails", label: "Send me tips and product updates (optional)", required: false },
+];
 
 function BehavioralPicker<T extends string>({
   question,
@@ -210,6 +220,42 @@ export default function BrandArchitect() {
   const [greetings, setGreetings] = useState<GreetingChoice[]>([]);
   const [compliment, setCompliment] = useState<ComplimentChoice | "">("");
   const [compliments, setCompliments] = useState<ComplimentChoice[]>([]);
+
+  // New steps: consent (agree-to-all), birthday, plan selection.
+  const [agree, setAgree] = useState({ terms: false, privacy: false, emails: false });
+  const [birthMonth, setBirthMonth] = useState("");
+  const [birthDay, setBirthDay] = useState("");
+  const [birthYear, setBirthYear] = useState("");
+  const [plan, setPlan] = useState("");
+  const [locating, setLocating] = useState(false);
+
+  const detectLocation = () => {
+    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocating(true);
+    navigator.geolocation.getCurrentPosition(
+      async (pos) => {
+        try {
+          const { latitude, longitude } = pos.coords;
+          const r = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
+            { headers: { "Accept-Language": "en" } },
+          );
+          const d = await r.json();
+          const a = d.address ?? {};
+          const city = a.city || a.town || a.village || a.hamlet || a.county || "";
+          const region = a.state || "";
+          const place = [city, region].filter(Boolean).join(", ");
+          if (place) setLocation(place);
+        } catch {
+          /* leave the field for manual entry */
+        } finally {
+          setLocating(false);
+        }
+      },
+      () => setLocating(false),
+      { timeout: 8000 },
+    );
+  };
 
   const toggleId = (ids: string[], id: string) =>
     ids.includes(id) ? ids.filter((x) => x !== id) : [...ids, id];
@@ -330,8 +376,66 @@ export default function BrandArchitect() {
     void loadBrandEngine();
   }, [loadBrandEngine]);
 
-  const next = () => setStep((s) => Math.min(s + 1, 8));
-  const back = () => setStep((s) => (s === 3 ? 1 : Math.max(s - 1, 0)));
+  // Visit order. Step numbers stay stable (so existing blocks don't renumber);
+  // only the traversal order changes. New steps: 9 agree · 10 name+age ·
+  // 11 location · 12 plan.
+  // 0 intro · 9 agree · 1 profiles · 2 loader · 10 name+age · 3 business ·
+  // 11 location · 4 your-business · 5 topics · 6 dress · 7 greeting · 8 compliment · 12 plan
+  const ORDER = [0, 9, 1, 2, 10, 3, 11, 4, 5, 6, 7, 8, 12];
+  const next = () =>
+    setStep((s) => ORDER[Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1)]);
+  const back = () =>
+    setStep((s) => {
+      let j = Math.max(ORDER.indexOf(s) - 1, 0);
+      if (ORDER[j] === 2) j = Math.max(j - 1, 0); // skip the transient loader going back
+      return ORDER[j];
+    });
+
+  // Generate the brand book + finish onboarding. Triggered from the final
+  // (plan) step; the selected plan is stashed for sign-up to pick up.
+  const buildBrandBook = () => {
+    void (async () => {
+      setBookState("generating");
+      setSaving(true);
+      setSaveNote(null);
+      saveBrandDna();
+      try {
+        if (plan && typeof window !== "undefined") {
+          window.localStorage.setItem("pb-pending-plan", plan);
+        }
+        const answers = buildAnswers();
+        const res = await fetch("/api/brand-book/generate", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ answers }),
+        });
+        const data = await res.json();
+        if (!res.ok || data.error || !data.brandBook) {
+          throw new Error(data.error || "generate failed");
+        }
+        cacheStoredBrandBook(data.brandBook);
+        cacheStoredOnboardingAnswers(answers);
+        markOnboardingComplete();
+
+        if (data.authMode === "guest") {
+          router.push("/sign-in?next=%2Fdashboard%2Fbrand");
+          return;
+        }
+        try {
+          const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
+          await persistBrandBookToWorkspace({ brandBook: data.brandBook, onboardingAnswers: answers });
+          await syncPendingVerticalSlug();
+        } catch {
+          /* local cache is enough until they sign in */
+        }
+        router.push("/dashboard/brand");
+      } catch {
+        setBookState("error");
+        setSaving(false);
+        setSaveNote("Couldn't build your brand book. Check your connection and try again.");
+      }
+    })();
+  };
 
   // Auto-advance the "analyzing your social media" loader once it has played.
   useEffect(() => {
@@ -339,7 +443,7 @@ export default function BrandArchitect() {
     const reduce =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(() => setStep((s) => (s === 2 ? 3 : s)), reduce ? 1000 : 7600);
+    const t = setTimeout(() => setStep((s) => (s === 2 ? 10 : s)), reduce ? 1000 : 7600);
     return () => clearTimeout(t);
   }, [step]);
 
@@ -468,12 +572,12 @@ export default function BrandArchitect() {
       <div className="absolute bottom-8 left-8 z-20 h-1.5 w-44 overflow-hidden rounded-full bg-black/[0.08]">
         <div
           className="h-full rounded-full bg-[#ee2532] transition-all duration-500 ease-out"
-          style={{ width: `${((step + 1) / 9) * 100}%` }}
+          style={{ width: `${((ORDER.indexOf(step) + 1) / ORDER.length) * 100}%` }}
         />
       </div>
 
       {/* Back */}
-      {step > 0 && (
+      {ORDER.indexOf(step) > 0 && (
         <button
           type="button"
           onClick={back}
@@ -615,11 +719,7 @@ export default function BrandArchitect() {
               Pick the best fit — it tunes how Posterboy writes and designs for you.
             </p>
 
-            <div className="grid sm:grid-cols-2 gap-3 mb-3">
-              <input className={FIELD} placeholder="Your name" value={name} onChange={(e) => setName(e.target.value)} aria-label="Your name" />
-              <input className={FIELD} placeholder="Business name" value={business} onChange={(e) => setBusiness(e.target.value)} aria-label="Business name" />
-            </div>
-            <input className={`${FIELD} mb-8`} placeholder="City / area you serve" value={location} onChange={(e) => setLocation(e.target.value)} aria-label="City or area you serve" />
+            <input className={`${FIELD} mb-8`} placeholder="Business name" value={business} onChange={(e) => setBusiness(e.target.value)} aria-label="Business name" />
 
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-1">
               What kind of business?
@@ -811,58 +911,220 @@ export default function BrandArchitect() {
                 setCompliment(primary);
                 saveBrandDna();
               }}
-              onNext={() => {
-                void (async () => {
-                  setBookState("generating");
-                  setSaving(true);
-                  setSaveNote(null);
-                  saveBrandDna();
-                  try {
-                    const answers = buildAnswers();
-                    const res = await fetch("/api/brand-book/generate", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({ answers }),
-                    });
-                    const data = await res.json();
-                    if (!res.ok || data.error || !data.brandBook) {
-                      throw new Error(data.error || "generate failed");
-                    }
-                    cacheStoredBrandBook(data.brandBook);
-                    cacheStoredOnboardingAnswers(answers);
-                    markOnboardingComplete();
-
-                    if (data.authMode === "guest") {
-                      router.push("/sign-in?next=%2Fdashboard%2Fbrand");
-                      return;
-                    }
-
-                    try {
-                      const { persistBrandBookToWorkspace } = await import("@/lib/brand-book-client");
-                      await persistBrandBookToWorkspace({
-                        brandBook: data.brandBook,
-                        onboardingAnswers: answers,
-                      });
-                      await syncPendingVerticalSlug();
-                    } catch {
-                      /* local cache is enough until they sign in */
-                    }
-                    router.push("/dashboard/brand");
-                  } catch {
-                    setBookState("error");
-                    setSaving(false);
-                    setSaveNote("Couldn't build your brand book. Check your connection and try again.");
-                  }
-                })();
-              }}
-              nextDisabled={
-                saving || !compliment || !dressCode || !greeting || !industryId || !name.trim()
-              }
-              nextLabel={bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
+              onNext={next}
+              nextDisabled={!compliment || !dressCode || !greeting || !industryId || !name.trim()}
+              nextLabel="Next"
             />
             {bookState === "error" && saveNote && (
               <p className="text-[12px] text-[#76767e] text-right mt-3">{saveNote}</p>
             )}
+          </div>
+        )}
+
+        {step === 9 && (
+          <div className="architect-fade w-full max-w-md">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              A couple of quick yeses
+            </h2>
+            <p className="text-[15px] text-[#76767e] mb-7">
+              The housekeeping before we start. Flip them all at once if you like.
+            </p>
+
+            {(() => {
+              const allOn = agree.terms && agree.privacy && agree.emails;
+              return (
+                <button
+                  type="button"
+                  aria-pressed={allOn}
+                  onClick={() => setAgree({ terms: !allOn, privacy: !allOn, emails: !allOn })}
+                  className="flex w-full items-center gap-3 rounded-xl border border-[#ee2532]/30 bg-[#ee2532]/[0.06] px-4 py-3 mb-2 text-left"
+                >
+                  <span
+                    className={`flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition-colors ${
+                      allOn ? "border-[#ee2532] bg-[#ee2532] text-white" : "border-black/25"
+                    }`}
+                  >
+                    {allOn ? <Check size={13} strokeWidth={3} /> : null}
+                  </span>
+                  <span className="text-[15px] font-semibold text-[#1c1c1e]">Agree to all</span>
+                </button>
+              );
+            })()}
+
+            <div className="flex flex-col divide-y divide-black/[0.06]">
+              {CONSENTS.map((c) => {
+                const on = agree[c.key];
+                return (
+                  <button
+                    key={c.key}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setAgree((p) => ({ ...p, [c.key]: !p[c.key] }))}
+                    className="group flex items-center gap-3 py-3.5 text-left"
+                  >
+                    <span
+                      className={`flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition-colors ${
+                        on ? "border-[#ee2532] bg-[#ee2532] text-white" : "border-black/25 group-hover:border-black/45"
+                      }`}
+                    >
+                      {on ? <Check size={13} strokeWidth={3} /> : null}
+                    </span>
+                    <span className="text-[15px] text-[#1c1c1e]">{c.label}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-9 flex items-center justify-end">
+              <button
+                type="button"
+                disabled={!agree.terms || !agree.privacy}
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 10 && (
+          <div className="architect-fade w-full max-w-md">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Let&apos;s confirm a few details
+            </h2>
+            <p className="text-[15px] text-[#76767e] mb-7">
+              This helps us personalize your experience and keep things appropriate.
+            </p>
+            <input
+              className={`${FIELD} mb-4`}
+              placeholder="Your name"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              aria-label="Your name"
+            />
+            <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
+              Birthday
+            </div>
+            <div className="grid grid-cols-3 gap-3 mb-8">
+              <select className={FIELD} value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} aria-label="Birth month">
+                <option value="">Month</option>
+                {MONTHS.map((m) => (
+                  <option key={m} value={m}>{m}</option>
+                ))}
+              </select>
+              <select className={FIELD} value={birthDay} onChange={(e) => setBirthDay(e.target.value)} aria-label="Birth day">
+                <option value="">Day</option>
+                {BIRTH_DAYS.map((d) => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select className={FIELD} value={birthYear} onChange={(e) => setBirthYear(e.target.value)} aria-label="Birth year">
+                <option value="">Year</option>
+                {BIRTH_YEARS.map((y) => (
+                  <option key={y} value={y}>{y}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                disabled={!name.trim() || !birthMonth || !birthDay || !birthYear}
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 11 && (
+          <div className="architect-fade w-full max-w-md">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Where do you serve?
+            </h2>
+            <p className="text-[15px] text-[#76767e] mb-7">
+              Turn on location and we&apos;ll fill in your area — or just type it in.
+            </p>
+            <button
+              type="button"
+              onClick={detectLocation}
+              className="mb-3 inline-flex items-center gap-2 rounded-full border border-[#ee2532]/30 bg-[#ee2532]/[0.06] px-4 py-2.5 text-sm font-semibold text-[#c81e2a] hover:bg-[#ee2532]/10 transition-colors disabled:opacity-50"
+              disabled={locating}
+            >
+              <MapPin size={15} strokeWidth={2} />
+              {locating ? "Locating…" : "Use my location"}
+            </button>
+            <input
+              className={`${FIELD} mb-8`}
+              placeholder="City / area you serve"
+              value={location}
+              onChange={(e) => setLocation(e.target.value)}
+              aria-label="City or area you serve"
+            />
+            <div className="flex items-center justify-end">
+              <button
+                type="button"
+                disabled={!location.trim()}
+                onClick={next}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
+        )}
+
+        {step === 12 && (
+          <div className="architect-fade w-full max-w-3xl">
+            <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
+              Pick your plan
+            </h2>
+            <p className="text-[15px] text-[#76767e] mb-7">
+              Start where you are. You can change it anytime.
+            </p>
+            <div className="grid sm:grid-cols-3 gap-3 mb-8">
+              {getPublicTiers().map((tier) => {
+                const on = plan === tier.id;
+                return (
+                  <button
+                    key={tier.id}
+                    type="button"
+                    aria-pressed={on}
+                    onClick={() => setPlan(tier.id)}
+                    className={`relative text-left rounded-2xl border p-5 transition-all ${
+                      on ? "border-[#ee2532] bg-[#ee2532]/[0.06]" : "border-black/10 bg-white/60 hover:border-black/20"
+                    }`}
+                  >
+                    {tier.highlighted ? (
+                      <span className="absolute -top-2 right-4 rounded-full bg-[#ee2532] text-white text-[10px] font-bold uppercase tracking-wide px-2 py-0.5">
+                        Popular
+                      </span>
+                    ) : null}
+                    <div className="text-[16px] font-semibold text-[#1c1c1e]">{tier.name}</div>
+                    <div className="mt-1">
+                      <span className="text-[26px] font-bold text-[#1c1c1e]">{tier.price}</span>{" "}
+                      {tier.priceNote ? <span className="text-[12px] text-[#76767e]">{tier.priceNote}</span> : null}
+                    </div>
+                    <p className="text-[13px] text-[#76767e] mt-2 leading-snug">{tier.bestFor}</p>
+                  </button>
+                );
+              })}
+            </div>
+            <div className="flex items-center justify-end gap-4">
+              {bookState === "error" && saveNote ? (
+                <p className="text-[12px] text-[#76767e]">{saveNote}</p>
+              ) : null}
+              <button
+                type="button"
+                disabled={!plan || saving}
+                onClick={buildBrandBook}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                {bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
+              </button>
+            </div>
           </div>
         )}
       </div>
