@@ -258,7 +258,10 @@ export function DashboardHomeStyles() {
       .main2 > .top2 { flex: 1.5 1 0; min-height: 0; }
       .main2 > .modules2 { flex: 1.15 1 0; min-height: 0; }
       .main2 > .row2 { flex: 0.9 1 0; min-height: 0; }
-      .top2 .hero2, .top2 .shortcuts2 { min-height: 0; }
+      .top2 .shortcuts2 { min-height: 0; }
+      /* hero has a fixed 372px height by default — make it fill the flex slot
+         so it never overflows into the modules row */
+      .top2 .hero2 { min-height: 0; height: 100%; }
       .modules2 .mod, .row2 .mod { min-height: 0; height: 100%; overflow: hidden; }
       .modules2 .mod .uplist { min-height: 0; overflow-y: auto; }
     }
