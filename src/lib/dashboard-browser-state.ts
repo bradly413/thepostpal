@@ -8,6 +8,12 @@ export function getStoredActiveLocationId(): string | null {
 
 export function setStoredActiveLocationId(locationId: string): void {
   if (typeof window === "undefined") return;
+  // No-op when the value is unchanged. Several hooks re-resolve and re-store the
+  // same location on mount/re-render; without this guard each redundant store
+  // dispatches LOCATION_EVENT, which listeners answer by re-fetching, which
+  // re-renders and re-stores — a feedback cascade (~136 /api/locations calls on
+  // a single dashboard load). Skipping the no-change write converges it at once.
+  if (window.localStorage.getItem(ACTIVE_LOCATION_KEY) === locationId) return;
   window.localStorage.setItem(ACTIVE_LOCATION_KEY, locationId);
   window.dispatchEvent(new Event(LOCATION_EVENT));
 }

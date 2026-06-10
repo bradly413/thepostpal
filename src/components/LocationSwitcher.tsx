@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   fetchDashboardLocations,
   formatDashboardApiMessage,
@@ -28,6 +28,15 @@ export default function LocationSwitcher({ value, onChange }: LocationSwitcherPr
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
+  // Keep the latest onChange/value without making them effect dependencies.
+  // Parents pass an inline `onChange={(id) => load(id)}` whose identity changes
+  // every render; if the fetch effect depended on it, each re-render would
+  // re-fetch /api/locations + re-store the location, feeding a request storm.
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const valueRef = useRef(value);
+  valueRef.current = value;
+
   useEffect(() => {
     let cancelled = false;
 
@@ -39,11 +48,11 @@ export default function LocationSwitcher({ value, onChange }: LocationSwitcherPr
         if (cancelled) return;
         setLocations(nextLocations);
 
-        const preferred = value ?? getStoredActiveLocationId() ?? nextLocations[0]?.id ?? null;
+        const preferred = valueRef.current ?? getStoredActiveLocationId() ?? nextLocations[0]?.id ?? null;
         if (preferred) {
           setActiveId(preferred);
           setStoredActiveLocationId(preferred);
-          onChange?.(preferred);
+          onChangeRef.current?.(preferred);
         }
       } catch (err) {
         if (cancelled) return;
@@ -59,7 +68,8 @@ export default function LocationSwitcher({ value, onChange }: LocationSwitcherPr
     return () => {
       cancelled = true;
     };
-  }, [onChange, value]);
+    // Fetch once on mount. Value changes are handled by the sync effect below.
+  }, []);
 
   useEffect(() => {
     if (value !== undefined) {
