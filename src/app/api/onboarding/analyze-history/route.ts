@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic } from "@/lib/ai/anthropic";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { decryptToken } from "@/lib/social/token-crypto";

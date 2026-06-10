@@ -1,7 +1,7 @@
 import "server-only";
 
 import { generateObject } from "ai";
-import { anthropic } from "@ai-sdk/anthropic";
+import { anthropic } from "@/lib/ai/anthropic";
 import {
   brandVoiceAiSchema,
   type BrandVoice,
