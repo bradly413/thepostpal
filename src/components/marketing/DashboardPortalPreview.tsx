@@ -30,8 +30,8 @@ export default function DashboardPortalPreview() {
               }}
             />
             <span className="meta">
-              <span className="name">Angie Nichols</span>
-              <span className="role">Realtor · West County</span>
+              <span className="name">Maya Reyes</span>
+              <span className="role">Owner · Maple &amp; Main</span>
             </span>
           </div>
 
@@ -46,7 +46,7 @@ export default function DashboardPortalPreview() {
           </nav>
 
           <div className="sidebar-foot">
-            <span className="mini-avatar">AN</span>
+            <span className="mini-avatar">MR</span>
             <span className="name">Angie Nichols</span>
           </div>
         </aside>
