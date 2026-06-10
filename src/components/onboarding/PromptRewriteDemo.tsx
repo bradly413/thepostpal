@@ -18,8 +18,9 @@ const EXAMPLES: Record<string, Example> = {
       "Open house this Saturday, 11–1 — a light-filled 3-bed on Oak St that feels like home the moment you walk in. Come see it before someone else does.",
   },
   hospitality: {
-    prompt: "weekend sale, 20% off, come by",
-    result: "This weekend only — 20% off the whole shop. Swing by, we saved you the good parking.",
+    prompt: "weekend brunch, 10-2, bottomless coffee",
+    result:
+      "Weekend brunch is on — 10 to 2, bottomless coffee and the cinnamon rolls that vanish by noon. Pull up a chair, we saved you one.",
   },
   beauty: {
     prompt: "booking spring color, few spots left",
@@ -135,7 +136,7 @@ export default function PromptRewriteDemo({ businessType }: { businessType?: str
 
       <style>{`
         .prdemo {
-          width: 100%; max-width: 440px; margin: 0 auto;
+          width: 100%; max-width: 100%; margin: 0;
           background: rgba(255,255,255,0.72);
           backdrop-filter: blur(22px) saturate(1.5); -webkit-backdrop-filter: blur(22px) saturate(1.5);
           border: 1px solid rgba(255,255,255,0.62); border-radius: 18px;
