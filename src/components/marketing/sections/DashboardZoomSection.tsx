@@ -91,23 +91,18 @@ export default function DashboardZoomSection() {
 
         .pb-marketing-site .studio-gal-tile {
           break-inside: avoid;
-          margin: 0 0 clamp(12px, 1.4vw, 20px);
-          border-radius: 16px;
-          overflow: hidden;
-          background: var(--white);
-          border: 1px solid var(--newsprint);
-          box-shadow: 0 18px 40px -30px rgba(15,15,20,0.34);
-          transition: transform 0.3s ease, box-shadow 0.3s ease;
+          margin: 0 0 clamp(10px, 1.2vw, 18px);
+          transition: transform 0.3s ease;
         }
-        .pb-marketing-site .studio-gal-tile:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 26px 54px -28px rgba(15,15,20,0.42);
-        }
+        .pb-marketing-site .studio-gal-tile:hover { transform: translateY(-3px); }
         .pb-marketing-site .studio-gal-tile img {
           display: block;
           width: 100%;
           height: auto;
           vertical-align: top;
+          /* The mock PNGs sit on white; multiply melts that white into the
+             warm paper so the posts read as a collage, not white cards. */
+          mix-blend-mode: multiply;
         }
       `}</style>
     </section>
