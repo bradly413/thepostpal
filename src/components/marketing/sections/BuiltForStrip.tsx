@@ -54,7 +54,7 @@ export default function BuiltForStrip() {
         overflow: "hidden",
       }}
     >
-      <div style={{ textAlign: "center", marginBottom: "2.2em" }}>
+      <div data-reveal="up-sm" style={{ textAlign: "center", marginBottom: "2.2em" }}>
         <p
           style={{
             textTransform: "uppercase",
@@ -71,6 +71,7 @@ export default function BuiltForStrip() {
       </div>
 
       <div
+        data-reveal
         className="pb-builtfor-marquee hide-mobile"
         style={{
           position: "relative",

@@ -67,10 +67,13 @@ export default function MarketingScrollProvider({ children }: { children: ReactN
       document.documentElement.classList.add("lenis", "lenis-smooth");
 
       const lenis = new Lenis({
-        lerp: 0.08,
+        // Duration + a soft expo-out easing gives a deliberate, premium glide
+        // (more "designed" than a raw lerp). Tune `duration` for weight.
+        duration: 1.05,
+        easing: (t) => 1 - Math.pow(1 - t, 3),
         smoothWheel: true,
-        wheelMultiplier: 0.9,
-        touchMultiplier: 1.15,
+        wheelMultiplier: 0.92,
+        touchMultiplier: 1.2,
         syncTouch: true,
       });
       lenisRef.current = lenis;

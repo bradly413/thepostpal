@@ -2,6 +2,7 @@
 
 import "@/styles/posterboy-marketing.css";
 import MarketingScrollProvider from "@/components/marketing/MarketingScrollProvider";
+import MarketingReveal from "@/components/marketing/MarketingReveal";
 import Navigation from "@/components/marketing/Navigation";
 import ChatbotWidget from "@/components/marketing/ChatbotWidget";
 import Hero from "@/components/marketing/sections/Hero";
@@ -22,6 +23,7 @@ export default function MarketingSite() {
     <MarketingScrollProvider>
       {showProbe ? <MarketingSiteHealthProbe /> : null}
       <div className="pb-marketing-site">
+        <MarketingReveal />
         <Navigation />
         <Hero />
         <DashboardZoomSection />
