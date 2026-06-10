@@ -26,7 +26,9 @@ import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
 import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
-import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
+import { suggestVerticalSlugForIndustry } from "@/lib/compliance/vertical-catalog";
+import { updateDashboardVertical } from "@/lib/dashboard-api";
+import { cachePendingVerticalSlug } from "@/lib/onboarding-brand-sync";
 import {
   cacheStoredBrandBook,
   cacheStoredOnboardingAnswers,
@@ -421,6 +423,21 @@ export default function BrandArchitect() {
   const skipToManual = () => {
     setDir("fwd");
     setStep(3);
+  };
+
+  // Auto-apply the guardrail vertical from the business they already picked
+  // (changeable later in Settings), then advance. Fire-and-forget — on a guest
+  // 401 it caches a pending slug that syncs during generation.
+  const confirmVertical = () => {
+    const slug = industryId ? suggestVerticalSlugForIndustry(industryId) || "" : "";
+    if (slug) {
+      try {
+        updateDashboardVertical(slug).catch(() => cachePendingVerticalSlug(slug));
+      } catch {
+        cachePendingVerticalSlug(slug);
+      }
+    }
+    next();
   };
 
   // Generate the brand book + finish onboarding. Triggered from the final
@@ -851,11 +868,16 @@ export default function BrandArchitect() {
               Posterboy already knows what you should and shouldn&apos;t say — no more typos, grammar
               mistakes, or vague captions.
             </p>
-            <VerticalCompliancePanel
-              suggestedIndustryId={industryId}
-              onSaved={() => next()}
-              demoForSlug={(slug) => <PromptRewriteDemo key={slug} businessType={slug} />}
-            />
+            <PromptRewriteDemo businessType={industryId} />
+            <div className="mt-9 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={confirmVertical}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
+              >
+                Continue
+              </button>
+            </div>
           </div>
         )}
 

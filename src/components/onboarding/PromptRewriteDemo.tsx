@@ -3,59 +3,117 @@
 import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
-// A tiny looping "watch Posterboy work" demo: a rough note types in, Posterboy
-// thinks for a beat, then the polished, on-brand version reveals. The example
-// adapts to the selected business type. Self-contained and reduced-motion safe.
+// Looping "watch Posterboy work" demo: a rough note types in, Posterboy thinks,
+// then the polished version reveals — cycling through a couple of examples
+// tailored to the business type. Self-contained and reduced-motion safe.
 interface Example {
   prompt: string;
   result: string;
 }
 
-const EXAMPLES: Record<string, Example> = {
-  realtor: {
-    prompt: "open house sat 11-1, 3br on oak st",
-    result:
-      "Open house this Saturday, 11–1 — a light-filled 3-bed on Oak St that feels like home the moment you walk in. Come see it before someone else does.",
-  },
-  hospitality: {
-    prompt: "weekend brunch, 10-2, bottomless coffee",
-    result:
-      "Weekend brunch is on — 10 to 2, bottomless coffee and the cinnamon rolls that vanish by noon. Pull up a chair, we saved you one.",
-  },
-  beauty: {
-    prompt: "booking spring color, few spots left",
-    result:
-      "Spring color is filling up — grab your chair while there's still room. A little change, a lot of glow.",
-  },
-  fitness: {
-    prompt: "new 6am class starts monday",
-    result:
-      "New 6am class kicks off Monday — start the week ahead of it. First one's on us, just bring the grit.",
-  },
-  healthcare: {
-    prompt: "flu shots in, walk-ins welcome",
-    result:
-      "Flu shots are in — walk in any time this week. Five quiet minutes now beats a week on the couch later.",
-  },
-  professional: {
-    prompt: "free 15 min consult this week",
-    result:
-      "Got something that's been nagging you? Grab a free 15-minute consult this week — no pitch, just straight answers.",
-  },
-  homeServices: {
-    prompt: "booking gutter cleaning b4 fall",
-    result:
-      "Beat the fall rush — we're booking gutter cleanings now. One visit and you can forget about it till spring.",
-  },
+const EXAMPLES: Record<string, Example[]> = {
+  realtor: [
+    {
+      prompt: "open house sat 11-1, 3br on oak st",
+      result:
+        "Open house this Saturday, 11–1 — a light-filled 3-bed on Oak St that feels like home the moment you walk in. Come see it before someone else does.",
+    },
+    {
+      prompt: "just sold in 5 days over ask",
+      result:
+        "Sold in 5 days, over asking — and on to the next happy ending. Thinking about your own move? Let's talk before spring.",
+    },
+  ],
+  hospitality: [
+    {
+      prompt: "weekend brunch, 10-2, bottomless coffee",
+      result:
+        "Weekend brunch is on — 10 to 2, bottomless coffee and the cinnamon rolls that vanish by noon. Pull up a chair, we saved you one.",
+    },
+    {
+      prompt: "new fall latte menu out now",
+      result:
+        "The fall latte menu just landed — maple, spiced pear, the works. Cozy season starts right here at the counter.",
+    },
+  ],
+  beauty: [
+    {
+      prompt: "booking spring color, few spots left",
+      result:
+        "Spring color is filling up — grab your chair while there's still room. A little change, a lot of glow.",
+    },
+    {
+      prompt: "gift cards make great gifts",
+      result:
+        "Stuck on a gift? A little self-care never misses. Grab a gift card in-shop or online — we'll wrap the good vibes in.",
+    },
+  ],
+  fitness: [
+    {
+      prompt: "new 6am class starts monday",
+      result:
+        "New 6am class kicks off Monday — start the week ahead of it. First one's on us, just bring the grit.",
+    },
+    {
+      prompt: "bring a friend free this week",
+      result:
+        "Bring-a-friend week is here — your favorite workout's better with a buddy. First class on us for both of you.",
+    },
+  ],
+  healthcare: [
+    {
+      prompt: "flu shots in, walk-ins welcome",
+      result:
+        "Flu shots are in — walk in any time this week. Five quiet minutes now beats a week on the couch later.",
+    },
+    {
+      prompt: "now accepting new patients",
+      result:
+        "We're welcoming new patients this month — same-week appointments and a team that actually listens. Come as you are.",
+    },
+  ],
+  professional: [
+    {
+      prompt: "free 15 min consult this week",
+      result:
+        "Got something that's been nagging you? Grab a free 15-minute consult this week — no pitch, just straight answers.",
+    },
+    {
+      prompt: "tax deadline closer than you think",
+      result:
+        "Tax season sneaks up fast. Let's get ahead of it together — book a spot now and breathe easy come April.",
+    },
+  ],
+  homeServices: [
+    {
+      prompt: "booking gutter cleaning b4 fall",
+      result:
+        "Beat the fall rush — we're booking gutter cleanings now. One visit and you can forget about it till spring.",
+    },
+    {
+      prompt: "spring tune-up specials on now",
+      result:
+        "Spring tune-up season's open — a quick once-over now saves the surprise breakdown later. Booking this week's spots.",
+    },
+  ],
+  default: [
+    {
+      prompt: "new this week, come see",
+      result:
+        "Something new just dropped — we've been quietly working on it. Come take a look, the first peek's yours.",
+    },
+    {
+      prompt: "thank you to our regulars",
+      result: "To everyone who keeps coming back — thank you. You're the reason we love what we do.",
+    },
+  ],
 };
-EXAMPLES.default = EXAMPLES.hospitality;
 
-// Map a compliance vertical slug (e.g. "real-estate-residential-sales",
-// "hospitality-restaurants") to the closest example by its root.
-function pickExample(businessType?: string): Example {
+// Map an industry id (e.g. "food-restaurant", "real-estate") to its examples.
+function pickExamples(businessType?: string): Example[] {
   const s = (businessType ?? "").toLowerCase();
   if (s.startsWith("real-estate")) return EXAMPLES.realtor;
-  if (s.startsWith("hospitality")) return EXAMPLES.hospitality;
+  if (s.startsWith("food") || s.startsWith("hospitality")) return EXAMPLES.hospitality;
   if (s.startsWith("beauty")) return EXAMPLES.beauty;
   if (s.startsWith("fitness")) return EXAMPLES.fitness;
   if (s.startsWith("healthcare")) return EXAMPLES.healthcare;
@@ -67,15 +125,19 @@ function pickExample(businessType?: string): Example {
 type Phase = "typing" | "thinking" | "result";
 
 export default function PromptRewriteDemo({ businessType }: { businessType?: string }) {
-  const { prompt: PROMPT, result: RESULT } = pickExample(businessType);
+  const examples = pickExamples(businessType);
+  const [idx, setIdx] = useState(0);
   const [typed, setTyped] = useState("");
   const [phase, setPhase] = useState<Phase>("typing");
   const reduced = useRef(false);
 
+  const RESULT = examples[idx % examples.length].result;
+
   useEffect(() => {
     reduced.current = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduced.current) {
-      setTyped(PROMPT);
+      setIdx(0);
+      setTyped(examples[0].prompt);
       setPhase("result");
       return;
     }
@@ -85,17 +147,23 @@ export default function PromptRewriteDemo({ businessType }: { businessType?: str
       timers.push(window.setTimeout(() => !cancelled && fn(), ms));
     };
 
+    let i = 0;
     const run = () => {
+      const ex = examples[i % examples.length];
+      setIdx(i % examples.length);
       setTyped("");
       setPhase("typing");
       const speed = 52;
-      for (let i = 1; i <= PROMPT.length; i++) {
-        at(() => setTyped(PROMPT.slice(0, i)), 350 + i * speed);
+      for (let c = 1; c <= ex.prompt.length; c++) {
+        at(() => setTyped(ex.prompt.slice(0, c)), 350 + c * speed);
       }
-      const typedDone = 350 + PROMPT.length * speed;
+      const typedDone = 350 + ex.prompt.length * speed;
       at(() => setPhase("thinking"), typedDone + 480);
       at(() => setPhase("result"), typedDone + 480 + 1150);
-      at(run, typedDone + 480 + 1150 + 3800);
+      at(() => {
+        i += 1;
+        run();
+      }, typedDone + 480 + 1150 + 3800);
     };
     run();
 
@@ -104,7 +172,7 @@ export default function PromptRewriteDemo({ businessType }: { businessType?: str
       timers.forEach((t) => clearTimeout(t));
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [PROMPT, RESULT]);
+  }, [businessType]);
 
   return (
     <div className="prdemo" aria-hidden>
