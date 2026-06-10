@@ -664,7 +664,7 @@ export default function BrandArchitect() {
 
       {/* Brand mark — persistent across every step */}
       <div className="absolute top-6 left-8 z-20 text-[#1c1c1e]">
-        <PosterboyLogo href={null} size="header" />
+        <PosterboyLogo href="/" size="header" />
       </div>
 
       {/* Progress — Pinterest-style determinate bar, bottom-left */}
