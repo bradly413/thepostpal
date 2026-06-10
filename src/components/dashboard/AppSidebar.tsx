@@ -10,7 +10,6 @@ import {
   FileText,
   Image as ImageIcon,
   BarChart3,
-  ClipboardList,
   Megaphone,
   Building2,
   PenLine,
@@ -45,7 +44,6 @@ const NAV_TOP: NavLink[] = [
   { label: "Content", href: "/dashboard/drafts", Icon: FileText },
   { label: "Media", href: "/dashboard/photos", Icon: ImageIcon },
   { label: "Reports", href: "/dashboard/analytics", Icon: BarChart3 },
-  { label: "Issues", href: "/dashboard/issues", Icon: ClipboardList },
   { label: "Ads", href: "/dashboard/ads", Icon: Megaphone, gate: "metaAds" },
   { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup" },
 ];
