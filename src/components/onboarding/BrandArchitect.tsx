@@ -848,18 +848,16 @@ export default function BrandArchitect() {
         {step === 4 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              We&apos;ve got the rules covered
+              Posterboy has you covered
             </h2>
             <p className="text-[15px] text-[#76767e] mb-6">
               Based on your business, Posterboy already knows what you can and can&apos;t say — so your
               posts stay out of trouble. Change it below if this isn&apos;t quite right.
             </p>
-            <div className="mb-6">
-              <PromptRewriteDemo />
-            </div>
             <VerticalCompliancePanel
               suggestedIndustryId={industryId}
               onSaved={() => next()}
+              demoForSlug={(slug) => <PromptRewriteDemo key={slug} businessType={slug} />}
             />
           </div>
         )}

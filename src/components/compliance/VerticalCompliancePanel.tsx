@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ReactNode } from "react";
 import EnforcementBadge from "@/components/compliance/EnforcementBadge";
 import type { EnforcementLevel, TenantVerticalState, VerticalOption } from "@/lib/compliance/client-types";
 import {
@@ -27,12 +27,16 @@ interface Props {
   onSaved?: (slug: string) => void;
   /** Compact layout for settings */
   compact?: boolean;
+  /** Onboarding: render this in place of the safety note, keyed to the selected
+   *  vertical slug (e.g. a per-business-type demo). */
+  demoForSlug?: (slug: string) => ReactNode;
 }
 
 export default function VerticalCompliancePanel({
   suggestedIndustryId,
   onSaved,
   compact,
+  demoForSlug,
 }: Props) {
   const [options, setOptions] = useState<VerticalOption[]>(VERTICAL_CATALOG_FALLBACK);
   const [state, setState] = useState<TenantVerticalState | null>(null);
@@ -143,7 +147,9 @@ export default function VerticalCompliancePanel({
         ))}
       </select>
 
-      {selected ? (
+      {demoForSlug ? (
+        <div className="mb-4">{demoForSlug(selectedSlug)}</div>
+      ) : selected ? (
         <div className="rounded-xl border border-black/10 bg-white/70 p-4 mb-4 space-y-2">
           <p className="text-sm font-semibold">Posterboy keeps your posts safe.</p>
           <p className="text-xs opacity-65">

@@ -4,15 +4,69 @@ import { useEffect, useRef, useState } from "react";
 import { Sparkles } from "lucide-react";
 
 // A tiny looping "watch Posterboy work" demo: a rough note types in, Posterboy
-// thinks for a beat, then the polished, on-brand version reveals. Self-contained
-// and reduced-motion safe.
-const PROMPT = "weekend sale, 20% off, come by";
-const RESULT =
-  "This weekend only — 20% off the whole shop. Swing by, we saved you the good parking.";
+// thinks for a beat, then the polished, on-brand version reveals. The example
+// adapts to the selected business type. Self-contained and reduced-motion safe.
+interface Example {
+  prompt: string;
+  result: string;
+}
+
+const EXAMPLES: Record<string, Example> = {
+  realtor: {
+    prompt: "open house sat 11-1, 3br on oak st",
+    result:
+      "Open house this Saturday, 11–1 — a light-filled 3-bed on Oak St that feels like home the moment you walk in. Come see it before someone else does.",
+  },
+  hospitality: {
+    prompt: "weekend sale, 20% off, come by",
+    result: "This weekend only — 20% off the whole shop. Swing by, we saved you the good parking.",
+  },
+  beauty: {
+    prompt: "booking spring color, few spots left",
+    result:
+      "Spring color is filling up — grab your chair while there's still room. A little change, a lot of glow.",
+  },
+  fitness: {
+    prompt: "new 6am class starts monday",
+    result:
+      "New 6am class kicks off Monday — start the week ahead of it. First one's on us, just bring the grit.",
+  },
+  healthcare: {
+    prompt: "flu shots in, walk-ins welcome",
+    result:
+      "Flu shots are in — walk in any time this week. Five quiet minutes now beats a week on the couch later.",
+  },
+  professional: {
+    prompt: "free 15 min consult this week",
+    result:
+      "Got something that's been nagging you? Grab a free 15-minute consult this week — no pitch, just straight answers.",
+  },
+  homeServices: {
+    prompt: "booking gutter cleaning b4 fall",
+    result:
+      "Beat the fall rush — we're booking gutter cleanings now. One visit and you can forget about it till spring.",
+  },
+};
+EXAMPLES.default = EXAMPLES.hospitality;
+
+// Map a compliance vertical slug (e.g. "real-estate-residential-sales",
+// "hospitality-restaurants") to the closest example by its root.
+function pickExample(businessType?: string): Example {
+  const s = (businessType ?? "").toLowerCase();
+  if (s.startsWith("real-estate")) return EXAMPLES.realtor;
+  if (s.startsWith("hospitality")) return EXAMPLES.hospitality;
+  if (s.startsWith("beauty")) return EXAMPLES.beauty;
+  if (s.startsWith("fitness")) return EXAMPLES.fitness;
+  if (s.startsWith("healthcare")) return EXAMPLES.healthcare;
+  if (s.startsWith("professional")) return EXAMPLES.professional;
+  if (s.startsWith("local-services") || s.startsWith("home")) return EXAMPLES.homeServices;
+  return EXAMPLES.default;
+}
 
 type Phase = "typing" | "thinking" | "result";
 
-export default function PromptRewriteDemo() {
+export default function PromptRewriteDemo({ businessType }: { businessType?: string }) {
+  const { prompt: PROMPT, result: RESULT } = pickExample(businessType);
   const [typed, setTyped] = useState("");
   const [phase, setPhase] = useState<Phase>("typing");
   const reduced = useRef(false);
@@ -48,7 +102,8 @@ export default function PromptRewriteDemo() {
       cancelled = true;
       timers.forEach((t) => clearTimeout(t));
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [PROMPT, RESULT]);
 
   return (
     <div className="prdemo" aria-hidden>
