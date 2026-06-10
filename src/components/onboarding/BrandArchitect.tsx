@@ -25,7 +25,7 @@ import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
 import type { BrandVoiceAiOutput } from "@/lib/brand-book-schema";
-import { Users, Sparkles, MapPin, Check } from "lucide-react";
+import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
   cacheStoredBrandBook,
@@ -190,19 +190,9 @@ export default function BrandArchitect() {
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
 
-  // Step 1 — selected social profiles. Key present = selected; value = profile URL.
-  const [profiles, setProfiles] = useState<Record<string, string>>({});
-  const togglePlatform = (id: string) =>
-    setProfiles((prev) => {
-      if (id in prev) {
-        const next = { ...prev };
-        delete next[id];
-        return next;
-      }
-      return { ...prev, [id]: "" };
-    });
-  const setProfileUrl = (id: string, url: string) =>
-    setProfiles((prev) => ({ ...prev, [id]: url }));
+  // Connected social profiles (populated by OAuth in the real flow). Read by
+  // buildAnswers for the social handles line.
+  const [profiles] = useState<Record<string, string>>({});
   const selectedPlatforms = SOCIAL_PLATFORMS.filter((p) => p.id in profiles);
 
   // Identity + industry — the real OnboardingAnswers inputs the brand-book
@@ -422,6 +412,14 @@ export default function BrandArchitect() {
         j -= 1;
       return ORDER[j];
     });
+  };
+
+  // "Skip and build manually" — bypass the connect/analysis loader entirely and
+  // drop the user into the manual Brand Architect form (name + age onward).
+  // prefilledVoice stays null, so generation uses the manually-entered answers.
+  const skipToManual = () => {
+    setDir("fwd");
+    setStep(10);
   };
 
   // Generate the brand book + finish onboarding. Triggered from the final
@@ -703,63 +701,45 @@ export default function BrandArchitect() {
         )}
 
         {step === 1 && (
-          <div className="architect-fade w-full max-w-xl">
+          <div className="architect-fade w-full max-w-md">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              Connect your channels
+              Let AI build your brand
             </h2>
-            <p className="text-[15px] text-[#76767e] mb-7">
-              Pick the platforms you post on — Posterboy learns your style from them.
+            <p className="text-[15px] text-[#76767e] mb-8">
+              Connect an account and Posterboy reads your recent posts to draft your brand voice
+              for you — no typing required. You&apos;ll review and tweak everything next.
             </p>
 
-            <div className="flex flex-wrap gap-3">
-              {SOCIAL_PLATFORMS.map((p, i) => {
-                const on = p.id in profiles;
-                return (
-                  <button
-                    key={p.id}
-                    type="button"
-                    onClick={() => togglePlatform(p.id)}
-                    aria-pressed={on}
-                    aria-label={p.label}
-                    className={`arch-social ${on ? "on" : ""}`}
-                    style={{ animationDelay: `${i * 70}ms` }}
-                  >
-                    <span className="arch-social-ic">{p.icon}</span>
-                  </button>
-                );
-              })}
+            <div className="flex flex-col gap-3">
+              {[
+                { id: "meta", label: "Connect Meta", sub: "Facebook & Instagram" },
+                { id: "linkedin", label: "Connect LinkedIn", sub: "Company or personal" },
+              ].map((o) => (
+                <button
+                  key={o.id}
+                  type="button"
+                  // SCAFFOLD: real OAuth (redirect → provider → callback persists a
+                  // SocialAccount → return here) is the integration point. For now,
+                  // advance to the analysis loader, which calls analyze-history.
+                  onClick={next}
+                  className="group flex w-full items-center justify-between rounded-2xl border border-black/10 bg-white/60 px-5 py-4 text-left transition-all hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.04]"
+                >
+                  <span>
+                    <span className="block text-[15px] font-semibold text-[#1c1c1e]">{o.label}</span>
+                    <span className="block text-[12px] text-[#76767e]">{o.sub}</span>
+                  </span>
+                  <ArrowRight size={18} className="text-[#9a9aa2] transition-colors group-hover:text-[#ee2532]" />
+                </button>
+              ))}
             </div>
 
-            {selectedPlatforms.length > 0 && (
-              <div className="mt-6 space-y-3">
-                {selectedPlatforms.map((p) => (
-                  <div key={p.id} className="flex items-center gap-3 architect-fade">
-                    <span className="h-5 w-5 flex-none text-[#76767e] [&_svg]:h-full [&_svg]:w-full">
-                      {p.icon}
-                    </span>
-                    <input
-                      type="url"
-                      inputMode="url"
-                      autoComplete="off"
-                      spellCheck={false}
-                      value={profiles[p.id]}
-                      onChange={(e) => setProfileUrl(p.id, e.target.value)}
-                      placeholder={p.placeholder}
-                      className={FIELD}
-                      aria-label={`${p.label} profile URL`}
-                    />
-                  </div>
-                ))}
-              </div>
-            )}
-
-            <div className="mt-9 flex items-center justify-end">
+            <div className="mt-8 text-center">
               <button
                 type="button"
-                onClick={next}
-                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
+                onClick={skipToManual}
+                className="text-[13px] font-medium text-black/45 underline-offset-4 transition-colors hover:text-black/75 hover:underline"
               >
-                {selectedPlatforms.length > 0 ? "Next" : "Skip for now"}
+                Skip and build manually
               </button>
             </div>
           </div>
