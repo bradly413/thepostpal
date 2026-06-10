@@ -2,7 +2,7 @@
 
 import { scheduleMarketingScrollRefresh } from "@/lib/marketing-scroll-engine";
 
-const KICKER = "The creator studio";
+const KICKER = "The Posterboy studio";
 const HEADLINE = "A quick photo. A finished post.";
 const LEDE =
   "Drop a snapshot from your phone. Posterboy reads it, writes the caption in your voice, and styles it to your brand. One studio, scroll-stopping posts for every kind of business.";
@@ -40,7 +40,7 @@ export default function DashboardZoomSection() {
 
       <div className="studio-gal-wall" aria-label="A wall of posts made by Posterboy">
         {POSTS.map((p, i) => (
-          <figure className="studio-gal-tile" data-reveal="up-sm" key={p.src}>
+          <figure className="studio-gal-tile" key={p.src}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={p.src}
@@ -56,7 +56,10 @@ export default function DashboardZoomSection() {
       <style>{`
         .pb-marketing-site .studio-gal {
           --pb-red: #ee2532;
-          background: var(--paper);
+          /* A deeper warm 'gallery wall' tone — multiply melts the posts'
+             white into this, so they read as a collage on the wall, not white
+             cards floating on near-white cream. */
+          background: #e8ddc9;
           padding: clamp(72px, 12vh, 140px) var(--px);
         }
         .pb-marketing-site .studio-gal-intro {
@@ -92,9 +95,7 @@ export default function DashboardZoomSection() {
         .pb-marketing-site .studio-gal-tile {
           break-inside: avoid;
           margin: 0 0 clamp(10px, 1.2vw, 18px);
-          transition: transform 0.3s ease;
         }
-        .pb-marketing-site .studio-gal-tile:hover { transform: translateY(-3px); }
         .pb-marketing-site .studio-gal-tile img {
           display: block;
           width: 100%;
