@@ -4,7 +4,11 @@ import { anthropic } from "@ai-sdk/anthropic";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { decryptToken } from "@/lib/social/token-crypto";
-import { brandVoiceAiSchema, type BrandVoiceAiOutput } from "@/lib/brand-book-schema";
+import {
+  ZERO_SHOT_EXTRACTION_PROMPT,
+  zeroShotExtractionSchema,
+  type ZeroShotExtraction,
+} from "@/lib/zero-shot-extraction";
 
 //  Zero-shot historical onboarding — analyze the tenant's past social posts and
 //  infer their Brand Book voice (weSay / weDontSay / tone / pillars), so the
@@ -91,20 +95,17 @@ async function fetchRecentPosts(
 }
 
 /**
- * PLACEHOLDER (real wiring). Synthesize the brand voice from the user's own
- * captions using Anthropic + our existing Brand Book Zod schema, so the output
- * matches how they already write. Only called when there are posts to analyze.
+ * Reverse-engineer the brand's tone / pillars / weSay / weDontSay from their own
+ * captions using Anthropic + the zero-shot extraction schema. Only called when
+ * there are posts to analyze.
  */
-async function synthesizeVoiceFromPosts(posts: RecentPost[]): Promise<BrandVoiceAiOutput> {
-  const corpus = posts.map((p) => `- ${p.caption}`).join("\n");
+async function synthesizeVoiceFromPosts(posts: RecentPost[]): Promise<ZeroShotExtraction> {
+  const dataset = JSON.stringify(posts.map((p) => p.caption));
   const { object } = await generateObject({
     model: anthropic("claude-sonnet-4-6"),
-    schema: brandVoiceAiSchema,
-    system:
-      "You are a brand strategist. Analyze a business's own past social captions " +
-      "and infer the brand voice they already use. Be faithful to their existing " +
-      "vocabulary, cadence, and themes — do not invent a new persona.",
-    prompt: `The business's recent posts:\n${corpus}\n\nInfer their brand voice (weSay, weDontSay, tone, content pillars).`,
+    schema: zeroShotExtractionSchema,
+    system: ZERO_SHOT_EXTRACTION_PROMPT,
+    prompt: `Here is the array of the user's last ${posts.length} social media posts:\n${dataset}`,
   });
   return object;
 }

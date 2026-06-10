@@ -1,20 +1,20 @@
 "use client";
 
-import type { BrandVoiceAiOutput } from "@/lib/brand-book-schema";
+import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 
-// Pre-filled, editable Brand Book voice — shown after the zero-shot history
-// analysis. The user reviews/tweaks what Posterboy inferred from their past
-// posts instead of typing it from scratch.
+// Pre-filled, editable brand voice — shown after the zero-shot history analysis.
+// The user reviews/tweaks what Posterboy inferred from their past posts before
+// it's used to build the Brand Book.
 export default function BrandVoiceReview({
   voice,
   onChange,
   onContinue,
 }: {
-  voice: BrandVoiceAiOutput;
-  onChange: (next: BrandVoiceAiOutput) => void;
+  voice: ZeroShotExtraction;
+  onChange: (next: ZeroShotExtraction) => void;
   onContinue: () => void;
 }) {
-  const setList = (key: "weSay" | "weDontSay" | "traits", i: number, val: string) => {
+  const setList = (key: "pillars" | "weSay" | "weDontSay", i: number, val: string) => {
     const arr = [...voice[key]];
     arr[i] = val;
     onChange({ ...voice, [key]: arr });
@@ -30,18 +30,17 @@ export default function BrandVoiceReview({
       </p>
 
       <label className="block text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
-        Your positioning
+        Tone
       </label>
-      <textarea
-        value={voice.hero}
-        onChange={(e) => onChange({ ...voice, hero: e.target.value })}
-        rows={2}
+      <input
+        value={voice.tone}
+        onChange={(e) => onChange({ ...voice, tone: e.target.value })}
         className="mb-6 w-full rounded-xl border border-black/[0.1] bg-white/85 px-4 py-3 text-[15px] text-[#1c1c1e] focus:border-[#ee2532]/60 focus:outline-none focus:ring-2 focus:ring-[#ee2532]/12"
       />
 
+      <Section label="Content pillars" items={voice.pillars} onItem={(i, v) => setList("pillars", i, v)} compact />
       <Section label="We say" items={voice.weSay} onItem={(i, v) => setList("weSay", i, v)} />
       <Section label="We don't say" items={voice.weDontSay} onItem={(i, v) => setList("weDontSay", i, v)} />
-      <Section label="Voice traits" items={voice.traits} onItem={(i, v) => setList("traits", i, v)} compact />
 
       <div className="mt-8 flex items-center justify-end">
         <button

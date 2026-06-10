@@ -24,7 +24,7 @@ import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
-import type { BrandVoiceAiOutput } from "@/lib/brand-book-schema";
+import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
@@ -230,7 +230,7 @@ export default function BrandArchitect() {
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
   // Zero-shot: brand voice inferred from the user's past posts (null until the
   // history analysis returns; manual / guest onboarding falls back when null).
-  const [prefilledVoice, setPrefilledVoice] = useState<BrandVoiceAiOutput | null>(null);
+  const [prefilledVoice, setPrefilledVoice] = useState<ZeroShotExtraction | null>(null);
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -435,13 +435,25 @@ export default function BrandArchitect() {
         // reads — sign-up sends it to /api/auth/signup, which provisions the
         // tenant on that plan.
         if (plan) saveSelectedPlan(plan);
-        const answers = buildAnswers();
+        const base = buildAnswers();
+        // Zero-shot: fold the history-inferred (+ edited) voice into the answers
+        // — their own phrases become voice samples and the tone adjectives become
+        // personality traits, so generation grounds the brand voice in how they
+        // already write.
+        const answers = prefilledVoice
+          ? {
+              ...base,
+              voiceSamples: [...(base.voiceSamples ?? []), ...prefilledVoice.weSay],
+              personalityTraits: prefilledVoice.tone
+                .split(/[.•]/)
+                .map((t) => t.trim())
+                .filter(Boolean),
+            }
+          : base;
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // Zero-shot: pass the history-inferred (+ edited) voice so generation
-          // uses it directly instead of re-synthesizing from manual answers.
-          body: JSON.stringify({ answers, voice: prefilledVoice ?? undefined }),
+          body: JSON.stringify({ answers }),
         });
         const data = await res.json();
         if (!res.ok || data.error || !data.brandBook) {
@@ -490,7 +502,7 @@ export default function BrandArchitect() {
     void (async () => {
       try {
         const res = await fetch("/api/onboarding/analyze-history", { method: "POST" });
-        const data = (await res.json()) as { analyzed?: boolean; voice?: BrandVoiceAiOutput };
+        const data = (await res.json()) as { analyzed?: boolean; voice?: ZeroShotExtraction };
         if (!cancelled && data?.analyzed && data.voice) setPrefilledVoice(data.voice);
       } catch {
         /* fall back to manual onboarding */
