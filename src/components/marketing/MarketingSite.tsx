@@ -26,12 +26,12 @@ export default function MarketingSite() {
         <MarketingReveal />
         <Navigation />
         <Hero />
+        <AgencyMoat />
         <DashboardZoomSection />
         <SchedulingCalendar />
         <BuiltForStrip />
         <Solution />
         <WordScroll />
-        <AgencyMoat />
         <Pricing />
         <Footer />
         <ChatbotWidget />
