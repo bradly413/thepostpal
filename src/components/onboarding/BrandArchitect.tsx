@@ -99,6 +99,9 @@ const CARD = "w-full arch-panel";
 const FIELD =
   "w-full px-4 py-3 rounded-xl bg-white/85 border border-black/[0.1] text-[15px] text-[#1c1c1e] placeholder:text-black/35 focus:border-[#ee2532]/60 focus:outline-none focus:ring-2 focus:ring-[#ee2532]/12 transition-colors";
 
+// Manual brand-voice steps (topics + behavioral) — skipped when the voice was
+// already inferred from post history (zero-shot).
+const VOICE_STEP_NUMBERS = [5, 6, 7, 8];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const BIRTH_YEARS = Array.from({ length: 2008 - 1940 + 1 }, (_, i) => String(2008 - i));
@@ -395,15 +398,28 @@ export default function BrandArchitect() {
   const ORDER = [0, 9, 1, 2, 14, 10, 3, 11, 4, 5, 6, 7, 8, 12, 13];
   const next = () => {
     setDir("fwd");
-    setStep((s) => ORDER[Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1)]);
+    setStep((s) => {
+      let i = Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1);
+      // Zero-shot: skip the manual voice steps when we already inferred a voice.
+      if (prefilledVoice) {
+        while (i < ORDER.length - 1 && VOICE_STEP_NUMBERS.includes(ORDER[i])) i += 1;
+      }
+      return ORDER[i];
+    });
   };
   const back = () => {
     setDir("back");
     setStep((s) => {
       let j = Math.max(ORDER.indexOf(s) - 1, 0);
-      // Skip the transient loader (2) and, when there's no inferred voice, the
-      // zero-shot review step (14) when going back.
-      while (j > 0 && (ORDER[j] === 2 || (ORDER[j] === 14 && !prefilledVoice))) j -= 1;
+      // Skip the transient loader (2); when there's no inferred voice skip the
+      // zero-shot review (14); when there IS, skip the manual voice steps.
+      while (
+        j > 0 &&
+        (ORDER[j] === 2 ||
+          (ORDER[j] === 14 && !prefilledVoice) ||
+          (prefilledVoice && VOICE_STEP_NUMBERS.includes(ORDER[j])))
+      )
+        j -= 1;
       return ORDER[j];
     });
   };
@@ -425,7 +441,9 @@ export default function BrandArchitect() {
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers }),
+          // Zero-shot: pass the history-inferred (+ edited) voice so generation
+          // uses it directly instead of re-synthesizing from manual answers.
+          body: JSON.stringify({ answers, voice: prefilledVoice ?? undefined }),
         });
         const data = await res.json();
         if (!res.ok || data.error || !data.brandBook) {

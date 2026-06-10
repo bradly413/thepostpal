@@ -15,6 +15,11 @@ import { brandVoiceAiSchema, type BrandVoiceAiOutput } from "@/lib/brand-book-sc
 //  are real. Returns { analyzed: false } until the provider fetch is built —
 //  which keeps the manual / guest onboarding fallback fully intact.
 
+const GRAPH = "https://graph.facebook.com/v25.0";
+const LINKEDIN_POSTS = "https://api.linkedin.com/rest/posts";
+const LINKEDIN_VERSION = "202405";
+const POST_LIMIT = 50;
+
 interface RecentPost {
   id: string;
   provider: string;
@@ -23,23 +28,66 @@ interface RecentPost {
 }
 
 /**
- * PLACEHOLDER. Will hit the provider API for the account's last ~50 posts using
- * the (decrypted) access token:
- *   - Meta:     GET /{page-id}/posts?fields=message,created_time  (Graph API)
- *   - LinkedIn: GET /rest/posts?author={urn}                       (Posts API)
- * Returns the captions we feed to the voice model.
+ * Fetch the account's recent captions for voice analysis. `accessToken` is
+ * already decrypted by the caller via token-crypto. Best-effort and
+ * error-tolerant — any failure yields [] so onboarding falls back to manual.
+ *
+ * NOTE: not exercised against live provider APIs here (the demo tenant has no
+ * connected accounts / tokens). LinkedIn read access additionally depends on
+ * the granted product + scopes.
  */
 async function fetchRecentPosts(
   accountId: string,
   provider: string,
   accessToken: string,
 ): Promise<RecentPost[]> {
-  // TODO(zero-shot): implement per-provider fetch (last 50 posts).
-  // `accessToken` is already decrypted by the caller via token-crypto.
-  void accountId;
-  void provider;
-  void accessToken;
-  return [];
+  try {
+    if (provider === "facebook") {
+      const res = await fetch(
+        `${GRAPH}/${accountId}/posts?fields=id,message,created_time&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
+      );
+      if (!res.ok) return [];
+      const json = (await res.json()) as { data?: { id: string; message?: string; created_time?: string }[] };
+      return (json.data ?? [])
+        .filter((p) => p.message?.trim())
+        .map((p) => ({ id: p.id, provider, caption: p.message as string, createdAt: p.created_time }));
+    }
+
+    if (provider === "instagram") {
+      const res = await fetch(
+        `${GRAPH}/${accountId}/media?fields=id,caption,timestamp&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
+      );
+      if (!res.ok) return [];
+      const json = (await res.json()) as { data?: { id: string; caption?: string; timestamp?: string }[] };
+      return (json.data ?? [])
+        .filter((m) => m.caption?.trim())
+        .map((m) => ({ id: m.id, provider, caption: m.caption as string, createdAt: m.timestamp }));
+    }
+
+    if (provider === "linkedin") {
+      const authorUrn = `urn:li:person:${accountId}`;
+      const res = await fetch(
+        `${LINKEDIN_POSTS}?q=author&author=${encodeURIComponent(authorUrn)}&count=${POST_LIMIT}&sortBy=LAST_MODIFIED`,
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            "LinkedIn-Version": LINKEDIN_VERSION,
+            "X-Restli-Protocol-Version": "2.0.0",
+          },
+        },
+      );
+      if (!res.ok) return [];
+      const json = (await res.json()) as { elements?: { id?: string; commentary?: string }[] };
+      return (json.elements ?? [])
+        .map((el, i) => ({ id: el.id ?? `li-${i}`, provider, caption: (el.commentary ?? "").trim() }))
+        .filter((p) => p.caption);
+    }
+
+    return [];
+  } catch (error) {
+    console.error(`analyze-history.fetchRecentPosts(${provider})`, error);
+    return [];
+  }
 }
 
 /**

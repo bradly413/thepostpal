@@ -10,7 +10,7 @@ import {
   brandVoiceAiToBrandVoice,
   generateBrandVoiceStructured,
 } from "@/lib/brand-book-voice-ai";
-import type { OnboardingAnswers } from "@/lib/brand-book-schema";
+import { brandVoiceAiSchema, type OnboardingAnswers } from "@/lib/brand-book-schema";
 
 // ─────────────────────────────────────────────────────────────
 //  POST /api/brand-book/generate
@@ -26,6 +26,8 @@ import type { OnboardingAnswers } from "@/lib/brand-book-schema";
 interface RequestBody {
   userId?: unknown;
   answers?: unknown;
+  /** Zero-shot: voice already inferred from post history (+ user edits). */
+  voice?: unknown;
 }
 
 function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
@@ -95,6 +97,27 @@ export async function POST(req: NextRequest) {
     );
   }
   const answers = normalizeAnswers(body.answers);
+
+  // Zero-shot path: onboarding already inferred (and the user reviewed) the
+  // voice from their post history. Use it directly — no second AI voice call.
+  const providedVoice = brandVoiceAiSchema.safeParse(body.voice);
+  if (providedVoice.success) {
+    const v = providedVoice.data;
+    const brandBook = generateBrandBook(userId, answers, {
+      voice: brandVoiceAiToBrandVoice(v),
+      paletteId: v.paletteId,
+      collateralPrompts: v.collateralPrompts,
+    });
+    const res = NextResponse.json({
+      brandBook,
+      voice: "structured",
+      authMode: brandAuth.mode,
+    });
+    if (brandAuth.mode === "guest" && brandAuth.setGuestCookie) {
+      res.cookies.set(ONBOARDING_GUEST_COOKIE, brandAuth.setGuestCookie, guestCookieOptions());
+    }
+    return res;
+  }
 
   const shouldAttemptAi =
     Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
