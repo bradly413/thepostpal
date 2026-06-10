@@ -47,7 +47,7 @@ export default function DashboardPortalPreview() {
 
           <div className="sidebar-foot">
             <span className="mini-avatar">MR</span>
-            <span className="name">Angie Nichols</span>
+            <span className="name">Maya Reyes</span>
           </div>
         </aside>
 

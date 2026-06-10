@@ -56,7 +56,7 @@ type NormalizationIndexFile = {
 };
 
 const TEMPLATE_PACKS_DIR = path.join(process.cwd(), "template-packs");
-const ANGIE_PACKS_PATH = path.join(TEMPLATE_PACKS_DIR, "angie-nichols.json");
+const STARTER_PACKS_PATH = path.join(TEMPLATE_PACKS_DIR, "starter-templates.json");
 const NORMALIZATION_DIR = path.join(TEMPLATE_PACKS_DIR, "normalizations");
 const NORMALIZATION_INDEX_PATH = path.join(NORMALIZATION_DIR, "index.json");
 
@@ -251,7 +251,7 @@ async function readJsonFile<T>(filePath: string): Promise<T | null> {
 }
 
 async function loadImportedPackTemplates(): Promise<Template[]> {
-  const payload = await readJsonFile<ImportedPackFile>(ANGIE_PACKS_PATH);
+  const payload = await readJsonFile<ImportedPackFile>(STARTER_PACKS_PATH);
   const packs = Array.isArray(payload?.packs) ? payload.packs : [];
   return packs
     .filter((pack) => pack.slug && (pack.status || "").toUpperCase() === "READY")
