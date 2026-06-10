@@ -38,8 +38,14 @@ export default function WordScroll() {
       const items = [...list.querySelectorAll<HTMLElement>(".word-item")];
       if (items.length === 0) return;
 
+      // The final word ("your peace of mind.") is the payoff — it glows in
+      // Posterboy red when it lights up, instead of ink.
+      const RED = "#ee2532";
+      const lastIdx = items.length - 1;
+
       if (reducedMotion) {
         gsap.set(items, { opacity: 1, color: "var(--ink)" });
+        gsap.set(items[lastIdx], { color: RED });
         return;
       }
 
@@ -51,7 +57,7 @@ export default function WordScroll() {
           const on = i === idx;
           gsap.set(item, {
             opacity: on ? 1 : 0.25,
-            color: on ? "var(--ink)" : "var(--newsprint)",
+            color: on ? (i === lastIdx ? RED : "var(--ink)") : "var(--newsprint)",
           });
         });
       };

@@ -14,16 +14,15 @@ const DASHBOARD_SRC_2X = "/images/posterboy-dashboard-zoom@2x.png";
 const DASHBOARD_WIDTH = 2048;
 const DASHBOARD_HEIGHT = 1258;
 
-const KICKER = "Inside posterboy";
-const HEADLINE =
-  "Say goodbye to the newsfeed and complicated business suites.";
+const KICKER = "Inside the workspace";
+const HEADLINE = "Your whole week, handled in one calm screen.";
 const LEDE =
-  "A calm room for the work the algorithm can't do for you. Drafts in your voice, a calendar that already knows your week, posts that show up while you're somewhere else.";
+  "No newsfeed to fight. No bloated business suite to learn. Posterboy drafts in your voice, fills your calendar a week ahead, and publishes while you're busy running the place.";
 
 const STATS: { value: string; label: string }[] = [
   { value: "3", label: "drafts in your voice" },
-  { value: "2", label: "scheduled this week" },
-  { value: "1", label: "already live" },
+  { value: "1 week", label: "scheduled ahead" },
+  { value: "0", label: "newsfeed required" },
 ];
 
 const ANNOTATIONS: {
@@ -42,16 +41,16 @@ const ANNOTATIONS: {
   },
   {
     className: "pb-dash-anno pb-dash-anno--br",
-    kicker: "Sent",
-    title: "Instagram · Facebook",
-    meta: "Today, 8:00 AM",
+    kicker: "Posted",
+    title: "While you were closed",
+    meta: "Instagram · Facebook",
     mark: "arrow",
   },
   {
     className: "pb-dash-anno pb-dash-anno--bl",
     kicker: "Brand voice",
     title: "Warm. Local. Considered.",
-    meta: "Updated this week",
+    meta: "Learned from your posts",
     mark: "dot",
   },
 ];

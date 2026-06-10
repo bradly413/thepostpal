@@ -59,14 +59,16 @@ export default function Hero() {
         return;
       }
 
-      // Initial state — paper plane parked off-stage to the left,
-      // pointing toward its final position.
+      // Initial state — paper plane hidden at the loop's entry point (no long
+      // runway). It fades in here, loops, and grows into place. will-change
+      // promotes it to its own layer for the flight; cleared on landing.
       gsap.set(iconSlot, {
         opacity: 0,
-        scale: 0.7,
-        x: -640,
-        y: -20,
+        scale: 0.6,
+        x: -25,
+        y: 0,
         rotation: 0,
+        willChange: "transform",
       });
 
       const tl = gsap.timeline({ delay: 0.25 });
@@ -95,22 +97,66 @@ export default function Hero() {
         "<",
       );
 
-      // 3. Paper plane flies straight in from the left and lands flat.
-      //    No rotation, no loop — a simple, fast glide into place.
+      // 3. Paper plane: fades in right as it starts looping, circles once, and
+      //    grows to full size as it lands in its slot — no long runway scoot.
+      //    Position and scale are separate tweens so the loop keeps a constant
+      //    turn-rate (no whip) while the scale grows independently.
+      tl.addLabel("plane", "-=0.4");
+
+      // Fade in right as the loop begins.
+      tl.to(iconSlot, { opacity: 1, duration: 0.35, ease: "power1.out" }, "plane");
+
+      // Fly the loop, then arrow into the slot. No runway — it appears at the
+      // loop entry, circles once, and lands. Constant speed (ease "none") →
+      // constant turn rate, so the nose rotates uniformly with no whip. The
+      // loop is an exact bezier circle (tangent to its entry, so no cusp).
       tl.to(
         iconSlot,
         {
-          opacity: 1,
-          x: 0,
-          y: 0,
-          scale: 1,
-          duration: 0.9,
+          duration: 1.2,
+          ease: "none",
+          force3D: true,
+          motionPath: {
+            // SVG path in the icon's transform space (px, relative to the slot
+            // at 0,0; negative y is up). The loop is centered roughly over the
+            // slot (center -25,-60, r 60) so it sits over the gap rather than
+            // off to the left, and its bottom sits at the slot's y so the exit
+            // is purely horizontal — tangent-continuous with the loop (no cusp)
+            // and it lands flat in the slot:
+            //   M start at the loop's bottom-tangent point (-25,0)
+            //   C×4 one circle back to it
+            //   C exit straight across into the resting slot (0,0)
+            path:
+              "M -25 0 " +
+              "C 8.14 0 35 -26.86 35 -60 " +
+              "C 35 -93.14 8.14 -120 -25 -120 " +
+              "C -58.14 -120 -85 -93.14 -85 -60 " +
+              "C -85 -26.86 -58.14 0 -25 0 " +
+              "C -16.5 0 -8 0 0 0",
+            autoRotate: true,
+          },
+        },
+        "plane",
+      );
+
+      // Grow to full size over the flight, landing at full resolution as it
+      // reaches the slot (back.out gives a gentle settle into 1).
+      tl.to(iconSlot, { scale: 1, duration: 1.2, ease: "back.out(1.3)" }, "plane");
+
+      // Plant: straighten the nose flat once it has landed.
+      tl.to(
+        iconSlot,
+        {
+          rotation: 0,
+          duration: 0.4,
           ease: "power3.out",
           onComplete: () => {
             iconSvg?.classList.add("hero-icon-glide-active");
+            // Done animating — release the compositor hint.
+            gsap.set(iconSlot, { willChange: "auto" });
           },
         },
-        "-=0.35",
+        "plane+=1.2",
       );
 
       // 4. Subtitle + CTAs fade in last.

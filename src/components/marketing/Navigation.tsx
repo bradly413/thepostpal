@@ -6,10 +6,8 @@ import PosterboyLogo from "@/components/PosterboyLogo";
 import { useMarketingScroll } from "@/components/marketing/MarketingScrollProvider";
 
 const NAV = [
-  { label: "Why", href: "#problem" },
   { label: "How", href: "#solution" },
   { label: "Features", href: "#features" },
-  { label: "Founder", href: "#founder" },
   { label: "Pricing", href: "#pricing" },
 ];
 
