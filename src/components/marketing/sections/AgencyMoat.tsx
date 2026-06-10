@@ -90,7 +90,7 @@ export default function AgencyMoat() {
       <div className="am-block">
         <div className="am-copy">
           <span className="am-eyebrow">In your words</span>
-          <h3 className="am-h">Just the gist. Posterboy writes the rest.</h3>
+          <h3 className="am-h">Don&apos;t know what to say? Posterboy does.</h3>
           <p className="am-body">
             Jot a rough note — a weekend sale, an open house, a new class. Posterboy turns it
             into a finished post in your voice, shaped to your kind of business. No blank
