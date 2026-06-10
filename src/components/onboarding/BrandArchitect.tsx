@@ -23,6 +23,8 @@ import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
 import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
+import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
+import type { BrandVoiceAiOutput } from "@/lib/brand-book-schema";
 import { Users, Sparkles, MapPin, Check } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
@@ -233,6 +235,9 @@ export default function BrandArchitect() {
   const [locating, setLocating] = useState(false);
   // Direction of the last navigation, for the slide transition.
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
+  // Zero-shot: brand voice inferred from the user's past posts (null until the
+  // history analysis returns; manual / guest onboarding falls back when null).
+  const [prefilledVoice, setPrefilledVoice] = useState<BrandVoiceAiOutput | null>(null);
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -384,10 +389,10 @@ export default function BrandArchitect() {
   // Visit order. Step numbers stay stable (so existing blocks don't renumber);
   // only the traversal order changes. New steps: 9 agree · 10 name+age ·
   // 11 location · 12 plan.
-  // 0 intro · 9 agree · 1 profiles · 2 loader · 10 name+age · 3 business ·
-  // 11 location · 4 your-business · 5 topics · 6 dress · 7 greeting · 8 compliment ·
-  // 12 plan · 13 feature tour (kicks off generation)
-  const ORDER = [0, 9, 1, 2, 10, 3, 11, 4, 5, 6, 7, 8, 12, 13];
+  // 0 intro · 9 agree · 1 profiles · 2 loader · 14 voice review (zero-shot) ·
+  // 10 name+age · 3 business · 11 location · 4 your-business · 5 topics ·
+  // 6 dress · 7 greeting · 8 compliment · 12 plan · 13 feature tour (generation)
+  const ORDER = [0, 9, 1, 2, 14, 10, 3, 11, 4, 5, 6, 7, 8, 12, 13];
   const next = () => {
     setDir("fwd");
     setStep((s) => ORDER[Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1)]);
@@ -396,7 +401,9 @@ export default function BrandArchitect() {
     setDir("back");
     setStep((s) => {
       let j = Math.max(ORDER.indexOf(s) - 1, 0);
-      if (ORDER[j] === 2) j = Math.max(j - 1, 0); // skip the transient loader going back
+      // Skip the transient loader (2) and, when there's no inferred voice, the
+      // zero-shot review step (14) when going back.
+      while (j > 0 && (ORDER[j] === 2 || (ORDER[j] === 14 && !prefilledVoice))) j -= 1;
       return ORDER[j];
     });
   };
@@ -457,6 +464,35 @@ export default function BrandArchitect() {
     const t = setTimeout(() => setStep((s) => (s === 2 ? 10 : s)), reduce ? 1000 : 7600);
     return () => clearTimeout(t);
   }, [step]);
+
+  // Zero-shot: while the loader plays, analyze the user's connected accounts'
+  // post history and infer their brand voice. On failure / no accounts / guest
+  // (no auth), prefilledVoice stays null and onboarding falls back to manual.
+  useEffect(() => {
+    if (step !== 2) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const res = await fetch("/api/onboarding/analyze-history", { method: "POST" });
+        const data = (await res.json()) as { analyzed?: boolean; voice?: BrandVoiceAiOutput };
+        if (!cancelled && data?.analyzed && data.voice) setPrefilledVoice(data.voice);
+      } catch {
+        /* fall back to manual onboarding */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [step]);
+
+  // When the analysis returns a voice, transition the loader into the
+  // pre-filled, editable review (step 14) instead of the manual steps.
+  useEffect(() => {
+    if (step === 2 && prefilledVoice) {
+      setDir("fwd");
+      setStep(14);
+    }
+  }, [step, prefilledVoice]);
 
   const saveBrandDna = () => {
     saveBrandEngine({
@@ -717,7 +753,7 @@ export default function BrandArchitect() {
               Posterboy is studying your channels
             </div>
             <p className="arch-title text-2xl sm:text-3xl font-semibold tracking-tight mb-12">
-              Analyzing your current social media…
+              Analyzing your past posts to build your brand profile…
             </p>
             <div className="pfile-loader">
               {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -1138,6 +1174,14 @@ export default function BrandArchitect() {
 
         {step === 13 && (
           <FeatureTour onFinish={buildBrandBook} generating={bookState === "generating"} />
+        )}
+
+        {step === 14 && prefilledVoice && (
+          <BrandVoiceReview
+            voice={prefilledVoice}
+            onChange={setPrefilledVoice}
+            onContinue={next}
+          />
         )}
       </div>
       )}
