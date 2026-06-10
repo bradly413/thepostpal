@@ -382,10 +382,10 @@ export default function BrandArchitect() {
   // Visit order. Step numbers stay stable (so existing blocks don't renumber);
   // only the traversal order changes. New steps: 9 agree · 10 name+age ·
   // 11 location · 12 plan.
-  // 0 intro · 9 agree · 1 profiles · 2 loader · 14 voice review (zero-shot) ·
-  // 10 name+age · 3 business · 11 location · 4 your-business · 5 topics ·
-  // 6 dress · 7 greeting · 8 compliment · 12 plan · 13 feature tour (generation)
-  const ORDER = [0, 9, 1, 2, 14, 10, 3, 11, 4, 5, 6, 7, 8, 12, 13];
+  // 0 intro · 10 name+age (first question) · 9 agree · 1 connect · 2 loader ·
+  // 14 voice review (zero-shot) · 3 business · 11 location · 4 your-business ·
+  // 5 topics · 6 dress · 7 greeting · 8 compliment · 12 plan · 13 feature tour
+  const ORDER = [0, 10, 9, 1, 2, 14, 3, 11, 4, 5, 6, 7, 8, 12, 13];
   const next = () => {
     setDir("fwd");
     setStep((s) => {
@@ -415,11 +415,12 @@ export default function BrandArchitect() {
   };
 
   // "Skip and build manually" — bypass the connect/analysis loader entirely and
-  // drop the user into the manual Brand Architect form (name + age onward).
-  // prefilledVoice stays null, so generation uses the manually-entered answers.
+  // drop the user into the manual Brand Architect form. Name+age is already
+  // collected first, so this lands on the business step. prefilledVoice stays
+  // null, so generation uses the manually-entered answers.
   const skipToManual = () => {
     setDir("fwd");
-    setStep(10);
+    setStep(3);
   };
 
   // Generate the brand book + finish onboarding. Triggered from the final
@@ -489,7 +490,7 @@ export default function BrandArchitect() {
     const reduce =
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const t = setTimeout(() => setStep((s) => (s === 2 ? 10 : s)), reduce ? 1000 : 7600);
+    const t = setTimeout(() => setStep((s) => (s === 2 ? 3 : s)), reduce ? 1000 : 7600);
     return () => clearTimeout(t);
   }, [step]);
 
