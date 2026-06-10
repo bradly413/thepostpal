@@ -15,6 +15,7 @@ import {
   PenLine,
   Hexagon,
   Settings,
+  Globe,
   ChevronDown,
 } from "lucide-react";
 import { usePlan } from "@/components/dashboard/PlanProvider";
@@ -52,6 +53,7 @@ const NAV_BOTTOM: NavLink[] = [
   { label: "Editor", href: "/dashboard/editor", Icon: PenLine },
   { label: "Brand", href: "/dashboard/brand", Icon: Hexagon },
   { label: "Settings", href: "/dashboard/settings", Icon: Settings },
+  { label: "View site", href: "/", Icon: Globe },
 ];
 
 interface MeInfo {
@@ -143,7 +145,9 @@ export default function AppSidebar() {
   }, []);
 
   const isActive = (href: string) =>
-    href === "/dashboard" ? pathname === "/dashboard" : pathname.startsWith(href);
+    // Exact match for roots ("/dashboard", "/") — startsWith("/") matches every
+    // path, so the marketing "View site" link must compare exactly.
+    href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
 
   const showItem = (item: NavLink) => {
     if (item.gate === "metaAds") return features.metaAds;
