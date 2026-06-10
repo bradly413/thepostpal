@@ -1025,7 +1025,7 @@ export default function BrandArchitect() {
                     type="button"
                     aria-pressed={on}
                     onClick={() => setAgree((p) => ({ ...p, [c.key]: !p[c.key] }))}
-                    className="group flex items-center gap-3 py-3.5 text-left"
+                    className="group flex items-center gap-3 px-4 py-3.5 text-left"
                   >
                     <span
                       className={`flex h-5 w-5 flex-none items-center justify-center rounded-md border-2 transition-colors ${
