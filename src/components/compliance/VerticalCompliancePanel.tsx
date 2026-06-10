@@ -64,7 +64,7 @@ export default function VerticalCompliancePanel({
         "";
       setSelectedSlug(detected);
     } catch (err) {
-      setError(formatDashboardApiMessage(err, "Could not load compliance settings."));
+      setError(formatDashboardApiMessage(err, "Couldn't load this right now."));
     } finally {
       setLoading(false);
     }
@@ -78,18 +78,6 @@ export default function VerticalCompliancePanel({
     options.find((o) => o.slug === selectedSlug) ??
     options.find((o) => o.slug === state?.verticalSlug) ??
     null;
-
-  const displayGuardrails =
-    state?.verticalSlug === selectedSlug && state.activeGuardrails.length
-      ? state.activeGuardrails
-      : selected
-        ? [
-            selected.guardrailSummary,
-            selected.regulatoryBody
-              ? `Regulatory context: ${selected.regulatoryBody}`
-              : "Light brand-voice suggestions",
-          ]
-        : [];
 
   async function handleSave() {
     if (!selectedSlug) return;
@@ -114,7 +102,7 @@ export default function VerticalCompliancePanel({
         window.setTimeout(() => setSaved(false), 2200);
         return;
       }
-      setError(formatDashboardApiMessage(err, "Could not save compliance vertical."));
+      setError(formatDashboardApiMessage(err, "Couldn't save your choice."));
     } finally {
       setSaving(false);
     }
@@ -123,7 +111,7 @@ export default function VerticalCompliancePanel({
   if (loading) {
     return (
       <div className="pb-panel">
-        <p className="text-sm opacity-50">Loading compliance vertical…</p>
+        <p className="text-sm opacity-50">Loading…</p>
       </div>
     );
   }
@@ -132,16 +120,16 @@ export default function VerticalCompliancePanel({
     <div className={`pb-panel ${compact ? "" : ""}`}>
       <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
         <div>
-          <h2 className="pb-panel-h">Compliance vertical</h2>
+          <h2 className="pb-panel-h">Your kind of business</h2>
           <p className="text-sm opacity-60 mt-1">
-            Guardrails keep generated copy on-brand and out of trouble. Confirm or change your industry vertical.
+            Posterboy uses this to keep your posts on-brand and out of trouble. Pick the closest match.
           </p>
         </div>
         {selected ? <EnforcementBadge level={selected.enforcementLevel as EnforcementLevel} /> : null}
       </div>
 
       <label className="block text-xs font-semibold uppercase tracking-wide opacity-50 mb-2">
-        Your vertical
+        Your business type
       </label>
       <select
         value={selectedSlug}
@@ -157,20 +145,17 @@ export default function VerticalCompliancePanel({
 
       {selected ? (
         <div className="rounded-xl border border-black/10 bg-white/70 p-4 mb-4 space-y-2">
-          <p className="text-sm font-semibold">{selected.guardrailSummary}</p>
-          <ul className="text-xs opacity-65 space-y-1 list-disc pl-4">
-            {displayGuardrails.map((line) => (
-              <li key={line}>{line}</li>
-            ))}
-          </ul>
-          <p className="text-[10px] opacity-45 pt-1">
-            Posterboy applies guardrails and review routing — not guaranteed regulatory compliance.
+          <p className="text-sm font-semibold">Posterboy keeps your posts safe.</p>
+          <p className="text-xs opacity-65">
+            We&apos;ll flag anything risky for your kind of business and suggest a safer way to say
+            it — before it ever goes out.
           </p>
+          <p className="text-[10px] opacity-45 pt-1">A helpful safety net, not legal advice.</p>
         </div>
       ) : null}
 
       {error ? <p className="text-xs text-[var(--pb-press)] mb-3">{error}</p> : null}
-      {saved ? <p className="text-xs text-[#1f9d4d] mb-3">Compliance vertical saved.</p> : null}
+      {saved ? <p className="text-xs text-[#1f9d4d] mb-3">Saved.</p> : null}
 
       <button
         type="button"
@@ -178,7 +163,7 @@ export default function VerticalCompliancePanel({
         disabled={saving || !selectedSlug}
         onClick={() => void handleSave()}
       >
-        {saving ? "Saving…" : state?.verticalSlug ? "Update vertical" : "Confirm vertical"}
+        {saving ? "Saving…" : state?.verticalSlug ? "Update" : "Looks right"}
       </button>
     </div>
   );

@@ -681,10 +681,11 @@ export default function BrandArchitect() {
         {step === 4 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              Compliance vertical
+              We&apos;ve got the rules covered
             </h2>
             <p className="text-[15px] text-[#76767e] mb-6">
-              We matched a guardrail profile from your industry. Confirm or pick a different vertical before you draft.
+              Based on your business, Posterboy already knows what you can and can&apos;t say — so your
+              posts stay out of trouble. Change it below if this isn&apos;t quite right.
             </p>
             <VerticalCompliancePanel
               suggestedIndustryId={industryId}
