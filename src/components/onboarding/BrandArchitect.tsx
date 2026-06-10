@@ -21,6 +21,7 @@ import {
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
 import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
+import FeatureTour from "@/components/onboarding/FeatureTour";
 import { Users, Sparkles, MapPin, Check } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
@@ -383,8 +384,9 @@ export default function BrandArchitect() {
   // only the traversal order changes. New steps: 9 agree · 10 name+age ·
   // 11 location · 12 plan.
   // 0 intro · 9 agree · 1 profiles · 2 loader · 10 name+age · 3 business ·
-  // 11 location · 4 your-business · 5 topics · 6 dress · 7 greeting · 8 compliment · 12 plan
-  const ORDER = [0, 9, 1, 2, 10, 3, 11, 4, 5, 6, 7, 8, 12];
+  // 11 location · 4 your-business · 5 topics · 6 dress · 7 greeting · 8 compliment ·
+  // 12 plan · 13 feature tour (kicks off generation)
+  const ORDER = [0, 9, 1, 2, 10, 3, 11, 4, 5, 6, 7, 8, 12, 13];
   const next = () => {
     setDir("fwd");
     setStep((s) => ORDER[Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1)]);
@@ -1119,20 +1121,21 @@ export default function BrandArchitect() {
                 );
               })}
             </div>
-            <div className="flex items-center justify-end gap-4">
-              {bookState === "error" && saveNote ? (
-                <p className="text-[12px] text-[#76767e]">{saveNote}</p>
-              ) : null}
+            <div className="flex items-center justify-end">
               <button
                 type="button"
-                disabled={!plan || saving}
-                onClick={buildBrandBook}
+                disabled={!plan}
+                onClick={next}
                 className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
-                {bookState === "generating" ? "Building your brand book…" : "Build my brand book"}
+                Continue
               </button>
             </div>
           </div>
+        )}
+
+        {step === 13 && (
+          <FeatureTour onFinish={buildBrandBook} generating={bookState === "generating"} />
         )}
       </div>
       )}
