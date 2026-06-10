@@ -191,11 +191,11 @@ export function DashboardHomeStyles() {
       box-shadow: 0 22px 54px -38px rgba(20,20,40,0.45), inset 0 1px 0 rgba(255,255,255,0.65);
       display: flex; flex-direction: column;
     }
-    .mhead { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-    .mtitle2 { font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .2px; }
-    .viewall { font-size: 12.5px; color: var(--green-deep); font-weight: 600; text-decoration: none; }
+    .mhead { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2px 10px; margin-bottom: 16px; }
+    .mtitle2 { font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .2px; min-width: 0; }
+    .viewall { font-size: 12.5px; color: var(--green-deep); font-weight: 600; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
     .viewall:hover { text-decoration: underline; }
-    .period { font-size: 12.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; }
+    .period { font-size: 12.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; flex-shrink: 0; }
     .ghostbtn { border-radius: 99px; border: 1px solid var(--green); background: var(--accent-soft); color: var(--green-deep); padding: 9px 20px; font-size: 14px; font-weight: 600; cursor: pointer; }
 
     /* Middle row */
