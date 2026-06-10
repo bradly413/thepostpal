@@ -7,6 +7,7 @@ import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
 import PosterboyLogo from "@/components/PosterboyLogo";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
 import { getPublicTiers } from "@/lib/pricing";
+import { saveSelectedPlan } from "@/lib/plan-storage";
 import type { OnboardingAnswers } from "@/lib/brand-book-schema";
 import {
   COMPLIMENT_OPTIONS,
@@ -409,9 +410,10 @@ export default function BrandArchitect() {
       setSaveNote(null);
       saveBrandDna();
       try {
-        if (plan && typeof window !== "undefined") {
-          window.localStorage.setItem("pb-pending-plan", plan);
-        }
+        // Stash the chosen plan in the shared store the sign-in/sign-up flow
+        // reads — sign-up sends it to /api/auth/signup, which provisions the
+        // tenant on that plan.
+        if (plan) saveSelectedPlan(plan);
         const answers = buildAnswers();
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
