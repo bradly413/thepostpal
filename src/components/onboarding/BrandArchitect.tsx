@@ -228,6 +228,8 @@ export default function BrandArchitect() {
   const [birthYear, setBirthYear] = useState("");
   const [plan, setPlan] = useState("");
   const [locating, setLocating] = useState(false);
+  // Direction of the last navigation, for the slide transition.
+  const [dir, setDir] = useState<"fwd" | "back">("fwd");
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -382,14 +384,18 @@ export default function BrandArchitect() {
   // 0 intro · 9 agree · 1 profiles · 2 loader · 10 name+age · 3 business ·
   // 11 location · 4 your-business · 5 topics · 6 dress · 7 greeting · 8 compliment · 12 plan
   const ORDER = [0, 9, 1, 2, 10, 3, 11, 4, 5, 6, 7, 8, 12];
-  const next = () =>
+  const next = () => {
+    setDir("fwd");
     setStep((s) => ORDER[Math.min(ORDER.indexOf(s) + 1, ORDER.length - 1)]);
-  const back = () =>
+  };
+  const back = () => {
+    setDir("back");
     setStep((s) => {
       let j = Math.max(ORDER.indexOf(s) - 1, 0);
       if (ORDER[j] === 2) j = Math.max(j - 1, 0); // skip the transient loader going back
       return ORDER[j];
     });
+  };
 
   // Generate the brand book + finish onboarding. Triggered from the final
   // (plan) step; the selected plan is stashed for sign-up to pick up.
@@ -558,8 +564,14 @@ export default function BrandArchitect() {
           to   { opacity: 1; transform: none; }
         }
         .architect-fade { animation: architectFade 0.6s cubic-bezier(0.22,1,0.36,1) both; }
+        /* Directional step transition on the stage wrapper. */
+        .arch-slide { animation-duration: 0.5s; animation-timing-function: cubic-bezier(0.22,1,0.36,1); animation-fill-mode: both; }
+        .arch-slide--fwd { animation-name: archSlideFwd; }
+        .arch-slide--back { animation-name: archSlideBack; }
+        @keyframes archSlideFwd { from { opacity: 0; transform: translateX(34px); } to { opacity: 1; transform: none; } }
+        @keyframes archSlideBack { from { opacity: 0; transform: translateX(-34px); } to { opacity: 1; transform: none; } }
         @media (prefers-reduced-motion: reduce) {
-          .architect-fade { animation: none; }
+          .architect-fade, .arch-slide { animation: none; }
         }
       `}</style>
 
@@ -569,9 +581,9 @@ export default function BrandArchitect() {
       </div>
 
       {/* Progress — Pinterest-style determinate bar, bottom-left */}
-      <div className="absolute bottom-8 left-8 z-20 h-1.5 w-44 overflow-hidden rounded-full bg-black/[0.08]">
+      <div className="absolute top-0 left-0 right-0 z-30 h-[3px] bg-black/[0.06]">
         <div
-          className="h-full rounded-full bg-[#ee2532] transition-all duration-500 ease-out"
+          className="h-full bg-[#ee2532] transition-all duration-500 ease-out"
           style={{ width: `${((ORDER.indexOf(step) + 1) / ORDER.length) * 100}%` }}
         />
       </div>
@@ -602,7 +614,7 @@ export default function BrandArchitect() {
         </div>
       ) : (
       /* Stage — remounts per step so the fade replays */
-      <div key={step} className="architect-fade w-full flex items-center justify-center">
+      <div key={step} className={`arch-slide arch-slide--${dir} w-full flex items-center justify-center`}>
         {step === 0 && (
           <div className="max-w-xl text-center">
             <h1 className="mb-5 text-base sm:text-lg font-light text-[#76767e]">
