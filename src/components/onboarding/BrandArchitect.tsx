@@ -20,6 +20,7 @@ import {
 } from "@/lib/onboarding-choices";
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
 import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
+import FloatingField from "@/components/onboarding/FloatingField";
 import { Users, Sparkles, MapPin, Check } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
@@ -731,7 +732,9 @@ export default function BrandArchitect() {
               Pick the best fit — it tunes how Posterboy writes and designs for you.
             </p>
 
-            <input className={`${FIELD} mb-8`} placeholder="Business name" value={business} onChange={(e) => setBusiness(e.target.value)} aria-label="Business name" />
+            <div className="mb-8">
+              <FloatingField label="Business name" value={business} onChange={setBusiness} autoComplete="organization" />
+            </div>
 
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-1">
               What kind of business?
@@ -1008,13 +1011,9 @@ export default function BrandArchitect() {
             <p className="text-[15px] text-[#76767e] mb-7">
               This helps us personalize your experience and keep things appropriate.
             </p>
-            <input
-              className={`${FIELD} mb-4`}
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              aria-label="Your name"
-            />
+            <div className="mb-4">
+              <FloatingField label="Your name" value={name} onChange={setName} autoComplete="name" />
+            </div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
               Birthday
             </div>
@@ -1068,13 +1067,9 @@ export default function BrandArchitect() {
               <MapPin size={15} strokeWidth={2} />
               {locating ? "Locating…" : "Use my location"}
             </button>
-            <input
-              className={`${FIELD} mb-8`}
-              placeholder="City / area you serve"
-              value={location}
-              onChange={(e) => setLocation(e.target.value)}
-              aria-label="City or area you serve"
-            />
+            <div className="mb-8">
+              <FloatingField label="City / area you serve" value={location} onChange={setLocation} autoComplete="address-level2" />
+            </div>
             <div className="flex items-center justify-end">
               <button
                 type="button"
