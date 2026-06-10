@@ -757,9 +757,6 @@ export default function BrandArchitect() {
 
         {step === 2 && (
           <div className="architect-fade w-full flex flex-col items-center text-center">
-            <div className="arch-eyebrow mb-4" style={{ letterSpacing: "0.2em" }}>
-              Posterboy is studying your channels
-            </div>
             <p className="arch-title text-2xl sm:text-3xl font-semibold tracking-tight mb-12">
               Posterboy is analyzing your past posts
             </p>
