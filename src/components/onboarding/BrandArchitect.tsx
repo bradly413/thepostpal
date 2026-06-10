@@ -715,7 +715,7 @@ export default function BrandArchitect() {
               , it&rsquo;s nice to meet you.
             </h1>
             <p className="arch-title text-3xl sm:text-4xl font-semibold tracking-tight leading-snug mb-10">
-              Let&rsquo;s get to know each other.
+              Let&rsquo;s get to postin&rsquo;.
             </p>
             <button
               type="button"
