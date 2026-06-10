@@ -247,6 +247,22 @@ export function DashboardHomeStyles() {
     .mediathumb { border-radius: 14px; background-size: cover; background-position: center; background-color: #e5e7eb; transition: transform .2s; }
     .mediathumb:hover { transform: scale(1.04); }
 
+    /* Fit-to-one-screen on desktop: lock the home to the viewport and let the
+       rows flex to fill it, so the dashboard never page-scrolls. Smaller or
+       shorter screens fall through to normal scrolling. Long in-card lists
+       scroll internally so no content is lost. */
+    @media (min-width: 1081px) and (min-height: 720px) {
+      .pb-home2 { overflow: hidden; }
+      .home2 { height: 100%; min-height: 0; overflow: hidden; }
+      .main2 { min-height: 0; gap: 14px; }
+      .main2 > .top2 { flex: 1.5 1 0; min-height: 0; }
+      .main2 > .modules2 { flex: 1.15 1 0; min-height: 0; }
+      .main2 > .row2 { flex: 0.9 1 0; min-height: 0; }
+      .top2 .hero2, .top2 .shortcuts2 { min-height: 0; }
+      .modules2 .mod, .row2 .mod { min-height: 0; height: 100%; overflow: hidden; }
+      .modules2 .mod .uplist { min-height: 0; overflow-y: auto; }
+    }
+
     /* Workspace stats (real counts) */
     .audstats { display: flex; align-items: center; gap: 28px; flex: 1; }
     .audstats > div { display: flex; flex-direction: column; gap: 2px; }
