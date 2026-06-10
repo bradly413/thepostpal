@@ -18,6 +18,7 @@ import {
   type GreetingChoice,
 } from "@/lib/onboarding-choices";
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
+import { Users, Sparkles } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
   cacheStoredBrandBook,
@@ -713,6 +714,7 @@ export default function BrandArchitect() {
                       options={ind.clientArchetypes}
                       selected={targetIds}
                       onToggle={(id) => setTargetIds((prev) => toggleId(prev, id))}
+                      leadingIcon={<Users size={15} strokeWidth={2} />}
                     />
                   </div>
                   <div>
@@ -723,6 +725,7 @@ export default function BrandArchitect() {
                       options={ind.contentFocus}
                       selected={contentFocusIds}
                       onToggle={(id) => setContentFocusIds((prev) => toggleId(prev, id))}
+                      leadingIcon={<Sparkles size={15} strokeWidth={2} />}
                     />
                   </div>
                 </div>
