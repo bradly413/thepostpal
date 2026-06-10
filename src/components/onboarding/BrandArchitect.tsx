@@ -776,7 +776,7 @@ export default function BrandArchitect() {
         {step === 3 && (
           <div className="architect-fade w-full max-w-xl">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              Describe your business
+              Let&apos;s talk business
             </h2>
             <p className="text-[15px] text-[#76767e] mb-7">
               Pick the best fit — it tunes how Posterboy writes and designs for you.
