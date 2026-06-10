@@ -761,7 +761,7 @@ export default function BrandArchitect() {
               Posterboy is studying your channels
             </div>
             <p className="arch-title text-2xl sm:text-3xl font-semibold tracking-tight mb-12">
-              Analyzing your past posts to build your brand profile…
+              Posterboy is analyzing your past posts
             </p>
             <div className="pfile-loader">
               {[0, 1, 2, 3, 4, 5].map((i) => (
@@ -851,8 +851,8 @@ export default function BrandArchitect() {
               Posterboy has you covered
             </h2>
             <p className="text-[15px] text-[#76767e] mb-6">
-              Based on your business, Posterboy already knows what you can and can&apos;t say — so your
-              posts stay out of trouble. Change it below if this isn&apos;t quite right.
+              Posterboy already knows what you should and shouldn&apos;t say — no more typos, grammar
+              mistakes, or vague captions.
             </p>
             <VerticalCompliancePanel
               suggestedIndustryId={industryId}
