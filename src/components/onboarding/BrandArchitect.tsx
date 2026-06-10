@@ -1104,7 +1104,7 @@ export default function BrandArchitect() {
         {step === 11 && (
           <div className="architect-fade w-full max-w-md">
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
-              Where do you serve?
+              Where are you located?
             </h2>
             <p className="text-[15px] text-[#76767e] mb-7">
               Turn on location and we&apos;ll fill in your area — or just type it in.
