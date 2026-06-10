@@ -78,7 +78,7 @@ export function DashboardHomeStyles() {
     .main2 { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
 
     /* Utility bar */
-    .topbar2 { display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 6px; margin-bottom: 6px; }
+    .topbar2 { position: relative; z-index: 60; display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 6px; margin-bottom: 6px; }
     .topbar2 .ut {
       position: relative; width: 40px; height: 40px; border-radius: 50%;
       display: flex; align-items: center; justify-content: center;
@@ -90,6 +90,50 @@ export function DashboardHomeStyles() {
     .topbar2 .ut .dot { position: absolute; top: 9px; right: 10px; width: 7px; height: 7px; border-radius: 99px; background: #ff3b30; border: 1.5px solid #fff; }
     .topbar2 .ut.avatar { width: 42px; height: 42px; padding: 0; overflow: hidden; border: 2px solid #fff; }
     .topbar2 .ut.avatar img { width: 100%; height: 100%; object-fit: cover; }
+
+    /* Notifications dropdown */
+    .topbar2 .notif { position: relative; }
+    .topbar2 .notif.open { z-index: 50; }
+    .topbar2 .ut .dot.count {
+      top: 3px; right: 3px; width: auto; height: 16px; min-width: 16px; padding: 0 4px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; line-height: 1; color: #fff;
+      background: #ee2532; border: 1.5px solid #fff; border-radius: 99px;
+      transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+    }
+    .notif.open .ut .dot.count { transform: scale(0); }
+    .notif-panel {
+      position: absolute; top: calc(100% + 12px); right: 0; z-index: 50;
+      width: 300px; max-width: calc(100vw - 32px);
+      background: rgba(255,255,255,0.97);
+      backdrop-filter: blur(22px) saturate(1.5); -webkit-backdrop-filter: blur(22px) saturate(1.5);
+      border: 1px solid rgba(255,255,255,0.7); border-radius: 18px;
+      box-shadow: 0 30px 70px -28px rgba(20,20,40,0.5);
+      padding: 14px; transform-origin: top right;
+      opacity: 0; transform: translateY(-8px) scale(.97); pointer-events: none;
+      transition: opacity .26s ease, transform .28s cubic-bezier(.34,1.4,.64,1);
+    }
+    .notif.open .notif-panel { opacity: 1; transform: translateY(0) scale(1); pointer-events: auto; }
+    .notif-head {
+      font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
+      color: var(--ink-soft); padding: 2px 6px 10px;
+    }
+    .notif-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+    .notif-item {
+      display: flex; gap: 10px; padding: 11px 12px; border-radius: 12px;
+      background: rgba(255,255,255,0.6); border: 1px solid rgba(20,20,40,0.05);
+      opacity: 0; transform: translateY(8px);
+      transition: opacity .4s ease, transform .4s cubic-bezier(.34,1.4,.64,1), background .2s ease;
+    }
+    .notif.open .notif-item { opacity: 1; transform: translateY(0); transition-delay: calc(var(--i) * 70ms + 120ms); }
+    .notif-item:hover { background: rgba(255,255,255,0.95); }
+    .notif-item .notif-dot { flex: none; width: 7px; height: 7px; margin-top: 6px; border-radius: 99px; background: #ee2532; }
+    .notif-item p { margin: 0; font-size: 13px; line-height: 1.45; color: var(--ink); }
+    .notif-item strong { font-weight: 600; }
+    .notif-item .notif-time { display: block; margin-top: 3px; font-size: 11px; color: var(--ink-soft); }
+    @media (prefers-reduced-motion: reduce) {
+      .notif-panel, .notif-item, .topbar2 .ut .dot.count { transition: none; }
+    }
 
     /* ---------- Top row: hero + shortcuts ---------- */
     .top2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }

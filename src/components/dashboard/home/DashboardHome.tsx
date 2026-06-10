@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import Link from "next/link";
 import { useGSAP } from "@gsap/react";
 import gsap from "gsap";
@@ -81,6 +81,12 @@ function PlatformIcon({ p }: { p: string }) {
   );
 }
 
+const NOTIFS: { lead?: string; body: string; time: string }[] = [
+  { lead: "Your weekend post", body: "went live on Instagram and Facebook.", time: "2h" },
+  { body: "3 drafts are ready for your review.", time: "today" },
+  { lead: "Petal House", body: "and 6 others loved your latest post.", time: "yesterday" },
+];
+
 export default function DashboardHome() {
   const root = useRef<HTMLDivElement>(null);
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
@@ -89,6 +95,25 @@ export default function DashboardHome() {
   const [slide, setSlide] = useState(0);
   const [wx, setWx] = useState<Weather | null>(null);
   const [wxPlace, setWxPlace] = useState<WxPlace | null>(null);
+  const [notifOpen, setNotifOpen] = useState(false);
+  const notifRef = useRef<HTMLDivElement>(null);
+
+  // Close the notifications panel on outside click or Escape.
+  useEffect(() => {
+    if (!notifOpen) return;
+    const onDoc = (e: MouseEvent) => {
+      if (notifRef.current && !notifRef.current.contains(e.target as Node)) setNotifOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setNotifOpen(false);
+    };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDoc);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [notifOpen]);
 
   // Recent Media — live workspace photos only (no stock fallback: stock images
   // looked like another account's photos to beta users).
@@ -272,7 +297,39 @@ export default function DashboardHome() {
           {/* Utility bar */}
           <div className="topbar2 anim">
             <button type="button" className="ut" aria-label="Theme"><Sun size={18} /></button>
-            <button type="button" className="ut" aria-label="Notifications"><Bell size={18} /><span className="dot" /></button>
+            <div className={`notif${notifOpen ? " open" : ""}`} ref={notifRef}>
+              <button
+                type="button"
+                className="ut"
+                aria-label="Notifications"
+                aria-expanded={notifOpen}
+                onClick={() => setNotifOpen((o) => !o)}
+              >
+                <Bell size={18} />
+                <span className="dot count">{NOTIFS.length}</span>
+              </button>
+              <div className="notif-panel" role="menu" aria-hidden={!notifOpen}>
+                <div className="notif-head">Activity</div>
+                <ul className="notif-list">
+                  {NOTIFS.map((n, i) => (
+                    <li
+                      className="notif-item"
+                      role="menuitem"
+                      key={n.body}
+                      style={{ "--i": i } as CSSProperties}
+                    >
+                      <span className="notif-dot" aria-hidden />
+                      <p>
+                        {n.lead ? <strong>{n.lead}</strong> : null}
+                        {n.lead ? " " : null}
+                        {n.body}
+                        <span className="notif-time">{n.time}</span>
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            </div>
             <Link href="/dashboard/settings" className="ut avatar" aria-label="Account">
               <User size={18} />
             </Link>
