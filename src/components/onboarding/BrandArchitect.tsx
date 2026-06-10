@@ -697,12 +697,9 @@ export default function BrandArchitect() {
               </span>
               , it&rsquo;s nice to meet you.
             </h1>
-            <p className="arch-title text-3xl sm:text-4xl font-semibold tracking-tight leading-snug mb-8">
+            <p className="arch-title text-3xl sm:text-4xl font-semibold tracking-tight leading-snug mb-10">
               Let&rsquo;s get to know each other.
             </p>
-            <div className="mb-10">
-              <PromptRewriteDemo />
-            </div>
             <button
               type="button"
               onClick={next}
@@ -857,6 +854,9 @@ export default function BrandArchitect() {
               Based on your business, Posterboy already knows what you can and can&apos;t say — so your
               posts stay out of trouble. Change it below if this isn&apos;t quite right.
             </p>
+            <div className="mb-6">
+              <PromptRewriteDemo />
+            </div>
             <VerticalCompliancePanel
               suggestedIndustryId={industryId}
               onSaved={() => next()}
