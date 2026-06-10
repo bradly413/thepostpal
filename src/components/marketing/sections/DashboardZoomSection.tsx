@@ -1,118 +1,169 @@
 "use client";
 
+import { Sparkles } from "lucide-react";
 import { scheduleMarketingScrollRefresh } from "@/lib/marketing-scroll-engine";
 
-const DASHBOARD_SRC = "/images/posterboy-dashboard-zoom.png";
-const DASHBOARD_SRC_2X = "/images/posterboy-dashboard-zoom@2x.png";
-const DASHBOARD_WIDTH = 2048;
-const DASHBOARD_HEIGHT = 1258;
+const POST_SRC = "/images/social-mocks/02.png";
 
-const KICKER = "Inside the workspace";
-const HEADLINE = "Your whole week, handled in one calm screen.";
+const KICKER = "The creator studio";
+const HEADLINE = "A quick photo. A finished post.";
 const LEDE =
-  "No newsfeed to fight. No bloated business suite to learn. Posterboy drafts in your voice, fills your calendar a week ahead, and publishes while you're busy running the place.";
+  "Drop a snapshot from your phone. Posterboy reads it, writes the caption in your voice, and styles it to your brand — a scroll-stopping post, without a photographer or a designer.";
 
-const STATS: { value: string; label: string }[] = [
-  { value: "3", label: "drafts in your voice" },
-  { value: "1 week", label: "scheduled ahead" },
-  { value: "0", label: "newsfeed required" },
+const POINTS = [
+  "Turns a quick phone photo into a polished post",
+  "Writes the caption for you, in your voice",
+  "Styled to match your brand",
 ];
 
-const ANNOTATIONS: {
-  className: string;
-  kicker: string;
-  title: string;
-  meta: string;
-  mark: "check" | "dot" | "arrow";
-}[] = [
-  {
-    className: "pb-dash-anno pb-dash-anno--tl",
-    kicker: "Draft",
-    title: "Saved in your voice",
-    meta: "2:14 PM",
-    mark: "check",
-  },
-  {
-    className: "pb-dash-anno pb-dash-anno--br",
-    kicker: "Posted",
-    title: "While you were closed",
-    meta: "Instagram · Facebook",
-    mark: "arrow",
-  },
-  {
-    className: "pb-dash-anno pb-dash-anno--bl",
-    kicker: "Brand voice",
-    title: "Warm. Local. Considered.",
-    meta: "Learned from your posts",
-    mark: "dot",
-  },
-];
+const CALLOUTS = ["Read your photo", "Matched your colors", "Wrote the caption"];
 
 /**
- * Living workspace — editorial copy on the left, dashboard mockup on the right
- * at modest scale, with a few quiet ambient annotations layered around it.
- *
- * Motion is handled by the shared site-wide reveal system: elements carry a
- * `data-reveal` attribute and rise into view via setupRevealBatch(), so this
- * section speaks the same motion vocabulary as the rest of the page.
+ * AI Creator Studio — the trash-to-treasure pitch. Editorial copy on the left;
+ * a finished post on the right framed as "Posterboy made this from one quick
+ * photo." Motion via the shared [data-reveal] system.
  */
 export default function DashboardZoomSection() {
   return (
     <section
-      id="product"
+      id="studio"
       className="pb-dash-zoom"
-      aria-label="Inside Posterboy — a calm workspace for social posts"
+      aria-label="The Posterboy creator studio — turn a phone photo into a finished post"
     >
       <div className="pb-dash-zoom-stage">
         <div className="pb-dash-zoom-copy">
-          <p className="pb-dash-zoom-kicker" data-reveal="up-sm">{KICKER}</p>
+          <p className="pb-dash-zoom-kicker studio-kicker" data-reveal="up-sm">{KICKER}</p>
           <h2 className="pb-dash-zoom-headline type-display" data-reveal>{HEADLINE}</h2>
           <p className="pb-dash-zoom-lede" data-reveal>{LEDE}</p>
-          <dl className="pb-dash-zoom-stats" aria-label="Your week at a glance">
-            {STATS.map((s) => (
-              <div key={s.label} className="pb-dash-zoom-stat" data-reveal="up-sm">
-                <dt className="pb-dash-zoom-stat-value">{s.value}</dt>
-                <dd className="pb-dash-zoom-stat-label">{s.label}</dd>
-              </div>
+          <ul className="studio-points">
+            {POINTS.map((p) => (
+              <li key={p} data-reveal="up-sm">{p}</li>
             ))}
-          </dl>
+          </ul>
         </div>
 
         <div className="pb-dash-zoom-canvas">
-          <div className="pb-ipad-device" data-reveal="up-lg">
-            <div className="pb-ipad-shell">
-              <div className="pb-ipad-screen">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={DASHBOARD_SRC}
-                  srcSet={`${DASHBOARD_SRC} 1024w, ${DASHBOARD_SRC_2X} 2048w`}
-                  sizes="(min-width: 1280px) 680px, (min-width: 960px) 56vw, 92vw"
-                  width={DASHBOARD_WIDTH}
-                  height={DASHBOARD_HEIGHT}
-                  alt="Posterboy workspace — drafts, brand voice, and schedule"
-                  loading="eager"
-                  decoding="async"
-                  fetchPriority="high"
-                  onLoad={() => scheduleMarketingScrollRefresh(100)}
-                />
-              </div>
+          <div className="studio-card" data-reveal="up-lg" aria-label="A finished post made by Posterboy">
+            <div className="studio-shot">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                className="studio-post"
+                src={POST_SRC}
+                alt="A finished, on-brand social post created by Posterboy"
+                loading="lazy"
+                decoding="async"
+                onLoad={() => scheduleMarketingScrollRefresh(100)}
+              />
+              <span className="studio-spark" aria-hidden>
+                <Sparkles size={16} strokeWidth={1.75} />
+              </span>
             </div>
 
-            {ANNOTATIONS.map((a) => (
-              <div key={a.kicker + a.title} className={a.className} aria-hidden data-reveal="up-sm">
-                <span className={`pb-dash-anno-mark pb-dash-anno-mark--${a.mark}`}>
-                  {a.mark === "check" ? "✓" : a.mark === "arrow" ? "→" : "•"}
-                </span>
-                <div className="pb-dash-anno-text">
-                  <span className="pb-dash-anno-kicker">{a.kicker}</span>
-                  <span className="pb-dash-anno-title">{a.title}</span>
-                  <span className="pb-dash-anno-meta">{a.meta}</span>
-                </div>
-              </div>
-            ))}
+            <div className="studio-cap">
+              <span className="studio-cap-spark" aria-hidden>
+                <Sparkles size={15} strokeWidth={1.75} />
+              </span>
+              <span>
+                <span className="studio-cap-label">Made by Posterboy</span> from one quick photo
+                of the shop.
+              </span>
+            </div>
+
+            <div className="studio-callouts" aria-hidden>
+              {CALLOUTS.map((c) => (
+                <span key={c}>{c}</span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      <style>{`
+        .pb-marketing-site #studio { --pb-red: #ee2532; }
+        .pb-marketing-site .studio-kicker { color: var(--pb-red); }
+        .pb-marketing-site .studio-points {
+          list-style: none;
+          margin: 1.4em 0 0;
+          padding: 0;
+          display: flex;
+          flex-direction: column;
+          gap: 9px;
+        }
+        .pb-marketing-site .studio-points li {
+          position: relative;
+          padding-left: 22px;
+          font-size: 14.5px;
+          line-height: 1.5;
+          color: color-mix(in srgb, var(--ink) 72%, transparent);
+        }
+        .pb-marketing-site .studio-points li::before {
+          content: "";
+          position: absolute;
+          left: 3px;
+          top: 0.55em;
+          width: 6px;
+          height: 6px;
+          border-radius: 50%;
+          background: var(--pb-red);
+        }
+
+        .pb-marketing-site .studio-card {
+          width: 100%;
+          max-width: clamp(340px, 36vw, 460px);
+          margin: 0 auto;
+          background: var(--white);
+          border: 1px solid var(--newsprint);
+          border-radius: 22px;
+          overflow: hidden;
+          box-shadow: 0 28px 64px -34px rgba(15,15,20,0.32), 0 8px 20px -14px rgba(15,15,20,0.14);
+        }
+        .pb-marketing-site .studio-shot { position: relative; }
+        .pb-marketing-site .studio-post {
+          display: block;
+          width: 100%;
+          height: auto;
+          vertical-align: top;
+        }
+        .pb-marketing-site .studio-spark {
+          position: absolute;
+          top: 14px;
+          right: 14px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          width: 30px;
+          height: 30px;
+          border-radius: 50%;
+          background: var(--pb-red);
+          color: var(--white);
+          box-shadow: 0 8px 20px -8px rgba(238,37,50,0.7);
+        }
+        .pb-marketing-site .studio-cap {
+          display: flex;
+          gap: 9px;
+          padding: 13px 16px;
+          border-top: 1px solid var(--newsprint);
+          font-size: 13.5px;
+          line-height: 1.55;
+          color: color-mix(in srgb, var(--ink) 72%, transparent);
+        }
+        .pb-marketing-site .studio-cap-spark { flex: none; color: var(--pb-red); display: inline-flex; margin-top: 1px; }
+        .pb-marketing-site .studio-cap-label { font-weight: 600; color: var(--pb-red); }
+        .pb-marketing-site .studio-callouts {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 6px;
+          padding: 0 16px 16px;
+        }
+        .pb-marketing-site .studio-callouts span {
+          font-size: 11.5px;
+          color: var(--quiet-sage);
+          background: color-mix(in srgb, var(--paper) 55%, var(--white));
+          border: 1px solid var(--newsprint);
+          border-radius: 999px;
+          padding: 4px 10px;
+        }
+      `}</style>
     </section>
   );
 }
