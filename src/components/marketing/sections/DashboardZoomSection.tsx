@@ -17,12 +17,30 @@ const SHOTS = [
   { label: "Home services", prompt: "a friendly technician by the van, clean and on-brand", src: "/images/social-mocks/03.png" },
 ];
 
+// Small range strip beneath the generator — "look what it makes."
+const MORE = [
+  "/images/social-mocks/06.png",
+  "/images/social-mocks/08.png",
+  "/images/social-mocks/04.png",
+  "/images/social-mocks/07.png",
+  "/images/social-mocks/09.png",
+  "/images/social-mocks/10.png",
+];
+
+const TILE_COLS = 7;
+const TILE_ROWS = 9;
+const TILES = Array.from({ length: TILE_COLS * TILE_ROWS }, (_, i) => ({
+  i,
+  delay: (Math.floor(i / TILE_COLS) + (i % TILE_COLS)) * 0.045,
+}));
+
 type Phase = "typing" | "generating" | "done";
 
 /**
- * The Posterboy studio — AI image generator. A prompt types in, the canvas
- * "renders" (blur-up + brand-red scan), then resolves. Cycles business types;
- * the chips also let you jump. Self-contained + reduced-motion safe.
+ * The Posterboy studio — AI image generator. A prompt types in; the dark render
+ * canvas "computes" behind a brand-red scan + glow, then dissolves tile-by-tile
+ * to reveal the finished image. Cycles business types; chips also jump. A small
+ * range strip beneath shows the volume. Self-contained + reduced-motion safe.
  */
 export default function DashboardZoomSection() {
   const [idx, setIdx] = useState(0);
@@ -53,9 +71,9 @@ export default function DashboardZoomSection() {
       at(() => setTyped(shot.prompt.slice(0, c)), 320 + c * speed);
     }
     const typedDone = 320 + shot.prompt.length * speed;
-    at(() => setPhase("generating"), typedDone + 380);
-    at(() => setPhase("done"), typedDone + 380 + 1700);
-    at(() => setIdx((i) => (i + 1) % SHOTS.length), typedDone + 380 + 1700 + 3400);
+    at(() => setPhase("generating"), typedDone + 360);
+    at(() => setPhase("done"), typedDone + 360 + 1700);
+    at(() => setIdx((i) => (i + 1) % SHOTS.length), typedDone + 360 + 1700 + 3600);
 
     return () => {
       cancelled = true;
@@ -81,13 +99,24 @@ export default function DashboardZoomSection() {
             {typed}
             {phase === "typing" && !reduced.current ? <span className="sg-caret" /> : null}
           </span>
+          <span className={`sg-bar-btn sg-bar-btn--${phase}`} aria-hidden>
+            {phase === "done" ? "Done" : "Generate"}
+          </span>
         </div>
 
         <div className={`sg-canvas sg-${phase}`}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={shot.src} alt={`Studio render — ${shot.label}`} loading="lazy" decoding="async" />
           <span className="sg-scan" aria-hidden />
-          <span className="sg-grain" aria-hidden />
+          <div className="sg-tiles" aria-hidden>
+            {TILES.map((t) => (
+              <span
+                key={t.i}
+                className="sg-tile"
+                style={{ transitionDelay: phase === "done" && !reduced.current ? `${t.delay}s` : "0s" }}
+              />
+            ))}
+          </div>
           <span className="sg-status">
             <span className="sg-status-dot" />
             {phase === "done" ? "Ready to post" : "Generating"}
@@ -107,6 +136,16 @@ export default function DashboardZoomSection() {
             >
               {s.label}
             </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="sg-strip" data-reveal>
+        <span className="sg-strip-label">— and a thousand more, for every kind of business —</span>
+        <div className="sg-strip-row">
+          {MORE.map((src) => (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img key={src} src={src} alt="" loading="lazy" decoding="async" className="sg-strip-img" />
           ))}
         </div>
       </div>
@@ -131,67 +170,73 @@ export default function DashboardZoomSection() {
 
         /* ---- The generator ---- */
         .pb-marketing-site .sg-stage {
-          max-width: 440px; margin: 0 auto; display: flex; flex-direction: column; gap: 14px;
+          max-width: 480px; margin: 0 auto; display: flex; flex-direction: column; gap: 16px;
         }
         .pb-marketing-site .sg-bar {
           display: flex; align-items: center; gap: 10px;
-          background: rgba(255,255,255,0.7);
+          background: rgba(255,255,255,0.72);
           border: 1px solid rgba(20,20,30,0.08); border-radius: 14px;
-          padding: 13px 16px; box-shadow: 0 16px 40px -30px rgba(20,20,40,0.5);
+          padding: 12px 12px 12px 16px; box-shadow: 0 16px 40px -30px rgba(20,20,40,0.5);
         }
         .pb-marketing-site .sg-bar-spark { flex: none; color: var(--pb-red); display: inline-flex; }
-        .pb-marketing-site .sg-bar-text { font-size: 14px; line-height: 1.4; color: var(--ink); min-height: 20px; }
+        .pb-marketing-site .sg-bar-text { flex: 1; font-size: 14px; line-height: 1.4; color: var(--ink); min-height: 20px; }
         .pb-marketing-site .sg-caret {
           display: inline-block; width: 2px; height: 1em; margin-left: 1px; vertical-align: -2px;
           background: var(--pb-red); animation: sgCaret 0.9s steps(1) infinite;
         }
+        .pb-marketing-site .sg-bar-btn {
+          flex: none; font-size: 12px; font-weight: 700; letter-spacing: 0.01em; color: #fff;
+          background: var(--pb-red); padding: 7px 14px; border-radius: 10px; transition: background 0.3s, opacity 0.3s;
+        }
+        .pb-marketing-site .sg-bar-btn--generating { opacity: 0.65; }
+        .pb-marketing-site .sg-bar-btn--done { background: #1f9d4d; }
 
         .pb-marketing-site .sg-canvas {
           position: relative; width: 100%; aspect-ratio: 4 / 5; overflow: hidden;
-          border-radius: 18px; background: #161318;
-          box-shadow: 0 40px 90px -44px rgba(20,20,40,0.6), inset 0 0 0 1px rgba(255,255,255,0.06);
+          border-radius: 20px; background: #15121a;
+          box-shadow: 0 48px 110px -46px rgba(20,20,40,0.62), inset 0 0 0 1px rgba(255,255,255,0.06);
+          transition: box-shadow 0.6s ease;
+        }
+        .pb-marketing-site .sg-generating {
+          box-shadow: 0 0 0 1px rgba(238,37,50,0.4), 0 0 64px -6px rgba(238,37,50,0.45),
+                      0 48px 110px -46px rgba(20,20,40,0.62);
         }
         .pb-marketing-site .sg-canvas img {
           position: absolute; inset: 0; width: 100%; height: 100%;
           object-fit: cover; object-position: center 28%;
-          transition: filter 0.8s ease, opacity 0.8s ease, transform 0.9s cubic-bezier(.22,1,.36,1);
         }
-        .pb-marketing-site .sg-typing img { opacity: 0; filter: blur(24px); transform: scale(1.12); }
-        .pb-marketing-site .sg-generating img { opacity: 0.62; filter: blur(15px) saturate(1.25); transform: scale(1.06); }
-        .pb-marketing-site .sg-done img { opacity: 1; filter: blur(0) saturate(1); transform: scale(1); }
+
+        /* tile-dissolve reveal — the canvas "computes", then tiles fade to reveal */
+        .pb-marketing-site .sg-tiles {
+          position: absolute; inset: 0; display: grid;
+          grid-template-columns: repeat(${TILE_COLS}, 1fr);
+          grid-template-rows: repeat(${TILE_ROWS}, 1fr);
+        }
+        .pb-marketing-site .sg-tile { background: #15121a; opacity: 1; transition: opacity 0.5s ease; }
+        .pb-marketing-site .sg-done .sg-tile { opacity: 0; }
 
         /* brand-red scan sweep while generating */
         .pb-marketing-site .sg-scan {
-          position: absolute; inset: 0; opacity: 0; pointer-events: none;
+          position: absolute; inset: 0; z-index: 1; opacity: 0; pointer-events: none;
           background: linear-gradient(180deg,
-            transparent 0%, rgba(238,37,50,0) 44%, rgba(238,37,50,0.55) 50%,
+            transparent 0%, rgba(238,37,50,0) 44%, rgba(238,37,50,0.6) 50%,
             rgba(238,37,50,0) 56%, transparent 100%);
           background-size: 100% 220%;
         }
-        .pb-marketing-site .sg-generating .sg-scan { opacity: 1; animation: sgScan 1.7s linear; }
-
-        .pb-marketing-site .sg-grain {
-          position: absolute; inset: 0; opacity: 0; pointer-events: none; mix-blend-mode: overlay;
-          background-image: radial-gradient(rgba(255,255,255,0.5) 0.5px, transparent 0.6px);
-          background-size: 3px 3px;
-        }
-        .pb-marketing-site .sg-typing .sg-grain,
-        .pb-marketing-site .sg-generating .sg-grain { opacity: 0.5; }
+        .pb-marketing-site .sg-generating .sg-scan { opacity: 1; animation: sgScan 1.7s linear infinite; }
 
         .pb-marketing-site .sg-status {
-          position: absolute; left: 12px; bottom: 12px; z-index: 2;
+          position: absolute; left: 12px; bottom: 12px; z-index: 3;
           display: inline-flex; align-items: center; gap: 7px;
           padding: 6px 11px; border-radius: 99px;
           background: rgba(10,8,12,0.55); backdrop-filter: blur(8px);
           font-size: 11px; font-weight: 600; letter-spacing: 0.02em; color: #fff;
         }
-        .pb-marketing-site .sg-status-dot {
-          width: 6px; height: 6px; border-radius: 99px; background: var(--pb-red);
-        }
+        .pb-marketing-site .sg-status-dot { width: 6px; height: 6px; border-radius: 99px; background: var(--pb-red); }
         .pb-marketing-site .sg-generating .sg-status-dot,
         .pb-marketing-site .sg-typing .sg-status-dot { animation: sgPulse 1s ease-in-out infinite; }
         .pb-marketing-site .sg-done .sg-status-dot { background: #43d17a; }
-        .pb-marketing-site .sg-ell::after { content: "…"; animation: sgEll 1.2s steps(4) infinite; }
+        .pb-marketing-site .sg-ell::after { content: ""; animation: sgEll 1.2s steps(4) infinite; }
 
         .pb-marketing-site .sg-chips { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
         .pb-marketing-site .sg-chip {
@@ -201,16 +246,28 @@ export default function DashboardZoomSection() {
           color: color-mix(in srgb, var(--ink) 66%, transparent); transition: all 0.2s;
         }
         .pb-marketing-site .sg-chip:hover { border-color: rgba(20,20,30,0.28); color: var(--ink); }
-        .pb-marketing-site .sg-chip.is-on {
-          background: var(--pb-red); border-color: var(--pb-red); color: #fff;
+        .pb-marketing-site .sg-chip.is-on { background: var(--pb-red); border-color: var(--pb-red); color: #fff; }
+
+        /* ---- range strip ---- */
+        .pb-marketing-site .sg-strip { margin: clamp(40px, 6vh, 72px) auto 0; max-width: 940px; text-align: center; }
+        .pb-marketing-site .sg-strip-label {
+          display: block; font-size: 11px; font-weight: 600; letter-spacing: 0.14em; text-transform: uppercase;
+          color: color-mix(in srgb, var(--ink) 42%, transparent); margin-bottom: 22px;
         }
+        .pb-marketing-site .sg-strip-row {
+          display: flex; gap: clamp(10px, 1.4vw, 18px); justify-content: center; align-items: flex-start;
+        }
+        .pb-marketing-site .sg-strip-img {
+          width: clamp(72px, 13vw, 140px); height: auto; flex: none; mix-blend-mode: multiply;
+        }
+        @media (max-width: 640px) { .pb-marketing-site .sg-strip-row { flex-wrap: wrap; } }
 
         @keyframes sgCaret { 0%,50%{opacity:1} 51%,100%{opacity:0} }
         @keyframes sgScan { from { background-position: 0 -60%; } to { background-position: 0 160%; } }
         @keyframes sgPulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.4;transform:scale(0.7)} }
         @keyframes sgEll { 0%{content:""} 25%{content:"."} 50%{content:".."} 75%{content:"..."} }
         @media (prefers-reduced-motion: reduce) {
-          .pb-marketing-site .sg-canvas img { transition: none; }
+          .pb-marketing-site .sg-tile { transition: none; }
           .pb-marketing-site .sg-scan, .pb-marketing-site .sg-caret,
           .pb-marketing-site .sg-status-dot, .pb-marketing-site .sg-ell::after { animation: none; }
         }
