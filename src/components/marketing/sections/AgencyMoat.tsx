@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Sparkles } from "lucide-react";
+import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -13,103 +13,19 @@ gsap.registerPlugin(ScrollTrigger);
 // scheduler to an enterprise-grade, compliance-guardrailed creative engine.
 // Block 2 (Ironclad Compliance) is built first; blocks 1, 3, 4 follow.
 
-type Level = "block" | "warn";
-
-interface Segment {
-  text: string;
-  level?: Level;
-  reason?: string;
-}
-
-interface ComplianceCase {
+// Industries shown in the writing demo — the pill switcher picks one and the
+// PromptRewriteDemo plays a rough note -> Posterboy rewrite for that business.
+interface IndustryCase {
   key: string;
   pill: string;
-  initials: string;
-  brand: string;
-  vertical: string;
-  regulator: string;
-  level: Level;
-  message: string;
-  segments: Segment[];
-  fix: string;
+  businessType: string;
 }
 
-// Plain-English heads-ups for the owner, backed by the real regulator (shown as
-// a small proof tag). Mirrors the live vertical catalog
-// (src/lib/compliance/vertical-catalog.ts) without the jargon.
-const CASES: ComplianceCase[] = [
-  {
-    key: "skincare",
-    pill: "Skincare shop",
-    initials: "GS",
-    brand: "Glow Skincare Co.",
-    vertical: "Beauty & skincare",
-    regulator: "FDA · FTC",
-    level: "block",
-    message: "You can't promise to cure things — so it softened the claim.",
-    segments: [
-      { text: "Our new serum is " },
-      { text: "clinically proven to cure acne", level: "block", reason: "You can't say a skincare product cures anything" },
-      { text: " and " },
-      { text: "erases wrinkles overnight", level: "warn", reason: "Big promises like this need real proof" },
-      { text: " — " },
-      { text: "guaranteed results", level: "block", reason: "You can't guarantee results" },
-      { text: "." },
-    ],
-    fix: "Our new serum visibly smooths the look of fine lines. Results vary.",
-  },
-  {
-    key: "real-estate",
-    pill: "Real estate",
-    initials: "HR",
-    brand: "Hawthorne Realty",
-    vertical: "Real estate",
-    regulator: "Fair Housing",
-    level: "warn",
-    message: "Fair-housing rules don't allow this — here's a safer way to say it.",
-    segments: [
-      { text: "The " },
-      { text: "perfect home for a young family", level: "warn", reason: "You can't target who a home is for (fair housing)" },
-      { text: " in a " },
-      { text: "safe, Christian neighborhood", level: "warn", reason: "You can't mention religion or imply who belongs" },
-      { text: "." },
-    ],
-    fix: "A spacious home near parks and top-rated schools, in a welcoming neighborhood.",
-  },
-  {
-    key: "hiring",
-    pill: "Now hiring",
-    initials: "MC",
-    brand: "Maple Street Café",
-    vertical: "Hiring & job posts",
-    regulator: "Hiring rules",
-    level: "warn",
-    message: "Job posts can't hint at age — it kept it fair.",
-    segments: [
-      { text: "Now hiring " },
-      { text: "young, energetic recent grads", level: "warn", reason: "You can't hint at age in a job post" },
-      { text: " who can " },
-      { text: "work without any accommodations", level: "warn", reason: "You can't screen people out by ability" },
-      { text: "." },
-    ],
-    fix: "Now hiring friendly people ready to grow with our team. Everyone's welcome to apply.",
-  },
-  {
-    key: "wellness",
-    pill: "Wellness",
-    initials: "RW",
-    brand: "Rooted Wellness",
-    vertical: "Supplements & wellness",
-    regulator: "FDA",
-    level: "block",
-    message: "If you mention the upside, you have to mention the risks too.",
-    segments: [
-      { text: "Our daily drops are the " },
-      { text: "safe, natural cure with zero side effects", level: "block", reason: "You can't say it cures, and you can't skip the risks" },
-      { text: "." },
-    ],
-    fix: "Our daily drops support everyday wellness. Talk to your doctor before starting any supplement.",
-  },
+const CASES: IndustryCase[] = [
+  { key: "beauty", pill: "Skincare", businessType: "beauty" },
+  { key: "real-estate", pill: "Real estate", businessType: "real-estate" },
+  { key: "hospitality", pill: "Café", businessType: "hospitality" },
+  { key: "fitness", pill: "Fitness", businessType: "fitness" },
 ];
 
 export default function AgencyMoat() {
@@ -173,60 +89,22 @@ export default function AgencyMoat() {
 
       <div className="am-block">
         <div className="am-copy">
-          <span className="am-eyebrow">Peace of mind</span>
-          <h3 className="am-h">Say it right, every time.</h3>
+          <span className="am-eyebrow">In your words</span>
+          <h3 className="am-h">Just the gist. Posterboy writes the rest.</h3>
           <p className="am-body">
-            Every kind of business has lines you shouldn&apos;t cross — and you shouldn&apos;t
-            need a lawyer to know them. Posterboy already knows the rules for your line of work.
-            If a post crosses one, you get a gentle heads-up and a fixed version, ready to go.
-            No fine print, no surprises.
+            Jot a rough note — a weekend sale, an open house, a new class. Posterboy turns it
+            into a finished post in your voice, shaped to your kind of business. No blank
+            caption, no second-guessing — just something ready to publish.
           </p>
           <ul className="am-points">
-            <li>Knows the rules for your kind of business</li>
-            <li>Catches it before you post — not after</li>
-            <li>Fixes it for you in one tap</li>
+            <li>Writes in your brand voice</li>
+            <li>Tuned to your kind of business</li>
+            <li>Ready to post in one tap</li>
           </ul>
         </div>
 
-        <div className="am-mock" aria-label="Compliance enforcement preview">
-          <div className="am-card">
-            <div className="am-card-head">
-              <span className="am-av">{c.initials}</span>
-              <div className="am-card-id">
-                <span className="am-brand">{c.brand}</span>
-                <span className="am-vert">{c.vertical}</span>
-              </div>
-              <span className="am-chan">Instagram draft</span>
-            </div>
-
-            <p className="am-draft">
-              {c.segments.map((s, i) =>
-                s.level ? (
-                  <span key={i} className={`am-flag am-flag--${s.level}`} title={s.reason}>
-                    {s.text}
-                  </span>
-                ) : (
-                  <span key={i}>{s.text}</span>
-                ),
-              )}
-            </p>
-
-            <div className="am-bar">
-              <span className="am-spark" aria-hidden>
-                <Sparkles size={15} strokeWidth={1.75} />
-              </span>
-              <span className="am-msg">{c.message}</span>
-            </div>
-
-            <div className="am-fix">
-              <span className="am-fix-spark" aria-hidden>
-                <Sparkles size={15} strokeWidth={1.75} />
-              </span>
-              <span>
-                <span className="am-fix-label">Posterboy rewrite</span> {c.fix}
-              </span>
-            </div>
-          </div>
+        <div className="am-mock" aria-label="Posterboy writing preview">
+          <PromptRewriteDemo businessType={c.businessType} key={c.key} />
 
           <div className="am-pills" role="tablist" aria-label="Industry">
             {CASES.map((cc, i) => (
