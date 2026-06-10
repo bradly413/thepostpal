@@ -93,6 +93,68 @@ async function apiRequest<T>(input: string, init?: RequestInit): Promise<T> {
   return payload;
 }
 
+// ── GET de-duplication / short-lived cache ──────────────────
+// Every data-scoped dashboard page resolves the active location, and the home
+// snapshot, LocationSwitcher, and a post-resolution refresh all read it too —
+// so a single load used to fire dozens of identical /api/locations (and
+// /api/issues) requests. An effect-dependency guard stopped the runaway
+// cascade; this layer removes the residual duplication so each GET resolves
+// once per load regardless of how many components ask.
+//
+// Two mechanisms, both keyed by request URL:
+//   1. In-flight coalescing — concurrent callers share one Promise (collapses
+//      the mount burst).
+//   2. Short TTL — a just-resolved value is reused briefly (collapses the
+//      post-event refresh that fires after the first fetch settles).
+// Mutations call invalidateCachedGet() so reads never serve stale data.
+const CACHED_GET_TTL_MS = 5_000;
+
+interface CachedGetEntry {
+  at: number;
+  value: unknown;
+}
+
+const cachedGetInflight = new Map<string, Promise<unknown>>();
+const cachedGetStore = new Map<string, CachedGetEntry>();
+
+async function cachedGet<T>(key: string, fetcher: () => Promise<T>): Promise<T> {
+  const hit = cachedGetStore.get(key);
+  if (hit && Date.now() - hit.at < CACHED_GET_TTL_MS) {
+    return hit.value as T;
+  }
+
+  const existing = cachedGetInflight.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const pending = fetcher()
+    .then((value) => {
+      cachedGetStore.set(key, { at: Date.now(), value });
+      return value;
+    })
+    .finally(() => {
+      cachedGetInflight.delete(key);
+    });
+
+  cachedGetInflight.set(key, pending);
+  return pending;
+}
+
+// Drop cached/in-flight GETs whose key starts with `prefix` (or all when
+// omitted). Call after a mutation so the next read fetches fresh data.
+function invalidateCachedGet(prefix?: string): void {
+  if (!prefix) {
+    cachedGetStore.clear();
+    cachedGetInflight.clear();
+    return;
+  }
+  for (const key of cachedGetStore.keys()) {
+    if (key.startsWith(prefix)) cachedGetStore.delete(key);
+  }
+  for (const key of cachedGetInflight.keys()) {
+    if (key.startsWith(prefix)) cachedGetInflight.delete(key);
+  }
+}
+
 export interface DashboardMeRecord {
   plan: string;
   role: string;
@@ -131,8 +193,10 @@ export async function fetchDashboardMe(): Promise<DashboardMeRecord> {
 }
 
 export async function fetchDashboardLocations(): Promise<DashboardLocationRecord[]> {
-  const data = await apiRequest<{ locations: DashboardLocationRecord[] }>("/api/locations");
-  return data.locations;
+  return cachedGet("/api/locations", async () => {
+    const data = await apiRequest<{ locations: DashboardLocationRecord[] }>("/api/locations");
+    return data.locations;
+  });
 }
 
 export async function createDashboardLocation(input: {
@@ -143,6 +207,7 @@ export async function createDashboardLocation(input: {
     method: "POST",
     body: JSON.stringify(input),
   });
+  invalidateCachedGet("/api/locations");
   return data.location;
 }
 
@@ -152,8 +217,10 @@ export async function fetchDashboardIssues(
   const search = locationId
     ? `/api/issues?locationId=${encodeURIComponent(locationId)}`
     : "/api/issues";
-  const data = await apiRequest<{ issues: DashboardIssueRecord[] }>(search);
-  return data.issues;
+  return cachedGet(search, async () => {
+    const data = await apiRequest<{ issues: DashboardIssueRecord[] }>(search);
+    return data.issues;
+  });
 }
 
 export async function fetchDashboardPosts(locationId?: string | null): Promise<DashboardPostRecord[]> {
@@ -384,10 +451,14 @@ export async function saveDashboardBrandBook(input: {
   brandBook: BrandBook;
   onboardingAnswers?: OnboardingAnswers;
 }): Promise<DashboardBrandBookResponse> {
-  return apiRequest<DashboardBrandBookResponse>("/api/brand-book", {
+  const result = await apiRequest<DashboardBrandBookResponse>("/api/brand-book", {
     method: "PUT",
     body: JSON.stringify(input),
   });
+  // Brand book lives on the location's brandVoiceJson — drop cached locations
+  // so the next read reflects the saved voice.
+  invalidateCachedGet("/api/locations");
+  return result;
 }
 
 export interface GenerateDashboardBrandBookResult {
