@@ -18,6 +18,7 @@ import {
   type GreetingChoice,
 } from "@/lib/onboarding-choices";
 import PillMultiSelect from "@/components/onboarding/PillMultiSelect";
+import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import { Users, Sparkles } from "lucide-react";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import {
@@ -510,9 +511,12 @@ export default function BrandArchitect() {
               </span>
               , it&rsquo;s nice to meet you.
             </h1>
-            <p className="arch-title text-3xl sm:text-4xl font-semibold tracking-tight leading-snug mb-10">
+            <p className="arch-title text-3xl sm:text-4xl font-semibold tracking-tight leading-snug mb-8">
               Let&rsquo;s get to know each other.
             </p>
+            <div className="mb-10">
+              <PromptRewriteDemo />
+            </div>
             <button
               type="button"
               onClick={next}
