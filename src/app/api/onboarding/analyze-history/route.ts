@@ -139,6 +139,12 @@ export async function POST() {
         return NextResponse.json({ analyzed: false, reason: "no_posts" });
       }
 
+      // No AI key configured — skip the (doomed) model call and let onboarding
+      // fall back to manual. Mirrors the guard in /api/brand-book/generate.
+      if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+        return NextResponse.json({ analyzed: false, reason: "ai_unavailable" });
+      }
+
       // 3. Synthesize the brand voice from the user's own history.
       const voice = await synthesizeVoiceFromPosts(posts.slice(0, 50));
       return NextResponse.json({ analyzed: true, voice });
