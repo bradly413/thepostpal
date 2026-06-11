@@ -406,7 +406,7 @@ function SettingsContent() {
                 </span>
               )}
               {saveError ? (
-                <span className="text-sm font-medium" style={{ color: "#ee2532" }} role="alert">
+                <span className="text-sm font-medium pb-press-text" role="alert">
                   {saveError}
                 </span>
               ) : null}

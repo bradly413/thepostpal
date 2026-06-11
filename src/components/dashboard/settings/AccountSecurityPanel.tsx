@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import Link from "next/link";
 import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 import { clearStoredActiveLocationId } from "@/lib/dashboard-browser-state";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 export default function AccountSecurityPanel({
   meta,
@@ -27,6 +28,9 @@ export default function AccountSecurityPanel({
   const [deleteLoading, setDeleteLoading] = useState(false);
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [logoutLoading, setLogoutLoading] = useState(false);
+  const deleteDialogRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(showDeleteModal, deleteDialogRef, () => setShowDeleteModal(false));
 
   async function handleChangePassword() {
     setPasswordLoading(true);
@@ -108,21 +112,31 @@ export default function AccountSecurityPanel({
             </div>
             {showPasswordForm && (
               <div className="mt-4 space-y-3">
+                <label htmlFor="account-current-password" className="sr-only">
+                  Current password
+                </label>
                 <input
+                  id="account-current-password"
                   type="password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Current password"
                   className="pb-field w-full"
                   autoComplete="current-password"
+                  aria-describedby={passwordMsg ? "account-password-status" : undefined}
                 />
+                <label htmlFor="account-new-password" className="sr-only">
+                  New password (8+ chars, letter and number)
+                </label>
                 <input
+                  id="account-new-password"
                   type="password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="New password (8+ chars, letter + number)"
                   className="pb-field w-full"
                   autoComplete="new-password"
+                  aria-describedby={passwordMsg ? "account-password-status" : undefined}
                 />
                 <button
                   type="button"
@@ -135,7 +149,9 @@ export default function AccountSecurityPanel({
               </div>
             )}
             {passwordMsg && (
-              <p className="text-xs mt-2 opacity-70">{passwordMsg}</p>
+              <p id="account-password-status" className="text-xs mt-2 opacity-70" role="status">
+                {passwordMsg}
+              </p>
             )}
           </div>
 
@@ -159,7 +175,7 @@ export default function AccountSecurityPanel({
                 <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{meta.pageName}</p>
-                    <p className="text-[10px]" style={{ color: "#1f9d4d" }}>Facebook connected</p>
+                    <p className="text-[10px]" style={{ color: "#157a38" }}>Facebook connected</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
@@ -223,7 +239,7 @@ export default function AccountSecurityPanel({
               setDeleteError(null);
             }}
             className="rounded-xl px-4 py-2 text-xs font-semibold text-white transition-all"
-            style={{ background: "#ee2532" }}
+            style={{ background: "#c81e2a" }}
           >
             Delete
           </button>
@@ -233,6 +249,7 @@ export default function AccountSecurityPanel({
       {showDeleteModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4">
           <div
+            ref={deleteDialogRef}
             role="dialog"
             aria-modal="true"
             aria-labelledby="delete-account-title"
@@ -245,17 +262,21 @@ export default function AccountSecurityPanel({
               This permanently removes your organization, locations, brand books, scheduled posts,
               and Meta connections. This cannot be undone.
             </p>
-            <p className="text-xs font-semibold uppercase tracking-wider text-black/45 mt-4 mb-2">
+            <label htmlFor="delete-account-confirm" className="text-xs font-semibold uppercase tracking-wider text-black/55 mt-4 mb-2 block">
               Type DELETE to confirm
-            </p>
+            </label>
             <input
+              id="delete-account-confirm"
               value={deleteConfirm}
               onChange={(e) => setDeleteConfirm(e.target.value)}
               className="pb-field w-full"
               autoComplete="off"
+              aria-describedby={deleteError ? "delete-account-error" : undefined}
             />
             {deleteError && (
-              <p className="text-xs text-[#ee2532] mt-2">{deleteError}</p>
+              <p id="delete-account-error" className="text-xs mt-2 pb-press-text" role="alert">
+                {deleteError}
+              </p>
             )}
             <div className="flex gap-3 mt-5">
               <button
@@ -270,7 +291,7 @@ export default function AccountSecurityPanel({
                 disabled={deleteLoading || deleteConfirm.trim().toUpperCase() !== "DELETE"}
                 onClick={() => void handleDeleteAccount()}
                 className="flex-1 rounded-xl py-2.5 text-sm font-semibold text-white disabled:opacity-40"
-                style={{ background: "#ee2532" }}
+                style={{ background: "#c81e2a" }}
               >
                 {deleteLoading ? "Deleting…" : "Delete account"}
               </button>

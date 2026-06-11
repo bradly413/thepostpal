@@ -97,7 +97,7 @@ const SIDEBAR_CSS = `
 }
 .pb-side nav a svg { width: 18px; height: 18px; opacity: .85; }
 .pb-side nav a:hover { color: var(--ink); background: rgba(20,20,40,0.04); }
-.pb-side nav a.active { color: #fff; background: var(--red); box-shadow: 0 12px 26px -14px rgba(238,37,50,0.55); }
+.pb-side nav a.active { color: #fff; background: #c81e2a; box-shadow: 0 12px 26px -14px rgba(200,30,42,0.55); }
 .pb-side nav a.active svg { color: #fff; opacity: 1; }
 .pb-side .spacer { flex: 1; }
 .pb-side .foot {

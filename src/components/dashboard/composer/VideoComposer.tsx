@@ -234,12 +234,17 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
             ))}
           </div>
 
+          <label htmlFor="pb-video-caption-overlay" className="sr-only">
+            Caption overlay on video (optional)
+          </label>
           <input
+            id="pb-video-caption-overlay"
             type="text"
             className="pb-video-overlay"
             placeholder="Caption overlay on video (optional)"
             value={overlayText}
             onChange={(e) => setOverlayText(e.target.value)}
+            aria-label="Caption overlay on video (optional)"
           />
 
           <button

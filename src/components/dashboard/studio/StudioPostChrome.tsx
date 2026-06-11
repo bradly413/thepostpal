@@ -29,6 +29,7 @@ interface Props {
   caption: string;
   tags?: string;
   captionLoading?: boolean;
+  imageLabel?: string;
   onClose: () => void;
 }
 
@@ -64,6 +65,7 @@ export default function StudioPostChrome({
   caption,
   tags,
   captionLoading,
+  imageLabel = "Generated post image",
 }: Props) {
   const skeleton = (
     <span className="pc-skel"><span /><span /></span>
@@ -76,7 +78,12 @@ export default function StudioPostChrome({
   );
 
   const media = (
-    <div className="pc-media pc-reveal" style={{ ...mediaStyle, aspectRatio: aspect }} />
+    <div
+      className="pc-media pc-reveal"
+      style={{ ...mediaStyle, aspectRatio: aspect }}
+      role="img"
+      aria-label={imageLabel}
+    />
   );
 
   let body: React.ReactNode;
@@ -167,7 +174,12 @@ export default function StudioPostChrome({
   } else if (platform === "tiktok") {
     body = (
       <div className="pc pc-tt">
-        <div className="pc-tt-media pc-reveal" style={{ ...mediaStyle, aspectRatio: aspect }} />
+        <div
+          className="pc-tt-media pc-reveal"
+          style={{ ...mediaStyle, aspectRatio: aspect }}
+          role="img"
+          aria-label={imageLabel}
+        />
         <div className="pc-tt-top pc-reveal">
           <span className="pc-avatar pc-avatar-tt">ρ</span>
           <span className="pc-tt-name">posterboy <Verified /></span>

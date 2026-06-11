@@ -16,6 +16,7 @@ interface Props {
   mediaStyle: CSSProperties;
   aspectRatio: string;
   captionLoading?: boolean;
+  imageLabel?: string;
 }
 
 function FbAvatar() {
@@ -37,6 +38,7 @@ export default function FacebookPreview({
   mediaStyle,
   aspectRatio,
   captionLoading,
+  imageLabel = "Generated post image",
 }: Props) {
   const captionNode: ReactNode = captionLoading ? (
     <span className="fbpv-skel">
@@ -63,7 +65,12 @@ export default function FacebookPreview({
         <MoreHorizontal className="fbpv-more" size={22} aria-hidden />
       </header>
       <p className="fbpv-text">{captionNode}</p>
-      <div className="fbpv-media" style={{ ...mediaStyle, aspectRatio }} />
+      <div
+        className="fbpv-media"
+        style={{ ...mediaStyle, aspectRatio }}
+        role="img"
+        aria-label={imageLabel}
+      />
       <footer className="fbpv-foot">
         <div className="fbpv-stats">
           <span className="fbpv-reacts" aria-hidden />

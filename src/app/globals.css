@@ -1068,8 +1068,9 @@ html[data-theme] body {
   --pb-paper: #faf7f1;
   --pb-ink-soft: #76767e;
   --pb-line: rgba(20, 20, 30, 0.07);
-  --pb-press: #ee2532;
-  --pb-press-deep: #c81e2a;
+  --pb-press: #c81e2a;
+  --pb-press-deep: #a01824;
+  --pb-press-accent: #ee2532;
   --pb-card: rgba(255, 255, 255, 0.72);
   min-height: 100%;
   color: var(--pb-ink);
@@ -1332,7 +1333,7 @@ html[data-theme] body {
   background: rgba(17, 17, 17, 0.05);
   color: rgba(17, 17, 17, 0.5);
 }
-.pb-press-text { color: var(--pb-press, #ee2532); }
+.pb-press-text { color: var(--pb-press, #c81e2a); }
 
 /* Visible keyboard focus across the whole dashboard — custom controls (tabs,
    toggles, nav, rails, buttons) previously fell back to the invisible UA

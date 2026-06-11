@@ -264,7 +264,7 @@ export default function CaptionVariantPicker({
         .pb-caption-compliance-cta:disabled { opacity: 0.55; cursor: not-allowed; }
         .pb-caption-compliance-label {
           font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.06em; color: rgba(22,22,28,0.45);
+          letter-spacing: 0.06em; color: rgba(22,22,28,0.62);
         }
         .pb-caption-variants-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
         .pb-caption-variant-card {
@@ -278,7 +278,7 @@ export default function CaptionVariantPicker({
         }
         .pb-caption-variant-angle {
           display: block; font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.06em; color: rgba(22,22,28,0.45); margin-bottom: 4px;
+          letter-spacing: 0.06em; color: rgba(22,22,28,0.62); margin-bottom: 4px;
         }
         .pb-caption-variant-text { font-size: 12.5px; line-height: 1.4; margin: 0 0 4px; color: rgba(22,22,28,0.88); }
         .pb-caption-variant-flag {

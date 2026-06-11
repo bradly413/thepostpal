@@ -148,6 +148,14 @@ export function DashboardHomeStyles() {
     .hero2 .slide.on { opacity: 1; }
     .hero2 .scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(8,12,20,0.72) 0%, rgba(8,12,20,0.38) 44%, rgba(8,12,20,0) 72%); }
     .hero2 .slabel { position: absolute; z-index: 3; right: 18px; top: 16px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.92); background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 99px; backdrop-filter: blur(6px); }
+    .hero2 .hero-pause {
+      position: absolute; z-index: 3; right: 18px; top: 46px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+      color: rgba(255,255,255,0.95); background: rgba(0,0,0,0.38);
+      padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.25);
+      backdrop-filter: blur(6px); cursor: pointer;
+    }
+    .hero2 .hero-pause:disabled { opacity: 0.65; cursor: default; }
     /* Title + subtitle + button form one compact block anchored to the
        lower-left, sized to fit the same space on every slide. */
     .hero2 .hbody { position: absolute; z-index: 2; left: 42px; bottom: 28px; right: 40px; max-width: 62%; }
@@ -178,7 +186,7 @@ export function DashboardHomeStyles() {
       transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
     }
     .scut:hover { transform: translateY(-3px); box-shadow: 0 26px 52px -30px rgba(238,37,50,0.35), inset 0 1px 0 rgba(255,255,255,0.8); }
-    .scut .ic { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: var(--red); color: #fff; box-shadow: 0 8px 18px -10px rgba(238,37,50,0.6); }
+    .scut .ic { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #c81e2a; color: #fff; box-shadow: 0 8px 18px -10px rgba(200,30,42,0.6); }
     .scut .tx { display: flex; flex-direction: column; gap: 2px; }
     .scut .tx b { font-size: 15px; font-weight: 600; letter-spacing: .3px; }
     .scut .tx small { font-size: 12.5px; color: var(--ink-soft); }
@@ -192,7 +200,7 @@ export function DashboardHomeStyles() {
       display: flex; flex-direction: column;
     }
     .mhead { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2px 10px; margin-bottom: 16px; }
-    .mtitle2 { font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .2px; min-width: 0; }
+    .mtitle2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .2px; min-width: 0; }
     .viewall { font-size: 12.5px; color: var(--green-deep); font-weight: 600; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
     .viewall:hover { text-decoration: underline; }
     .period { font-size: 12.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; flex-shrink: 0; }
@@ -220,7 +228,7 @@ export function DashboardHomeStyles() {
     .bignum { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; color: var(--ink); }
     .delta { margin-top: 8px; font-size: 12.5px; font-weight: 600; }
     /* positive-metric green (convention: up = green), independent of brand-red accent */
-    .delta.up { color: #1f9d4d; }
+    .delta.up { color: #157a38; }
     .delta.down { color: var(--red); }
     .delta span { color: var(--ink-soft); font-weight: 500; }
     .reach2 .spark { position: absolute; left: 0; right: 0; bottom: 0; height: 74px; }
@@ -280,6 +288,10 @@ export function DashboardHomeStyles() {
     .audadd:hover { border-color: var(--green); color: var(--green-deep); }
 
     .pb-home2 .anim { will-change: transform; }
+
+    @media (prefers-reduced-motion: reduce) {
+      .hero2 .slide { transition: none; }
+    }
     `}</style>
   );
 }

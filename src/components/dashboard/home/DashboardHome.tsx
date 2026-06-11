@@ -93,6 +93,8 @@ export default function DashboardHome() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [slide, setSlide] = useState(0);
+  const [heroPaused, setHeroPaused] = useState(false);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const [wx, setWx] = useState<Weather | null>(null);
   const [wxPlace, setWxPlace] = useState<WxPlace | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
@@ -146,9 +148,14 @@ export default function DashboardHome() {
   }, [refresh]);
 
   useEffect(() => {
+    setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  }, []);
+
+  useEffect(() => {
+    if (heroPaused || reduceMotion) return;
     const t = window.setInterval(() => setSlide((s) => (s + 1) % SLIDES.length), 5000);
     return () => window.clearInterval(t);
-  }, []);
+  }, [heroPaused, reduceMotion]);
 
   // Resolve lat/lon + a display label from the active location's geo. We use
   // Open-Meteo's free geocoding API on the location's city (scoped by state /
@@ -294,6 +301,7 @@ export default function DashboardHome() {
 
         {/* Main */}
         <main className="main2">
+          <h1 className="sr-only">Home</h1>
           {/* Utility bar */}
           <div className="topbar2 anim">
             <button type="button" className="ut" aria-label="Theme"><Sun size={18} /></button>
@@ -337,12 +345,32 @@ export default function DashboardHome() {
 
           {/* Hero + shortcuts */}
           <div className="top2">
-            <section className="hero2 anim">
+            <section
+              className="hero2 anim"
+              onMouseEnter={() => setHeroPaused(true)}
+              onMouseLeave={() => setHeroPaused(false)}
+              onFocusCapture={() => setHeroPaused(true)}
+              onBlurCapture={(e) => {
+                if (!e.currentTarget.contains(e.relatedTarget as Node)) setHeroPaused(false);
+              }}
+            >
               {SLIDES.map((s, i) => (
                 <div key={s.title} className={`slide${i === slide ? " on" : ""}`} style={{ backgroundImage: `url('${s.img}')` }} />
               ))}
               {!cur.baked && <div className="scrim" />}
-              <span className="slabel">Auto Slideshow · {SLIDES.length} slides</span>
+              <span className="slabel">
+                {reduceMotion ? "Slideshow paused (reduced motion)" : heroPaused ? "Slideshow paused" : `Auto slideshow · ${SLIDES.length} slides`}
+              </span>
+              <button
+                type="button"
+                className="hero-pause"
+                onClick={() => setHeroPaused((p) => !p)}
+                aria-pressed={heroPaused || reduceMotion}
+                aria-label={heroPaused || reduceMotion ? "Play hero slideshow" : "Pause hero slideshow"}
+                disabled={reduceMotion}
+              >
+                {heroPaused || reduceMotion ? "Play" : "Pause"}
+              </button>
               {cur.baked ? (
                 <Link href="/dashboard/studio" className="hero-link" aria-label="Create a post" />
               ) : (
@@ -373,7 +401,7 @@ export default function DashboardHome() {
           <div className="modules2">
             {/* Upcoming posts */}
             <div className="mod up2 anim">
-              <div className="mhead"><span className="mtitle2">Upcoming Posts</span><Link href="/dashboard/calendar" className="viewall">View all</Link></div>
+              <div className="mhead"><h2 className="mtitle2">Upcoming Posts</h2><Link href="/dashboard/calendar" className="viewall">View all</Link></div>
               <div className="uplist">
                 {upcoming.length === 0 ? (
                   <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
@@ -391,7 +419,7 @@ export default function DashboardHome() {
 
             {/* Total reach */}
             <div className="mod reach2 anim">
-              <div className="mhead"><span className="mtitle2">Posts This Week</span><span className="period">{data?.weeklyOverview?.rangeLabel ?? "This week"}</span></div>
+              <div className="mhead"><h2 className="mtitle2">Posts This Week</h2><span className="period">{data?.weeklyOverview?.rangeLabel ?? "This week"}</span></div>
               <div className="bignum">{data?.weeklyOverview?.postsCount ?? 0}</div>
               <div className={`delta ${data?.weeklyOverview?.engagementPositive === false ? "down" : "up"}`}>{data?.weeklyOverview?.engagementLabel ?? "On track"} <span>vs last week</span></div>
               <div className="spark">
@@ -403,7 +431,7 @@ export default function DashboardHome() {
                     </linearGradient>
                   </defs>
                   <path d={reachPath.area} fill="url(#reachfill)" />
-                  <path d={reachPath.line} fill="none" stroke="#1f9d4d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                  <path d={reachPath.line} fill="none" stroke="#157a38" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                 </svg>
               </div>
             </div>
@@ -431,7 +459,7 @@ export default function DashboardHome() {
           {/* Bottom row */}
           <div className="row2">
             <div className="mod media2 anim">
-              <div className="mhead"><span className="mtitle2">Recent Media</span><Link href="/dashboard/photos" className="viewall">View all</Link></div>
+              <div className="mhead"><h2 className="mtitle2">Recent Media</h2><Link href="/dashboard/photos" className="viewall">View all</Link></div>
               <div className="mediastrip">
                 {recentMedia.length === 0 ? (
                   <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
@@ -444,7 +472,7 @@ export default function DashboardHome() {
             </div>
 
             <div className="mod friends2 anim">
-              <div className="mhead"><span className="mtitle2">This Week</span><Link href="/dashboard/drafts" className="viewall">View all</Link></div>
+              <div className="mhead"><h2 className="mtitle2">This Week</h2><Link href="/dashboard/drafts" className="viewall">View all</Link></div>
               <div className="audstats">
                 <div><b>{data?.scheduledCount ?? 0}</b><small>Scheduled</small></div>
                 <div><b>{data?.pendingCount ?? 0}</b><small>In review</small></div>

@@ -10,6 +10,7 @@ interface Props {
   mediaStyle: CSSProperties;
   aspectRatio: string;
   captionLoading?: boolean;
+  imageLabel?: string;
 }
 
 export default function InstagramPreview({
@@ -19,6 +20,7 @@ export default function InstagramPreview({
   mediaStyle,
   aspectRatio,
   captionLoading,
+  imageLabel = "Generated post image",
 }: Props) {
   const captionNode: ReactNode = captionLoading ? (
     <span className="igpv-skel">
@@ -39,7 +41,12 @@ export default function InstagramPreview({
         <span className="igpv-handle">{handle}</span>
         <MoreHorizontal className="igpv-more" size={20} aria-hidden />
       </header>
-      <div className="igpv-media" style={{ ...mediaStyle, aspectRatio }} />
+      <div
+        className="igpv-media"
+        style={{ ...mediaStyle, aspectRatio }}
+        role="img"
+        aria-label={imageLabel}
+      />
       <footer className="igpv-foot">
         <div className="igpv-actions">
           <span className="igpv-actions-left">

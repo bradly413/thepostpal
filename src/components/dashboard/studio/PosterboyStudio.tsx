@@ -51,6 +51,7 @@ import { createDashboardPost } from "@/lib/dashboard-api";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -201,6 +202,10 @@ export default function PosterboyStudio() {
     [freeFormMode, prompt, selectedIntentId, intentDetail],
   );
   const composerBrief = structuredBrief || prompt.trim();
+  const previewImageLabel = useMemo(() => {
+    const brief = (captionBrief || composerBrief || prompt.trim()).trim();
+    return brief ? `Generated image: ${brief}` : "Generated post image";
+  }, [captionBrief, composerBrief, prompt]);
   const selectedIntent = STRATEGIC_INTENTS.find((i) => i.id === selectedIntentId) ?? null;
   const previewHandle =
     activeLocation?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "yourbrand";
@@ -295,6 +300,7 @@ export default function PosterboyStudio() {
   const toolRailRef = useRef<HTMLDivElement>(null);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
+  const modelMenuRef = useRef<HTMLDivElement>(null);
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -361,15 +367,19 @@ export default function PosterboyStudio() {
   // Close the post-type / tools popover on outside click (lives in the
   // right rail and the prompt bar respectively).
   useEffect(() => {
-    if (!activeTool) return;
+    if (!activeTool && !qualityOpen) return;
     const onDocClick = (e: MouseEvent) => {
       const n = e.target as Node;
       if (editRailRef.current?.contains(n) || promptToolsRef.current?.contains(n)) return;
+      if (modelMenuRef.current?.contains(n)) return;
       setActiveTool(null);
+      setQualityOpen(false);
     };
     document.addEventListener("mousedown", onDocClick);
     return () => document.removeEventListener("mousedown", onDocClick);
-  }, [activeTool]);
+  }, [activeTool, qualityOpen]);
+
+  useFocusTrap(qualityOpen, modelMenuRef, () => setQualityOpen(false));
 
   // Close the edit-rail popover on outside click.
   useEffect(() => {
@@ -957,6 +967,7 @@ export default function PosterboyStudio() {
 
         {/* CANVAS */}
         <main className={`canvas canvas-theme-${theme}`} ref={canvasRef}>
+          <h1 className="sr-only">Studio</h1>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
 
@@ -976,8 +987,24 @@ export default function PosterboyStudio() {
               <div />
             )}
             <div className="top-toggles">
-              <button className={theme === "light" ? "active" : ""} onClick={() => setTheme("light")}><Sun size={16} /></button>
-              <button className={theme === "grid" ? "active" : ""} onClick={() => setTheme("grid")}><LayoutGrid size={16} /></button>
+              <button
+                type="button"
+                className={theme === "light" ? "active" : ""}
+                onClick={() => setTheme("light")}
+                aria-label="Light canvas theme"
+                aria-pressed={theme === "light"}
+              >
+                <Sun size={16} />
+              </button>
+              <button
+                type="button"
+                className={theme === "grid" ? "active" : ""}
+                onClick={() => setTheme("grid")}
+                aria-label="Grid canvas theme"
+                aria-pressed={theme === "grid"}
+              >
+                <LayoutGrid size={16} />
+              </button>
             </div>
           </div>
 
@@ -990,6 +1017,7 @@ export default function PosterboyStudio() {
                   className={`rail-ico${platformIdx === i ? " active" : ""}`}
                   onClick={() => setPlatformIdx(i)}
                   aria-pressed={platformIdx === i}
+                  aria-label={`${p.label} platform`}
                   title={p.label}
                 >
                   <PlatformIcon type={p.id} />
@@ -1081,6 +1109,7 @@ export default function PosterboyStudio() {
                     mediaStyle={previewStyle}
                     aspectRatio={`${platform.w} / ${platform.h}`}
                     captionLoading={captionState === "loading"}
+                    imageLabel={previewImageLabel}
                   />
                 ) : platform.id === "facebook" ? (
                   <FacebookPreview
@@ -1090,6 +1119,7 @@ export default function PosterboyStudio() {
                     mediaStyle={previewStyle}
                     aspectRatio={`${platform.w} / ${platform.h}`}
                     captionLoading={captionState === "loading"}
+                    imageLabel={previewImageLabel}
                   />
                 ) : (
                   <StudioPostChrome
@@ -1099,6 +1129,7 @@ export default function PosterboyStudio() {
                     caption={captionState === "error" ? "" : captionText}
                     tags={captionTags}
                     captionLoading={captionState === "loading"}
+                    imageLabel={previewImageLabel}
                     onClose={() => setShowTemplate(false)}
                   />
                 )}
@@ -1123,7 +1154,12 @@ export default function PosterboyStudio() {
                 onPointerCancel={onImagePointerUp}
               >
                 <div className="emerge" style={{ opacity: emergeOpacity }} />
-                <div className="preview" style={previewStyle} />
+                <div
+                  className="preview"
+                  style={previewStyle}
+                  role="img"
+                  aria-label={previewImageLabel}
+                />
                 {genState === "done" && mediaKind === "image" ? (
                   <CompositionOverlay
                     width={platform.w}
@@ -1418,21 +1454,23 @@ export default function PosterboyStudio() {
                   )}
 
                   {/* model quality — Standard / Pro (plan-gated) */}
-                  <div className="pb-tool">
+                  <div className="pb-tool" ref={modelMenuRef}>
                     <button
                       type="button"
                       className={`pb-model-chip${imageQuality === "pro" ? " is-pro" : ""}`}
                       onClick={() => setQualityOpen((v) => !v)}
                       aria-haspopup="menu"
                       aria-expanded={qualityOpen}
+                      aria-controls="studio-model-menu"
                     >
                       {imageQuality === "pro" ? <Sparkles size={14} /> : null}
                       <span>{imageQuality === "pro" ? "Pro" : "Standard"}</span>
                     </button>
                     {qualityOpen && (
-                      <div className="pb-tools-pop pb-model-pop" role="menu">
+                      <div id="studio-model-menu" className="pb-tools-pop pb-model-pop" role="menu">
                         <button
                           type="button"
+                          role="menuitem"
                           className={imageQuality === "standard" ? "active" : ""}
                           onClick={() => { setImageQuality("standard"); setQualityOpen(false); }}
                         >
@@ -1441,6 +1479,7 @@ export default function PosterboyStudio() {
                         </button>
                         <button
                           type="button"
+                          role="menuitem"
                           className={imageQuality === "pro" ? "active" : ""}
                           disabled={!features.proImageModel}
                           onClick={() => {
@@ -1586,8 +1625,9 @@ function StudioStyles() {
     --line: #ececef;
     --line-2: #e3e3e7;
     --red: #ee2532;
+    --red-press: #c81e2a;
     --red-soft: #fff1f2;
-    --green: #1aa260;
+    --green: #157a38;
     --shadow-sm: 0 1px 2px rgba(15, 15, 20, 0.04), 0 1px 1px rgba(15, 15, 20, 0.02);
     --shadow-md: 0 4px 18px rgba(15, 15, 20, 0.06), 0 1px 2px rgba(15, 15, 20, 0.04);
     --radius: 20px;
@@ -1634,7 +1674,7 @@ function StudioStyles() {
     margin-top: 8px;
     font-size: 12px;
     font-weight: 500;
-    color: #ee2532;
+    color: var(--red-press);
   }.pb-studio .sidebar { grid-area: sidebar; min-width: 0; }.pb-studio .canvas { grid-area: canvas;  min-width: 0; }.pb-studio .right-rail { grid-area: rail;    min-width: 0; }.pb-studio /* ============ SIDEBAR ============ */
   .sidebar {
     background: var(--card);
@@ -1877,7 +1917,7 @@ function StudioStyles() {
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     font-size: 13px; font-weight: 600; color: var(--ink);
     cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
-  }.pb-studio .preview-toggle:hover { background: #fff; transform: translateY(-1px); }.pb-studio .preview-toggle svg { width: 15px; height: 15px; }.pb-studio .preview-toggle[aria-pressed="true"] { background: var(--red, #ee2532); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px rgba(238,37,50,0.55); }.pb-studio /* Minimal control rail — left of the image */
+  }.pb-studio .preview-toggle:hover { background: #fff; transform: translateY(-1px); }.pb-studio .preview-toggle svg { width: 15px; height: 15px; }.pb-studio .preview-toggle[aria-pressed="true"] { background: var(--red-press, #c81e2a); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px rgba(200,30,42,0.55); }.pb-studio /* Minimal control rail — left of the image */
   .tool-rail {
     position: absolute;
     left: 26px;
@@ -2442,7 +2482,7 @@ function StudioStyles() {
   .pb-studio .pb-generate {
     flex: none; display: inline-flex; align-items: center; gap: 8px;
     height: 40px; padding: 0 22px; border-radius: 12px;
-    background: #ee2532; border: 1px solid #ee2532; color: #fff;
+    background: var(--red-press, #c81e2a); border: 1px solid var(--red-press, #c81e2a); color: #fff;
     font-size: 14px; font-weight: 600; white-space: nowrap;
     box-shadow: 0 12px 26px -12px rgba(238,37,50,0.7);
     transition: background 0.15s ease, opacity 0.15s ease;
@@ -2572,7 +2612,7 @@ function StudioStyles() {
     font-weight: 400;
     color: rgba(20, 20, 25, 0.85);
   }.pb-studio .prompt-bar input::placeholder {
-    color: rgba(20, 20, 25, 0.5);
+    color: rgba(20, 20, 25, 0.62);
   }.pb-studio .studio-schedule-row {
     position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 8px; padding: 8px 12px;
@@ -2627,8 +2667,8 @@ function StudioStyles() {
     border: 1px solid rgba(255,255,255,0.5);
     transition: all 0.15s ease;
   }.pb-studio .magic-wand:hover {
-    background: var(--red);
-    border-color: var(--red);
+    background: var(--red-press);
+    border-color: var(--red-press);
     transform: scale(1.05);
   }.pb-studio .magic-wand:hover svg { color: white; }.pb-studio .magic-wand svg { width: 20px; height: 20px; color: rgba(20,20,25,0.8); transition: color 0.15s; }.pb-studio /* ============ RIGHT RAIL ============ */
   .right-rail {
