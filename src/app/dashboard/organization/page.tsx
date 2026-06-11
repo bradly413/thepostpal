@@ -101,10 +101,7 @@ export default function OrganizationPage() {
         <>
           <div className="pb-draft-card mb-6" style={{ gridTemplateColumns: "1fr" }}>
             <p className="text-xs uppercase tracking-widest opacity-50">Organization</p>
-            <p
-              className="text-lg font-serif mt-1"
-              style={{ fontFamily: "var(--font-instrument-serif)" }}
-            >
+            <p className="text-lg font-semibold mt-1">
               {org.name}
             </p>
             <p className="text-sm opacity-60">

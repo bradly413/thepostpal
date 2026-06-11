@@ -73,10 +73,7 @@ export default function IssuesPage() {
           {issues.map((issue) => (
             <article key={issue.id} className="pb-draft-card pb-issue-card">
               <div>
-                <h2
-                  className="font-serif text-lg"
-                  style={{ fontFamily: "var(--font-instrument-serif)" }}
-                >
+                <h2 className="text-lg font-semibold">
                   {issue.title}
                 </h2>
                 <p className="text-sm opacity-60 mt-1">
