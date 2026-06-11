@@ -10,6 +10,14 @@ export type DraftStatus =
 
 export type SocialPlatform = "facebook" | "instagram" | "linkedin" | "tiktok";
 
+/** Composer/calendar platform id → publish & compliance SocialPlatform list (single source of truth). */
+export function socialPlatformsFromComposerId(platformId: string): SocialPlatform[] {
+  if (platformId === "facebook") return ["facebook"];
+  if (platformId === "instagram" || platformId === "tiktok") return ["instagram"];
+  if (platformId === "linkedin") return ["linkedin"];
+  return ["facebook", "instagram"];
+}
+
 export type BusinessGoal =
   | "leads"
   | "foot_traffic"

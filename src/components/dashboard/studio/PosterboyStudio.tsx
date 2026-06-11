@@ -50,7 +50,7 @@ import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost } from "@/lib/dashboard-api";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
-import type { SocialPlatform } from "@/lib/posterboy-types";
+import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -92,13 +92,7 @@ type MediaKind = "image" | "video";
 function defaultScheduleDate(): string {
   const d = new Date();
   d.setDate(d.getDate() + 1);
-  return d.toISOString().slice(0, 10);
-}
-
-function studioPlatforms(platformId: string): SocialPlatform[] {
-  if (platformId === "facebook") return ["facebook"];
-  if (platformId === "instagram" || platformId === "tiktok") return ["instagram"];
-  return ["facebook", "instagram"];
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
 function buildPostCaption(body: string, tags: string, fallback: string): string {
@@ -809,6 +803,7 @@ export default function PosterboyStudio() {
         return;
       }
       const { body, tags } = parseCaption(data.message);
+      aiCaptionRef.current = body;
       setCaptionText(body);
       setCaptionTags(tags);
       setCaptionState("done");
@@ -843,7 +838,7 @@ export default function PosterboyStudio() {
     }
 
     const fullCaption = buildPostCaption(captionText, captionTags, prompt);
-    const platforms = studioPlatforms(platform.id);
+    const platforms = socialPlatformsFromComposerId(platform.id);
     const isVideo = mediaKind === "video";
 
     // Edit-diff learning: if they reshaped the AI's caption before publishing,
@@ -1350,11 +1345,20 @@ export default function PosterboyStudio() {
                 type="button"
                 className={`pb-util${composerMode === "video" ? " active" : ""}`}
                 onClick={() => {
-                  setComposerMode((m) => (m === "image" ? "video" : "image"));
                   if (composerMode === "image") {
+                    if (
+                      genState === "done" &&
+                      generatedUrl &&
+                      !window.confirm("Switch to video? Your current image will be discarded.")
+                    ) {
+                      return;
+                    }
                     setGenState("idle");
                     setGeneratedUrl(null);
                     setShowTemplate(false);
+                    setComposerMode("video");
+                  } else {
+                    setComposerMode("image");
                   }
                 }}
                 title={composerMode === "image" ? "Switch to video" : "Switch to image"}
@@ -1512,7 +1516,7 @@ export default function PosterboyStudio() {
                 hideTrigger
                 approvalPipeline={features.approvalPipeline}
                 locationId={locationId}
-                platforms={studioPlatforms(platform.id)}
+                platforms={socialPlatformsFromComposerId(platform.id)}
                 onSelect={(v) => {
                   aiCaptionRef.current = v.caption;
                   setCaptionText(v.caption);

@@ -22,6 +22,10 @@ import {
 
 const DAYS = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
 
+function localDateKey(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
 function getWeekDates(): string[] {
   const d = new Date();
   const day = d.getDay();
@@ -31,7 +35,7 @@ function getWeekDates(): string[] {
   return Array.from({ length: 7 }, (_, i) => {
     const date = new Date(mon);
     date.setDate(mon.getDate() + i);
-    return date.toISOString().slice(0, 10);
+    return localDateKey(date);
   });
 }
 

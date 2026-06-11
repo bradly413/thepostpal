@@ -25,6 +25,8 @@ function SettingsContent() {
   const searchParams = useSearchParams();
   const [activeTab, setActiveTab] = useState("profile");
   const [saved, setSaved] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
   const { meta, reload: reloadMeta, disconnect: disconnectMeta } = useMetaConnection();
   const { locationId, locations, loading: locationLoading } = useActiveLocation();
   const [metaError, setMetaError] = useState<string | null>(null);
@@ -99,18 +101,28 @@ function SettingsContent() {
   }, []);
 
   async function handleSave() {
+    setSaving(true);
+    setSaveError(null);
+    setSaved(false);
     try {
-      await fetch("/api/account/settings", {
+      const res = await fetch("/api/account/settings", {
         method: "PUT",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ profile, posting, notifications }),
       });
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      if (!res.ok) {
+        setSaveError(data?.error || "Could not save settings. Try again.");
+        return;
+      }
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
     } catch {
-      /* optimistic — keep the confirmation even if the network blips */
+      setSaveError("Network error. Could not save settings.");
+    } finally {
+      setSaving(false);
     }
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   }
 
   function handleConnectMeta() {
@@ -379,9 +391,13 @@ function SettingsContent() {
 
           {/* Save button */}
           {(activeTab === "profile" || activeTab === "posting" || activeTab === "notifications") && (
-            <div className="mt-6 flex items-center gap-3">
-              <button onClick={handleSave} className="pb-btn-primary text-sm py-2 px-4">
-                Save Changes
+            <div className="mt-6 flex items-center gap-3 flex-wrap">
+              <button
+                onClick={() => void handleSave()}
+                disabled={saving}
+                className="pb-btn-primary text-sm py-2 px-4 disabled:opacity-60"
+              >
+                {saving ? "Saving…" : "Save Changes"}
               </button>
               {saved && (
                 <span className="text-sm font-medium flex items-center gap-1" style={{ color: "#1f9d4d" }}>
@@ -389,6 +405,11 @@ function SettingsContent() {
                   Saved
                 </span>
               )}
+              {saveError ? (
+                <span className="text-sm font-medium" style={{ color: "#ee2532" }} role="alert">
+                  {saveError}
+                </span>
+              ) : null}
             </div>
           )}
         </div>

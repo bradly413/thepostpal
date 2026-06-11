@@ -17,7 +17,7 @@ import {
   submitDashboardPost,
   updateDashboardPost,
 } from "@/lib/dashboard-api";
-import type { SocialPlatform } from "@/lib/posterboy-types";
+import { socialPlatformsFromComposerId, type SocialPlatform } from "@/lib/posterboy-types";
 
 export interface CaptionVariant {
   angle: string;
@@ -38,18 +38,6 @@ interface Props {
   runSignal?: number;
   /** Hide the built-in "Generate options" button (when driven externally). */
   hideTrigger?: boolean;
-}
-
-function toSocialPlatforms(platform: string): SocialPlatform[] {
-  if (
-    platform === "facebook" ||
-    platform === "instagram" ||
-    platform === "linkedin" ||
-    platform === "tiktok"
-  ) {
-    return [platform];
-  }
-  return ["instagram"];
 }
 
 export default function CaptionVariantPicker({
@@ -129,7 +117,7 @@ export default function CaptionVariantPicker({
       const post = await createDashboardPost({
         locationId,
         copy: trimmed,
-        platforms: platforms ?? toSocialPlatforms(platform),
+        platforms: platforms ?? socialPlatformsFromComposerId(platform),
         status: "draft",
       });
       const flagged = compliance.flaggedPhrases?.length
