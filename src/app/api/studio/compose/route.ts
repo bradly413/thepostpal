@@ -74,7 +74,11 @@ export async function POST(req: Request) {
 Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys:
 {
   "platform": one of "instagram" | "facebook" | "x" | "tiktok" | "linkedin" (infer from the request; default "instagram" if unstated),
-  "imagePrompt": a realistic, true-to-life photo description (2-4 sentences) that looks like a genuine photo this business would actually take and post — NOT a glossy advertisement, stock image, or staged studio shoot. Describe: (1) the concrete real subject and setting with specific, honest detail (the actual product/place/moment, not an idealized version of it); (2) natural, available light — soft window light, plain overcast daylight, ordinary warm indoor light — NOT dramatic "golden-hour", "blue hour", or studio lighting; (3) a natural, slightly candid composition, as if a capable person shot it on a recent phone or a normal 35-50mm lens, with realistic, not dreamy, depth of field. Keep it believable: real textures, true colors, normal imperfections are good. Actively avoid anything that reads as AI or fake — no HDR, no over-saturation, no plastic or CGI or 3D-render look, no overly perfect glossy polish, no cinematic over-processing, no "award-winning" drama. Ordinary and real, in the best way. Do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
+  "styleDirected": boolean — true ONLY if the owner explicitly asked for a specific photographic look or style (e.g. "professional shot", "cinematic", "dark background", "studio lighting", "moody", "luxury", "editorial", "dramatic"). Mentioning the subject alone is NOT style direction.,
+  "imagePrompt": a photo description (2-4 sentences).
+    IF styleDirected: honor the owner's stated look fully and skillfully — translate it into real photography language (specific lighting, lens, surface, composition, mood) that delivers exactly the style they asked for at a high professional standard. Do not water it down toward casual realism.
+    OTHERWISE (no style stated — the default): a realistic, true-to-life photo that looks like a genuine photo this business would actually take and post — NOT a glossy advertisement, stock image, or staged studio shoot. Describe: (1) the concrete real subject and setting with specific, honest detail (the actual product/place/moment, not an idealized version of it); (2) natural, available light — soft window light, plain overcast daylight, ordinary warm indoor light — NOT dramatic "golden-hour", "blue hour", or studio lighting; (3) a natural, slightly candid composition, as if a capable person shot it on a recent phone or a normal 35-50mm lens, with realistic, not dreamy, depth of field. Keep it believable: real textures, true colors, normal imperfections are good. Actively avoid anything that reads as AI or fake — no HDR, no over-saturation, no plastic or CGI or 3D-render look, no overly perfect glossy polish, no cinematic over-processing, no "award-winning" drama. Ordinary and real, in the best way.
+    ALWAYS: do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
   "caption": a finished, ready-to-publish caption in the brand's voice. Match the platform (Instagram/Facebook warm + conversational, X punchy under 240 chars, LinkedIn professional, TikTok casual). Do NOT include hashtags here. Write like a real small-business owner — a person, not a brand and not an AI.
 ${CAPTION_SOUND_HUMAN}
 ${CAPTION_ANTI_AI_TELLS},
@@ -96,10 +100,12 @@ ${CAPTION_ANTI_AI_TELLS},
     }
     const parsed = JSON.parse(match[0]) as {
       platform?: string;
+      styleDirected?: unknown;
       imagePrompt?: string;
       caption?: string;
       hashtags?: unknown;
     };
+    const styleDirected = parsed.styleDirected === true;
     const platform: Platform = (PLATFORMS as readonly string[]).includes(parsed.platform || "")
       ? (parsed.platform as Platform)
       : "instagram";
@@ -114,7 +120,12 @@ ${CAPTION_ANTI_AI_TELLS},
       platform,
       imagePrompt:
         (typeof parsed.imagePrompt === "string" && parsed.imagePrompt.trim() ? parsed.imagePrompt.trim() : intent) +
-        " Realistic, true-to-life photo, natural available light, natural true colors, looks like a real unedited phone photo, not over-processed, no HDR, no CGI, no glossy stock-photo look, no text or watermark.",
+        // The anti-gloss suffix is the DEFAULT, not a mandate: when the owner
+        // explicitly directed a style ("professional shot, dark background"),
+        // honor it instead of forcing phone-photo realism over their ask.
+        (styleDirected
+          ? " A real photograph with true-to-life detail and textures, no CGI or 3D-render look, no text or watermark."
+          : " Realistic, true-to-life photo, natural available light, natural true colors, looks like a real unedited phone photo, not over-processed, no HDR, no CGI, no glossy stock-photo look, no text or watermark."),
       caption: typeof parsed.caption === "string" ? parsed.caption.trim() : "",
       hashtags,
     });

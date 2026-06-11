@@ -6,8 +6,10 @@ import { isProImagePlanEnabled } from "@/lib/plan-features";
 
 // Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
 // plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
+// Standard = Nano Banana 2 (gemini-3.1-flash-image): Pro-level quality at
+// Flash speed, ~$0.067/image — the same model Artlist's toolkit runs.
 const IMAGE_MODELS = {
-  standard: "gemini-2.5-flash-image",
+  standard: "gemini-3.1-flash-image",
   pro: "gemini-3-pro-image-preview",
 } as const;
 type ImageQuality = keyof typeof IMAGE_MODELS;
