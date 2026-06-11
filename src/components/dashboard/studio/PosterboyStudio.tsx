@@ -76,12 +76,14 @@ gsap.registerPlugin(useGSAP);
 // Post target per platform, with the recommended feed-post pixel size.
 // `genAspect` is forwarded to the image API (mapped to a supported ratio);
 // `w`/`h` drive the morphing canvas frame.
+// `publishable` = Posterboy can actually post to it today (Meta only). Others
+// are preview-only until their integration ships — surfaced up front (T4).
 const PLATFORMS = [
-  { id: "instagram", label: "Instagram", w: 1080, h: 1350, genAspect: "4:5" },
-  { id: "facebook", label: "Facebook", w: 1200, h: 630, genAspect: "16:9" },
-  { id: "x", label: "X", w: 1600, h: 900, genAspect: "16:9" },
-  { id: "linkedin", label: "LinkedIn", w: 1200, h: 627, genAspect: "16:9" },
-  { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16" },
+  { id: "instagram", label: "Instagram", w: 1080, h: 1350, genAspect: "4:5", publishable: true },
+  { id: "facebook", label: "Facebook", w: 1200, h: 630, genAspect: "16:9", publishable: true },
+  { id: "x", label: "X", w: 1600, h: 900, genAspect: "16:9", publishable: false },
+  { id: "linkedin", label: "LinkedIn", w: 1200, h: 627, genAspect: "16:9", publishable: false },
+  { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16", publishable: false },
 ] as const;
 
 type PostType = "photo" | "update" | "offer";
@@ -1014,16 +1016,19 @@ export default function PosterboyStudio() {
               <div className="rail-item" key={p.id}>
                 <button
                   type="button"
-                  className={`rail-ico${platformIdx === i ? " active" : ""}`}
+                  className={`rail-ico${platformIdx === i ? " active" : ""}${p.publishable ? "" : " preview-only"}`}
                   onClick={() => setPlatformIdx(i)}
                   aria-pressed={platformIdx === i}
-                  aria-label={`${p.label} platform`}
-                  title={p.label}
+                  aria-label={p.publishable ? `${p.label} platform` : `${p.label} — preview only, publishing coming soon`}
+                  title={p.publishable ? p.label : `${p.label} — preview only (publishing coming soon)`}
                 >
                   <PlatformIcon type={p.id} />
                 </button>
                 {platformIdx === i && (
-                  <span className="rail-ico-label">{p.label}</span>
+                  <span className="rail-ico-label">
+                    {p.label}
+                    {p.publishable ? null : <span className="rail-soon">preview only</span>}
+                  </span>
                 )}
               </div>
             ))}
@@ -1959,6 +1964,11 @@ function StudioStyles() {
     pointer-events: none;
     z-index: 19;
     animation: pbsLabelIn 0.22s ease;
+  }.pb-studio .tool-rail .rail-ico.preview-only svg { opacity: 0.5; }
+  .pb-studio .tool-rail .rail-soon {
+    display: block; margin-top: 1px; font-size: 10px; font-weight: 600;
+    letter-spacing: 0.04em; text-transform: uppercase; color: #c81e2a;
+    text-shadow: 0 0 4px rgba(255,255,255,0.9);
   }@keyframes pbsLabelIn {
     from { opacity: 0; transform: translateY(-50%) translateX(-5px); }
     to { opacity: 1; transform: translateY(-50%) translateX(0); }
