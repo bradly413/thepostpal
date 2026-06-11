@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
@@ -99,6 +99,10 @@ export default function CalendarPage() {
   const [editingPost, setEditingPost] = useState<CalendarScheduledPost | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [showHolidays, setShowHolidays] = useState(true);
+  // D2: surface a genuine initial-load failure (was silently swallowed → blank
+  // grid). Transient errors after a good load still keep the grid stable.
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const loadedOkRef = useRef(false);
 
   const [formTemplate, setFormTemplate] = useState(templates[0]?.id || "");
   const [formPlatform, setFormPlatform] = useState<"facebook" | "instagram" | "both">("both");
@@ -156,8 +160,14 @@ export default function CalendarPage() {
           mediaType: record.mediaType ?? null,
         })),
       );
+      loadedOkRef.current = true;
+      setLoadError(null);
     } catch {
-      // Keep grid stable on transient errors.
+      // Keep grid stable on transient errors; only surface a true initial-load
+      // failure (nothing successfully loaded yet) instead of a silent blank grid.
+      if (!loadedOkRef.current) {
+        setLoadError("We couldn't load your calendar. Check your connection and try again.");
+      }
     }
   }, [locationId]);
 
@@ -584,6 +594,22 @@ export default function CalendarPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="mb-4 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between gap-3 bg-[#ee2532]/10 text-[#c81e2a]">
+          <span>{loadError}</span>
+          <button
+            onClick={() => {
+              setLoadError(null);
+              void loadPosts();
+              void loadEvents();
+            }}
+            className="pb-btn-secondary text-xs py-1.5 px-3 shrink-0"
+          >
+            Retry
+          </button>
+        </div>
+      )}
 
       {publishResult && (
         <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between ${

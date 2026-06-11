@@ -40,18 +40,6 @@ function SettingsContent() {
     website: "",
   });
 
-  const [posting, setPosting] = useState({
-    defaultPlatform: "both",
-    defaultTime: "09:00",
-    autoHashtags: true,
-    watermark: true,
-  });
-
-  const [notifications, setNotifications] = useState({
-    emailScheduled: true,
-    emailPublished: false,
-    emailWeekly: true,
-  });
 
   useEffect(() => {
     const connected = searchParams.get("meta_connected");
@@ -82,15 +70,11 @@ function SettingsContent() {
         const data = (await res.json()) as {
           settings?: {
             profile?: Partial<typeof profile>;
-            posting?: Partial<typeof posting>;
-            notifications?: Partial<typeof notifications>;
           } | null;
         };
         const s = data.settings;
         if (cancelled || !s) return;
         if (s.profile) setProfile((p) => ({ ...p, ...s.profile }));
-        if (s.posting) setPosting((p) => ({ ...p, ...s.posting }));
-        if (s.notifications) setNotifications((n) => ({ ...n, ...s.notifications }));
       } catch {
         /* keep defaults */
       }
@@ -109,7 +93,7 @@ function SettingsContent() {
         method: "PUT",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ profile, posting, notifications }),
+        body: JSON.stringify({ profile }),
       });
       const data = (await res.json().catch(() => null)) as { error?: string } | null;
       if (!res.ok) {
@@ -163,8 +147,6 @@ function SettingsContent() {
     { id: "compliance", label: "Compliance" },
     { id: "billing", label: "Billing" },
     { id: "account", label: "Account" },
-    { id: "posting", label: "Posting" },
-    { id: "notifications", label: "Notifications" },
     { id: "legal", label: "Legal" },
   ];
 
@@ -263,95 +245,6 @@ function SettingsContent() {
             <BillingSettingsPanel accountEmail={profile.email} />
           )}
 
-          {activeTab === "posting" && (
-            <div className="pb-panel">
-              <h2 className="pb-panel-h">Posting preferences</h2>
-              <div className="space-y-5">
-                <div>
-                  <label className="pb-label">Default Platform</label>
-                  <div className="flex gap-2">
-                    {["facebook", "instagram", "both"].map((p) => (
-                      <button
-                        key={p}
-                        onClick={() => setPosting({ ...posting, defaultPlatform: p })}
-                        className={`flex-1 rounded-xl py-2.5 text-xs font-semibold capitalize transition-all ${
-                          posting.defaultPlatform === p
-                            ? "text-white"
-                            : "border border-black/10 bg-black/[0.02] opacity-65 hover:opacity-100"
-                        }`}
-                        style={posting.defaultPlatform === p ? { background: "var(--pb-press)" } : undefined}
-                      >
-                        {p === "both" ? "Both" : p}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <label className="pb-label">Default Post Time</label>
-                  <input
-                    type="time"
-                    value={posting.defaultTime}
-                    onChange={(e) => setPosting({ ...posting, defaultTime: e.target.value })}
-                    className="pb-field"
-                    style={{ width: "auto" }}
-                  />
-                </div>
-                {[
-                  { key: "autoHashtags", label: "Auto-generate hashtags", desc: "Add relevant hashtags when creating captions" },
-                  { key: "watermark", label: "Include brand watermark", desc: "Show your logo on downloaded images" },
-                ].map((toggle) => {
-                  const on = !!posting[toggle.key as keyof typeof posting];
-                  return (
-                    <div key={toggle.key} className="pb-row">
-                      <div>
-                        <p className="text-sm font-medium">{toggle.label}</p>
-                        <p className="text-xs opacity-55 mt-0.5">{toggle.desc}</p>
-                      </div>
-                      <button
-                        role="switch"
-                        aria-checked={on}
-                        onClick={() => setPosting({ ...posting, [toggle.key]: !on })}
-                        className={`pb-toggle ${on ? "pb-toggle-on" : ""}`}
-                      >
-                        <span className="pb-toggle-knob" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
-
-          {activeTab === "notifications" && (
-            <div className="pb-panel">
-              <h2 className="pb-panel-h">Notification preferences</h2>
-              <div className="space-y-3">
-                {[
-                  { key: "emailScheduled", label: "Scheduled post reminders", desc: "Get notified before a scheduled post goes live" },
-                  { key: "emailPublished", label: "Post published confirmation", desc: "Get notified when a post is successfully published" },
-                  { key: "emailWeekly", label: "Weekly performance digest", desc: "Receive a weekly summary of your content performance" },
-                ].map((item) => {
-                  const on = !!notifications[item.key as keyof typeof notifications];
-                  return (
-                    <div key={item.key} className="pb-row">
-                      <div>
-                        <p className="text-sm font-medium">{item.label}</p>
-                        <p className="text-xs opacity-55 mt-0.5">{item.desc}</p>
-                      </div>
-                      <button
-                        role="switch"
-                        aria-checked={on}
-                        onClick={() => setNotifications({ ...notifications, [item.key]: !on })}
-                        className={`pb-toggle ${on ? "pb-toggle-on" : ""}`}
-                      >
-                        <span className="pb-toggle-knob" />
-                      </button>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
-          )}
 
           {activeTab === "account" && (
             <AccountSecurityPanel
@@ -390,7 +283,7 @@ function SettingsContent() {
           )}
 
           {/* Save button */}
-          {(activeTab === "profile" || activeTab === "posting" || activeTab === "notifications") && (
+          {activeTab === "profile" && (
             <div className="mt-6 flex items-center gap-3 flex-wrap">
               <button
                 onClick={() => void handleSave()}
