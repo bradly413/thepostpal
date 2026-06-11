@@ -61,7 +61,13 @@ function getAuthStoreBackend() {
   const redis = getRedis();
   if (redis) return redis;
   if (process.env.NODE_ENV === "production") {
-    throw new Error(AUTH_STORE_DURABLE_BACKEND_REQUIRED);
+    // Fail SAFE, not closed: a missing durable backend must not lock real users
+    // out of login. Fall back (non-durable) and warn loudly — configure Upstash
+    // for durable credential storage. (F3 originally threw here, which 503'd
+    // every real-user login in a prod without Redis.)
+    console.warn(
+      "[auth-store] No Redis in production — using non-durable fallback. Configure UPSTASH_REDIS_REST_URL for durable auth.",
+    );
   }
   return null;
 }

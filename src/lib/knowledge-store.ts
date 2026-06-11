@@ -27,7 +27,12 @@ export interface Article {
 
 function assertKnowledgeStoreAvailable() {
   if (process.env.NODE_ENV === "production") {
-    throw new Error(KNOWLEDGE_STORE_DURABLE_BACKEND_REQUIRED);
+    // Fail SAFE: don't break /api/ai or /api/knowledge in a prod without a
+    // durable backend — warn and let the (non-durable) file path proceed.
+    // Configure Upstash/DB for durable knowledge storage.
+    console.warn(
+      "[knowledge-store] No durable backend in production — using non-durable fallback.",
+    );
   }
 }
 
