@@ -113,6 +113,10 @@ export default function FacebookPreview({
         .fbpv-reacts {
           width: 18px; height: 18px; border-radius: 50%; background: #1877f2;
           box-shadow: 12px 0 0 -2px #f33e58, 24px 0 0 -2px #f7b125;
+          /* the 2nd/3rd dots are box-shadows painted OUTSIDE the 18px layout
+             box — reserve their width so they don't cover the count text */
+          margin-right: 22px;
+          flex: none;
         }
         .fbpv-stats-meta { margin-left: auto; }
         .fbpv-divider { height: 1px; background: rgba(0,0,0,0.08); margin: 0 12px; }
