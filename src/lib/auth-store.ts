@@ -47,12 +47,27 @@ const STORE_PATH = path.join(STORE_DIR, "auth-store.json");
 const EMAIL_KEY_PREFIX = "auth:user-email:";
 const USER_KEY_PREFIX = "auth:user:";
 const ACCOUNT_KEY_PREFIX = "auth:account:";
+export const AUTH_STORE_DURABLE_BACKEND_REQUIRED =
+  "AUTH_STORE_DURABLE_BACKEND_REQUIRED";
 
 export class AuthEmailExistsError extends Error {
   constructor() {
     super("An account with this email already exists.");
     this.name = "AuthEmailExistsError";
   }
+}
+
+function getAuthStoreBackend() {
+  const redis = getRedis();
+  if (redis) return redis;
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(AUTH_STORE_DURABLE_BACKEND_REQUIRED);
+  }
+  return null;
+}
+
+export function isAuthStoreUnavailableError(error: unknown): boolean {
+  return error instanceof Error && error.message === AUTH_STORE_DURABLE_BACKEND_REQUIRED;
 }
 
 function normalizeEmail(email: string): string {
@@ -119,7 +134,7 @@ async function writeFileSnapshot(snapshot: AuthStoreSnapshot): Promise<void> {
 
 async function getStoredUserByEmail(email: string): Promise<AuthUserRecord | null> {
   const normalizedEmail = normalizeEmail(email);
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
 
   if (redis) {
     const userId = await redis.get<string | null>(`${EMAIL_KEY_PREFIX}${normalizedEmail}`);
@@ -132,7 +147,7 @@ async function getStoredUserByEmail(email: string): Promise<AuthUserRecord | nul
 }
 
 async function getStoredAccountById(accountId: string): Promise<AuthAccountRecord | null> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
 
   if (redis) {
     return (await redis.get<AuthAccountRecord | null>(`${ACCOUNT_KEY_PREFIX}${accountId}`)) || null;
@@ -143,7 +158,7 @@ async function getStoredAccountById(accountId: string): Promise<AuthAccountRecor
 }
 
 async function saveStoredAccount(account: AuthAccountRecord): Promise<void> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
 
   if (redis) {
     await redis.set(`${ACCOUNT_KEY_PREFIX}${account.id}`, account);
@@ -156,7 +171,7 @@ async function saveStoredAccount(account: AuthAccountRecord): Promise<void> {
 }
 
 async function saveStoredUser(user: AuthUserRecord): Promise<void> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
 
   if (redis) {
     await redis.set(`${USER_KEY_PREFIX}${user.id}`, user);
@@ -224,7 +239,7 @@ export async function authenticateStoredUser(identifier: string, password: strin
 }
 
 export async function getStoredUserById(userId: string): Promise<AuthUserRecord | null> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
   if (redis) {
     return (await redis.get<AuthUserRecord | null>(`${USER_KEY_PREFIX}${userId}`)) || null;
   }
@@ -233,7 +248,7 @@ export async function getStoredUserById(userId: string): Promise<AuthUserRecord 
 }
 
 async function persistStoredUser(user: AuthUserRecord): Promise<void> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
   if (redis) {
     await redis.set(`${USER_KEY_PREFIX}${user.id}`, user);
     await redis.set(`${EMAIL_KEY_PREFIX}${user.email}`, user.id);
@@ -250,7 +265,7 @@ async function persistStoredUser(user: AuthUserRecord): Promise<void> {
 }
 
 async function removeStoredUser(user: AuthUserRecord): Promise<void> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
   if (redis) {
     await redis.del(`${USER_KEY_PREFIX}${user.id}`);
     await redis.del(`${EMAIL_KEY_PREFIX}${user.email}`);
@@ -262,7 +277,7 @@ async function removeStoredUser(user: AuthUserRecord): Promise<void> {
 }
 
 async function removeStoredAccount(accountId: string): Promise<void> {
-  const redis = getRedis();
+  const redis = getAuthStoreBackend();
   if (redis) {
     await redis.del(`${ACCOUNT_KEY_PREFIX}${accountId}`);
     return;

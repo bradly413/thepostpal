@@ -1,35 +1,73 @@
 import { randomUUID } from "crypto";
-import { getAllArticles, saveArticle, deleteArticle, CATEGORIES, type Category } from "@/lib/knowledge-store";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { requireAuthContext } from "@/lib/api-auth";
+import {
+  getAllArticles,
+  saveArticle,
+  deleteArticle,
+  CATEGORIES,
+  type Category,
+  isKnowledgeStoreUnavailableError,
+} from "@/lib/knowledge-store";
+import {
+  rateLimit,
+  buildRateLimitKey,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
+import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 
 // Knowledge articles are scoped per tenant. Every handler requires an
 // authenticated session and only ever touches its own tenant's articles.
-async function tenant(): Promise<string | null> {
+async function tenant(): Promise<AuthContext | null> {
   try {
-    return (await requireAuthContext()).tenantId;
+    return await requireAuthContext();
   } catch {
     return null;
   }
 }
 
 export async function GET(req: Request) {
-  const tenantId = await tenant();
-  if (!tenantId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`knowledge-read:${ip}`, 30, 60_000)) {
-    return Response.json({ error: "Too many requests" }, { status: 429 });
+  const auth = await tenant();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("knowledge-read", req.headers as unknown as Headers, auth),
+      30,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
-  const articles = getAllArticles(tenantId);
-  return Response.json({ articles, categories: CATEGORIES });
+  try {
+    const articles = getAllArticles(auth.tenantId);
+    return Response.json({ articles, categories: CATEGORIES });
+  } catch (error) {
+    if (isKnowledgeStoreUnavailableError(error)) {
+      return Response.json({ error: "Knowledge storage unavailable" }, { status: 503 });
+    }
+    throw error;
+  }
 }
 
 export async function POST(req: Request) {
-  const tenantId = await tenant();
-  if (!tenantId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`knowledge-write:${ip}`, 10, 60_000)) {
-    return Response.json({ error: "Too many requests" }, { status: 429 });
+  const auth = await tenant();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("knowledge-write", req.headers as unknown as Headers, auth),
+      10,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   let body: { title?: unknown; category?: unknown; content?: unknown };
@@ -56,16 +94,33 @@ export async function POST(req: Request) {
     createdAt: new Date().toISOString(),
   };
 
-  saveArticle(tenantId, article);
-  return Response.json({ article }, { status: 201 });
+  try {
+    saveArticle(auth.tenantId, article);
+    return Response.json({ article }, { status: 201 });
+  } catch (error) {
+    if (isKnowledgeStoreUnavailableError(error)) {
+      return Response.json({ error: "Knowledge storage unavailable" }, { status: 503 });
+    }
+    throw error;
+  }
 }
 
 export async function DELETE(req: Request) {
-  const tenantId = await tenant();
-  if (!tenantId) return Response.json({ error: "Unauthorized" }, { status: 401 });
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`knowledge-delete:${ip}`, 10, 60_000)) {
-    return Response.json({ error: "Too many requests" }, { status: 429 });
+  const auth = await tenant();
+  if (!auth) return Response.json({ error: "Unauthorized" }, { status: 401 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("knowledge-delete", req.headers as unknown as Headers, auth),
+      10,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   let body: { id?: unknown };
@@ -78,9 +133,16 @@ export async function DELETE(req: Request) {
   if (!id || typeof id !== "string") {
     return Response.json({ error: "ID is required" }, { status: 400 });
   }
-  const deleted = deleteArticle(tenantId, id);
-  if (!deleted) {
-    return Response.json({ error: "Article not found" }, { status: 404 });
+  try {
+    const deleted = deleteArticle(auth.tenantId, id);
+    if (!deleted) {
+      return Response.json({ error: "Article not found" }, { status: 404 });
+    }
+    return Response.json({ success: true });
+  } catch (error) {
+    if (isKnowledgeStoreUnavailableError(error)) {
+      return Response.json({ error: "Knowledge storage unavailable" }, { status: 503 });
+    }
+    throw error;
   }
-  return Response.json({ success: true });
 }

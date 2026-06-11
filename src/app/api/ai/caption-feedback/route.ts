@@ -1,7 +1,7 @@
 import { Prisma } from "@prisma/client";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { diffSignals, mergeLearning, readVoiceLearning } from "@/lib/ai-voice-learning";
 
 export const runtime = "nodejs";
@@ -21,9 +21,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`caption-feedback:${ip}`, 30, 60_000)) {
-    return Response.json({ error: "Too many requests" }, { status: 429 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("caption-feedback", req.headers as unknown as Headers, auth),
+      30,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   let body: { aiOriginal?: unknown; finalCaption?: unknown };

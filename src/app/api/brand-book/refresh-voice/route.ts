@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { synthesizeVoice, toBrandVoice } from "@/lib/voice-synthesis";
 import type { BrandVoice } from "@/lib/brand-book-schema";
 
@@ -65,12 +65,18 @@ function asStringArray(v: unknown): string[] {
 }
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req.headers);
-  if (!rateLimit(`brand-book-refresh-voice:${ip}`, 6, 60_000)) {
-    return NextResponse.json(
-      { error: "Too many voice refreshes. Wait a moment and retry." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(buildRateLimitKey("brand-book-refresh-voice", req.headers), 6, 60_000))) {
+      return NextResponse.json(
+        { error: "Too many voice refreshes. Wait a moment and retry." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   let body: RequestBody;

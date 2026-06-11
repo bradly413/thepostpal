@@ -3,18 +3,9 @@ import * as Sentry from "@sentry/nextjs";
 import { withCronDb } from "@/lib/db";
 import { getProvider } from "@/lib/social/providers";
 import { encryptToken } from "@/lib/social/token-crypto";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
-
-function verifyCronSecret(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${secret}`;
-}
 
 const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
 

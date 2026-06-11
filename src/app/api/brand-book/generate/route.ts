@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import {
   guestCookieOptions,
   ONBOARDING_GUEST_COOKIE,
@@ -75,12 +75,18 @@ export async function POST(req: NextRequest) {
   const brandAuth = await resolveBrandBookAuth();
   const userId = brandAuth.userId;
 
-  const ip = getClientIp(req.headers);
-  if (!rateLimit(`brand-book-gen:${ip}`, 6, 60_000)) {
-    return NextResponse.json(
-      { error: "Too many brand-book generations. Wait a moment and retry." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(buildRateLimitKey("brand-book-gen", req.headers), 6, 60_000))) {
+      return NextResponse.json(
+        { error: "Too many brand-book generations. Wait a moment and retry." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   let body: RequestBody;

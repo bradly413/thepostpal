@@ -1,13 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { requireAuthContext } from "@/lib/api-auth";
 
 export async function POST(req: NextRequest) {
-  try { await requireAuthContext(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  let auth;
+  try { auth = await requireAuthContext(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
 
-  const ip = getClientIp(req.headers);
-  if (!rateLimit(`enhance:${ip}`, 15, 60_000)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+  try {
+    if (!(await rateLimit(buildRateLimitKey("enhance", req.headers, auth), 15, 60_000))) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const { prompt } = await req.json();

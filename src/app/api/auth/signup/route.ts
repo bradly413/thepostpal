@@ -1,7 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
-import { AuthEmailExistsError, registerUserAccount } from "@/lib/auth-store";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  AuthEmailExistsError,
+  isAuthStoreUnavailableError,
+  registerUserAccount,
+} from "@/lib/auth-store";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { ensureTenantProvisioned } from "@/lib/tenant-provisioning";
 
 export async function POST(request: NextRequest) {
@@ -14,12 +18,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const ip = getClientIp(request.headers);
-  if (!rateLimit(`signup:${ip}`, 3, 60_000)) {
-    return NextResponse.json(
-      { error: "Too many attempts. Try again in a minute." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(buildRateLimitKey("signup", request.headers), 3, 60_000))) {
+      return NextResponse.json(
+        { error: "Too many attempts. Try again in a minute." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const { firstName, lastName, email, password, plan } = await request.json();
@@ -87,6 +97,9 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     if (error instanceof AuthEmailExistsError) {
       return NextResponse.json({ error: error.message }, { status: 409 });
+    }
+    if (isAuthStoreUnavailableError(error)) {
+      return NextResponse.json({ error: "Authentication storage unavailable" }, { status: 503 });
     }
 
     console.error("Signup failed:", error);

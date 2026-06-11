@@ -3,7 +3,7 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { loadMetaBundleSecrets } from "@/lib/meta-social-db";
 import { buildInsightsFromGraph } from "@/lib/meta-insights-parse";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { handleRouteError } from "@/lib/route-errors";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
@@ -26,9 +26,15 @@ async function fetchGraphJson(url: string) {
 export async function GET(req: NextRequest) {
   try {
     const auth = await requireAuthContext();
-    const ip = getClientIp(req.headers);
-    if (!rateLimit(`meta-insights:${ip}`, 10, 60_000)) {
-      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    try {
+      if (!(await rateLimit(buildRateLimitKey("meta-insights", req.headers, auth), 10, 60_000))) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
     }
 
     const locationId = req.nextUrl.searchParams.get("locationId");

@@ -2,7 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
 
 // POST /api/studio/compose
@@ -28,9 +28,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`compose:${ip}`, 20, 60_000)) {
-    return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("compose", req.headers as unknown as Headers, auth),
+      20,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const key = process.env.ANTHROPIC_API_KEY;

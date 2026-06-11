@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { requireAuthContext } from "@/lib/api-auth";
+import { withTenantDb } from "@/lib/db";
+import { decryptToken } from "@/lib/social/token-crypto";
+import { buildRateLimitKey, rateLimit } from "@/lib/rate-limit";
 import {
   getInstagramMedia,
   getFacebookPagePosts,
@@ -38,19 +41,32 @@ import {
 interface RequestBody {
   source?: unknown;
   accountId?: unknown;
-  pageToken?: unknown;
   limit?: unknown;
 }
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req.headers);
-  // Slightly tighter rate limit than other Meta routes — voice-sample fetches
-  // are kicked off explicitly by the user, not on every page load.
-  if (!rateLimit(`meta-voice-samples:${ip}`, 10, 60_000)) {
-    return NextResponse.json(
-      { error: "Too many voice-sample fetches. Wait a moment and retry." },
-      { status: 429 },
-    );
+  let auth;
+  try {
+    auth = await requireAuthContext();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    if (
+      !(await rateLimit(
+        buildRateLimitKey("meta-voice-samples", req.headers, auth),
+        10,
+        60_000,
+      ))
+    ) {
+      return NextResponse.json(
+        { error: "Too many voice-sample fetches. Wait a moment and retry." },
+        { status: 429 },
+      );
+    }
+  } catch {
+    return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
   }
 
   let body: RequestBody;
@@ -62,7 +78,6 @@ export async function POST(req: NextRequest) {
 
   const source = body.source;
   const accountId = body.accountId;
-  const pageToken = body.pageToken;
   const limitRaw =
     typeof body.limit === "number" && Number.isFinite(body.limit)
       ? body.limit
@@ -81,18 +96,33 @@ export async function POST(req: NextRequest) {
       { status: 400 },
     );
   }
-  if (typeof pageToken !== "string" || !pageToken.trim()) {
-    return NextResponse.json(
-      { error: "pageToken is required" },
-      { status: 400 },
-    );
-  }
 
   try {
-    const posts: RecentPost[] =
-      source === "instagram"
-        ? await getInstagramMedia(accountId, pageToken, limit)
-        : await getFacebookPagePosts(accountId, pageToken, limit);
+    const posts = await withTenantDb(auth, async (tx) => {
+      const account = await tx.socialAccount.findFirst({
+        where: {
+          organizationId: auth.tenantId,
+          provider: source,
+          accountId: accountId.trim(),
+        },
+        select: { accountId: true, accessToken: true },
+      });
+
+      if (!account) {
+        return null;
+      }
+
+      const pageToken = decryptToken(account.accessToken);
+      const samples: RecentPost[] =
+        source === "instagram"
+          ? await getInstagramMedia(account.accountId, pageToken, limit)
+          : await getFacebookPagePosts(account.accountId, pageToken, limit);
+      return samples;
+    });
+
+    if (!posts) {
+      return NextResponse.json({ error: "Meta account not found for tenant" }, { status: 404 });
+    }
 
     return NextResponse.json({
       source,

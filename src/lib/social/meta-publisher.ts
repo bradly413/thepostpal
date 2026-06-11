@@ -19,9 +19,10 @@ export async function publishToMeta(
   accountId: string,
   imageUrl: string,
   caption: string,
+  options: { organizationId: string },
 ): Promise<MetaPublishIds> {
-  const account = await db.socialAccount.findUnique({
-    where: { id: accountId },
+  const account = await db.socialAccount.findFirst({
+    where: { id: accountId, organizationId: options.organizationId },
   });
 
   if (!account?.accessToken) {

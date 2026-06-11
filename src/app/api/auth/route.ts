@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { authenticateUser, createSession } from "@/lib/auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isAuthStoreUnavailableError } from "@/lib/auth-store";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { sessionPayloadToProvisioner } from "@/lib/session-provision";
 import { ensureTenantProvisioned } from "@/lib/tenant-provisioning";
 
@@ -14,12 +15,18 @@ export async function POST(request: NextRequest) {
     }
   }
 
-  const ip = getClientIp(request.headers);
-  if (!rateLimit(`auth:${ip}`, 5, 60_000)) {
-    return NextResponse.json(
-      { error: "Too many attempts. Try again in a minute." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(buildRateLimitKey("auth", request.headers), 5, 60_000))) {
+      return NextResponse.json(
+        { error: "Too many attempts. Try again in a minute." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const { username, email, identifier, password } = await request.json();
@@ -53,6 +60,9 @@ export async function POST(request: NextRequest) {
     });
     return response;
   } catch (error) {
+    if (isAuthStoreUnavailableError(error)) {
+      return NextResponse.json({ error: "Authentication storage unavailable" }, { status: 503 });
+    }
     console.error("Login failed:", error);
     return NextResponse.json({ error: "Could not sign in right now." }, { status: 500 });
   }

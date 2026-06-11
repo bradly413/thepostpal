@@ -1,14 +1,20 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ONBOARDING_SYSTEM_PROMPT } from "@/lib/onboarding-agent";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 export async function POST(req: Request) {
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`onboarding:${ip}`, 30, 60_000)) {
-    return Response.json(
-      { error: "Too many requests. Please wait a moment." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(buildRateLimitKey("onboarding", req.headers as unknown as Headers), 30, 60_000))) {
+      return Response.json(
+        { error: "Too many requests. Please wait a moment." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

@@ -3,7 +3,7 @@ import { writeFile, mkdir } from "fs/promises";
 import path from "path";
 import { randomUUID } from "crypto";
 import { requireAuthContext } from "@/lib/api-auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { handleRouteError } from "@/lib/route-errors";
 import {
   isS3Configured,
@@ -20,13 +20,18 @@ const MAX_IMAGE_SIZE = 25 * 1024 * 1024;
 const MAX_VIDEO_SIZE = 100 * 1024 * 1024;
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req.headers);
-  if (!rateLimit(`upload:${ip}`, 10, 60_000)) {
-    return NextResponse.json({ error: "Too many uploads" }, { status: 429 });
-  }
-
   try {
     const auth = await requireAuthContext();
+    try {
+      if (!(await rateLimit(buildRateLimitKey("upload", req.headers, auth), 10, 60_000))) {
+        return NextResponse.json({ error: "Too many uploads" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
     const formData = await req.formData();
     const file = formData.get("file") as File | null;
 

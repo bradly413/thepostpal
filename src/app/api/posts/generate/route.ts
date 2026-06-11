@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { readBrandEngineDna, type BrandEngineDna } from "@/lib/brand-engine-dna";
 import { withTenantDb } from "@/lib/db";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 
@@ -31,6 +32,16 @@ function extractText(content: Array<{ type: string; text?: string }>): string {
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
+    try {
+      if (!(await rateLimit(buildRateLimitKey("posts-generate", request.headers, auth), 10, 60_000))) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
     const body = (await request.json()) as Record<string, unknown>;
     const topic = typeof body.topic === "string" ? body.topic.trim() : "";
 

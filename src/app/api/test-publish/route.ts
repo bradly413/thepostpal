@@ -99,6 +99,7 @@ export async function POST(req: NextRequest) {
       socialAccountId,
       imageUrl.trim(),
       caption?.trim() || "Posterboy test publish",
+      { organizationId: auth.tenantId },
     );
 
     return NextResponse.json({

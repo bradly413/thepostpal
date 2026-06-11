@@ -1,12 +1,24 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 const LEONARDO_BASE = "https://cloud.leonardo.ai/api/rest/v1";
 
 type EditAction = "upscale" | "remove-bg" | "inpaint";
 
 export async function POST(req: NextRequest) {
-  try { await requireAuthContext(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  let auth;
+  try { auth = await requireAuthContext(); } catch { return NextResponse.json({ error: "Unauthorized" }, { status: 401 }); }
+  try {
+    if (!(await rateLimit(buildRateLimitKey("leonardo-edit", req.headers, auth), 10, 60_000))) {
+      return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
+  }
 
   const apiKey = process.env.LEONARDO_API_KEY;
   if (!apiKey) {

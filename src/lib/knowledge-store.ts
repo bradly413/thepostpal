@@ -2,6 +2,8 @@ import fs from "fs";
 import path from "path";
 
 const KNOWLEDGE_DIR = path.join(process.cwd(), "knowledge");
+export const KNOWLEDGE_STORE_DURABLE_BACKEND_REQUIRED =
+  "KNOWLEDGE_STORE_DURABLE_BACKEND_REQUIRED";
 
 export const CATEGORIES = [
   "Neighborhood Guides",
@@ -21,6 +23,16 @@ export interface Article {
   category: Category;
   content: string;
   createdAt: string;
+}
+
+function assertKnowledgeStoreAvailable() {
+  if (process.env.NODE_ENV === "production") {
+    throw new Error(KNOWLEDGE_STORE_DURABLE_BACKEND_REQUIRED);
+  }
+}
+
+export function isKnowledgeStoreUnavailableError(error: unknown): boolean {
+  return error instanceof Error && error.message === KNOWLEDGE_STORE_DURABLE_BACKEND_REQUIRED;
 }
 
 function ensureDir() {
@@ -46,6 +58,7 @@ function articlePath(tenantId: string, id: string) {
 }
 
 export function getAllArticles(tenantId: string): Article[] {
+  assertKnowledgeStoreAvailable();
   ensureDir();
   const prefix = tenantPrefix(tenantId);
   const files = fs.readdirSync(KNOWLEDGE_DIR).filter((f) => f.startsWith(prefix) && f.endsWith(".json"));
@@ -62,6 +75,7 @@ export function getAllArticles(tenantId: string): Article[] {
 }
 
 export function getArticle(tenantId: string, id: string): Article | null {
+  assertKnowledgeStoreAvailable();
   const p = articlePath(tenantId, id);
   if (!fs.existsSync(p)) return null;
   try {
@@ -72,11 +86,13 @@ export function getArticle(tenantId: string, id: string): Article | null {
 }
 
 export function saveArticle(tenantId: string, article: Article): void {
+  assertKnowledgeStoreAvailable();
   ensureDir();
   fs.writeFileSync(articlePath(tenantId, article.id), JSON.stringify(article, null, 2));
 }
 
 export function deleteArticle(tenantId: string, id: string): boolean {
+  assertKnowledgeStoreAvailable();
   const p = articlePath(tenantId, id);
   if (!fs.existsSync(p)) return false;
   fs.unlinkSync(p);

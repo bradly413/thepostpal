@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
-import { updateStoredUserPassword } from "@/lib/auth-store";
+import {
+  isAuthStoreUnavailableError,
+  updateStoredUserPassword,
+} from "@/lib/auth-store";
 
 export async function POST(req: NextRequest) {
   try {
@@ -43,7 +46,10 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ success: true });
-  } catch {
+  } catch (error) {
+    if (isAuthStoreUnavailableError(error)) {
+      return NextResponse.json({ error: "Authentication storage unavailable" }, { status: 503 });
+    }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 }

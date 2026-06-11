@@ -1,6 +1,13 @@
 import Anthropic from "@anthropic-ai/sdk";
-import { buildKnowledgeContext } from "@/lib/knowledge-store";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import {
+  buildKnowledgeContext,
+  isKnowledgeStoreUnavailableError,
+} from "@/lib/knowledge-store";
+import {
+  rateLimit,
+  buildRateLimitKey,
+  RateLimitUnavailableError,
+} from "@/lib/rate-limit";
 import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
@@ -103,12 +110,22 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`ai:${ip}`, 20, 60_000)) {
-    return Response.json(
-      { error: "Too many requests. Please wait a moment." },
-      { status: 429 },
-    );
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("ai", req.headers as unknown as Headers, auth),
+      20,
+      60_000,
+    ))) {
+      return Response.json(
+        { error: "Too many requests. Please wait a moment." },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
@@ -127,7 +144,16 @@ export async function POST(req: Request) {
   }
 
   const lastUserMsg = [...messages].reverse().find((m: { role: string }) => m.role === "user");
-  const knowledgeContext = lastUserMsg ? buildKnowledgeContext(auth.tenantId, lastUserMsg.content) : "";
+  let knowledgeContext = "";
+  if (lastUserMsg) {
+    try {
+      knowledgeContext = buildKnowledgeContext(auth.tenantId, lastUserMsg.content);
+    } catch (error) {
+      if (!isKnowledgeStoreUnavailableError(error)) {
+        throw error;
+      }
+    }
+  }
 
   // Per-tenant brand voice from Organization.brandEngine (falls back to the
   // neutral voice baked into SYSTEM_PROMPT when the tenant has no brand engine).

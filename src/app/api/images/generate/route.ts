@@ -8,20 +8,25 @@ import {
   buildAugmentedImagePrompt,
   formatLocationGeography,
 } from "@/lib/image-prompt-augmentation";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { isInlineReferenceImage } from "@/lib/reference-image";
 
 const PROMPT_MAX = 2000;
 const DEFAULT_GEOGRAPHY = "Midwestern United States";
 
 export async function POST(req: NextRequest) {
-  const ip = getClientIp(req.headers);
-  if (!rateLimit(`images-generate:${ip}`, 10, 60_000)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
   try {
     const auth = await requireAuthContext();
+    try {
+      if (!(await rateLimit(buildRateLimitKey("images-generate", req.headers, auth), 10, 60_000))) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
     const body = (await req.json()) as Record<string, unknown>;
     const basePrompt = typeof body.basePrompt === "string" ? body.basePrompt.trim() : "";
     const locationId =

@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
@@ -72,9 +72,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  const ip = getClientIp(req.headers as unknown as Headers);
-  if (!rateLimit(`ai-captions:${ip}`, 15, 60_000)) {
-    return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+  try {
+    if (!(await rateLimit(
+      buildRateLimitKey("ai-captions", req.headers as unknown as Headers, auth),
+      15,
+      60_000,
+    ))) {
+      return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return Response.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;

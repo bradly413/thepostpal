@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { deleteTenantOrganization } from "@/lib/account-delete";
+import { isAuthStoreUnavailableError } from "@/lib/auth-store";
 import { clearAuthSessionCookies } from "@/lib/session-cookies";
 
 export async function DELETE(req: NextRequest) {
@@ -32,6 +33,9 @@ export async function DELETE(req: NextRequest) {
           { status: 403 },
         );
       }
+    }
+    if (isAuthStoreUnavailableError(error)) {
+      return NextResponse.json({ error: "Authentication storage unavailable" }, { status: 503 });
     }
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }

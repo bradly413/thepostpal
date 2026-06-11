@@ -2,18 +2,9 @@ import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { processDueScheduledPosts } from "@/lib/cron-publish";
 import { withCronDb } from "@/lib/db";
+import { verifyCronSecret } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
-
-function verifyCronSecret(request: NextRequest): boolean {
-  const secret = process.env.CRON_SECRET?.trim();
-  if (!secret) {
-    return process.env.NODE_ENV !== "production";
-  }
-
-  const authHeader = request.headers.get("authorization");
-  return authHeader === `Bearer ${secret}`;
-}
 
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {

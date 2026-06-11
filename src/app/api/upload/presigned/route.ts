@@ -3,7 +3,7 @@ import { PutObjectCommand } from "@aws-sdk/client-s3";
 import { getSignedUrl } from "@aws-sdk/s3-request-presigner";
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
-import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import {
   createS3Client,
   getS3Config,
@@ -30,13 +30,18 @@ function sanitizeFilename(filename: string): string {
 }
 
 export async function POST(request: NextRequest) {
-  const ip = getClientIp(request.headers);
-  if (!rateLimit(`upload-presign:${ip}`, 30, 60_000)) {
-    return NextResponse.json({ error: "Too many requests" }, { status: 429 });
-  }
-
   try {
     const auth = await requireAuthContext();
+    try {
+      if (!(await rateLimit(buildRateLimitKey("upload-presign", request.headers, auth), 30, 60_000))) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
     const body = (await request.json()) as Record<string, unknown>;
 
     const filename = typeof body.filename === "string" ? body.filename.trim() : "";
