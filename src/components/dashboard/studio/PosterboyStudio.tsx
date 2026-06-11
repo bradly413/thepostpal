@@ -24,6 +24,10 @@ import {
   SlidersHorizontal,
   Download,
   Undo2,
+  ImagePlus,
+  X,
+  Sparkles,
+  Lock,
 } from "lucide-react";
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
@@ -132,6 +136,58 @@ export default function PosterboyStudio() {
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
   const [captionError, setCaptionError] = useState("");
+  // Caption step (after the image is ready): the prompt bar becomes the caption brief.
+  const [captionBrief, setCaptionBrief] = useState("");
+  const [captionRun, setCaptionRun] = useState(0);
+  // When an image is done, the bar defaults to caption mode; user can switch back to image re-prompt.
+  const [promptMode, setPromptMode] = useState<"image" | "caption">("image");
+  // Reset the caption step whenever we're not on a finished image.
+  useEffect(() => {
+    if (genState !== "done") {
+      setCaptionBrief("");
+      setCaptionRun(0);
+      setPromptMode("image");
+    } else {
+      setPromptMode("caption");
+    }
+  }, [genState]);
+  const submitCaption = () => {
+    if (!captionBrief.trim()) return;
+    setCaptionRun((n) => n + 1);
+  };
+  // The AI's caption as generated — compared to the final at publish to learn edits.
+  const aiCaptionRef = useRef("");
+
+  // Composer-bar image controls: optional reference photo (grounds the generation
+  // in their real product/place) + plan-gated model quality (Nano Banana Pro).
+  const [refImage, setRefImage] = useState<string | null>(null);
+  const [refName, setRefName] = useState("");
+  const refFileRef = useRef<HTMLInputElement>(null);
+  const [imageQuality, setImageQuality] = useState<"standard" | "pro">("standard");
+  const [imageSize, setImageSize] = useState<"1K" | "2K">("1K");
+  const [qualityOpen, setQualityOpen] = useState(false);
+
+  const onRefFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file || !file.type.startsWith("image/")) return;
+    const url = URL.createObjectURL(file);
+    const img = new window.Image();
+    img.onload = () => {
+      // Downscale to keep the data URL well under request limits.
+      const max = 1536;
+      const scale = Math.min(1, max / Math.max(img.width, img.height));
+      const c = document.createElement("canvas");
+      c.width = Math.max(1, Math.round(img.width * scale));
+      c.height = Math.max(1, Math.round(img.height * scale));
+      c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height);
+      setRefImage(c.toDataURL("image/jpeg", 0.85));
+      setRefName(file.name);
+      URL.revokeObjectURL(url);
+    };
+    img.onerror = () => URL.revokeObjectURL(url);
+    img.src = url;
+  };
   const [composerMode, setComposerMode] = useState<ComposerMode>("image");
   const [mediaKind, setMediaKind] = useState<MediaKind>("image");
   const [scheduleDate, setScheduleDate] = useState(defaultScheduleDate);
@@ -466,7 +522,9 @@ export default function PosterboyStudio() {
 
   // Image edit transforms — applied to the preview, carry into the post mockup.
   const previewStyle = {
-    ...(genState === "done" && generatedUrl ? { backgroundImage: `url('${generatedUrl}')` } : {}),
+    ...(generatedUrl && (genState === "done" || genState === "generating")
+      ? { backgroundImage: `url('${generatedUrl}')` }
+      : {}),
     transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
     filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
   };
@@ -526,6 +584,9 @@ export default function PosterboyStudio() {
         body: JSON.stringify({
           prompt: savedPrompt,
           aspectRatio: platform.genAspect,
+          ...(refImage ? { referenceImage: refImage } : {}),
+          quality: imageQuality,
+          ...(imageQuality === "pro" ? { imageSize } : {}),
         }),
         signal: ctrl.signal,
       });
@@ -574,13 +635,16 @@ export default function PosterboyStudio() {
       inputRef.current?.focus();
       return;
     }
+    const isReprompt = genState === "done" && !!generatedUrl;
     setGenState("generating");
     setError("");
     setProgress(0);
     setShowTemplate(false);
-    setCaptionState("loading");
-    setCaptionText("");
-    setCaptionTags("");
+    setCaptionState("idle");
+    if (!isReprompt) {
+      setCaptionText("");
+      setCaptionTags("");
+    }
     setEdit(EDIT_DEFAULT);
     setActiveEdit(null);
 
@@ -630,7 +694,13 @@ export default function PosterboyStudio() {
       const iRes = await fetch("/api/generate-image", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: brief.imagePrompt, aspectRatio: aspect }),
+        body: JSON.stringify({
+          prompt: brief.imagePrompt,
+          aspectRatio: aspect,
+          ...(refImage ? { referenceImage: refImage } : {}),
+          quality: imageQuality,
+          ...(imageQuality === "pro" ? { imageSize } : {}),
+        }),
         signal: ctrl.signal,
       });
       const iData = await iRes.json();
@@ -644,7 +714,7 @@ export default function PosterboyStudio() {
             ? "Image generation is not available yet. API key needs to be configured."
             : msg,
         );
-        setGenState("idle");
+        setGenState(isReprompt ? "done" : "idle");
         return;
       }
 
@@ -652,13 +722,9 @@ export default function PosterboyStudio() {
       stopTimer();
       setProgress(100);
       setGeneratedUrl(iData.image);
-      setCaptionText(brief.caption || "");
-      setCaptionTags(
-        Array.isArray(brief.hashtags) && brief.hashtags.length
-          ? brief.hashtags.map((h: string) => `#${h}`).join(" ")
-          : "",
-      );
-      setCaptionState("done");
+      setCaptionText("");
+      setCaptionTags("");
+      setCaptionState("idle");
       setGenState("done");
       setShowTemplate(true);
     } catch (err) {
@@ -670,7 +736,7 @@ export default function PosterboyStudio() {
           ? "Timed out. Please try again."
           : "Network error. Please try again.",
       );
-      setGenState("idle");
+      setGenState(isReprompt ? "done" : "idle");
     } finally {
       clearTimeout(timeoutId);
     }
@@ -755,6 +821,16 @@ export default function PosterboyStudio() {
     const fullCaption = buildPostCaption(captionText, captionTags, prompt);
     const platforms = studioPlatforms(platform.id);
     const isVideo = mediaKind === "video";
+
+    // Edit-diff learning: if they reshaped the AI's caption before publishing,
+    // record what changed so future drafts pre-apply it. Fire-and-forget.
+    if (aiCaptionRef.current && captionText && aiCaptionRef.current.trim() !== captionText.trim()) {
+      void fetch("/api/ai/caption-feedback", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ aiOriginal: aiCaptionRef.current, finalCaption: captionText }),
+      }).catch(() => {});
+    }
 
     if (when === "schedule") {
       if (!scheduleDate || !scheduleTime) {
@@ -1050,23 +1126,7 @@ export default function PosterboyStudio() {
                         </button>
                       </p>
                     ) : null}
-                    {composerBrief ? (
-                      <div className="studio-intent-captions">
-                        <CaptionVariantPicker
-                          brief={composerBrief}
-                          platform={platform.id}
-                          approvalPipeline={features.approvalPipeline}
-                          locationId={locationId}
-                          platforms={studioPlatforms(platform.id)}
-                          onSelect={(v) => {
-                            setCaptionText(v.caption);
-                            setCaptionTags(v.hashtags.join(" "));
-                            setCaptionState("done");
-                            setCaptionError("");
-                          }}
-                        />
-                      </div>
-                    ) : null}
+                    {/* Captions moved to the post-image step (driven by the prompt bar). */}
                   </div>
                 ) : null}
               </div>
@@ -1210,71 +1270,219 @@ export default function PosterboyStudio() {
           ) : null}
 
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
-            <button
-              type="button"
-              className={`pb-util${composerMode === "video" ? " active" : ""}`}
-              onClick={() => {
-                setComposerMode((m) => (m === "image" ? "video" : "image"));
-                if (composerMode === "image") {
-                  setGenState("idle");
-                  setGeneratedUrl(null);
-                  setShowTemplate(false);
+            {/* row 1 — the brief / caption input */}
+            <div className="pb-bar-input">
+              {genState === "done" && promptMode === "caption" ? (
+                <input
+                  ref={inputRef}
+                  value={captionBrief}
+                  onChange={(e) => setCaptionBrief(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && submitCaption()}
+                  placeholder="What should the caption be about?"
+                  aria-label="What should the caption be about?"
+                />
+              ) : selectedIntent ? (
+                <input
+                  ref={inputRef}
+                  value={intentDetail}
+                  onChange={(e) => setIntentDetail(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                  }
+                  placeholder={selectedIntent.detailPlaceholder}
+                  disabled={genState === "generating"}
+                  aria-label={`Details for ${selectedIntent.label}`}
+                />
+              ) : (
+                <input
+                  ref={inputRef}
+                  value={prompt}
+                  onChange={(e) => setPrompt(e.target.value)}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                  }
+                  placeholder={
+                    genState === "done" && promptMode === "image"
+                      ? "Describe the new image you want…"
+                      : placeholderText
+                  }
+                  disabled={genState === "generating"}
+                  aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
+                />
+              )}
+            </div>
+
+            {/* row 2 — controls left, Generate right */}
+            <div className="pb-bar-controls">
+              <button
+                type="button"
+                className={`pb-util${composerMode === "video" ? " active" : ""}`}
+                onClick={() => {
+                  setComposerMode((m) => (m === "image" ? "video" : "image"));
+                  if (composerMode === "image") {
+                    setGenState("idle");
+                    setGeneratedUrl(null);
+                    setShowTemplate(false);
+                  }
+                }}
+                title={composerMode === "image" ? "Switch to video" : "Switch to image"}
+                aria-label={composerMode === "image" ? "Video mode" : "Image mode"}
+              >
+                <ImageIcon size={18} />
+              </button>
+
+              {genState === "done" && promptMode === "caption" ? (
+                <button
+                  type="button"
+                  className="pb-reprompt"
+                  onClick={() => {
+                    setPromptMode("image");
+                    window.setTimeout(() => inputRef.current?.focus(), 0);
+                  }}
+                  title="Generate a different image"
+                  aria-label="New image — re-prompt"
+                >
+                  <RotateCw size={15} />
+                  <span>New image</span>
+                </button>
+              ) : composerMode === "image" ? (
+                <>
+                  {/* reference photo — grounds the generation in their real stuff */}
+                  <input
+                    ref={refFileRef}
+                    type="file"
+                    accept="image/*"
+                    style={{ display: "none" }}
+                    onChange={onRefFile}
+                    aria-hidden
+                  />
+                  {refImage ? (
+                    <span className="pb-ref-chip has-image" title={refName}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={refImage} alt="" />
+                      <span className="pb-ref-label">Reference</span>
+                      <button
+                        type="button"
+                        onClick={() => { setRefImage(null); setRefName(""); }}
+                        aria-label="Remove reference image"
+                      >
+                        <X size={13} />
+                      </button>
+                    </span>
+                  ) : (
+                    <button
+                      type="button"
+                      className="pb-ref-chip"
+                      onClick={() => refFileRef.current?.click()}
+                      title="Use one of your real photos as the starting point"
+                    >
+                      <ImagePlus size={15} />
+                      <span>Image reference</span>
+                    </button>
+                  )}
+
+                  {/* model quality — Standard / Pro (plan-gated) */}
+                  <div className="pb-tool">
+                    <button
+                      type="button"
+                      className={`pb-model-chip${imageQuality === "pro" ? " is-pro" : ""}`}
+                      onClick={() => setQualityOpen((v) => !v)}
+                      aria-haspopup="menu"
+                      aria-expanded={qualityOpen}
+                    >
+                      {imageQuality === "pro" ? <Sparkles size={14} /> : null}
+                      <span>{imageQuality === "pro" ? "Pro" : "Standard"}</span>
+                    </button>
+                    {qualityOpen && (
+                      <div className="pb-tools-pop pb-model-pop" role="menu">
+                        <button
+                          type="button"
+                          className={imageQuality === "standard" ? "active" : ""}
+                          onClick={() => { setImageQuality("standard"); setQualityOpen(false); }}
+                        >
+                          <span className="pb-model-name">Standard</span>
+                          <span className="pb-model-sub">Fast, everyday posts</span>
+                        </button>
+                        <button
+                          type="button"
+                          className={imageQuality === "pro" ? "active" : ""}
+                          disabled={!features.proImageModel}
+                          onClick={() => {
+                            if (!features.proImageModel) return;
+                            setImageQuality("pro");
+                            setQualityOpen(false);
+                          }}
+                        >
+                          <span className="pb-model-name">
+                            Pro {features.proImageModel ? <Sparkles size={13} /> : <Lock size={13} />}
+                          </span>
+                          <span className="pb-model-sub">
+                            {features.proImageModel
+                              ? "Sharper detail, truer references, 2K"
+                              : "Available on Command plans"}
+                          </span>
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* aspect (from platform) + size (Pro only) */}
+                  <span className="pb-dim-chip" title="Aspect ratio follows the selected platform">
+                    {platform.genAspect}
+                    {imageQuality === "pro" ? (
+                      <button
+                        type="button"
+                        className="pb-size-toggle"
+                        onClick={() => setImageSize((s) => (s === "1K" ? "2K" : "1K"))}
+                        aria-label={`Image size ${imageSize} — click to switch`}
+                      >
+                        · {imageSize}
+                      </button>
+                    ) : null}
+                  </span>
+                </>
+              ) : null}
+
+              <span className="pb-bar-spacer" />
+
+              <button
+                type="button"
+                className="pb-generate"
+                onClick={() =>
+                  genState === "done" && promptMode === "caption"
+                    ? submitCaption()
+                    : void composeFromIntent()
                 }
-              }}
-              title={composerMode === "image" ? "Switch to video" : "Switch to image"}
-              aria-label={composerMode === "image" ? "Video mode" : "Image mode"}
-            >
-              <ImageIcon size={18} />
-            </button>
-            {selectedIntent ? (
-              <input
-                ref={inputRef}
-                value={intentDetail}
-                onChange={(e) => setIntentDetail(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                disabled={
+                  genState === "done" && promptMode === "caption"
+                    ? !captionBrief.trim()
+                    : genState === "generating" || composerMode === "video" || !composerBrief
                 }
-                placeholder={selectedIntent.detailPlaceholder}
-                disabled={genState === "generating"}
-                aria-label={`Details for ${selectedIntent.label}`}
-              />
-            ) : (
-              <input
-                ref={inputRef}
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                onKeyDown={(e) =>
-                  e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                aria-label={
+                  genState === "done" && promptMode === "caption"
+                    ? "Write caption options"
+                    : "Make a post"
                 }
-                placeholder={placeholderText}
-                disabled={genState === "generating"}
-                aria-label="Describe your post"
-              />
-            )}
-            <button
-              type="button"
-              className="magic-wand"
-              onClick={() => void composeFromIntent()}
-              disabled={
-                genState === "generating" || composerMode === "video" || !composerBrief
-              }
-              aria-label="Make a post"
-            >
-              <Wand2 size={20} />
-            </button>
+              >
+                <Wand2 size={16} />
+                <span>{genState === "done" && promptMode === "caption" ? "Captions" : "Generate"}</span>
+              </button>
+            </div>
           </div>
 
-          {/* Caption options — anchored to the canvas (right of the post), not the post itself */}
-          {showTemplate ? (
+          {/* Caption step — appears after the image, driven by the prompt bar ("what should the caption be about?") */}
+          {genState === "done" && captionRun > 0 ? (
             <div className="studio-caption-tools">
               <CaptionVariantPicker
-                brief={composerBrief || captionText}
+                brief={captionBrief || composerBrief || captionText}
                 platform={platform.id}
-                disabled={genState === "generating"}
+                runSignal={captionRun}
+                hideTrigger
                 approvalPipeline={features.approvalPipeline}
                 locationId={locationId}
                 platforms={studioPlatforms(platform.id)}
                 onSelect={(v) => {
+                  aiCaptionRef.current = v.caption;
                   setCaptionText(v.caption);
                   setCaptionTags(v.hashtags.join(" "));
                   setCaptionState("done");
@@ -2134,26 +2342,77 @@ function StudioStyles() {
   }.pb-studio .ptpl-close:hover { background: rgba(255,255,255,0.85); }.pb-studio /* Prompt bar — glass morphism */
   .prompt-bar {
     position: absolute;
-    bottom: 56px;
+    bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
     width: min(680px, 78%);
-    height: 76px;
     background: rgba(255, 255, 255, 0.22);
     backdrop-filter: blur(24px) saturate(180%);
     -webkit-backdrop-filter: blur(24px) saturate(180%);
     border: 1.5px solid rgba(255, 255, 255, 0.42);
-    border-radius: 16px;
+    border-radius: 18px;
     display: flex;
-    align-items: center;
-    padding: 0 20px 0 26px;
-    gap: 12px;
+    flex-direction: column;
+    align-items: stretch;
+    padding: 14px 14px 12px 18px;
+    gap: 10px;
     box-shadow:
       inset 0 1px 0 rgba(255,255,255,0.5),
       0 10px 40px rgba(0,0,0,0.18);
     z-index: 15;
     transition: all 0.25s ease;
-  }.pb-studio .prompt-bar:focus-within {
+  }
+  .pb-studio .pb-bar-input { display: flex; align-items: center; min-height: 30px; }
+  .pb-studio .pb-bar-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pb-studio .pb-bar-spacer { flex: 1; }
+  .pb-studio .pb-ref-chip {
+    flex: none; display: inline-flex; align-items: center; gap: 7px;
+    height: 34px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
+    color: var(--ink-2); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .pb-studio .pb-ref-chip:hover { border-color: rgba(0,0,0,0.26); color: var(--ink); }
+  .pb-studio .pb-ref-chip.has-image { padding: 0 8px 0 4px; }
+  .pb-studio .pb-ref-chip img { width: 26px; height: 26px; border-radius: 7px; object-fit: cover; }
+  .pb-studio .pb-ref-chip .pb-ref-label { max-width: 90px; overflow: hidden; text-overflow: ellipsis; }
+  .pb-studio .pb-ref-chip button {
+    display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; color: var(--ink-2);
+  }
+  .pb-studio .pb-ref-chip button:hover { background: rgba(0,0,0,0.08); color: var(--ink); }
+  .pb-studio .pb-model-chip {
+    flex: none; display: inline-flex; align-items: center; gap: 6px;
+    height: 34px; padding: 0 12px; border-radius: 10px;
+    border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
+    color: var(--ink-2); font-size: 12.5px; font-weight: 600; white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+  }
+  .pb-studio .pb-model-chip:hover { border-color: rgba(0,0,0,0.26); color: var(--ink); }
+  .pb-studio .pb-model-chip.is-pro {
+    border-color: rgba(238,37,50,0.32); background: rgba(238,37,50,0.07); color: #c41e2a;
+  }
+  .pb-studio .pb-model-pop { left: 0; right: auto; min-width: 230px; }
+  .pb-studio .pb-model-pop button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
+  .pb-studio .pb-model-pop button:disabled { opacity: 0.55; cursor: default; }
+  .pb-studio .pb-model-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: 13px; }
+  .pb-studio .pb-model-sub { font-size: 11.5px; color: var(--ink-2); }
+  .pb-studio .pb-dim-chip {
+    flex: none; display: inline-flex; align-items: center; gap: 4px;
+    height: 34px; padding: 0 11px; border-radius: 10px; white-space: nowrap;
+    border: 1px dashed rgba(0,0,0,0.14); color: var(--ink-2); font-size: 12px; font-weight: 600;
+  }
+  .pb-studio .pb-size-toggle { font: inherit; color: #c41e2a; font-weight: 700; }
+  .pb-studio .pb-size-toggle:hover { text-decoration: underline; }
+  .pb-studio .pb-generate {
+    flex: none; display: inline-flex; align-items: center; gap: 8px;
+    height: 40px; padding: 0 22px; border-radius: 12px;
+    background: #ee2532; border: 1px solid #ee2532; color: #fff;
+    font-size: 14px; font-weight: 600; white-space: nowrap;
+    box-shadow: 0 12px 26px -12px rgba(238,37,50,0.7);
+    transition: background 0.15s ease, opacity 0.15s ease;
+  }
+  .pb-studio .pb-generate:hover:not(:disabled) { background: #d61f2b; }
+  .pb-studio .pb-generate:disabled { opacity: 0.4; cursor: default; box-shadow: none; }.pb-studio .prompt-bar:focus-within {
     background: rgba(255, 255, 255, 0.35);
     border-color: rgba(255, 255, 255, 0.7);
     transform: translateX(-50%) translateY(-2px);
@@ -2200,6 +2459,29 @@ function StudioStyles() {
   }.pb-studio .gen-dots i:nth-child(2) { animation-delay: 0.2s; }.pb-studio .gen-dots i:nth-child(3) { animation-delay: 0.4s; }@keyframes pbsDot {
     0%, 100% { opacity: 0.3; }
     50% { opacity: 1; }
+  }.pb-studio .prompt-bar .pb-reprompt {
+    flex: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border-radius: 10px;
+    border: 1px solid rgba(238, 37, 50, 0.28);
+    background: rgba(238, 37, 50, 0.08);
+    color: #c41e2a;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }.pb-studio .prompt-bar .pb-reprompt:hover {
+    background: rgba(238, 37, 50, 0.14);
+    border-color: rgba(238, 37, 50, 0.42);
+  }.pb-studio .prompt-bar .pb-reprompt svg {
+    width: 15px;
+    height: 15px;
+    flex: none;
   }.pb-studio .prompt-bar .pb-util {
     width: 38px;
     height: 38px;
@@ -2452,7 +2734,7 @@ function StudioStyles() {
     .right-rail > .rail-section:nth-of-type(n) { min-width: 0; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .sidebar { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 16px 18px; }.pb-studio .studio-title { display: none; }.pb-studio /* "Studio" wordmark hidden in compact bar */
     .logo { margin-bottom: 0; margin-right: auto; }.pb-studio .nav { flex-direction: row; flex-wrap: wrap; width: 100%; margin-bottom: 0; gap: 4px; }.pb-studio .nav a { padding: 9px 14px; background: #f4f4f6; }.pb-studio .nav a.active { background: #ececef; }.pb-studio .voice-card, .pb-studio .workspace { display: none; }.pb-studio /* secondary on small screens */
 
-    .canvas { min-height: 540px; }.pb-studio .right-rail { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 90%; height: 64px; bottom: 22px; padding: 0 14px 0 20px; }.pb-studio .prompt-bar input { font-size: 14px; }.pb-studio .magic-wand { width: 40px; height: 40px; }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: 12.5px; }.pb-studio .right-rail { grid-template-columns: minmax(0, 1fr); padding: 20px; }.pb-studio .rail-actions { flex-direction: column; }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: none; width: 100%; }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }.pb-studio .nav a span { font-size: 13px; }}
+    .canvas { min-height: 540px; }.pb-studio .right-rail { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: 14px; }.pb-studio .magic-wand { width: 40px; height: 40px; }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: 12.5px; }.pb-studio .right-rail { grid-template-columns: minmax(0, 1fr); padding: 20px; }.pb-studio .rail-actions { flex-direction: column; }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: none; width: 100%; }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }.pb-studio .nav a span { font-size: 13px; }}
     `}</style>
   );
 }

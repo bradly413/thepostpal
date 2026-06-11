@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Sparkles } from "lucide-react";
 import {
@@ -34,6 +34,10 @@ interface Props {
   approvalPipeline?: boolean;
   locationId?: string | null;
   platforms?: SocialPlatform[];
+  /** Bump this to trigger generation externally (e.g. from the prompt bar). */
+  runSignal?: number;
+  /** Hide the built-in "Generate options" button (when driven externally). */
+  hideTrigger?: boolean;
 }
 
 function toSocialPlatforms(platform: string): SocialPlatform[] {
@@ -56,6 +60,8 @@ export default function CaptionVariantPicker({
   approvalPipeline,
   locationId,
   platforms,
+  runSignal,
+  hideTrigger,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -152,17 +158,32 @@ export default function CaptionVariantPicker({
       ? new Map(compliance.flags.map((f) => [f.variantIndex, f]))
       : null;
 
+  // externally-driven generation (e.g. the studio prompt bar after the image is ready).
+  // lastRunRef guards the double-fetch from React StrictMode's dev mount/remount —
+  // the panel mounts with runSignal already > 0, so the mount effect runs twice.
+  const lastRunRef = useRef(0);
+  useEffect(() => {
+    if (!runSignal || runSignal <= lastRunRef.current) return;
+    lastRunRef.current = runSignal;
+    void generate();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [runSignal]);
+
   return (
     <div className="pb-caption-variants">
-      <button
-        type="button"
-        className="pb-caption-variants-trigger"
-        onClick={() => void generate()}
-        disabled={disabled || loading}
-      >
-        <Sparkles size={14} />
-        {loading ? "Generating…" : "Generate options"}
-      </button>
+      {hideTrigger ? (
+        loading ? <p className="pb-caption-variants-loading">Writing caption options…</p> : null
+      ) : (
+        <button
+          type="button"
+          className="pb-caption-variants-trigger"
+          onClick={() => void generate()}
+          disabled={disabled || loading}
+        >
+          <Sparkles size={14} />
+          {loading ? "Generating…" : "Generate options"}
+        </button>
+      )}
 
       {error ? <p className="pb-caption-variants-error">{error}</p> : null}
 
@@ -236,6 +257,7 @@ export default function CaptionVariantPicker({
         .pb-caption-variants-trigger:hover:not(:disabled) { background: rgba(238,37,50,0.12); }
         .pb-caption-variants-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
         .pb-caption-variants-error { font-size: 11.5px; color: #c41e2a; margin: 0; }
+        .pb-caption-variants-loading { font-size: 12px; color: #76767e; margin: 0; }
         .pb-caption-compliance-block {
           padding: 10px 12px; border-radius: 12px;
           border: 1px solid rgba(200,140,40,0.35); background: rgba(200,140,40,0.08);

@@ -1,11 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
-import { requireAuthContext } from "@/lib/api-auth";
+import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
+import { withTenantDb } from "@/lib/db";
+import { isProImagePlanEnabled } from "@/lib/plan-features";
+
+// Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
+// plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
+const IMAGE_MODELS = {
+  standard: "gemini-2.5-flash-image",
+  pro: "gemini-3-pro-image-preview",
+} as const;
+type ImageQuality = keyof typeof IMAGE_MODELS;
 
 export async function POST(req: NextRequest) {
   // Require an authenticated session — this route spends Gemini quota.
+  let auth: AuthContext;
   try {
-    await requireAuthContext();
+    auth = await requireAuthContext();
   } catch {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
@@ -15,7 +26,13 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Too many requests" }, { status: 429 });
   }
 
-  let parsed: { prompt?: unknown; aspectRatio?: unknown; referenceImage?: unknown };
+  let parsed: {
+    prompt?: unknown;
+    aspectRatio?: unknown;
+    referenceImage?: unknown;
+    quality?: unknown;
+    imageSize?: unknown;
+  };
   try {
     parsed = (await req.json()) as typeof parsed;
   } catch {
@@ -24,6 +41,28 @@ export async function POST(req: NextRequest) {
   const prompt = typeof parsed.prompt === "string" ? parsed.prompt : "";
   const aspectRatio = typeof parsed.aspectRatio === "string" ? parsed.aspectRatio : "1:1";
   const referenceImage = parsed.referenceImage;
+
+  // Resolve quality: "pro" requires plan entitlement (server-side gate — never
+  // trust the client). Unentitled requests gracefully fall back to standard.
+  let quality: ImageQuality = parsed.quality === "pro" ? "pro" : "standard";
+  if (quality === "pro") {
+    try {
+      const entitled = await withTenantDb(auth, async (tx) => {
+        const org = await tx.organization.findUnique({
+          where: { id: auth.tenantId },
+          select: { plan: true },
+        });
+        return org ? isProImagePlanEnabled(org.plan) : false;
+      });
+      if (!entitled) quality = "standard";
+    } catch {
+      quality = "standard";
+    }
+  }
+  const imageSize =
+    quality === "pro" && (parsed.imageSize === "2K" || parsed.imageSize === "1K")
+      ? parsed.imageSize
+      : null;
 
   if (!prompt || typeof prompt !== "string") {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -64,8 +103,9 @@ export async function POST(req: NextRequest) {
   });
 
   try {
+    const model = IMAGE_MODELS[quality];
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent`,
+      `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
@@ -78,6 +118,10 @@ export async function POST(req: NextRequest) {
           generationConfig: {
             responseModalities: ["TEXT", "IMAGE"],
             responseMimeType: "text/plain",
+            // Pro supports native aspect/size config; standard keeps the prompt hint.
+            ...(quality === "pro"
+              ? { imageConfig: { aspectRatio, ...(imageSize ? { imageSize } : {}) } }
+              : {}),
           },
         }),
       }
@@ -117,6 +161,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       image: `data:${mimeType};base64,${imageData}`,
       text: textResponse,
+      model: quality, // which tier actually ran (pro requests may fall back)
     });
   } catch {
     return NextResponse.json(
