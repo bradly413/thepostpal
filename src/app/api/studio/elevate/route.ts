@@ -5,6 +5,10 @@ import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
+import { safeFetch, readCappedBuffer } from "@/lib/safe-fetch";
+
+// Cap the fallback image fetch — well above any reasonable social photo.
+const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export const runtime = "nodejs";
 
@@ -52,13 +56,16 @@ function parseElevate(text: string): ElevateResult | null {
 async function fetchImageAsBase64(
   imageUrl: string,
 ): Promise<{ mediaType: string; data: string }> {
-  const res = await fetch(imageUrl, {
+  // SSRF guard: imageUrl is caller-supplied, so this fetch must never be
+  // pointed at internal/loopback/link-local/metadata hosts. safeFetch validates
+  // the target (and every redirect hop) and caps time; readCappedBuffer caps size.
+  const res = await safeFetch(imageUrl, {
     headers: { "User-Agent": "PosterboySocial/1.0 (+https://www.posterboysocial.com)" },
   });
   if (!res.ok) throw new Error(`Could not fetch image (${res.status})`);
   const contentType = (res.headers.get("content-type") || "").split(";")[0].trim();
   const mediaType = ALLOWED_MEDIA.has(contentType) ? contentType : "image/jpeg";
-  const buf = Buffer.from(await res.arrayBuffer());
+  const buf = await readCappedBuffer(res, MAX_IMAGE_BYTES);
   return { mediaType, data: buf.toString("base64") };
 }
 

@@ -3,6 +3,16 @@ export interface GeminiImageResult {
   text: string;
 }
 
+export function parseInlineReferenceImage(referenceImage?: string | null): {
+  mimeType: string;
+  data: string;
+} | null {
+  if (!referenceImage || typeof referenceImage !== "string") return null;
+  const match = referenceImage.match(/^data:(image\/.+?);base64,(.+)$/);
+  if (!match) return null;
+  return { mimeType: match[1], data: match[2] };
+}
+
 export async function generateGeminiImage(input: {
   prompt: string;
   referenceImage?: string | null;
@@ -10,16 +20,14 @@ export async function generateGeminiImage(input: {
 }): Promise<GeminiImageResult> {
   const parts: Record<string, unknown>[] = [];
 
-  if (input.referenceImage && typeof input.referenceImage === "string") {
-    const match = input.referenceImage.match(/^data:(.+?);base64,(.+)$/);
-    if (match) {
-      parts.push({
-        inlineData: {
-          mimeType: match[1],
-          data: match[2],
-        },
-      });
-    }
+  const inlineReference = parseInlineReferenceImage(input.referenceImage);
+  if (inlineReference) {
+    parts.push({
+      inlineData: {
+        mimeType: inlineReference.mimeType,
+        data: inlineReference.data,
+      },
+    });
   }
 
   parts.push({

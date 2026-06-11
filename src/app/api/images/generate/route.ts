@@ -9,6 +9,7 @@ import {
   formatLocationGeography,
 } from "@/lib/image-prompt-augmentation";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { isInlineReferenceImage } from "@/lib/reference-image";
 
 const PROMPT_MAX = 2000;
 const DEFAULT_GEOGRAPHY = "Midwestern United States";
@@ -37,6 +38,17 @@ export async function POST(req: NextRequest) {
     if (basePrompt.length > PROMPT_MAX) {
       return NextResponse.json(
         { error: `Prompt too long (${PROMPT_MAX} char max)` },
+        { status: 400 },
+      );
+    }
+
+    if (
+      referenceImage != null &&
+      referenceImage !== "" &&
+      !isInlineReferenceImage(referenceImage)
+    ) {
+      return NextResponse.json(
+        { error: "referenceImage must be an inline data:image/*;base64 URL" },
         { status: 400 },
       );
     }

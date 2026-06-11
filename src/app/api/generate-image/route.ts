@@ -3,6 +3,7 @@ import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { isProImageEntitled } from "@/lib/plan-features";
+import { isInlineReferenceImage } from "@/lib/reference-image";
 
 // Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
 // plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
@@ -74,6 +75,17 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "Prompt too long (2000 char max)" }, { status: 400 });
   }
 
+  if (
+    referenceImage != null &&
+    referenceImage !== "" &&
+    !isInlineReferenceImage(referenceImage)
+  ) {
+    return NextResponse.json(
+      { error: "referenceImage must be an inline data:image/*;base64 URL" },
+      { status: 400 },
+    );
+  }
+
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
@@ -81,7 +93,7 @@ export async function POST(req: NextRequest) {
 
   const parts: Record<string, unknown>[] = [];
 
-  if (referenceImage && typeof referenceImage === "string") {
+  if (isInlineReferenceImage(referenceImage)) {
     const match = referenceImage.match(/^data:(.+?);base64,(.+)$/);
     if (match) {
       parts.push({

@@ -1,6 +1,7 @@
 import "server-only";
 
 import type { SocialAccount } from "@prisma/client";
+import { readCappedBuffer, safeFetch } from "@/lib/safe-fetch";
 import { decryptToken } from "@/lib/social/token-crypto";
 import type {
   ExchangedAccount,
@@ -14,6 +15,7 @@ const USERINFO_URL = "https://api.linkedin.com/v2/userinfo";
 const POSTS_URL = "https://api.linkedin.com/rest/posts";
 const REGISTER_UPLOAD_URL =
   "https://api.linkedin.com/rest/images?action=initializeUpload";
+const MAX_SOURCE_IMAGE_BYTES = 10 * 1024 * 1024;
 
 // LinkedIn versioned APIs require the LinkedIn-Version header (YYYYMM).
 const LINKEDIN_VERSION = "202401";
@@ -193,16 +195,16 @@ export const linkedinProvider: SocialProvider = {
         throw new Error("LinkedIn image init missing uploadUrl/image urn");
       }
 
-      const srcRes = await fetch(imageUrl);
+      const srcRes = await safeFetch(imageUrl);
       if (!srcRes.ok) {
         throw new Error(`Failed to fetch source image: HTTP ${srcRes.status}`);
       }
-      const bytes = Buffer.from(await srcRes.arrayBuffer());
+      const bytes = await readCappedBuffer(srcRes, MAX_SOURCE_IMAGE_BYTES);
 
       const uploadRes = await fetch(uploadUrl, {
         method: "PUT",
         headers: { Authorization: `Bearer ${accessToken}` },
-        body: bytes,
+        body: new Uint8Array(bytes),
       });
       if (!uploadRes.ok) {
         throw new Error(`LinkedIn image upload failed: HTTP ${uploadRes.status}`);

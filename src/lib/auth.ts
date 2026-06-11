@@ -2,6 +2,7 @@ import { SignJWT, jwtVerify, type JWTPayload } from "jose";
 import { cookies } from "next/headers";
 import { timingSafeEqual } from "crypto";
 import { authenticateStoredUser } from "@/lib/auth-store";
+import { getAuthSecretBytes } from "@/lib/auth-secret";
 
 export interface SessionPayload extends JWTPayload {
   role: string;
@@ -16,14 +17,7 @@ export interface SessionPayload extends JWTPayload {
   isSuperadmin?: boolean;
 }
 
-function getSecret() {
-  const secret =
-    process.env.AUTH_SECRET ||
-    process.env.JWT_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "posterboy-dev-fallback-secret-change-me";
-  return new TextEncoder().encode(secret);
-}
+const AUTH_SECRET_BYTES = getAuthSecretBytes();
 
 function getCredentials() {
   const username = process.env.PORTAL_USERNAME || "demo";
@@ -97,7 +91,7 @@ export async function createSession(payload: SessionPayload = { role: "admin", l
     .setProtectedHeader({ alg: "HS256" })
     .setIssuedAt()
     .setExpirationTime("30d")
-    .sign(getSecret());
+    .sign(AUTH_SECRET_BYTES);
 }
 
 export async function getSession(): Promise<boolean> {
@@ -105,7 +99,7 @@ export async function getSession(): Promise<boolean> {
   const token = cookieStore.get("session")?.value;
   if (!token) return false;
   try {
-    await jwtVerify(token, getSecret());
+    await jwtVerify(token, AUTH_SECRET_BYTES);
     return true;
   } catch {
     return false;
@@ -118,7 +112,7 @@ export async function getSessionData(): Promise<SessionPayload | null> {
   if (!token) return null;
 
   try {
-    const verified = await jwtVerify(token, getSecret());
+    const verified = await jwtVerify(token, AUTH_SECRET_BYTES);
     return verified.payload as SessionPayload;
   } catch {
     return null;

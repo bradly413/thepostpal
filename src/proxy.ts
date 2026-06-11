@@ -4,15 +4,9 @@ import {
   safeRedirectPath,
   SIGNIN_NEXT_DEFAULT,
 } from "@/lib/safe-redirect";
+import { getAuthSecretBytes } from "@/lib/auth-secret";
 
-function getSecret() {
-  const secret =
-    process.env.AUTH_SECRET ||
-    process.env.JWT_SECRET ||
-    process.env.NEXTAUTH_SECRET ||
-    "posterboy-dev-fallback-secret-change-me";
-  return new TextEncoder().encode(secret);
-}
+const AUTH_SECRET_BYTES = getAuthSecretBytes();
 
 const PUBLIC_EXACT = [
   "/",
@@ -82,7 +76,7 @@ export async function proxy(request: NextRequest) {
   let payload: JWTPayload | null = null;
   if (token) {
     try {
-      const verified = await jwtVerify(token, getSecret());
+      const verified = await jwtVerify(token, AUTH_SECRET_BYTES);
       payload = verified.payload;
       sessionValid = true;
     } catch {
