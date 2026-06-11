@@ -1170,8 +1170,11 @@ export default function PosterboyStudio() {
                     onUpdate={updateStudioLayer}
                   />
                 ) : null}
+                {/* T2: no fabricated percentage — image gen has no real progress
+                    signal. The staged status pill (.gen-status) communicates honestly;
+                    `progress` stays internal to drive the reveal animation only. */}
                 {genState === "generating" && (
-                  <div className="gen-progress">{Math.round(progress)}%</div>
+                  <div className="gen-progress">{statusText}</div>
                 )}
                 {genState === "idle" && composerMode === "image" ? (
                   <div className="studio-intent-stage">

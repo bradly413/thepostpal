@@ -289,7 +289,7 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
         }
         .pb-video-export {
           padding: 9px 14px; border-radius: 10px; font-size: 12px; font-weight: 700;
-          background: #ee2532; color: #fff; border: none; cursor: pointer;
+          background: #c81e2a; color: #fff; border: none; cursor: pointer;
         }
         .pb-video-export:disabled { opacity: 0.5; cursor: not-allowed; }
         .pb-video-ai-stub {
