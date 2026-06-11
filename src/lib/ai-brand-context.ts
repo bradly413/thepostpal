@@ -6,6 +6,8 @@ import type { TenantDbClient } from "@/lib/db";
 import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
 import { guardrailsPromptBlock } from "@/lib/compliance/guardrails";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
+import { fetchVoiceMemoryBlock } from "@/lib/ai-voice-memory";
+import { readVoiceLearning, voiceLearningBlock } from "@/lib/ai-voice-learning";
 
 /**
  * Compliance & brand guardrail injection (Phase 2 — prompt-injection only).
@@ -28,7 +30,10 @@ async function buildGuardrailBlock(tx: TenantDbClient, tenantId: string): Promis
  * no brand engine yet. Shared by /api/ai and /api/ai/captions so brand voice is
  * consistent across chat and multi-variant generation.
  */
-export async function buildTenantBrandContext(auth: AuthContext): Promise<string> {
+export async function buildTenantBrandContext(
+  auth: AuthContext,
+  opts?: { platform?: string },
+): Promise<string> {
   try {
     return await withTenantDb(auth, async (tx) => {
       const org = await tx.organization.findUnique({
@@ -49,9 +54,16 @@ export async function buildTenantBrandContext(auth: AuthContext): Promise<string
           ? ""
           : `\n\n## This Business's Brand\n${lines.join("\n")}\nWrite all content in this business's voice, for this niche and audience. Do NOT assume an industry that isn't stated here.`;
 
+      // Voice memory — few-shot from the tenant's recent real posts (the learning
+      // loop). Empty for brand-new tenants → unchanged behavior.
+      const voice = await fetchVoiceMemoryBlock(tx, auth.tenantId, org?.name ?? null, opts?.platform);
+
+      // Learned edit patterns — what they consistently change about AI drafts.
+      const learned = voiceLearningBlock(readVoiceLearning(org?.brandEngine));
+
       // Append compliance guardrails — graceful no-op for tenants with no vertical.
       const guardrails = await buildGuardrailBlock(tx, auth.tenantId);
-      return base + guardrails;
+      return base + voice + learned + guardrails;
     });
   } catch {
     return "";

@@ -5,17 +5,18 @@ import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
+import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
 
 export const runtime = "nodejs";
 
 const MODEL = "claude-sonnet-4-6";
 
 const PLATFORM_GUIDE: Record<string, string> = {
-  instagram: "Instagram: visual-first, conversational, 5–10 hashtags, 1–3 tasteful emoji.",
-  facebook: "Facebook: a little longer, story-led, fewer hashtags (2–4), clear CTA.",
-  linkedin: "LinkedIn: professional, insight-led, no/low emoji, 3–5 niche hashtags, credible tone.",
-  x: "X/Twitter: punchy, under 280 characters, 1–2 hashtags, strong hook.",
-  tiktok: "TikTok: playful, trend-aware, hook-first, 3–5 hashtags.",
+  instagram: "Instagram: conversational, written like a person. 2–4 lowercase hashtags, none forced.",
+  facebook: "Facebook: a bit longer and plainspoken, like talking to a regular. 0–2 hashtags.",
+  linkedin: "LinkedIn: professional but still human, no emoji, 2–3 niche hashtags.",
+  x: "X/Twitter: short and direct, under 280 characters, 0–1 hashtag.",
+  tiktok: "TikTok: casual, the first line does the work. 2–4 lowercase hashtags.",
 };
 
 interface CaptionVariant {
@@ -98,12 +99,21 @@ export async function POST(req: Request) {
   const count = Math.min(Math.max(Number(body.count) || 3, 2), 5);
   const tone = typeof body.tone === "string" && body.tone.trim() ? body.tone.trim() : "";
 
-  const brand = await buildTenantBrandContext(auth);
+  const brand = await buildTenantBrandContext(auth, { platform });
 
-  const system = `You are an expert social copywriter. Write captions for ${platform}.
-${PLATFORM_GUIDE[platform]}${brand}
+  const system = `You write social captions the way a real small-business owner would — like a person, not a brand and not an AI.
+Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
 
-Produce EXACTLY ${count} DISTINCT caption variants for the same brief. Each must take a genuinely different angle — e.g. benefit-led, story/emotional, punchy hook + CTA, playful, authority/insight. Do not repeat phrasing across variants.${tone ? `\nOverall tone preference: ${tone}.` : ""}
+Write EXACTLY ${count} captions for the brief below. They must read as if a human wrote them.
+
+${CAPTION_SOUND_HUMAN.replace(
+    "Vary length and rhythm — one line or two or three sentences is fine.",
+    `Vary length and rhythm across the ${count} options — one can be a single line, another two or three sentences. Never template them.`,
+  )}
+
+${CAPTION_ANTI_AI_TELLS}
+
+Each option should be a genuinely different, honest way a person might say it — not marketing archetypes.${tone ? `\nTone preference: ${tone}.` : ""}
 
 Respond with ONLY a JSON array (no prose, no code fences) of this exact shape:
 [{"angle":"short label","caption":"the caption text","hashtags":["#tag1","#tag2"]}]`;

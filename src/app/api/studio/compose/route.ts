@@ -3,6 +3,7 @@ import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
+import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
 
 // POST /api/studio/compose
 //   body: { intent: string }   e.g. "make an instagram post about our weekend happy hour"
@@ -73,8 +74,10 @@ export async function POST(req: Request) {
 Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys:
 {
   "platform": one of "instagram" | "facebook" | "x" | "tiktok" | "linkedin" (infer from the request; default "instagram" if unstated),
-  "imagePrompt": a richly detailed, PROFESSIONAL-PHOTOGRAPHY prompt for a photorealistic social image (3-5 sentences). Treat it like a brief for a high-end photographer, not a stock image. Always specify: (1) the concrete subject + setting with specific real-world detail; (2) camera + lens (e.g. "shot on a 70-200mm telephoto", "wide 24mm", "85mm portrait"); (3) the exact lighting + time of day (e.g. "blue hour", "golden-hour backlight", "long-exposure"); (4) composition + depth (foreground/midground/background, leading lines, rule of thirds); (5) mood + color; and (6) quality anchors: "photorealistic, sharp focus, high dynamic range, natural lighting, fine detail, award-winning photograph". For fireworks/night/motion use "long-exposure". Do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
-  "caption": a finished, ready-to-publish caption in the brand's voice. Match the platform (Instagram/Facebook warm + conversational, X punchy under 240 chars, LinkedIn professional, TikTok casual). Do NOT include hashtags here.,
+  "imagePrompt": a realistic, true-to-life photo description (2-4 sentences) that looks like a genuine photo this business would actually take and post — NOT a glossy advertisement, stock image, or staged studio shoot. Describe: (1) the concrete real subject and setting with specific, honest detail (the actual product/place/moment, not an idealized version of it); (2) natural, available light — soft window light, plain overcast daylight, ordinary warm indoor light — NOT dramatic "golden-hour", "blue hour", or studio lighting; (3) a natural, slightly candid composition, as if a capable person shot it on a recent phone or a normal 35-50mm lens, with realistic, not dreamy, depth of field. Keep it believable: real textures, true colors, normal imperfections are good. Actively avoid anything that reads as AI or fake — no HDR, no over-saturation, no plastic or CGI or 3D-render look, no overly perfect glossy polish, no cinematic over-processing, no "award-winning" drama. Ordinary and real, in the best way. Do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
+  "caption": a finished, ready-to-publish caption in the brand's voice. Match the platform (Instagram/Facebook warm + conversational, X punchy under 240 chars, LinkedIn professional, TikTok casual). Do NOT include hashtags here. Write like a real small-business owner — a person, not a brand and not an AI.
+${CAPTION_SOUND_HUMAN}
+${CAPTION_ANTI_AI_TELLS},
   "hashtags": an array of 4-8 relevant hashtag strings, WITHOUT the # sign
 }${brand}`;
 
@@ -111,7 +114,7 @@ Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys
       platform,
       imagePrompt:
         (typeof parsed.imagePrompt === "string" && parsed.imagePrompt.trim() ? parsed.imagePrompt.trim() : intent) +
-        " Photorealistic, professional photography, sharp focus, high dynamic range, natural lighting, fine detail, no text or watermark.",
+        " Realistic, true-to-life photo, natural available light, natural true colors, looks like a real unedited phone photo, not over-processed, no HDR, no CGI, no glossy stock-photo look, no text or watermark.",
       caption: typeof parsed.caption === "string" ? parsed.caption.trim() : "",
       hashtags,
     });
