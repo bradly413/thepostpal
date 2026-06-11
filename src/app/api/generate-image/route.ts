@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, getClientIp } from "@/lib/rate-limit";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
-import { isProImagePlanEnabled } from "@/lib/plan-features";
+import { isProImageEntitled } from "@/lib/plan-features";
 
 // Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
 // plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
@@ -52,9 +52,9 @@ export async function POST(req: NextRequest) {
       const entitled = await withTenantDb(auth, async (tx) => {
         const org = await tx.organization.findUnique({
           where: { id: auth.tenantId },
-          select: { plan: true },
+          select: { plan: true, brandEngine: true },
         });
-        return org ? isProImagePlanEnabled(org.plan) : false;
+        return org ? isProImageEntitled(org.plan, org.brandEngine) : false;
       });
       if (!entitled) quality = "standard";
     } catch {

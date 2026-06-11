@@ -31,6 +31,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
+import { PRO_IMAGES_ADDON_PRICE } from "@/lib/plan-features";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
 import FacebookPreview from "@/components/dashboard/studio/FacebookPreview";
@@ -1419,7 +1420,7 @@ export default function PosterboyStudio() {
                           <span className="pb-model-sub">
                             {features.proImageModel
                               ? "Sharper detail, truer references, 2K"
-                              : "Available on Command plans"}
+                              : `Sharper detail, truer references, 2K — add-on, $${PRO_IMAGES_ADDON_PRICE}/mo`}
                           </span>
                         </button>
                       </div>

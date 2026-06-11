@@ -32,6 +32,7 @@ interface MeResponse {
   organizationId: string;
   isSuperadmin: boolean;
   locationCount: number;
+  addons?: { proImages?: boolean };
 }
 
 export function PlanProvider({ children }: { children: React.ReactNode }) {
@@ -53,9 +54,15 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
         if (!res.ok) throw new Error(`me ${res.status}`);
         const data = (await res.json()) as MeResponse;
         if (cancelled) return;
+        const features = planFeatures(data.plan);
         setState({
           plan: data.plan,
-          features: planFeatures(data.plan),
+          features: {
+            ...features,
+            // Pro images can also be a purchased add-on (solo users) — the
+            // entitlement is plan OR add-on, mirrored server-side.
+            proImageModel: features.proImageModel || data.addons?.proImages === true,
+          },
           locationCount: data.locationCount,
           role: data.role,
           isSuperadmin: data.isSuperadmin,

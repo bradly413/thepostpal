@@ -59,6 +59,29 @@ export function isProImagePlanEnabled(plan: PlanTier): boolean {
   return planFeatures(plan).proImageModel;
 }
 
+// ─────────────────────────────────────────────────────────────
+//  Pro images add-on — solo users can buy Pro without going
+//  Command. Entitlement = plan tier OR the org-level add-on flag
+//  (stored in Organization.brandEngine.addons today; swaps to a
+//  Stripe subscription item when billing lands).
+// ─────────────────────────────────────────────────────────────
+
+/** Monthly price (USD) for the Pro images add-on. Shown in upsell copy. */
+export const PRO_IMAGES_ADDON_PRICE = 19;
+
+/** Read the add-on flag out of the Organization.brandEngine JSON blob. */
+export function hasProImagesAddon(brandEngine: unknown): boolean {
+  if (!brandEngine || typeof brandEngine !== "object") return false;
+  const addons = (brandEngine as Record<string, unknown>).addons;
+  if (!addons || typeof addons !== "object") return false;
+  return (addons as Record<string, unknown>).proImages === true;
+}
+
+/** Full Pro-images entitlement: plan tier OR purchased add-on. */
+export function isProImageEntitled(plan: PlanTier, brandEngine: unknown): boolean {
+  return isProImagePlanEnabled(plan) || hasProImagesAddon(brandEngine);
+}
+
 /** Plan allows Meta Ads; still requires META_ADS_ENABLED=true at runtime. */
 export function isMetaAdsPlanEnabled(plan: PlanTier): boolean {
   return planFeatures(plan).metaAds;
