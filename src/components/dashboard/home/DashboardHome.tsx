@@ -9,7 +9,6 @@ import {
   CalendarPlus,
   Send,
   Bell,
-  Sun,
   Sun as SunIcon,
   CloudSun,
   Cloud,
@@ -81,11 +80,26 @@ function PlatformIcon({ p }: { p: string }) {
   );
 }
 
-const NOTIFS: { lead?: string; body: string; time: string }[] = [
-  { lead: "Your weekend post", body: "went live on Instagram and Facebook.", time: "2h" },
-  { body: "3 drafts are ready for your review.", time: "today" },
-  { lead: "Petal House", body: "and 6 others loved your latest post.", time: "yesterday" },
-];
+// Real activity derived from the snapshot — no fabricated notifications.
+function buildNotifs(
+  data: DashboardHomeSnapshot | null,
+): { lead?: string; body: string; time: string }[] {
+  if (!data) return [];
+  const out: { lead?: string; body: string; time: string }[] = [];
+  if (data.pendingCount > 0)
+    out.push({
+      lead: "Review",
+      body: `${data.pendingCount} draft${data.pendingCount > 1 ? "s" : ""} waiting for your review.`,
+      time: "",
+    });
+  if (data.scheduledCount > 0)
+    out.push({
+      lead: "Scheduled",
+      body: `${data.scheduledCount} post${data.scheduledCount > 1 ? "s" : ""} queued to publish.`,
+      time: "",
+    });
+  return out;
+}
 
 export default function DashboardHome() {
   const root = useRef<HTMLDivElement>(null);
@@ -99,6 +113,7 @@ export default function DashboardHome() {
   const [wxPlace, setWxPlace] = useState<WxPlace | null>(null);
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
+  const notifs = useMemo(() => buildNotifs(data), [data]);
 
   // Close the notifications panel on outside click or Escape.
   useEffect(() => {
@@ -227,9 +242,9 @@ export default function DashboardHome() {
 
   // Total Reach sparkline
   const reachPath = useMemo(() => {
-    const series = data?.weeklyOverview?.barHeights?.length
-      ? data.weeklyOverview.barHeights
-      : [30, 26, 40, 34, 52, 46, 60, 54, 72, 66, 88, 96];
+    // Real weekly activity only — no invented trend line when there's no data.
+    const series = data?.weeklyOverview?.barHeights ?? [];
+    if (series.length < 2) return { line: "", area: "" };
     const w = 100, h = 100, n = series.length, max = Math.max(...series, 1);
     const pts = series.map((v, i) => [(i / (n - 1)) * w, h - (v / max) * (h - 10) - 5]);
     const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
@@ -304,38 +319,41 @@ export default function DashboardHome() {
           <h1 className="sr-only">Home</h1>
           {/* Utility bar */}
           <div className="topbar2 anim">
-            <button type="button" className="ut" aria-label="Theme"><Sun size={18} /></button>
             <div className={`notif${notifOpen ? " open" : ""}`} ref={notifRef}>
               <button
                 type="button"
                 className="ut"
-                aria-label="Notifications"
+                aria-label={`Notifications${notifs.length ? ` (${notifs.length})` : ""}`}
                 aria-expanded={notifOpen}
                 onClick={() => setNotifOpen((o) => !o)}
               >
                 <Bell size={18} />
-                <span className="dot count">{NOTIFS.length}</span>
+                {notifs.length > 0 ? <span className="dot count">{notifs.length}</span> : null}
               </button>
               <div className="notif-panel" role="menu" aria-hidden={!notifOpen}>
                 <div className="notif-head">Activity</div>
-                <ul className="notif-list">
-                  {NOTIFS.map((n, i) => (
-                    <li
-                      className="notif-item"
-                      role="menuitem"
-                      key={n.body}
-                      style={{ "--i": i } as CSSProperties}
-                    >
-                      <span className="notif-dot" aria-hidden />
-                      <p>
-                        {n.lead ? <strong>{n.lead}</strong> : null}
-                        {n.lead ? " " : null}
-                        {n.body}
-                        <span className="notif-time">{n.time}</span>
-                      </p>
-                    </li>
-                  ))}
-                </ul>
+                {notifs.length === 0 ? (
+                  <p className="notif-empty">You&rsquo;re all caught up.</p>
+                ) : (
+                  <ul className="notif-list">
+                    {notifs.map((n, i) => (
+                      <li
+                        className="notif-item"
+                        role="menuitem"
+                        key={n.body}
+                        style={{ "--i": i } as CSSProperties}
+                      >
+                        <span className="notif-dot" aria-hidden />
+                        <p>
+                          {n.lead ? <strong>{n.lead}</strong> : null}
+                          {n.lead ? " " : null}
+                          {n.body}
+                          {n.time ? <span className="notif-time">{n.time}</span> : null}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
               </div>
             </div>
             <Link href="/dashboard/settings" className="ut avatar" aria-label="Account">

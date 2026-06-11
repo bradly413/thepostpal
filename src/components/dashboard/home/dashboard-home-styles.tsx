@@ -118,6 +118,7 @@ export function DashboardHomeStyles() {
       font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .08em;
       color: var(--ink-soft); padding: 2px 6px 10px;
     }
+    .notif-empty { margin: 0; padding: 4px 6px 8px; font-size: 13px; color: var(--ink-soft); }
     .notif-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
     .notif-item {
       display: flex; gap: 10px; padding: 11px 12px; border-radius: 12px;

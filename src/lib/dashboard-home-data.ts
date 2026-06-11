@@ -33,7 +33,7 @@ export interface DashboardHomeSnapshot {
   brandVoiceLine: string;
   brandVoiceSub: string;
   nextUp: DashboardPostRecord | null;
-  nextUpImage: string;
+  nextUpImage: string | null;
   recentPosts: DashboardPostRecord[];
   pendingCount: number;
   scheduledCount: number;
@@ -200,7 +200,9 @@ export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot
       : "Confident. Local. Human.";
 
   const totalHandled = counts.approved + counts.scheduled + counts.published;
-  const hoursSaved = Math.max(1, Math.min(14, totalHandled * 2 + pending.length));
+  // Honest, defensible estimate: ~15 min saved per post Posterboy actually
+  // handled (created/scheduled/published) — tied to real counts, not invented.
+  const hoursSaved = Math.round(totalHandled * 0.25);
   const storedUser = readStoredUser();
   const userName =
     storedUser?.accountName ??
@@ -220,7 +222,8 @@ export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot
     brandVoiceLine,
     brandVoiceSub: "Your voice. Your neighborhood. Your expertise.",
     nextUp,
-    nextUpImage: HERO_IMAGES[0],
+    // The actual next post's media — null when it has none (no stock filler).
+    nextUpImage: nextUp?.mediaUrl ?? nextUp?.mediaUrls?.[0] ?? null,
     recentPosts,
     pendingCount: pending.length,
     scheduledCount: scheduled.length,
