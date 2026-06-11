@@ -1084,9 +1084,19 @@ export default function PosterboyStudio() {
 
           <div
             ref={frameWrapRef}
-            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}`}
+            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}`}
             style={showTemplate ? undefined : frameWrapStyle}
           >
+            {/* Ambient backlight: the generated image casts its own light — a
+                blurred copy of itself behind the frame (sized by the selected
+                aspect, since it mirrors the frame box). */}
+            {generatedUrl && mediaKind === "image" && (genState === "done" || showTemplate) ? (
+              <div
+                className="ambient-glow"
+                style={{ backgroundImage: `url('${generatedUrl}')` }}
+                aria-hidden
+              />
+            ) : null}
             {showTemplate ? (
               <>
                 <div className="glass-border" aria-hidden="true" />
@@ -1151,7 +1161,7 @@ export default function PosterboyStudio() {
               </div>
             ) : (
               <div
-                className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${canEditImage ? " editable" : ""}`}
+                className={`frame${genState === "generating" ? " generating" : ""}${genState === "done" ? " done" : ""}${genState === "idle" && composerMode === "image" ? " idle" : ""}${canEditImage ? " editable" : ""}`}
                 style={{ width: "100%", height: "100%", position: "relative" }}
                 onPointerDown={onImagePointerDown}
                 onPointerMove={onImagePointerMove}
@@ -2824,6 +2834,85 @@ function StudioStyles() {
     .logo { margin-bottom: 0; margin-right: auto; }.pb-studio .nav { flex-direction: row; flex-wrap: wrap; width: 100%; margin-bottom: 0; gap: 4px; }.pb-studio .nav a { padding: 9px 14px; background: #f4f4f6; }.pb-studio .nav a.active { background: #ececef; }.pb-studio .voice-card, .pb-studio .workspace { display: none; }.pb-studio /* secondary on small screens */
 
     .canvas { min-height: 540px; }.pb-studio .right-rail { grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: 14px; }.pb-studio .magic-wand { width: 40px; height: 40px; }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: 12.5px; }.pb-studio .right-rail { grid-template-columns: minmax(0, 1fr); padding: 20px; }.pb-studio .rail-actions { flex-direction: column; }.pb-studio .rail-actions .btn-outline, .pb-studio .rail-actions .btn-publish { flex: none; width: 100%; }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }.pb-studio .nav a span { font-size: 13px; }}
+
+  /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
+     Enter: clean white. Composer floats in. Generate: frame materializes.
+     Done: the image casts its own ambient light (blurred self behind). */
+  .pb-studio .canvas {
+    /* flat, even white — the generated image's ambient glow is the room's
+       only light source, so it reads instead of competing with a hotspot */
+    background: linear-gradient(180deg, #fcfcfb 0%, #f7f6f4 55%, #f0eeeb 100%);
+  }
+  .pb-studio .canvas::before { display: none; }
+  .pb-studio .canvas::after { opacity: 0.05; }
+  .pb-studio .canvas-wall-lines, .pb-studio .canvas-floor { display: none; }
+
+  /* furniture re-inked for the white wall (was white-glow on concrete) */
+  .pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open { color: #1c1c1e; }
+  .pb-studio .tool-rail .rail-ico.active svg, .pb-studio .tool-rail .rail-ico.open svg {
+    filter: drop-shadow(0 1px 2px rgba(0,0,0,0.16));
+  }
+  .pb-studio .tool-rail .rail-ico:hover svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.12)); }
+  .pb-studio .tool-rail .rail-ico-label {
+    color: #1c1c1e;
+    text-shadow: 0 1px 0 rgba(255,255,255,0.85);
+  }
+
+  /* idle: no empty box — just the white room */
+  .pb-studio .frame-wrap.is-idle::before { opacity: 0; animation: none; }
+  .pb-studio .frame.idle .studio-intent-stage {
+    background: transparent;
+    box-shadow: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+  .pb-studio .frame.idle {
+    background: transparent;
+    border-color: transparent;
+    box-shadow: none;
+    animation: none;
+  }
+  .pb-studio .frame {
+    transition:
+      width 0.55s cubic-bezier(0.65, 0, 0.35, 1),
+      height 0.55s cubic-bezier(0.65, 0, 0.35, 1),
+      background 0.6s ease,
+      box-shadow 0.6s ease,
+      border-color 0.6s ease;
+  }
+
+  /* composer floats in on entry */
+  .pb-studio .prompt-bar {
+    animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
+    border-color: rgba(0, 0, 0, 0.07);
+    box-shadow:
+      inset 0 1px 0 rgba(255,255,255,0.7),
+      0 12px 44px rgba(0,0,0,0.12);
+  }
+  @keyframes pbsBarIn {
+    from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
+    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
+  }
+
+  /* ambient backlight: blurred copy of the generated image behind the frame */
+  .pb-studio .frame-wrap .ambient-glow {
+    position: absolute;
+    inset: -11% -13% -14%;
+    border-radius: 40px;
+    background-size: cover;
+    background-position: center;
+    filter: blur(46px) saturate(1.4);
+    opacity: 0;
+    z-index: -1;
+    pointer-events: none;
+    animation: pbsAmbient 1.4s ease 0.5s forwards;
+  }
+  @keyframes pbsAmbient { to { opacity: 0.75; } }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pb-studio .prompt-bar { animation: none; }
+    .pb-studio .frame-wrap .ambient-glow { animation: none; opacity: 0.55; }
+  }
     `}</style>
   );
 }
