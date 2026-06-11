@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
-import { useSearchParams } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
 import {
@@ -212,6 +212,7 @@ export default function PosterboyStudio() {
     activeLocation?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "yourbrand";
   const previewPageName = activeLocation?.name || "Your Page";
   const searchParams = useSearchParams();
+  const router = useRouter();
   const studioLayerKey = locationId ? compositionStorageKey(locationId, "studio") : null;
   const {
     layers: studioLayers,
@@ -310,10 +311,16 @@ export default function PosterboyStudio() {
     document.title = "Posterboy Studio | posterboy";
   }, []);
 
+  // Consume an incoming ?mediaUrl= ONCE on mount. Without this guard, any later
+  // re-render while the param lingers in the URL overwrites a freshly generated
+  // image and resets the editor (C5).
+  const consumedMediaParam = useRef(false);
   useEffect(() => {
+    if (consumedMediaParam.current) return;
     const mediaUrl = searchParams.get("mediaUrl");
     const type = searchParams.get("mediaType");
     if (!mediaUrl) return;
+    consumedMediaParam.current = true;
     setGeneratedUrl(mediaUrl);
     setGenState("done");
     setShowTemplate(true);
@@ -322,7 +329,12 @@ export default function PosterboyStudio() {
       setComposerMode("video");
       setPlatformIdx(PLATFORMS.findIndex((p) => p.id === "tiktok") >= 0 ? PLATFORMS.findIndex((p) => p.id === "tiktok") : 0);
     }
-  }, [searchParams]);
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("mediaUrl");
+    next.delete("mediaType");
+    const qs = next.toString();
+    router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
+  }, [searchParams, router]);
 
   // Track the canvas size so the board can be sized in exact pixels — both
   // width and height then animate smoothly between platform aspect ratios.
@@ -535,8 +547,20 @@ export default function PosterboyStudio() {
     if (genTimer.current) clearInterval(genTimer.current);
   }, []);
 
-  const generate = async () => {
-    if (!prompt.trim() || genState === "generating") {
+  const generate = async (overridePrompt?: string, recoverGenState: GenState = "idle") => {
+    const savedPrompt = (overridePrompt ?? prompt.trim()).trim();
+    if (!savedPrompt) {
+      if (genTimer.current) {
+        clearInterval(genTimer.current);
+        genTimer.current = null;
+      }
+      setProgress(0);
+      setGenState(recoverGenState);
+      setError("Add a brief before generating.");
+      inputRef.current?.focus();
+      return;
+    }
+    if (!overridePrompt && genState === "generating") {
       inputRef.current?.focus();
       return;
     }
@@ -575,7 +599,6 @@ export default function PosterboyStudio() {
       if (elapsed < 1600) await new Promise((r) => setTimeout(r, 1600 - elapsed));
     };
 
-    const savedPrompt = prompt.trim();
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
     try {
@@ -681,7 +704,7 @@ export default function PosterboyStudio() {
         stopTimer();
         setCaptionState("idle");
         clearTimeout(timeoutId);
-        await generate();
+        await generate(intent, isReprompt ? "done" : "idle");
         return;
       }
 
@@ -838,11 +861,12 @@ export default function PosterboyStudio() {
         setError("Pick a date and time for scheduling.");
         return;
       }
-      const scheduledFor = new Date(`${scheduleDate}T${scheduleTime}:00`).toISOString();
-      if (Number.isNaN(Date.parse(scheduledFor))) {
+      const localScheduled = new Date(`${scheduleDate}T${scheduleTime}:00`);
+      if (Number.isNaN(localScheduled.getTime())) {
         setError("Invalid schedule date or time.");
         return;
       }
+      const scheduledFor = localScheduled.toISOString();
       setPublishing(true);
       setError("");
       try {

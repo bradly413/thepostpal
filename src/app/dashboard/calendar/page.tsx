@@ -83,15 +83,20 @@ function formatDateKey(year: number, month: number, day: number): string {
 
 type ModalMode = "post" | "event" | "day-detail" | null;
 
+type CalendarScheduledPost = ScheduledPost & {
+  mediaUrl?: string | null;
+  mediaType?: "image" | "video" | null;
+};
+
 export default function CalendarPage() {
   useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week">("month");
-  const [posts, setPosts] = useState<ScheduledPost[]>([]);
+  const [posts, setPosts] = useState<CalendarScheduledPost[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
-  const [editingPost, setEditingPost] = useState<ScheduledPost | null>(null);
+  const [editingPost, setEditingPost] = useState<CalendarScheduledPost | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
   const [showHolidays, setShowHolidays] = useState(true);
 
@@ -144,7 +149,13 @@ export default function CalendarPage() {
     }
     try {
       const records = await fetchDashboardPosts(locationId);
-      setPosts(records.map(mapRecordToCalendarPost));
+      setPosts(
+        records.map((record) => ({
+          ...mapRecordToCalendarPost(record),
+          mediaUrl: record.mediaUrl ?? record.mediaUrls?.[0] ?? null,
+          mediaType: record.mediaType ?? null,
+        })),
+      );
     } catch {
       // Keep grid stable on transient errors.
     }
@@ -260,7 +271,7 @@ export default function CalendarPage() {
     setModalMode("post");
   }
 
-  function openEditPost(post: ScheduledPost) {
+  function openEditPost(post: CalendarScheduledPost) {
     setEditingPost(post);
     setSelectedDate(post.date);
     setFormTemplate(post.templateId);
@@ -268,8 +279,8 @@ export default function CalendarPage() {
     setFormTime(post.time);
     setFormCaption(post.caption);
     setFormStatus(post.status === "published" ? "scheduled" : post.status as "scheduled" | "draft");
-    setMediaUrl("");
-    setMediaType("image");
+    setMediaUrl(post.mediaUrl ?? "");
+    setMediaType(post.mediaType ?? "image");
     setMediaError(null);
     setModalMode("post");
   }
@@ -408,17 +419,34 @@ export default function CalendarPage() {
 
     try {
       const base = mapCalendarPostToCreateInput(postData, locationId);
-      const payload = {
-        ...base,
-        status: approve ? ("approved" as const) : base.status,
-        mediaUrl: mediaUrl || null,
-        mediaUrls: mediaUrl ? [mediaUrl] : null,
-        mediaType: mediaUrl ? mediaType : null,
-      };
+      const status = approve ? ("approved" as const) : base.status;
       if (editingPost) {
-        await updateDashboardPost(editingPost.id, payload);
+        const updatePayload: Parameters<typeof updateDashboardPost>[1] = {
+          copy: base.copy,
+          platforms: base.platforms,
+          scheduledFor: base.scheduledFor,
+          status,
+          templateId: base.templateId,
+          pillar: base.pillar,
+        };
+        if (mediaUrl) {
+          updatePayload.mediaUrl = mediaUrl;
+          updatePayload.mediaUrls = [mediaUrl];
+          updatePayload.mediaType = mediaType;
+        } else if (!editingPost.mediaUrl) {
+          updatePayload.mediaUrl = null;
+          updatePayload.mediaUrls = null;
+          updatePayload.mediaType = null;
+        }
+        await updateDashboardPost(editingPost.id, updatePayload);
       } else {
-        await createDashboardPost(payload);
+        await createDashboardPost({
+          ...base,
+          status,
+          mediaUrl: mediaUrl || null,
+          mediaUrls: mediaUrl ? [mediaUrl] : null,
+          mediaType: mediaUrl ? mediaType : null,
+        });
       }
       await loadPosts();
       if (useMetaSchedule) {
@@ -491,7 +519,7 @@ export default function CalendarPage() {
     }
   }
 
-  const postsMap = new Map<string, ScheduledPost[]>();
+  const postsMap = new Map<string, CalendarScheduledPost[]>();
   posts.forEach((p) => {
     const existing = postsMap.get(p.date) || [];
     existing.push(p);

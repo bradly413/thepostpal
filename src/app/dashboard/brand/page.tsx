@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useRef, createContext, useContext, type CSSProperties, type ReactNode } from "react";
+import { useState, useEffect, useRef, useMemo, createContext, useContext, type CSSProperties, type ReactNode } from "react";
 import Link from "next/link";
 import {
   type BrandBookTier,
@@ -84,6 +84,14 @@ const SECTIONS = [
   { id: "applications", no: "07", label: "In Use" },
 ];
 
+const FALLBACK_PALETTE: BrandPalette = {
+  ink: { name: "Ink", hex: "#1A1814", role: "primary-dark", rgb: "26, 24, 20" },
+  bone: { name: "Bone", hex: "#F5F0E8", role: "primary-light", rgb: "245, 240, 232" },
+  signal: { name: "Signal", hex: "#ee2532", role: "accent", rgb: "238, 37, 50" },
+  muted: { name: "Muted", hex: "#9A9288", role: "accent", rgb: "154, 146, 136" },
+  proportion: { ink: 15, bone: 55, signal: 10, muted: 20 },
+};
+
 function useTokens(palette: BrandPalette) {
   return {
     "--primary": palette.ink.hex,
@@ -162,6 +170,13 @@ export default function BrandPage() {
     }
   }, [book]);
 
+  const migrated = useMemo(
+    () => (book ? migrateBrandBook(applyCuratedPaletteToBook(book)) : null),
+    [book],
+  );
+  const palette = migrated?.palette ?? FALLBACK_PALETTE;
+  const tokens = useTokens(palette);
+
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
@@ -184,11 +199,10 @@ export default function BrandPage() {
     );
   }
 
-  const migrated = migrateBrandBook(applyCuratedPaletteToBook(book));
+  const brandBook = migrated!;
   const {
     identity: rawIdentity,
     glance,
-    palette,
     typography,
     voice,
     mark,
@@ -196,7 +210,7 @@ export default function BrandPage() {
     pillars,
     applications,
     collateralPrompts,
-  } = migrated;
+  } = brandBook;
   // Title-case the display name so lowercase input ("brad") doesn't read as
   // "the brad brand". Only fully-lowercase words are capitalized (McDonald, iPhone stay).
   const identity = {
@@ -205,7 +219,6 @@ export default function BrandPage() {
       w === w.toLowerCase() ? w.charAt(0).toUpperCase() + w.slice(1) : w,
     ),
   };
-  const tokens = useTokens(palette);
   const serif = `'${typography.display.family}', Georgia, serif`;
   const sans = `'${typography.body.family}', system-ui, sans-serif`;
 
@@ -215,7 +228,7 @@ export default function BrandPage() {
       <SideToc active={activeSec} palette={palette} />
 
       {/* 00 · COVER */}
-      <CoverEditorial identity={identity} palette={palette} typography={typography} createdAt={migrated.createdAt} voice={voice} />
+      <CoverEditorial identity={identity} palette={palette} typography={typography} createdAt={brandBook.createdAt} voice={voice} />
 
       <div style={{ maxWidth: 1100, margin: "0 auto", padding: "0 clamp(24px, 4vw, 64px)" }}>
         <div
@@ -229,7 +242,7 @@ export default function BrandPage() {
           }}
         >
           <RegenerateBrandButton
-            book={migrated}
+            book={brandBook}
             locationId={locationId}
             onboardingAnswers={onboardingAnswers}
             onRegenerated={reload}
@@ -463,7 +476,7 @@ export default function BrandPage() {
           <div style={{ marginTop: "clamp(56px, 7vw, 96px)", paddingTop: 28, borderTop: ".5px solid rgba(255,255,255,.2)", display: "flex", justifyContent: "space-between", flexWrap: "wrap" as const, gap: 12, fontSize: 10.5, letterSpacing: ".2em", textTransform: "uppercase" as const, opacity: 0.55 }}>
             <span>Brand Guidelines &middot; Vol. I &middot; v1.0</span>
             <span>Set in {typography.display.family} + {typography.body.family}</span>
-            <span>&copy; {new Date(migrated.createdAt).getFullYear()} {identity.name}</span>
+            <span>&copy; {new Date(brandBook.createdAt).getFullYear()} {identity.name}</span>
           </div>
         </footer>
       </div>

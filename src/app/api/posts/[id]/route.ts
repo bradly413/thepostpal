@@ -108,7 +108,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
                 : undefined,
           status: nextStatus,
           mediaUrl:
-            body.mediaUrl === null
+            "mediaUrl" in body && body.mediaUrl === null
               ? null
               : typeof body.mediaUrl === "string"
                 ? body.mediaUrl
