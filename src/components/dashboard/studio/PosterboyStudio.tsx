@@ -870,14 +870,18 @@ export default function PosterboyStudio() {
       setPublishing(true);
       setError("");
       try {
+        // C8: store a fetchable URL, not in-memory base64 — the publish cron hands
+        // mediaUrl straight to Meta, which cannot fetch a data: URI.
+        const { resolvePublicImageUrl } = await import("@/lib/upload-public-image");
+        const mediaPublicUrl = generatedUrl ? await resolvePublicImageUrl(generatedUrl) : null;
         await createDashboardPost({
           locationId,
           copy: fullCaption,
           platforms,
           status: "scheduled",
           scheduledFor,
-          mediaUrl: generatedUrl,
-          mediaUrls: [generatedUrl],
+          mediaUrl: mediaPublicUrl,
+          mediaUrls: mediaPublicUrl ? [mediaPublicUrl] : [],
           mediaType: isVideo ? "video" : "image",
         });
         setPublishState("published");
@@ -899,6 +903,8 @@ export default function PosterboyStudio() {
 
     setPublishing(true);
     setError("");
+    // C8: the public (S3) URL Meta actually published — store THIS, not base64.
+    let publishedMediaUrl: string | null = generatedUrl;
     try {
       if (metaTarget) {
         const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
@@ -909,6 +915,7 @@ export default function PosterboyStudio() {
             ? { videoUrl: generatedUrl, mediaType: "video" as const }
             : { imageUrl: generatedUrl, mediaType: "image" as const }),
         });
+        publishedMediaUrl = payload.imageUrl ?? payload.videoUrl ?? generatedUrl;
         const res = await fetch("/api/meta/publish", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -930,8 +937,8 @@ export default function PosterboyStudio() {
         platforms,
         status: "published",
         scheduledFor: new Date().toISOString(),
-        mediaUrl: generatedUrl,
-        mediaUrls: [generatedUrl],
+        mediaUrl: publishedMediaUrl,
+        mediaUrls: publishedMediaUrl ? [publishedMediaUrl] : [],
         mediaType: isVideo ? "video" : "image",
       });
       setPublishState("published");
