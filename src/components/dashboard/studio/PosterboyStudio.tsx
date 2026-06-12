@@ -81,12 +81,41 @@ gsap.registerPlugin(useGSAP);
 // `publishable` = Posterboy can actually post to it today (Meta only). Others
 // are preview-only until their integration ships — surfaced up front (T4).
 const PLATFORMS = [
+  // w/h are the EXACT output dimensions per platform (Hootsuite 2026 sizes);
+  // every generation is cover-cropped to these pixels on completion.
   { id: "instagram", label: "Instagram", w: 1080, h: 1350, genAspect: "4:5", publishable: true },
-  { id: "facebook", label: "Facebook", w: 1200, h: 630, genAspect: "16:9", publishable: true },
-  { id: "x", label: "X", w: 1600, h: 900, genAspect: "16:9", publishable: false },
+  { id: "facebook", label: "Facebook", w: 1080, h: 1350, genAspect: "4:5", publishable: true },
+  { id: "x", label: "X", w: 1280, h: 720, genAspect: "16:9", publishable: false },
   { id: "linkedin", label: "LinkedIn", w: 1200, h: 627, genAspect: "16:9", publishable: false },
   { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16", publishable: false },
 ] as const;
+
+/** Cover-crop a generated image to the platform's exact pixel dimensions. */
+function resizeToExact(dataUrl: string, w: number, h: number): Promise<string> {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      try {
+        if (img.width === w && img.height === h) return resolve(dataUrl);
+        const c = document.createElement("canvas");
+        c.width = w;
+        c.height = h;
+        const ctx = c.getContext("2d");
+        if (!ctx) return resolve(dataUrl);
+        const sc = Math.max(w / img.width, h / img.height);
+        const dw = img.width * sc;
+        const dh = img.height * sc;
+        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
+        resolve(c.toDataURL("image/jpeg", 0.92));
+      } catch {
+        resolve(dataUrl); // never block on cosmetics
+      }
+    };
+    img.onerror = () => resolve(dataUrl);
+    img.src = dataUrl;
+  });
+}
+
 
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
@@ -354,7 +383,8 @@ export default function PosterboyStudio() {
   }
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const toolRailRef = useRef<HTMLDivElement>(null);
+  const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
+  const platformMenuRef = useRef<HTMLDivElement>(null);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -392,6 +422,25 @@ export default function PosterboyStudio() {
     const qs = next.toString();
     router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
   }, [searchParams, router]);
+
+  // Platform chip menu: outside-click + Escape to close.
+  useEffect(() => {
+    if (!platformMenuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (platformMenuRef.current && !platformMenuRef.current.contains(e.target as Node)) {
+        setPlatformMenuOpen(false);
+      }
+    };
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setPlatformMenuOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [platformMenuOpen]);
 
 
   // Seed history with the tenant's posted images (real, persisted creations) —
@@ -729,8 +778,9 @@ export default function PosterboyStudio() {
       await holdFloor();
       stopTimer();
       setProgress(100);
-      setGeneratedUrl(data.image);
-      pushHistory(data.image, savedPrompt);
+      const exactImg = await resizeToExact(data.image, platform.w, platform.h);
+      setGeneratedUrl(exactImg);
+      pushHistory(exactImg, savedPrompt);
       setGenState("done");
     } catch (err) {
       await holdFloor();
@@ -844,8 +894,9 @@ export default function PosterboyStudio() {
       // 4) assemble the finished post preview
       stopTimer();
       setProgress(100);
-      setGeneratedUrl(iData.image);
-      pushHistory(iData.image, intent);
+      const exactImg = await resizeToExact(iData.image, PLATFORMS[pIdx].w, PLATFORMS[pIdx].h);
+      setGeneratedUrl(exactImg);
+      pushHistory(exactImg, intent);
       setCaptionText("");
       setCaptionTags("");
       setCaptionState("idle");
@@ -1069,21 +1120,73 @@ export default function PosterboyStudio() {
           <div className="canvas-floor" />
 
           <div className="canvas-top">
-            {genState === "done" ? (
+            <div className="top-left">
+              {/* Platform is INFERRED from the prompt (default Instagram) — no
+                  pre-deciding. The chip appears once work exists, to switch. */}
+              {genState !== "idle" || generatedUrl ? (
+                <div className="post-select" ref={platformMenuRef}>
+                  <button
+                    type="button"
+                    className={`dim-chip${platformMenuOpen ? " open" : ""}`}
+                    onClick={() => setPlatformMenuOpen((o) => !o)}
+                    aria-expanded={platformMenuOpen}
+                    aria-haspopup="listbox"
+                    aria-label={`Platform: ${platform.label}, ${platform.w} by ${platform.h}`}
+                  >
+                    <PlatformIcon type={platform.id} />
+                    <span className="post-label">{platform.label}</span>
+                    <span className="post-meta">{platform.w}×{platform.h}</span>
+                    <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
+                  </button>
+                  {platformMenuOpen ? (
+                    <ul className="post-menu" role="listbox" aria-label="Choose platform">
+                      {PLATFORMS.map((p, i) => (
+                        <li key={p.id}>
+                          <button
+                            type="button"
+                            className="post-option"
+                            role="option"
+                            aria-selected={platformIdx === i}
+                            onClick={() => {
+                              setPlatformIdx(i);
+                              setPlatformMenuOpen(false);
+                            }}
+                          >
+                            <span className="post-label">
+                              {p.label}
+                              {p.publishable ? null : <em className="post-soon"> preview only</em>}
+                            </span>
+                            <span className="post-meta">{p.w}×{p.h}</span>
+                          </button>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
+                </div>
+              ) : null}
+              {genState === "done" ? (
+                <button
+                  type="button"
+                  className="preview-toggle"
+                  onClick={() => setShowTemplate((v) => !v)}
+                  aria-pressed={showTemplate}
+                  title={showTemplate ? "Back to edit" : "Preview as post"}
+                >
+                  {showTemplate ? <Pencil size={15} /> : <Eye size={15} />}
+                  <span>{showTemplate ? "Edit" : "Preview"}</span>
+                </button>
+              ) : null}
+            </div>
+            <div className="top-toggles">
               <button
                 type="button"
-                className="preview-toggle"
-                onClick={() => setShowTemplate((v) => !v)}
-                aria-pressed={showTemplate}
-                title={showTemplate ? "Back to edit" : "Preview as post"}
+                className={historyOpen ? "active" : ""}
+                onClick={() => setHistoryOpen((o) => !o)}
+                aria-label="Recent creations"
+                aria-pressed={historyOpen}
               >
-                {showTemplate ? <Pencil size={15} /> : <Eye size={15} />}
-                <span>{showTemplate ? "Edit" : "Preview"}</span>
+                <History size={16} />
               </button>
-            ) : (
-              <div />
-            )}
-            <div className="top-toggles">
               <button
                 type="button"
                 className={theme === "light" ? "active" : ""}
@@ -1103,63 +1206,6 @@ export default function PosterboyStudio() {
                 <LayoutGrid size={16} />
               </button>
             </div>
-          </div>
-
-          {/* Minimal control rail — left of the image */}
-          <div className="tool-rail" ref={toolRailRef}>
-            {PLATFORMS.map((p, i) => (
-              <div className="rail-item" key={p.id}>
-                <button
-                  type="button"
-                  className={`rail-ico${platformIdx === i ? " active" : ""}${p.publishable ? "" : " preview-only"}`}
-                  onClick={() => setPlatformIdx(i)}
-                  aria-pressed={platformIdx === i}
-                  aria-label={p.publishable ? `${p.label} platform` : `${p.label} — preview only, publishing coming soon`}
-                  title={p.publishable ? p.label : `${p.label} — preview only (publishing coming soon)`}
-                >
-                  <PlatformIcon type={p.id} />
-                </button>
-                {platformIdx === i && (
-                  <span className="rail-ico-label">
-                    {p.label}
-                    {p.publishable ? null : <span className="rail-soon">preview only</span>}
-                  </span>
-                )}
-              </div>
-            ))}
-
-            <span className="rail-div" />
-
-            <div className="rail-item">
-              <button
-                type="button"
-                className={`rail-ico${historyOpen ? " open" : ""}`}
-                onClick={() => setHistoryOpen((o) => !o)}
-                aria-pressed={historyOpen}
-                aria-label="Recent creations"
-                title="Recent creations"
-              >
-                <History size={19} />
-              </button>
-            </div>
-
-            <button
-              type="button"
-              className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
-              onClick={() => void publish()}
-              disabled={genState !== "done" || !generatedUrl || publishing}
-              title={
-                publishState === "published"
-                  ? when === "schedule"
-                    ? "Scheduled"
-                    : "Published"
-                  : when === "schedule"
-                    ? "Schedule"
-                    : "Publish"
-              }
-            >
-              {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
-            </button>
           </div>
 
           {/* Intent rail — mirrors the tool-rail on the opposite (right) edge */}
@@ -1444,6 +1490,20 @@ export default function PosterboyStudio() {
               </div>
 
               <span className="rail-div" />
+              <button
+                type="button"
+                className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
+                onClick={() => void publish()}
+                disabled={publishing}
+                title={
+                  publishState === "published"
+                    ? when === "schedule" ? "Scheduled" : "Published"
+                    : when === "schedule" ? "Schedule" : "Publish"
+                }
+                aria-label={when === "schedule" ? "Schedule this post" : "Publish this post"}
+              >
+                {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
+              </button>
               <button
                 type="button"
                 className="rail-ico rail-confirm"
@@ -3048,6 +3108,13 @@ function StudioStyles() {
     from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
   }
+
+  .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
+  .pb-studio .post-soon {
+    font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    text-transform: uppercase; color: #c81e2a; margin-left: 6px;
+  }
+  .pb-studio .dim-chip .icon { width: 15px; height: 15px; }
 
   /* on-canvas 3D stack of recent generations behind the live image */
   .pb-studio .gen-stack {
