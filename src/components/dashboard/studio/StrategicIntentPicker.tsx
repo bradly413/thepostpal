@@ -123,19 +123,21 @@ export default function StrategicIntentPicker({
           .pb-intent-rail { width: 92%; }
         }
         .pb-intent-item { position: relative; display: flex; }
-        .pb-intent-ico {
+        .pb-intent-rail .pb-intent-ico {
           width: 50px; height: 50px; display: grid; place-items: center;
-          border-radius: 14px; color: var(--ink-2, #2a2a2e); background: transparent;
-          transition: color .16s ease, transform .16s ease, filter .2s ease;
+          border-radius: 14px; color: #b6b4b0; background: transparent;
+          transition: color .22s ease, transform .16s ease, filter .25s ease;
         }
-        .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .2s ease; }
-        .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #0d0d10); }
+        .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .25s ease; }
+        .pb-intent-rail .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #1c1c1e); }
         .pb-intent-ico:hover:not(:disabled) svg {
-          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.12));
+          filter: drop-shadow(0 0 6px rgba(238,37,50,0.4))
+            drop-shadow(0 0 14px rgba(238,37,50,0.18));
         }
-        .pb-intent-ico.active { color: #c81e2a; }
+        .pb-intent-rail .pb-intent-ico.active { color: #c81e2a; }
         .pb-intent-ico.active svg {
-          filter: drop-shadow(0 1px 3px rgba(200,30,42,0.3));
+          filter: drop-shadow(0 0 6px rgba(238,37,50,0.45))
+            drop-shadow(0 0 14px rgba(238,37,50,0.2));
         }
         .pb-intent-ico:active:not(:disabled) { transform: scale(0.93); }
         .pb-intent-ico:disabled { opacity: 0.4; cursor: not-allowed; }
