@@ -48,6 +48,7 @@ import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost, fetchDashboardPosts, createDashboardPhoto } from "@/lib/dashboard-api";
 import StudioHistoryGallery, { type StudioHistoryEntry } from "@/components/dashboard/studio/StudioHistoryGallery";
+import FlipWords from "@/lib/ui-snippets/text/FlipWords";
 import { usePlanFeatures, usePlan } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
@@ -184,17 +185,6 @@ function buildPostCaption(body: string, tags: string, fallback: string): string 
   return combined || fallback.trim();
 }
 
-// Short example prompts that typewriter-rotate through the composer placeholder.
-const PROMPT_EXAMPLES = [
-  "an Instagram post about our weekend sale",
-  "a Facebook post for our new menu",
-  "a TikTok about today's special",
-  "a post that we're hiring",
-  "we just hit 1,000 followers",
-  "a grand opening announcement",
-  "a quick thank-you to our customers",
-  "a LinkedIn post about our latest project",
-];
 
 export default function PosterboyStudio() {
   const [platformIdx, setPlatformIdx] = useState(0);
@@ -272,7 +262,6 @@ export default function PosterboyStudio() {
   const [scheduleTime, setScheduleTime] = useState("10:00");
   const [publishing, setPublishing] = useState(false);
   const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
-  const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
   const { locationId, locations } = useActiveLocation();
 
   // Generation history: this session's generations + the tenant's posted images.
@@ -367,47 +356,6 @@ export default function PosterboyStudio() {
     canUndo: canUndoStudioLayers,
   } = useCompositionLayers(studioLayerKey);
 
-  // Typewriter-rotate short example prompts in the placeholder while it's empty.
-  useEffect(() => {
-    if (prompt.trim() || genState === "generating") return;
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    const render = (s: string) => setPlaceholderText(`Make a post — e.g. “${s}”`);
-    if (reduce) {
-      render(PROMPT_EXAMPLES[0]);
-      return;
-    }
-    let ex = 0;
-    let ci = 0;
-    let deleting = false;
-    let timer: ReturnType<typeof setTimeout>;
-    const tick = () => {
-      const full = PROMPT_EXAMPLES[ex];
-      if (!deleting) {
-        ci++;
-        render(full.slice(0, ci));
-        if (ci >= full.length) {
-          deleting = true;
-          timer = setTimeout(tick, 1700);
-          return;
-        }
-        timer = setTimeout(tick, 42 + Math.random() * 38);
-      } else {
-        ci--;
-        render(full.slice(0, ci));
-        if (ci <= 0) {
-          deleting = false;
-          ex = (ex + 1) % PROMPT_EXAMPLES.length;
-          timer = setTimeout(tick, 280);
-          return;
-        }
-        timer = setTimeout(tick, 22);
-      }
-    };
-    timer = setTimeout(tick, 500);
-    return () => clearTimeout(timer);
-  }, [prompt, genState]);
 
   const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
   const [edit, setEdit] = useState(EDIT_DEFAULT);
@@ -1784,11 +1732,27 @@ export default function PosterboyStudio() {
                     placeholder={
                       genState === "done" && promptMode === "image"
                         ? "Describe the new image you want…"
-                        : placeholderText
+                        : ""
                     }
                     disabled={genState === "generating"}
                     aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
                   />
+                  {genState === "idle" && !prompt ? (
+                    <div className="pb-anim-ph" aria-hidden>
+                      <span>make a&nbsp;</span>
+                      <FlipWords
+                        words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
+                        colors={{
+                          instagram: "#C13584",
+                          facebook: "#1877F2",
+                          linkedin: "#0A66C2",
+                          tiktok: "#3a3a3e",
+                          x: "#3a3a3e",
+                        }}
+                      />
+                      <span>&nbsp;post about…</span>
+                    </div>
+                  ) : null}
                   <span className="sr-only" aria-live="polite">
                     {ghostRest ? `Suggestion: ${prompt}${ghostRest} — press Tab to accept.` : ""}
                   </span>
@@ -3312,6 +3276,16 @@ function StudioStyles() {
   }
 
   .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
+
+  /* animated placeholder: make a [flip-word] post about… */
+  .pb-studio .pb-anim-ph {
+    position: absolute; inset: 0;
+    display: flex; align-items: center;
+    pointer-events: none; white-space: pre; overflow: hidden;
+    font-size: 15.5px; font-weight: 400;
+    color: rgba(20, 20, 25, 0.55);
+  }
+  @media (max-width: 600px) { .pb-studio .pb-anim-ph { font-size: 14px; } }
 
   /* ghost-text autofill in the free-form brief */
   .pb-studio .pb-ghost-wrap { position: relative; flex: 1; display: flex; min-width: 0; }
