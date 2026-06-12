@@ -1097,9 +1097,8 @@ export default function PosterboyStudio() {
                     onUpdate={updateStudioLayer}
                   />
                 ) : null}
-                {/* T2: no fabricated percentage — image gen has no real progress
-                    signal. The staged status pill (.gen-status) communicates honestly;
-                    `progress` stays internal to drive the reveal animation only. */}
+                {/* T2: no fabricated percentage — staged status text only;
+                    `progress` stays internal to drive the reveal animation. */}
                 {genState === "generating" && (
                   <div className="gen-progress">{statusText}</div>
                 )}
@@ -1236,10 +1235,6 @@ export default function PosterboyStudio() {
               <button type="button" onClick={() => setError("")}>Dismiss</button>
             </div>
           ) : null}
-
-          {/* The frame's own corner label carries the staged generating text —
-              the floating .gen-status pill duplicated it and collided with the
-              lifted prompt bar. */}
 
           {when === "schedule" ? (
             <div className="studio-schedule-row">
