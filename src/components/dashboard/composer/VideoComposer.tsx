@@ -270,25 +270,25 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
         .pb-video-drop {
           display: flex; align-items: center; justify-content: center;
           min-height: 120px; border: 2px dashed rgba(0,0,0,0.12); border-radius: 14px;
-          font-size: 12px; font-weight: 600; color: rgba(22,22,28,0.55); cursor: pointer;
+          font-size: var(--text-caption); font-weight: 600; color: rgba(22,22,28,0.55); cursor: pointer;
         }
         .pb-video-drop:hover { border-color: rgba(238,37,50,0.35); color: #c41e2a; }
         .pb-video-preview { width: 100%; max-height: 200px; border-radius: 12px; background: #000; object-fit: contain; }
         .pb-video-trim { display: flex; flex-direction: column; gap: 4px; }
-        .pb-video-trim-labels { display: flex; justify-content: space-between; font-size: 11px; opacity: 0.6; }
+        .pb-video-trim-labels { display: flex; justify-content: space-between; font-size: var(--text-label); opacity: 0.6; }
         .pb-video-trim input[type=range] { width: 100%; accent-color: #ee2532; }
         .pb-video-aspects { display: flex; gap: 6px; flex-wrap: wrap; }
         .pb-video-aspects button {
-          padding: 5px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+          padding: 5px 10px; border-radius: 8px; font-size: var(--text-label); font-weight: 600;
           border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8);
         }
         .pb-video-aspects button.active { border-color: rgba(238,37,50,0.4); background: rgba(238,37,50,0.08); color: #c41e2a; }
         .pb-video-overlay {
-          width: 100%; padding: 8px 10px; border-radius: 10px; font-size: 12px;
+          width: 100%; padding: 8px 10px; border-radius: 10px; font-size: var(--text-caption);
           border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9);
         }
         .pb-video-export {
-          padding: 9px 14px; border-radius: 10px; font-size: 12px; font-weight: 700;
+          padding: 9px 14px; border-radius: 10px; font-size: var(--text-caption); font-weight: 700;
           background: #c81e2a; color: #fff; border: none; cursor: pointer;
         }
         .pb-video-export:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -296,8 +296,8 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
           margin-top: 8px; padding: 10px 12px; border-radius: 10px;
           border: 1px dashed rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
         }
-        .pb-video-ai-label { font-size: 11px; font-weight: 700; margin: 0 0 2px; }
-        .pb-video-ai-sub { font-size: 10.5px; margin: 0; opacity: 0.55; }
+        .pb-video-ai-label { font-size: var(--text-label); font-weight: 700; margin: 0 0 2px; }
+        .pb-video-ai-sub { font-size: var(--text-eyebrow); margin: 0; opacity: 0.55; }
       `}</style>
     </div>
   );

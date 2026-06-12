@@ -238,55 +238,55 @@ export default function CaptionVariantPicker({
         .pb-caption-variants { display: flex; flex-direction: column; gap: 8px; }
         .pb-caption-variants-trigger {
           display: inline-flex; align-items: center; gap: 6px;
-          padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+          padding: 7px 12px; border-radius: 10px; font-size: var(--text-caption); font-weight: 600;
           border: 1px solid rgba(238,37,50,0.25); background: rgba(238,37,50,0.06);
-          color: #c41e2a; cursor: pointer; transition: background 0.15s;
+          color: #c41e2a; cursor: pointer; transition: var(--transition-color);
         }
         .pb-caption-variants-trigger:hover:not(:disabled) { background: rgba(238,37,50,0.12); }
         .pb-caption-variants-trigger:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pb-caption-variants-error { font-size: 11.5px; color: #c41e2a; margin: 0; }
-        .pb-caption-variants-loading { font-size: 12px; color: #76767e; margin: 0; }
+        .pb-caption-variants-error { font-size: var(--text-label); color: #c41e2a; margin: 0; }
+        .pb-caption-variants-loading { font-size: var(--text-caption); color: #76767e; margin: 0; }
         .pb-caption-compliance-block {
           padding: 10px 12px; border-radius: 12px;
           border: 1px solid rgba(200,140,40,0.35); background: rgba(200,140,40,0.08);
         }
         .pb-caption-compliance-block-text {
-          font-size: 12px; line-height: 1.45; margin: 0; color: rgba(22,22,28,0.82);
+          font-size: var(--text-caption); line-height: var(--leading-body); margin: 0; color: rgba(22,22,28,0.82);
         }
         .pb-caption-compliance-actions {
           display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 8px;
         }
         .pb-caption-compliance-cta {
-          padding: 6px 10px; border-radius: 8px; font-size: 11px; font-weight: 600;
+          padding: 6px 10px; border-radius: 8px; font-size: var(--text-label); font-weight: 600;
           border: 1px solid rgba(238,37,50,0.35); background: rgba(238,37,50,0.08);
           color: #c41e2a; cursor: pointer;
         }
         .pb-caption-compliance-cta:disabled { opacity: 0.55; cursor: not-allowed; }
         .pb-caption-compliance-label {
-          font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.06em; color: rgba(22,22,28,0.62);
+          font-size: var(--text-eyebrow); font-weight: 700; text-transform: uppercase;
+          letter-spacing: var(--tracking-label); color: rgba(22,22,28,0.62);
         }
         .pb-caption-variants-list { display: flex; flex-direction: column; gap: 8px; max-height: 220px; overflow-y: auto; }
         .pb-caption-variant-card {
           text-align: left; padding: 10px 12px; border-radius: 12px;
           border: 1px solid rgba(0,0,0,0.08); background: rgba(255,255,255,0.92);
-          cursor: pointer; transition: border-color 0.15s, box-shadow 0.15s;
+          cursor: pointer; transition: border-color var(--duration-fast) var(--ease-standard), box-shadow var(--duration-fast) var(--ease-standard);
         }
         .pb-caption-variant-card:hover {
           border-color: rgba(238,37,50,0.35);
           box-shadow: 0 4px 14px rgba(238,37,50,0.08);
         }
         .pb-caption-variant-angle {
-          display: block; font-size: 10px; font-weight: 700; text-transform: uppercase;
-          letter-spacing: 0.06em; color: rgba(22,22,28,0.62); margin-bottom: 4px;
+          display: block; font-size: var(--text-eyebrow); font-weight: 700; text-transform: uppercase;
+          letter-spacing: var(--tracking-label); color: rgba(22,22,28,0.62); margin-bottom: 4px;
         }
-        .pb-caption-variant-text { font-size: 12.5px; line-height: 1.4; margin: 0 0 4px; color: rgba(22,22,28,0.88); }
+        .pb-caption-variant-text { font-size: var(--text-caption); line-height: var(--leading-body); margin: 0 0 4px; color: rgba(22,22,28,0.88); }
         .pb-caption-variant-flag {
-          font-size: 11px; line-height: 1.35; margin: 0 0 4px;
+          font-size: var(--text-label); line-height: 1.35; margin: 0 0 4px;
           color: #9a6b12;
         }
-        .pb-caption-variant-tags { font-size: 11px; color: #1d6fd6; margin: 0 0 6px; }
-        .pb-caption-variant-use { font-size: 10px; font-weight: 600; color: #c41e2a; }
+        .pb-caption-variant-tags { font-size: var(--text-label); color: #1d6fd6; margin: 0 0 6px; }
+        .pb-caption-variant-use { font-size: var(--text-eyebrow); font-weight: 600; color: #c41e2a; }
       `}</style>
     </div>
   );
