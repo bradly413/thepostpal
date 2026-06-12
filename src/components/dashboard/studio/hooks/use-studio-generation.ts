@@ -53,6 +53,8 @@ export type UseStudioGenerationParams = {
   imageSize: "1K" | "2K";
   /** Tenant business type — a hint for the hidden art-director prompt expansion. */
   businessType?: string;
+  /** Active location — lets the server pull the brand book for art direction. */
+  locationId?: string | null;
   platformPinRef: MutableRefObject<boolean>;
   inputRef: RefObject<HTMLInputElement | null>;
   setGenState: Dispatch<SetStateAction<GenState>>;
@@ -81,6 +83,7 @@ export function useStudioGeneration({
   imageQuality,
   imageSize,
   businessType,
+  locationId,
   platformPinRef,
   inputRef,
   setGenState,
@@ -170,6 +173,7 @@ export function useStudioGeneration({
             quality: imageQuality,
             ...(imageQuality === "pro" ? { imageSize } : {}),
             ...(businessType ? { businessType } : {}),
+            ...(locationId ? { locationId } : {}),
           }),
           signal: ctrl.signal,
         });
@@ -215,6 +219,7 @@ export function useStudioGeneration({
       imageQuality,
       imageSize,
       businessType,
+      locationId,
       inputRef,
       setGenState,
       setError,
@@ -260,7 +265,7 @@ export function useStudioGeneration({
       const cRes = await fetch("/api/studio/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent }),
+        body: JSON.stringify({ intent, ...(locationId ? { locationId } : {}) }),
         signal: ctrl.signal,
       });
       const brief = await cRes.json();
@@ -289,6 +294,7 @@ export function useStudioGeneration({
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
           ...(businessType ? { businessType } : {}),
+          ...(locationId ? { locationId } : {}),
         }),
         signal: ctrl.signal,
       });
@@ -338,6 +344,8 @@ export function useStudioGeneration({
     refImage,
     imageQuality,
     imageSize,
+    businessType,
+    locationId,
     inputRef,
     setGenState,
     setError,

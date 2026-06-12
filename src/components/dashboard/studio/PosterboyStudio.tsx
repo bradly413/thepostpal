@@ -326,6 +326,15 @@ export default function PosterboyStudio() {
     const brief = (captionBrief || composerBrief || prompt.trim()).trim();
     return brief ? `Generated image: ${brief}` : "Generated post image";
   }, [captionBrief, composerBrief, prompt]);
+  // A brief about a SPECIFIC property (listing / sold / street address) can't be
+  // imagined by the model — without their photo it invents a house that isn't
+  // theirs. Detect it and steer to the reference-photo flow.
+  const listingBrief = useMemo(() => {
+    const text = `${prompt} ${intentDetail}`;
+    return /\b(listing|just\s+sold|sold\s+at|open\s+house|under\s+contract|new\s+on\s+the\s+market|\d{2,6}\s+[a-z][a-z'.\s]{2,40}(dr|drive|st|street|rd|road|ln|lane|ave|avenue|ct|court|blvd|boulevard|cir|circle|way|pl|place|ter|terrace))\b/i.test(
+      text,
+    );
+  }, [prompt, intentDetail]);
   const selectedIntent = STRATEGIC_INTENTS.find((i) => i.id === selectedIntentId) ?? null;
   const previewHandle =
     activeLocation?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "yourbrand";
@@ -441,6 +450,7 @@ export default function PosterboyStudio() {
     imageQuality,
     imageSize,
     businessType: businessType ?? undefined,
+    locationId,
     platformPinRef,
     inputRef,
     setGenState,
@@ -825,7 +835,10 @@ export default function PosterboyStudio() {
           locationId,
           copy: fullCaption,
           platforms,
-          status: "scheduled",
+          // "approved" = the INTERNAL publish queue (cron-publish READY_STATUSES).
+          // "scheduled" is reserved for posts natively scheduled on Meta's side;
+          // writing it here left posts sitting in the DB forever.
+          status: "approved",
           scheduledFor,
           mediaUrl: mediaPublicUrl,
           mediaUrls: mediaPublicUrl ? [mediaPublicUrl] : [],
@@ -1300,6 +1313,12 @@ export default function PosterboyStudio() {
           {error ? (
             <div className="studio-error">
               <p>{error}</p>
+              {/* "not connected" errors get a real path to the fix, not a hint */}
+              {/connect/i.test(error) && /meta|facebook|instagram/i.test(error) ? (
+                <a className="studio-error-cta" href="/dashboard/settings">
+                  Connect Facebook
+                </a>
+              ) : null}
               <button type="button" onClick={() => setError("")}>Dismiss</button>
             </div>
           ) : null}
@@ -1445,6 +1464,22 @@ export default function PosterboyStudio() {
                 </div>
               )}
             </div>
+
+            {/* Listing briefs need THEIR photo — AI cannot know what the
+                property looks like and would invent one. Non-blocking nudge. */}
+            {genState === "idle" && composerMode === "image" && !refImage && listingBrief ? (
+              <button
+                type="button"
+                className="pb-listing-nudge"
+                onClick={() => refFileRef.current?.click()}
+              >
+                <ImagePlus size={14} aria-hidden />
+                <span>
+                  Posting about a real property? <strong>Add your listing photo</strong> so the
+                  image shows your actual listing — not an AI guess.
+                </span>
+              </button>
+            ) : null}
 
             {/* row 2 — controls left, Generate right */}
             <div className="pb-bar-controls">

@@ -10,8 +10,7 @@ import {
 } from "@/lib/rate-limit";
 import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
-import { withTenantDb } from "@/lib/db";
-import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
+import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
@@ -155,28 +154,11 @@ export async function POST(req: Request) {
     }
   }
 
-  // Per-tenant brand voice from Organization.brandEngine (falls back to the
-  // neutral voice baked into SYSTEM_PROMPT when the tenant has no brand engine).
-  let tenantBrandContext = "";
-  try {
-    await withTenantDb(auth, async (tx) => {
-      const org = await tx.organization.findUnique({
-        where: { id: auth.tenantId },
-        select: { brandEngine: true, name: true, businessType: true },
-      });
-      const dna = readBrandEngineImageContext(org?.brandEngine);
-      const lines: string[] = [];
-      if (org?.name) lines.push(`- Business: ${org.name}${org.businessType ? ` (${org.businessType})` : ""}`);
-      if (dna?.niche) lines.push(`- Niche / focus: ${dna.niche}`);
-      if (dna?.primaryTone) lines.push(`- Voice & tone: ${dna.primaryTone}`);
-      if (dna?.contrastVibe) lines.push(`- Visual vibe: ${dna.contrastVibe}`);
-      if (lines.length > 0) {
-        tenantBrandContext = `\n\n## This Business's Brand\n${lines.join("\n")}\nWrite all content in this business's voice, for this niche and audience.`;
-      }
-    });
-  } catch {
-    /* fall back to the neutral brand voice */
-  }
+  // Per-tenant brand voice — the shared builder reads BOTH the legacy
+  // Organization.brandEngine DNA and the full onboarding brand book
+  // (Location.brandVoiceJson). Falls back to the neutral voice baked into
+  // SYSTEM_PROMPT when the tenant has neither.
+  const tenantBrandContext = await buildTenantBrandContext(auth);
 
   const templateCatalog = await loadTemplateCatalog();
   const templateContext = lastUserMsg

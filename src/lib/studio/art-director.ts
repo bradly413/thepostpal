@@ -21,6 +21,8 @@ Hard rules:
 - Photographic and real by default — NOT illustration, NOT 3D render, NOT generic stock-photo blandness.
 - NO text, words, letters, logos, watermarks, signage, or UI in the image — text is added later and models render it badly.
 - NEVER invent brand names or proper nouns the brief didn't give — keep specifics real but unnamed ("a pilsner on a worn oak bar", not a made-up brewery).
+- REAL PROPERTY RULE: if the brief is about a specific property, listing, address, or a home that sold, you CANNOT know what that property looks like — never depict an invented house/building as if it were the listing. Instead compose a celebratory or transactional real-estate scene that makes no claim about the property itself: a close-up of keys changing hands, a SOLD rider detail, champagne on a moving box, a handshake at a sunlit doorway (door only, not a full facade).
+- If brand visual direction is provided, honor its photography style and let the palette influence accents naturally.
 - Keep every concrete detail the owner specified; never contradict the brief.
 - One coherent scene. No collage, no split panels, no borders.`;
 
@@ -28,8 +30,10 @@ export async function expandImageBrief(opts: {
   brief: string;
   aspectRatio?: string;
   businessType?: string;
+  /** Compact visual brand direction (photography style, palette accents). */
+  brandContext?: string;
 }): Promise<string> {
-  const { brief, aspectRatio, businessType } = opts;
+  const { brief, aspectRatio, businessType, brandContext } = opts;
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return brief;
 
@@ -38,6 +42,7 @@ export async function expandImageBrief(opts: {
     const user = [
       businessType ? `Business: ${businessType}` : null,
       aspectRatio ? `Aspect ratio: ${aspectRatio}` : null,
+      brandContext ? `Brand visual direction (honor this):\n${brandContext}` : null,
       `Brief: ${brief}`,
     ]
       .filter(Boolean)

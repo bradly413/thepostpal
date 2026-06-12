@@ -429,7 +429,14 @@ export default function CalendarPage() {
 
     try {
       const base = mapCalendarPostToCreateInput(postData, locationId);
-      const status = approve ? ("approved" as const) : base.status;
+      // "scheduled" may only persist when Meta is natively scheduling the post
+      // (useMetaSchedule above). Otherwise route through "approved" — the
+      // internal cron queue — or the post would sit in the DB forever.
+      const status = approve
+        ? ("approved" as const)
+        : base.status === "scheduled" && !useMetaSchedule
+          ? ("approved" as const)
+          : base.status;
       if (editingPost) {
         const updatePayload: Parameters<typeof updateDashboardPost>[1] = {
           copy: base.copy,

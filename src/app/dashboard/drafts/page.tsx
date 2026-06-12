@@ -82,8 +82,10 @@ export default function DraftsPage() {
         await submitDashboardPost(id);
         showToast("Sent to the queue. Quietly.");
       } else {
-        // Solo / single-location: no team review — schedule directly.
-        await updateDashboardPost(id, { status: "scheduled" });
+        // Solo / single-location: no team review — queue for publishing directly.
+        // "approved" is the cron's internal publish queue; "scheduled" is
+        // reserved for Meta-native scheduling and would never dispatch.
+        await updateDashboardPost(id, { status: "approved" });
         showToast("Scheduled. Quietly.");
       }
       await load(locationId ?? null);
@@ -104,7 +106,7 @@ export default function DraftsPage() {
         await Promise.all(eligible.map((draft) => submitDashboardPost(draft.id)));
         showToast(`Queued ${eligible.length} ${eligible.length === 1 ? "draft" : "drafts"}.`);
       } else {
-        await Promise.all(eligible.map((draft) => updateDashboardPost(draft.id, { status: "scheduled" })));
+        await Promise.all(eligible.map((draft) => updateDashboardPost(draft.id, { status: "approved" })));
         showToast(`Scheduled ${eligible.length} ${eligible.length === 1 ? "post" : "posts"}.`);
       }
       await load(locationId ?? null);

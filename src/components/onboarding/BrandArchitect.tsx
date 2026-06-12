@@ -482,7 +482,7 @@ export default function BrandArchitect() {
         markOnboardingComplete();
 
         if (data.authMode === "guest") {
-          router.push("/sign-in?next=%2Fdashboard%2Fbrand");
+          router.push("/sign-in?next=%2Fdashboard%2Fstudio");
           return;
         }
         try {
@@ -492,7 +492,10 @@ export default function BrandArchitect() {
         } catch {
           /* local cache is enough until they sign in */
         }
-        router.push("/dashboard/brand");
+        // Hand off into MAKING something — the studio now reads the brand book
+        // they just built (voice + photography direction), so the payoff of
+        // onboarding is their first on-brand post, not a read-only brand page.
+        router.push("/dashboard/studio");
       } catch {
         setBookState("error");
         setSaving(false);

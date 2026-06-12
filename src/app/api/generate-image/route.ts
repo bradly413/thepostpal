@@ -5,6 +5,7 @@ import { withTenantDb } from "@/lib/db";
 import { isProImageEntitled } from "@/lib/plan-features";
 import { isInlineReferenceImage } from "@/lib/reference-image";
 import { expandImageBrief } from "@/lib/studio/art-director";
+import { buildTenantImageBrandContext } from "@/lib/ai-brand-context";
 
 // Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
 // plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
@@ -43,6 +44,7 @@ export async function POST(req: NextRequest) {
     quality?: unknown;
     imageSize?: unknown;
     businessType?: unknown;
+    locationId?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -120,11 +122,17 @@ export async function POST(req: NextRequest) {
   // art-directed it themselves). Falls back to the raw brief on any failure.
   const businessType =
     typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 80) : undefined;
+  const locationId = typeof parsed.locationId === "string" ? parsed.locationId : null;
   const hasReference = isInlineReferenceImage(referenceImage);
+  // Brand book visual direction (photography style + palette) — "" if no book.
+  const brandContext =
+    hasReference || prompt.length > 320
+      ? ""
+      : await buildTenantImageBrandContext(auth, { locationId });
   const promptForModel =
     hasReference || prompt.length > 320
       ? prompt
-      : await expandImageBrief({ brief: prompt, aspectRatio, businessType });
+      : await expandImageBrief({ brief: prompt, aspectRatio, businessType, brandContext });
 
   // Gemini image gen has no aspectRatio config field — hint it in the prompt
   // so portrait/landscape platform formats aren't all returned square.
