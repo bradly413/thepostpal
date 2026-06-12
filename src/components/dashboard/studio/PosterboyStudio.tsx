@@ -512,16 +512,21 @@ export default function PosterboyStudio() {
 
     // a deep link (?mediaUrl=) flips state right after mount — snap, don't glide
     const justMounted = performance.now() - heroMountAtRef.current < 600;
+    // NB: every set/tween below pins `x: 0` alongside `xPercent: -50`. The CSS
+    // base rule centers the bar with `transform: translateX(-50%)`; GSAP reads
+    // that resolved matrix as an absolute x (≈ -halfWidth px) and would ADD its
+    // own -50% on top → double-shifted off-screen left. Zeroing x makes
+    // xPercent the sole horizontal centering. Do not drop the `x: 0`.
     if (heroIdle) {
       if (!composerHeroInit.current || reduce || justMounted) {
-        gsap.set(els, { xPercent: -50, y: heroDelta() });
+        gsap.set(els, { x: 0, xPercent: -50, y: heroDelta() });
       } else {
         heroTweensRef.current.push(
-          gsap.to(els, { xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" }),
+          gsap.to(els, { x: 0, xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" }),
         );
       }
       composerHeroInit.current = true;
-      const onResize = () => gsap.set(els, { xPercent: -50, y: heroDelta() });
+      const onResize = () => gsap.set(els, { x: 0, xPercent: -50, y: heroDelta() });
       window.addEventListener("resize", onResize);
       return () => {
         window.removeEventListener("resize", onResize);
@@ -530,8 +535,8 @@ export default function PosterboyStudio() {
       };
     }
     composerHeroInit.current = true;
-    if (reduce || justMounted) gsap.set(els, { xPercent: -50, y: 0 });
-    else heroTweensRef.current.push(gsap.to(els, { xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" }));
+    if (reduce || justMounted) gsap.set(els, { x: 0, xPercent: -50, y: 0 });
+    else heroTweensRef.current.push(gsap.to(els, { x: 0, xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" }));
     return () => {
       heroTweensRef.current.forEach((t) => t.kill());
       heroTweensRef.current = [];
