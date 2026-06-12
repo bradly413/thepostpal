@@ -592,6 +592,22 @@ export function StudioStyles() {
     display: grid; place-items: center; width: 18px; height: 18px; border-radius: 6px; color: var(--ink-2);
   }
   .pb-studio .pb-ref-chip button:hover { background: rgba(0,0,0,0.08); color: var(--ink); }
+  .pb-studio .pb-tools-trigger {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: 10px;
+    border: 1px solid var(--line-2, rgba(0,0,0,0.12));
+    background: var(--surface, #fff); color: var(--ink-2, #2a2a2e);
+    font-size: var(--text-body-sm, 13px); font-weight: 500; cursor: pointer;
+    white-space: nowrap; max-width: 200px;
+    transition: var(--transition-interactive);
+  }
+  .pb-studio .pb-tools-trigger span { overflow: hidden; text-overflow: ellipsis; }
+  .pb-studio .pb-tools-trigger:hover { border-color: var(--ink-2, #2a2a2e); }
+  .pb-studio .pb-tools-trigger.is-open,
+  .pb-studio .pb-tools-trigger.has-intent {
+    border-color: rgba(238,37,50,0.4); color: var(--green-deep, #c81e2a);
+    background: rgba(238,37,50,0.05);
+  }
   .pb-studio .pb-model-chip {
     flex: none; display: inline-flex; align-items: center; gap: 6px;
     height: 34px; padding: 0 12px; border-radius: 10px;

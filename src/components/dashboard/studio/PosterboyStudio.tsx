@@ -24,6 +24,7 @@ import {
   Download,
   Undo2,
   ImagePlus,
+  Shapes,
   X,
   Sparkles,
   Lock,
@@ -219,6 +220,7 @@ export default function PosterboyStudio() {
   const [imageQuality, setImageQuality] = useState<"standard" | "pro">("standard");
   const [imageSize, setImageSize] = useState<"1K" | "2K">("1K");
   const [qualityOpen, setQualityOpen] = useState(false);
+  const [toolsOpen, setToolsOpen] = useState(false);
 
   const onRefFile = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -327,6 +329,7 @@ export default function PosterboyStudio() {
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
@@ -553,6 +556,7 @@ export default function PosterboyStudio() {
       const n = e.target as Node;
       if (editRailRef.current?.contains(n) || promptToolsRef.current?.contains(n)) return;
       if (modelMenuRef.current?.contains(n)) return;
+      if (toolsMenuRef.current?.contains(n)) return;
       setActiveTool(null);
       setQualityOpen(false);
     };
@@ -561,6 +565,7 @@ export default function PosterboyStudio() {
   }, [activeTool, qualityOpen]);
 
   useFocusTrap(qualityOpen, modelMenuRef, () => setQualityOpen(false));
+  useFocusTrap(toolsOpen, toolsMenuRef, () => setToolsOpen(false));
 
   // Close the edit-rail popover on outside click.
   useEffect(() => {
@@ -977,30 +982,6 @@ export default function PosterboyStudio() {
               </button>
             </div>
           </div>
-
-          {/* Intent rail — mirrors the tool-rail on the opposite (right) edge */}
-          {genState === "idle" && composerMode === "image" ? (
-            <StrategicIntentPicker
-              selectedId={selectedIntentId}
-              onSelect={(id) => {
-                // Tapping the active intent again deselects it — back to free-form.
-                setSelectedIntentId((cur) => (cur === id ? null : id));
-                setIntentDetail("");
-              }}
-              uploadSlot={
-                <TrashToTreasureUploadZone
-                  variant="icon"
-                  onUploaded={(url) => adoptImage(url)}
-                  onElevated={(caption, hashtags) => {
-                    setCaptionText(caption);
-                    setCaptionTags(hashtags.join(" "));
-                    setCaptionState("done");
-                    setCaptionError("");
-                  }}
-                />
-              }
-            />
-          ) : null}
 
           {/* On-canvas 3D stack: the last few generations recede behind the live
               image, fading into the white on both sides. Click one to bring it
@@ -1435,6 +1416,45 @@ export default function PosterboyStudio() {
                 </button>
               ) : composerMode === "image" ? (
                 <>
+                  {/* Tools — post-angle shortcuts, written out, in a menu */}
+                  {genState === "idle" ? (
+                    <div className="pb-tool" ref={toolsMenuRef}>
+                      <button
+                        type="button"
+                        className={`pb-tools-trigger${toolsOpen ? " is-open" : ""}${selectedIntentId ? " has-intent" : ""}`}
+                        onClick={() => setToolsOpen((v) => !v)}
+                        aria-haspopup="menu"
+                        aria-expanded={toolsOpen}
+                        title="Post ideas"
+                      >
+                        <Shapes size={15} />
+                        <span>{selectedIntent ? selectedIntent.label : "Ideas"}</span>
+                      </button>
+                      {toolsOpen ? (
+                        <StrategicIntentPicker
+                          selectedId={selectedIntentId}
+                          onClose={() => setToolsOpen(false)}
+                          onSelect={(id) => {
+                            setSelectedIntentId((cur) => (cur === id ? null : id));
+                            setIntentDetail("");
+                          }}
+                          uploadSlot={
+                            <TrashToTreasureUploadZone
+                              variant="menu-row"
+                              onUploaded={(url) => { adoptImage(url); setToolsOpen(false); }}
+                              onElevated={(caption, hashtags) => {
+                                setCaptionText(caption);
+                                setCaptionTags(hashtags.join(" "));
+                                setCaptionState("done");
+                                setCaptionError("");
+                              }}
+                            />
+                          }
+                        />
+                      ) : null}
+                    </div>
+                  ) : null}
+
                   {/* reference photo — grounds the generation in their real stuff */}
                   <input
                     ref={refFileRef}

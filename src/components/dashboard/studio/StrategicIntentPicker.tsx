@@ -1,7 +1,6 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
-import gsap from "gsap";
+import { type ReactNode } from "react";
 import {
   Rocket,
   CalendarDays,
@@ -16,7 +15,7 @@ import {
   type StrategicIntentId,
 } from "@/lib/studio/strategic-intents";
 
-/** One lucide glyph per intent — mirrors the platform icons on the opposite rail. */
+/** One lucide glyph per intent. */
 const INTENT_ICONS: Record<StrategicIntentId, LucideIcon> = {
   launch: Rocket,
   event: CalendarDays,
@@ -26,150 +25,109 @@ const INTENT_ICONS: Record<StrategicIntentId, LucideIcon> = {
   story: MessageSquareQuote,
 };
 
-/** Short rail labels (the long `label` still drives the AI brief). */
-const SHORT_LABEL: Record<StrategicIntentId, string> = {
-  launch: "Launch",
-  event: "Promote",
-  educate: "Educate",
-  recruit: "Recruit",
-  seasonal: "Holiday",
-  story: "Highlight",
-};
-
 interface Props {
   selectedId: StrategicIntentId | null;
   onSelect: (id: StrategicIntentId) => void;
-  disabled?: boolean;
-  /** Rendered as the last rail item below a divider (e.g. the photo-upload icon). */
+  /** Closes the menu after a pick. */
+  onClose?: () => void;
+  /** Rendered as the last row below a divider (the photo-upload row). */
   uploadSlot?: ReactNode;
 }
 
 /**
- * Strategic intent picker — a vertical icon rail that mirrors the platform
- * tool-rail on the opposite (right) edge of the canvas. Each intent is an icon;
- * hover/focus reveals its description in a frosted panel to the left. Selection
- * uses the brand red (reads on the light idle canvas, where the tool-rail's
- * white-glow would not).
+ * Strategic intent menu — opened from the Tools button in the composer bar.
+ * Each post angle is a written-out row (icon + label + one-line description),
+ * not a bare icon. Selecting one routes the composer into that intent.
  */
 export default function StrategicIntentPicker({
   selectedId,
   onSelect,
-  disabled,
+  onClose,
   uploadSlot,
 }: Props) {
-  const railRef = useRef<HTMLDivElement>(null);
-
-  // GSAP staggered entrance; skipped when the user prefers reduced motion.
-  useEffect(() => {
-    const el = railRef.current;
-    if (!el) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-    const ctx = gsap.context(() => {
-      gsap.from(".pb-intent-item", {
-        autoAlpha: 0,
-        y: 10,
-        duration: 0.42,
-        ease: "power2.out",
-        stagger: 0.05,
-      });
-    }, el);
-    return () => ctx.revert();
-  }, []);
-
   return (
-    <div
-      className="pb-intent-rail"
-      ref={railRef}
-      role="group"
-      aria-label="What are you posting about?"
-    >
+    <div className="pb-tools-menu" role="menu" aria-label="What are you posting about?">
+      <p className="pb-tools-menu-head">What are you posting about?</p>
       {STRATEGIC_INTENTS.map((intent) => {
         const Icon = INTENT_ICONS[intent.id];
         const active = selectedId === intent.id;
         return (
-          <div className="pb-intent-item" key={intent.id}>
-            <button
-              type="button"
-              className={`pb-intent-ico${active ? " active" : ""}`}
-              disabled={disabled}
-              aria-pressed={active}
-              aria-label={intent.label}
-              onClick={() => onSelect(intent.id)}
-            >
-              <Icon size={19} strokeWidth={1.6} aria-hidden />
-            </button>
-            <span className="pb-intent-pop" role="tooltip">{SHORT_LABEL[intent.id]}</span>
-          </div>
+          <button
+            key={intent.id}
+            type="button"
+            role="menuitemradio"
+            aria-checked={active}
+            className={`pb-tool-row${active ? " is-active" : ""}`}
+            onClick={() => {
+              onSelect(intent.id);
+              onClose?.();
+            }}
+          >
+            <Icon size={17} strokeWidth={1.7} aria-hidden className="pb-tool-row-ico" />
+            <span className="pb-tool-row-text">
+              <span className="pb-tool-row-label">{intent.label}</span>
+              <span className="pb-tool-row-desc">{intent.description}</span>
+            </span>
+          </button>
         );
       })}
 
       {uploadSlot ? (
         <>
-          <span className="pb-intent-div" aria-hidden />
+          <span className="pb-tool-row-div" aria-hidden />
           {uploadSlot}
         </>
       ) : null}
 
       <style>{`
-        .pb-intent-rail {
-          /* horizontal strip tucked under the prompt bar, matching its width */
-          position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-          width: min(680px, 78%);
-          display: flex; flex-direction: row; align-items: center;
-          justify-content: space-between;
-          z-index: 16;
+        .pb-studio .pb-tools-menu {
+          position: absolute;
+          bottom: calc(100% + 10px);
+          left: 0;
+          width: 340px;
+          max-width: min(340px, 86vw);
+          background: rgba(255,255,255,0.97);
+          backdrop-filter: blur(20px) saturate(1.6);
+          -webkit-backdrop-filter: blur(20px) saturate(1.6);
+          border: 1px solid rgba(255,255,255,0.7);
+          border-radius: 16px;
+          box-shadow: 0 24px 60px -22px rgba(20,20,40,0.45), 0 2px 8px rgba(20,20,40,0.08);
+          padding: 8px;
+          z-index: 30;
+          animation: pbToolsIn var(--duration-standard, 200ms) var(--ease-enter, ease-out);
         }
-        .pb-intent-item { position: relative; display: flex; }
-        .pb-intent-rail .pb-intent-ico {
-          width: 50px; height: 50px; display: grid; place-items: center;
-          border-radius: 14px; color: #8a8884; background: transparent;
-          transition: color var(--duration-standard) var(--ease-standard), transform var(--duration-fast) var(--ease-spring), filter var(--duration-moderate) var(--ease-standard);
+        @keyframes pbToolsIn {
+          from { opacity: 0; transform: translateY(8px) scale(0.98); }
+          to { opacity: 1; transform: none; }
         }
-        .pb-intent-ico svg { width: 22px; height: 22px; transition: filter var(--duration-moderate) var(--ease-standard); }
-        .pb-intent-rail .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #1c1c1e); }
-        .pb-intent-ico:hover:not(:disabled) svg {
-          filter: drop-shadow(0 0 6px rgba(238,37,50,0.4))
-            drop-shadow(0 0 14px rgba(238,37,50,0.18));
+        .pb-studio .pb-tools-menu-head {
+          margin: 4px 10px 8px;
+          font-size: var(--text-eyebrow, 10.5px); font-weight: 700;
+          letter-spacing: var(--tracking-eyebrow, 0.14em); text-transform: uppercase;
+          color: var(--muted, #8a8884);
         }
-        .pb-intent-rail .pb-intent-ico.active { color: #c81e2a; }
-        .pb-intent-ico.active svg {
-          filter: drop-shadow(0 0 6px rgba(238,37,50,0.45))
-            drop-shadow(0 0 14px rgba(238,37,50,0.2));
+        .pb-studio .pb-tool-row {
+          display: flex; align-items: center; gap: 12px; width: 100%;
+          padding: 9px 10px; border: 0; background: transparent; border-radius: 10px;
+          cursor: pointer; text-align: left; color: var(--ink, #1c1c1e);
+          transition: var(--transition-color);
         }
-        .pb-intent-ico:active:not(:disabled) { transform: scale(0.93); }
-        .pb-intent-ico:disabled { opacity: 0.4; cursor: not-allowed; }
-        .pb-intent-ico-free { color: var(--muted, #6b6b73); }
-
-        .pb-intent-div {
-          width: 1px; height: 20px; background: rgba(0,0,0,0.12); margin: 0 4px;
+        .pb-studio .pb-tool-row:hover, .pb-studio .pb-tool-row:focus-visible {
+          background: rgba(20,20,30,0.05);
         }
-
-        /* Label reveal — ABOVE the icon (the rail sits under the prompt bar). */
-        .pb-intent-pop {
-          position: absolute; bottom: calc(100% + 8px); left: 50%;
-          transform: translateX(-50%) translateY(4px);
-          white-space: nowrap; font-size: var(--text-caption); font-weight: 600; letter-spacing: var(--tracking-tight);
-          color: #1c1c1e; text-shadow: 0 1px 0 rgba(255,255,255,0.85);
-          opacity: 0; visibility: hidden; pointer-events: none; z-index: 19;
-          transition: var(--transition-enter), visibility var(--duration-standard) var(--ease-enter);
+        .pb-studio .pb-tool-row.is-active { background: rgba(238,37,50,0.08); }
+        .pb-studio .pb-tool-row.is-active .pb-tool-row-ico,
+        .pb-studio .pb-tool-row.is-active .pb-tool-row-label { color: var(--green-deep, #c81e2a); }
+        .pb-studio .pb-tool-row-ico { flex: none; color: var(--ink-2, #2a2a2e); }
+        .pb-studio .pb-tool-row-text { display: flex; flex-direction: column; min-width: 0; }
+        .pb-studio .pb-tool-row-label { font-size: var(--text-body-sm, 13px); font-weight: 600; line-height: 1.3; }
+        .pb-studio .pb-tool-row-desc {
+          font-size: var(--text-caption, 12.5px); line-height: 1.35; color: var(--muted, #8a8884);
+          overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
         }
-        .pb-intent-item:hover .pb-intent-pop,
-        .pb-intent-ico:focus-visible + .pb-intent-pop,
-        .pb-intent-ico.active + .pb-intent-pop {
-          opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
-        }
-
-        @media (max-width: 600px) {
-          .pb-intent-rail { width: 92%; }
-          /* R4: 7 fixed 50px items clip on phones — shrink to fit */
-          .pb-intent-rail .pb-intent-ico { width: 38px; height: 42px; }
-          .pb-intent-rail .pb-intent-ico svg { width: 19px; height: 19px; }
-          .pb-intent-div { margin: 0 2px; }
-        }
-
-        @media (prefers-reduced-motion: reduce) {
-          .pb-intent-ico, .pb-intent-pop { transition: none; }
-        }
+        .pb-studio .pb-tool-row-div { display: block; height: 1px; margin: 6px 8px; background: rgba(0,0,0,0.08); }
+        .pb-studio .pb-tool-row-upload[data-dragging] { background: rgba(238,37,50,0.08); }
+        .pb-studio .pb-tool-row-upload[aria-busy="true"] { opacity: 0.7; }
       `}</style>
     </div>
   );

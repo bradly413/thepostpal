@@ -9,7 +9,7 @@ interface Props {
   /** Called with the AI-elevated caption + hashtags so the studio can populate its composer. */
   onElevated?: (caption: string, hashtags: string[]) => void;
   /** "card" = full drop card (default); "icon" = a single rail icon that auto-elevates. */
-  variant?: "card" | "icon";
+  variant?: "card" | "icon" | "menu-row";
 }
 
 export default function TrashToTreasureUploadZone({
@@ -98,7 +98,7 @@ export default function TrashToTreasureUploadZone({
   const handleFile = useCallback(
     async (file: File) => {
       const url = await uploadFile(file);
-      if (url && variant === "icon") await elevateUrl(url);
+      if (url && (variant === "icon" || variant === "menu-row")) await elevateUrl(url);
     },
     [uploadFile, elevateUrl, variant],
   );
@@ -124,6 +124,34 @@ export default function TrashToTreasureUploadZone({
       }}
     />
   );
+
+  // ── Menu-row variant — a full-width labeled row for the Tools menu ──
+  if (variant === "menu-row") {
+    const busy = uploading || elevating;
+    const err = error || elevateError;
+    return (
+      <button
+        type="button"
+        className="pb-tool-row pb-tool-row-upload"
+        disabled={disabled || busy}
+        aria-busy={busy}
+        onClick={() => inputRef.current?.click()}
+        onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+        onDragLeave={() => setDragging(false)}
+        onDrop={onDrop}
+        data-dragging={dragging || undefined}
+      >
+        {fileInput}
+        <ImagePlus size={17} aria-hidden className="pb-tool-row-ico" />
+        <span className="pb-tool-row-text">
+          <span className="pb-tool-row-label">
+            {busy ? (uploading ? "Uploading…" : "Captioning…") : "Upload a photo"}
+          </span>
+          <span className="pb-tool-row-desc">{err ? err : "Use your own — we write the caption."}</span>
+        </span>
+      </button>
+    );
+  }
 
   // ── Icon variant — a single rail glyph (matches .pb-intent-ico) that auto-elevates ──
   if (variant === "icon") {
