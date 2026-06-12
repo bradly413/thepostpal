@@ -39,6 +39,8 @@ const PUBLIC_PREFIXES = [
   // public — the rest of /api/brand-book (GET/PUT CRUD) stays tenant-gated.
   "/onboarding",
   "/api/brand-book/generate",
+  // public lead-magnet tool (its own IP rate limit lives in the route)
+  "/api/tools/",
 ];
 
 function isPublicPath(pathname: string): boolean {

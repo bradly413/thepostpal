@@ -12,10 +12,31 @@ export default function WhatToPostPage() {
   const [offer, setOffer] = useState("");
   const [tone, setTone] = useState("calm");
   const [result, setResult] = useState<ReturnType<typeof generateWeeklyPosts> | null>(null);
+  const [drafting, setDrafting] = useState(false);
+  const [fellBack, setFellBack] = useState(false);
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setResult(generateWeeklyPosts({ businessType, whatsNew, offerOrEvent: offer, tone }));
+    if (drafting) return;
+    setDrafting(true);
+    setFellBack(false);
+    try {
+      // Real drafts from the same engine the product uses; the static
+      // templates below are only the no-AI fallback.
+      const res = await fetch("/api/tools/what-to-post", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ businessType, whatsNew, offer, tone }),
+      });
+      const data = (await res.json()) as ReturnType<typeof generateWeeklyPosts> & { error?: string };
+      if (!res.ok || !Array.isArray(data.posts)) throw new Error(data.error || "unavailable");
+      setResult({ summary: data.summary, posts: data.posts });
+    } catch {
+      setFellBack(true);
+      setResult(generateWeeklyPosts({ businessType, whatsNew, offerOrEvent: offer, tone }));
+    } finally {
+      setDrafting(false);
+    }
   }
 
   return (
@@ -23,7 +44,8 @@ export default function WhatToPostPage() {
       <section className="pb-hero">
         <h1>What should I post this week?</h1>
         <p className="pb-hero-sub">
-          Five suggestions. A suggested schedule. No AI required. posterboy can draft the rest.
+          Five real drafts, written for your business in your tone — the same engine
+          posterboy uses. Takes about ten seconds.
         </p>
       </section>
 
@@ -73,13 +95,18 @@ export default function WhatToPostPage() {
               <option value="professional">Professional</option>
             </select>
           </label>
-          <button type="submit" className="pb-btn-primary">
-            Draft my week
+          <button type="submit" className="pb-btn-primary" disabled={drafting} aria-busy={drafting}>
+            {drafting ? "Drafting your week…" : "Draft my week"}
           </button>
         </form>
 
         {result && (
-          <div style={{ marginTop: "3rem" }}>
+          <div style={{ marginTop: "3rem" }} aria-live="polite">
+            {fellBack ? (
+              <p style={{ marginBottom: "0.5rem", fontSize: "0.85rem", opacity: 0.65 }}>
+                The drafting engine is busy — here&apos;s a starting structure instead.
+              </p>
+            ) : null}
             <p style={{ marginBottom: "1rem" }}>{result.summary}</p>
             <div className="pb-draft-preview">
               {result.posts.map((post) => (
