@@ -347,8 +347,8 @@ export default function DashboardHome() {
         <DashboardHomeStyles />
         <div className="home2" style={{ alignItems: "center", justifyContent: "center" }}>
           <div className="mod" style={{ gridColumn: "1 / -1", maxWidth: 440, margin: "auto", textAlign: "center", minHeight: 0, height: "auto" }}>
-            <h2 style={{ fontFamily: "var(--font-playfair, serif)", fontSize: 26 }}>Calm room, closed door.</h2>
-            <p style={{ marginTop: 10, color: "var(--ink-soft)", fontSize: 14 }}>{error || "This workspace is not ready yet."}</p>
+            <h2 style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "var(--text-stat)" }}>Calm room, closed door.</h2>
+            <p style={{ marginTop: 10, color: "var(--ink-soft)", fontSize: "var(--text-body)" }}>{error || "This workspace is not ready yet."}</p>
             <button onClick={() => void refresh()} className="ghostbtn" style={{ marginTop: 18 }}>Try again</button>
           </div>
         </div>
@@ -591,7 +591,7 @@ export default function DashboardHome() {
               <div className="mhead"><h2 className="mtitle2">Recent Media</h2><Link href="/dashboard/photos" className="viewall">View all</Link></div>
               <div className="mediastrip">
                 {recentMedia.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
+                  <div style={{ fontSize: "var(--text-body-sm)", color: "var(--ink-soft)", padding: "14px 2px" }}>
                     No media yet. <Link href="/dashboard/photos" className="viewall">Add some</Link>.
                   </div>
                 ) : recentMedia.map((m, i) => (
