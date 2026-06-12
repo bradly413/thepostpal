@@ -238,6 +238,7 @@ export async function fetchDashboardPost(id: string): Promise<DashboardPostRecor
 
 export async function deleteDashboardPost(id: string): Promise<void> {
   await apiRequest(`/api/posts/${id}`, { method: "DELETE" });
+  invalidateCachedGet("/api/posts");
 }
 
 export async function createDashboardPost(input: {
@@ -256,6 +257,7 @@ export async function createDashboardPost(input: {
     method: "POST",
     body: JSON.stringify(input),
   });
+  invalidateCachedGet("/api/posts");
   return data.post;
 }
 
@@ -279,6 +281,7 @@ export async function updateDashboardPost(
     method: "PUT",
     body: JSON.stringify(input),
   });
+  invalidateCachedGet("/api/posts");
   return data.post;
 }
 
@@ -286,6 +289,7 @@ export async function submitDashboardPost(id: string): Promise<void> {
   await apiRequest(`/api/posts/${id}/submit-for-approval`, {
     method: "POST",
   });
+  invalidateCachedGet("/api/posts");
 }
 
 // ── Compliance vertical (tenant-scoped) ───────────────────

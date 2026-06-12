@@ -486,8 +486,20 @@ export default function BrandArchitect() {
         cacheStoredOnboardingAnswers(answers);
         markOnboardingComplete();
 
+        // The server returns voice: "structured" | "fallback". Don't silently
+        // treat the deterministic fallback as the AI-grade voice — forward a hint
+        // so the studio can surface "starter voice" and log it for monitoring.
+        const usedFallback = data.voice === "fallback";
+        if (usedFallback) {
+          console.warn("[onboarding] brand voice fell back to deterministic starter voice");
+        }
+        const studioHref = usedFallback
+          ? "/dashboard/studio?voice=starter"
+          : "/dashboard/studio";
+
         if (data.authMode === "guest") {
-          router.push("/sign-in?next=%2Fdashboard%2Fstudio");
+          const next = encodeURIComponent(studioHref);
+          router.push(`/sign-in?next=${next}`);
           return;
         }
         try {
@@ -500,7 +512,7 @@ export default function BrandArchitect() {
         // Hand off into MAKING something — the studio now reads the brand book
         // they just built (voice + photography direction), so the payoff of
         // onboarding is their first on-brand post, not a read-only brand page.
-        router.push("/dashboard/studio");
+        router.push(studioHref);
       } catch {
         setBookState("error");
         setSaving(false);

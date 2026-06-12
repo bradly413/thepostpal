@@ -325,34 +325,35 @@ export const brandVoiceAiSchema = z.object({
   hero: z
     .string()
     .min(12)
-    .max(320)
+    .max(400)
     .describe(
       "One-sentence positioning statement anchored in the user's Compliment choice (best 5-star review theme). Industry-native language only.",
     ),
   weSay: z
-    .array(z.string().min(8).max(280))
-    .min(3)
-    .max(5)
+    .array(z.string().min(8).max(400))
+    .min(2)
+    .max(6)
     .describe(
       "Example social lines shaped by the user's Greeting — how they actually talk when someone walks in.",
     ),
   weDontSay: z
-    .array(z.string().min(8).max(280))
-    .min(3)
+    .array(z.string().min(8).max(400))
+    .min(2)
     .max(6)
     .describe(
       "Off-brand lines — include tones that contradict the Greeting and forbidden industry words.",
     ),
   traits: z
-    .array(z.string().min(2).max(80))
-    .min(3)
-    .max(5)
+    .array(z.string().min(2).max(120))
+    .min(2)
+    .max(6)
     .describe("Short voice trait labels grounded in Dress Code + Greeting, not generic adjectives."),
   collateralPrompts: z
-    .array(z.string().min(40).max(2000))
-    .length(3)
+    .array(z.string().min(20).max(2000))
+    .min(1)
+    .max(4)
     .describe(
-      "Exactly 3 detailed image-generation prompts (Midjourney/Kling). Index 0: custom packaging/bags/boxes. Index 1: branded coaster or physical touchpoint on textured surface. Index 2: modern staff apparel. No paper menu systems.",
+      "1–4 detailed image-generation prompts (Midjourney/Kling), ideally 3. Prefer: custom packaging/bags/boxes; a branded coaster or physical touchpoint on a textured surface; modern staff apparel. No paper menu systems.",
     ),
 });
 
