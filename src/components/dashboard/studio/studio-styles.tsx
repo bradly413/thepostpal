@@ -605,6 +605,10 @@ export function StudioStyles() {
   @keyframes pbBarGlow { to { --pb-bar-angle: 360deg; } }
 
   .pb-studio .pb-bar-input { display: flex; align-items: center; min-height: 30px; }
+  /* "image ready" review gate — shown after generation, before captioning */
+  .pb-studio .pb-ready { display: flex; flex-direction: column; gap: 1px; min-height: 30px; justify-content: center; }
+  .pb-studio .pb-ready-title { font-size: var(--text-body-sm, 14px); font-weight: 600; color: var(--ink, #1c1c1e); line-height: 1.25; }
+  .pb-studio .pb-ready-sub { font-size: var(--text-caption, 12.5px); color: var(--muted, #8a8884); line-height: 1.3; }
   .pb-studio .pb-bar-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .pb-studio .pb-bar-spacer { flex: 1; }
   .pb-studio .pb-ref-chip {

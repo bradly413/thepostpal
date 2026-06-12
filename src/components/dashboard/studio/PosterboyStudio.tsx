@@ -20,6 +20,7 @@ import {
   Maximize2,
   Move,
   RotateCw,
+  ArrowRight,
   SlidersHorizontal,
   Download,
   Undo2,
@@ -193,8 +194,10 @@ export default function PosterboyStudio() {
   // Caption step (after the image is ready): the prompt bar becomes the caption brief.
   const [captionBrief, setCaptionBrief] = useState("");
   const [captionRun, setCaptionRun] = useState(0);
-  // When an image is done, the bar defaults to caption mode; user can switch back to image re-prompt.
-  const [promptMode, setPromptMode] = useState<"image" | "caption">("image");
+  // When an image is done the bar lands on a "review" gate (image ready) — the
+  // user explicitly steps into caption writing, rather than being dropped into
+  // it. From review they can also re-prompt a new image.
+  const [promptMode, setPromptMode] = useState<"image" | "review" | "caption">("image");
   // Reset the caption step whenever we're not on a finished image.
   useEffect(() => {
     if (genState !== "done") {
@@ -202,7 +205,7 @@ export default function PosterboyStudio() {
       setCaptionRun(0);
       setPromptMode("image");
     } else {
-      setPromptMode("caption");
+      setPromptMode("review");
     }
   }, [genState]);
   const submitCaption = () => {
@@ -1281,7 +1284,12 @@ export default function PosterboyStudio() {
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
             {/* row 1 — the brief / caption input */}
             <div className="pb-bar-input">
-              {genState === "done" && promptMode === "caption" ? (
+              {genState === "done" && promptMode === "review" ? (
+                <div className="pb-ready">
+                  <span className="pb-ready-title">Your image is ready</span>
+                  <span className="pb-ready-sub">Write a caption next, or make another image.</span>
+                </div>
+              ) : genState === "done" && promptMode === "caption" ? (
                 <input
                   ref={inputRef}
                   value={captionBrief}
@@ -1311,17 +1319,18 @@ export default function PosterboyStudio() {
                       the full "make a [platform] post about …" is composed at
                       submit. Empty = flipping platforms; typing freezes it to
                       the selected platform. */}
-                  {prefixActive ? (
+                  {/* Lead-in is a teaser only: it shows while the field is
+                      empty (flipping platforms) and clears the instant the
+                      user types, so they see just their own words. The full
+                      "make a [platform] post about …" is still composed at
+                      submit via composerBrief. */}
+                  {prefixActive && !prompt ? (
                     <span className="pb-prefix" aria-hidden>
                       <span>make a&nbsp;</span>
-                      {prompt ? (
-                        <span style={{ color: PLATFORM_INK[platform.id] }}>{platform.id}</span>
-                      ) : (
-                        <FlipWords
-                          words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
-                          colors={PLATFORM_INK}
-                        />
-                      )}
+                      <FlipWords
+                        words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
+                        colors={PLATFORM_INK}
+                      />
                       <span>&nbsp;post about&nbsp;</span>
                     </span>
                   ) : null}
@@ -1400,7 +1409,7 @@ export default function PosterboyStudio() {
                 <ImageIcon size={18} />
               </button>
 
-              {genState === "done" && promptMode === "caption" ? (
+              {genState === "done" && (promptMode === "review" || promptMode === "caption") ? (
                 <button
                   type="button"
                   className="pb-reprompt"
@@ -1559,24 +1568,43 @@ export default function PosterboyStudio() {
               <button
                 type="button"
                 className="pb-generate"
-                onClick={() =>
-                  genState === "done" && promptMode === "caption"
-                    ? submitCaption()
-                    : void composeFromIntent()
-                }
+                onClick={() => {
+                  if (genState === "done" && promptMode === "review") {
+                    setPromptMode("caption");
+                    window.setTimeout(() => inputRef.current?.focus(), 0);
+                  } else if (genState === "done" && promptMode === "caption") {
+                    submitCaption();
+                  } else {
+                    void composeFromIntent();
+                  }
+                }}
                 disabled={
-                  genState === "done" && promptMode === "caption"
-                    ? !captionBrief.trim()
-                    : genState === "generating" || composerMode === "video" || !composerBrief
+                  genState === "done" && promptMode === "review"
+                    ? false
+                    : genState === "done" && promptMode === "caption"
+                      ? !captionBrief.trim()
+                      : genState === "generating" || composerMode === "video" || !composerBrief
                 }
                 aria-label={
-                  genState === "done" && promptMode === "caption"
-                    ? "Write caption options"
-                    : "Make a post"
+                  genState === "done" && promptMode === "review"
+                    ? "Write a caption"
+                    : genState === "done" && promptMode === "caption"
+                      ? "Write caption options"
+                      : "Make a post"
                 }
               >
-                <Wand2 size={16} />
-                <span>{genState === "done" && promptMode === "caption" ? "Captions" : "Generate"}</span>
+                {genState === "done" && promptMode === "review" ? (
+                  <ArrowRight size={16} />
+                ) : (
+                  <Wand2 size={16} />
+                )}
+                <span>
+                  {genState === "done" && promptMode === "review"
+                    ? "Write caption"
+                    : genState === "done" && promptMode === "caption"
+                      ? "Captions"
+                      : "Generate"}
+                </span>
               </button>
             </div>
           </div>
