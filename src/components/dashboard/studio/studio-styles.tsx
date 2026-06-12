@@ -61,7 +61,7 @@ export function StudioStyles() {
     box-shadow: 0 8px 24px rgba(15, 15, 20, 0.12);
   }.pb-studio .studio-error button {
     margin-top: 8px;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 500;
     color: var(--red-press);
   }.pb-studio .sidebar { grid-area: sidebar; min-width: 0; }.pb-studio .canvas { grid-area: canvas;  min-width: 0; }.pb-studio /* ============ CANVAS ============ */
@@ -158,7 +158,7 @@ export function StudioStyles() {
     border: 1px solid rgba(255,255,255,0.4);
     border-radius: 12px;
     padding: 10px 14px;
-    font-size: 13.5px;
+    font-size: var(--text-body);
     font-weight: 500;
     color: var(--ink);
     cursor: pointer;
@@ -187,10 +187,10 @@ export function StudioStyles() {
     width: 100%;
     padding: 9px 12px;
     border-radius: 9px;
-    font-size: 13.5px;
+    font-size: var(--text-body);
     color: var(--ink);
     transition: var(--transition-color);
-  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
+  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: var(--text-caption); font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
     display: flex;
     background: rgba(255,255,255,0.85);
     backdrop-filter: blur(12px) saturate(160%);
@@ -257,7 +257,7 @@ export function StudioStyles() {
     animation: pbsLabelIn 0.22s ease;
   }.pb-studio .tool-rail .rail-ico.preview-only svg { opacity: 0.5; }
   .pb-studio .tool-rail .rail-soon {
-    display: block; margin-top: 1px; font-size: 10px; font-weight: 600;
+    display: block; margin-top: 1px; font-size: var(--text-eyebrow); font-weight: 600;
     letter-spacing: 0.04em; text-transform: uppercase; color: #c81e2a;
     text-shadow: 0 0 4px rgba(255,255,255,0.9);
   }@keyframes pbsLabelIn {
@@ -271,7 +271,7 @@ export function StudioStyles() {
   }.pb-studio .tool-rail .rail-publish:not(:disabled) {
     color: #fff;
     background: var(--ink);
-  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail.edit-rail .rail-pop { left: auto; right: calc(100% + 12px); }.pb-studio .edit-pop { padding: 12px; min-width: 190px; }.pb-studio .edit-pop .edit-row { display: flex; justify-content: space-between; align-items: center; font-size: 12px; color: var(--ink); font-weight: 500; padding: 0 2px; }.pb-studio .edit-pop .edit-row:not(:first-child) { margin-top: 9px; }.pb-studio .edit-pop .edit-val { color: var(--muted); font-variant-numeric: tabular-nums; }.pb-studio .edit-pop input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--line-2); border-radius: 4px; margin: 5px 0 2px; cursor: pointer; }.pb-studio .edit-pop input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }.pb-studio .edit-pop input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: var(--ink); cursor: pointer; }.pb-studio .edit-pop .edit-reset { display: block; margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; font-size: 12px; font-weight: 600; text-align: center; color: var(--muted); background: rgba(0,0,0,0.05); }.pb-studio .edit-pop .edit-reset:hover { background: rgba(0,0,0,0.09); color: var(--ink); }.pb-studio .tool-rail .rail-pop {
+  }.pb-studio .tool-rail .rail-publish:not(:disabled):hover { transform: translateY(-1px); background: #000; }.pb-studio .tool-rail .rail-publish.published:not(:disabled) { background: var(--green); }.pb-studio .edit-rail { left: auto; right: 26px; }.pb-studio .tool-rail .rail-confirm:not(:disabled) { color: #fff; background: var(--green); }.pb-studio .tool-rail .rail-confirm:not(:disabled):hover { transform: translateY(-1px); background: #15924f; }.pb-studio .tool-rail.edit-rail .rail-pop { left: auto; right: calc(100% + 12px); }.pb-studio .edit-pop { padding: 12px; min-width: 190px; }.pb-studio .edit-pop .edit-row { display: flex; justify-content: space-between; align-items: center; font-size: var(--text-caption); color: var(--ink); font-weight: 500; padding: 0 2px; }.pb-studio .edit-pop .edit-row:not(:first-child) { margin-top: 9px; }.pb-studio .edit-pop .edit-val { color: var(--muted); font-variant-numeric: tabular-nums; }.pb-studio .edit-pop input[type="range"] { width: 100%; height: 4px; -webkit-appearance: none; appearance: none; background: var(--line-2); border-radius: 4px; margin: 5px 0 2px; cursor: pointer; }.pb-studio .edit-pop input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; appearance: none; width: 15px; height: 15px; border-radius: 50%; background: var(--ink); cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.25); }.pb-studio .edit-pop input[type="range"]::-moz-range-thumb { width: 15px; height: 15px; border: none; border-radius: 50%; background: var(--ink); cursor: pointer; }.pb-studio .edit-pop .edit-reset { display: block; margin-top: 12px; width: 100%; padding: 8px; border-radius: 8px; font-size: var(--text-caption); font-weight: 600; text-align: center; color: var(--muted); background: rgba(0,0,0,0.05); }.pb-studio .edit-pop .edit-reset:hover { background: rgba(0,0,0,0.09); color: var(--ink); }.pb-studio .tool-rail .rail-pop {
     position: absolute;
     left: calc(100% + 12px);
     top: 50%;
@@ -299,12 +299,12 @@ export function StudioStyles() {
     width: 100%;
     padding: 9px 12px;
     border-radius: 9px;
-    font-size: 13.5px;
+    font-size: var(--text-body);
     color: var(--ink);
     transition: var(--transition-color);
   }.pb-studio .tool-rail .rail-pop button svg { width: 15px; height: 15px; color: var(--muted); }.pb-studio .tool-rail .rail-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .tool-rail .rail-pop button.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .tool-rail .rail-pop button.active svg { color: var(--red); }.pb-studio .tool-rail .rail-pop .pro-tag {
     margin-left: auto;
-    font-size: 9px;
+    font-size: var(--text-eyebrow);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--muted-2);
@@ -427,7 +427,7 @@ export function StudioStyles() {
     position: absolute;
     top: 12px;
     right: 12px;
-    font-size: 12px;
+    font-size: var(--text-caption);
     font-weight: 600;
     font-variant-numeric: tabular-nums;
     color: rgba(40,32,24,0.62);
@@ -607,11 +607,11 @@ export function StudioStyles() {
   .pb-studio .pb-model-pop button { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; }
   .pb-studio .pb-model-pop button:disabled { opacity: 0.55; cursor: default; }
   .pb-studio .pb-model-name { display: inline-flex; align-items: center; gap: 6px; font-weight: 600; font-size: var(--text-body-sm); }
-  .pb-studio .pb-model-sub { font-size: 11.5px; color: var(--ink-2); }
+  .pb-studio .pb-model-sub { font-size: var(--text-label); color: var(--ink-2); }
   .pb-studio .pb-dim-chip {
     flex: none; display: inline-flex; align-items: center; gap: 4px;
     height: 34px; padding: 0 11px; border-radius: 10px; white-space: nowrap;
-    border: 1px dashed rgba(0,0,0,0.14); color: var(--ink-2); font-size: 12px; font-weight: 600;
+    border: 1px dashed rgba(0,0,0,0.14); color: var(--ink-2); font-size: var(--text-caption); font-weight: 600;
   }
   .pb-studio .pb-size-toggle { font: inherit; color: #c41e2a; font-weight: 700; }
   .pb-studio .pb-size-toggle:hover { text-decoration: underline; }
@@ -696,12 +696,12 @@ export function StudioStyles() {
     width: 100%;
     padding: 9px 12px;
     border-radius: 9px;
-    font-size: 13.5px;
+    font-size: var(--text-body);
     color: var(--ink);
     transition: var(--transition-color);
   }.pb-studio .pb-tools-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .pb-tools-pop .pro-tag {
     margin-left: auto;
-    font-size: 9px;
+    font-size: var(--text-eyebrow);
     font-weight: 700;
     letter-spacing: 0.06em;
     color: var(--muted-2);
@@ -722,9 +722,9 @@ export function StudioStyles() {
     position: absolute; bottom: 216px; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 8px; padding: 8px 12px;
     border-radius: 12px; background: rgba(255,255,255,0.88);
-    border: 1px solid rgba(0,0,0,0.08); font-size: 12px; z-index: 6;
+    border: 1px solid rgba(0,0,0,0.08); font-size: var(--text-caption); z-index: 6;
   }.pb-studio .studio-schedule-row input {
-    border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px 8px; font-size: 12px;
+    border: 1px solid rgba(0,0,0,0.1); border-radius: 8px; padding: 4px 8px; font-size: var(--text-caption);
   }.pb-studio .studio-video-compose {
     display: flex; align-items: center; justify-content: center;
     width: 100%; height: 100%; padding: 24px;
@@ -734,7 +734,7 @@ export function StudioStyles() {
   }.pb-studio .studio-video-el { width: 100%; flex: 1; object-fit: contain; background: #000; }
   .pb-studio .studio-video-cap { padding: 10px 14px; font-size: var(--text-body-sm); line-height: 1.4; }
   .pb-studio .studio-caption-error, .pb-studio .studio-caption-error-overlay {
-    font-size: 11.5px; color: #c41e2a; margin: 6px 0 0;
+    font-size: var(--text-label); color: #c41e2a; margin: 6px 0 0;
   }.pb-studio .studio-caption-error-overlay {
     position: absolute; bottom: 12px; left: 14px; right: 14px;
     padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
@@ -868,7 +868,7 @@ export function StudioStyles() {
   }
   @media (max-width: 600px) { .pb-studio .pb-ghost { font-size: var(--text-body); } }
   .pb-studio .post-soon {
-    font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
+    font-style: normal; font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: 0.04em;
     text-transform: uppercase; color: #c81e2a; margin-left: 6px;
   }
   .pb-studio .dim-chip .icon { width: 15px; height: 15px; }
