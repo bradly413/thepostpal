@@ -48,6 +48,7 @@ import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost } from "@/lib/dashboard-api";
+import ParticleImageAssemble from "@/lib/ui-snippets/animations/ParticleImageAssemble";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
@@ -130,6 +131,9 @@ export default function PosterboyStudio() {
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
   const [progress, setProgress] = useState(0);
   const [showTemplate, setShowTemplate] = useState(false);
+  // Particle reveal: plays once over the frame each time a NEW image lands.
+  const [revealUrl, setRevealUrl] = useState<string | null>(null);
+  const lastRevealedRef = useRef<string | null>(null);
   const [captionState, setCaptionState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
@@ -337,6 +341,26 @@ export default function PosterboyStudio() {
     const qs = next.toString();
     router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
   }, [searchParams, router]);
+
+  // Fire the particle reveal only when a GENERATION completes (generating →
+  // done with a fresh image) — not for media arriving via URL or edits.
+  const prevGenStateRef = useRef<GenState>("idle");
+  useEffect(() => {
+    const was = prevGenStateRef.current;
+    prevGenStateRef.current = genState;
+    if (genState === "generating") {
+      setRevealUrl(null);
+      return;
+    }
+    if (genState !== "done" || was !== "generating") return;
+    if (!generatedUrl || mediaKind !== "image") return;
+    if (generatedUrl === lastRevealedRef.current) return;
+    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    lastRevealedRef.current = generatedUrl;
+    setRevealUrl(generatedUrl);
+    const t = window.setTimeout(() => setRevealUrl(null), 3400);
+    return () => window.clearTimeout(t);
+  }, [genState, generatedUrl, mediaKind]);
 
   // Track the canvas size so the board can be sized in exact pixels — both
   // width and height then animate smoothly between platform aspect ratios.
@@ -1096,6 +1120,13 @@ export default function PosterboyStudio() {
                 style={{ backgroundImage: `url('${generatedUrl}')` }}
                 aria-hidden
               />
+            ) : null}
+            {/* Generation reveal: the freshly generated image assembles from a
+                particle swarm over the frame, then dissolves to the real result. */}
+            {revealUrl ? (
+              <div className="gen-reveal" aria-hidden>
+                <ParticleImageAssemble src={revealUrl} gap={4} duration={1700} delay={80} />
+              </div>
             ) : null}
             {showTemplate ? (
               <>
@@ -2893,6 +2924,20 @@ function StudioStyles() {
     from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
   }
+
+  /* generation reveal: particle swarm assembles the new image over the frame,
+     then the whole overlay dissolves to the real result beneath */
+  .pb-studio .frame-wrap .gen-reveal {
+    position: absolute;
+    inset: 0;
+    z-index: 30;
+    pointer-events: none;
+    border-radius: 6px;
+    overflow: hidden;
+    background: linear-gradient(180deg, #fbfbfb 0%, #efefef 100%);
+    animation: pbsRevealOut 0.65s ease 2.55s forwards;
+  }
+  @keyframes pbsRevealOut { to { opacity: 0; } }
 
   /* ambient backlight: blurred copy of the generated image behind the frame */
   .pb-studio .frame-wrap .ambient-glow {
