@@ -35,8 +35,8 @@ export default function CollateralPromptsSection({
         id="collateral-heading"
         style={{
           margin: 0,
-          fontSize: 11,
-          letterSpacing: "0.2em",
+          fontSize: "var(--text-label)",
+          letterSpacing: "var(--tracking-section)",
           textTransform: "uppercase",
           fontWeight: 600,
           color: "var(--neutral)",
@@ -47,8 +47,8 @@ export default function CollateralPromptsSection({
       <p
         style={{
           margin: "12px 0 0",
-          fontSize: 15,
-          lineHeight: 1.55,
+          fontSize: "var(--text-ui)",
+          lineHeight: "var(--leading-body)",
           color: "var(--ink)",
           maxWidth: "52ch",
           opacity: 0.85,
@@ -71,8 +71,8 @@ export default function CollateralPromptsSection({
           <li key={i}>
             <div
               style={{
-                fontSize: 11,
-                letterSpacing: "0.14em",
+                fontSize: "var(--text-label)",
+                letterSpacing: "var(--tracking-eyebrow)",
                 textTransform: "uppercase",
                 fontWeight: 600,
                 color: "var(--neutral)",
@@ -111,8 +111,8 @@ function PromptBlock({ text }: { text: string }) {
           borderRadius: 12,
           background: "#323232",
           color: "#f4f4f5",
-          fontSize: 13,
-          lineHeight: 1.55,
+          fontSize: "var(--text-body-sm)",
+          lineHeight: "var(--leading-body)",
           fontFamily: "ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace",
           whiteSpace: "pre-wrap",
           wordBreak: "break-word",
