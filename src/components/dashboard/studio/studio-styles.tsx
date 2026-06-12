@@ -797,39 +797,15 @@ export function StudioStyles() {
     position: absolute; bottom: 12px; left: 14px; right: 14px;
     padding: 8px 10px; border-radius: 10px; background: rgba(255,255,255,0.92);
     border: 1px solid rgba(238,37,50,0.2); z-index: 8;
-  }.pb-studio .studio-caption-tools {
-    position: absolute; top: 50%; right: 32px; transform: translateY(-50%);
-    z-index: 16; width: 268px; max-height: 72%; overflow-y: auto;
-    padding: 12px; border-radius: 16px;
-    background: rgba(255,255,255,0.97);
-    -webkit-backdrop-filter: blur(16px) saturate(1.4);
-    backdrop-filter: blur(16px) saturate(1.4);
-    border: 1px solid rgba(0,0,0,0.07);
-    box-shadow: 0 16px 38px -12px rgba(15,15,20,0.34);
+  }.pb-studio .pb-caption-field {
+    /* the caption field crossfades when a new option is rotated in */
+    transition: opacity var(--duration-fast) var(--ease-standard);
   }
-  .pb-studio .pb-caption-head {
-    display: flex; align-items: center; justify-content: space-between;
-    margin: 2px 2px 10px;
-  }
-  .pb-studio .pb-caption-head-title {
-    font-size: var(--text-eyebrow, 10.5px); font-weight: 700;
-    letter-spacing: var(--tracking-eyebrow, 0.14em); text-transform: uppercase;
-    color: var(--muted, #8a8884);
-  }
-  .pb-studio .pb-caption-close {
-    display: inline-flex; align-items: center; gap: 4px;
-    border: 0; background: transparent; cursor: pointer; padding: 4px 6px;
-    border-radius: 8px; color: var(--ink-2, #2a2a2e);
-    font-size: var(--text-caption, 12.5px); font-weight: 600;
-    transition: var(--transition-color);
-  }
-  .pb-studio .pb-caption-close:hover { background: rgba(20,20,30,0.06); color: var(--ink, #1c1c1e); }
-  @media (max-width: 1240px) {
-    .pb-studio .studio-caption-tools {
-      top: auto; bottom: 226px; right: 50%; transform: translateX(50%);
-      width: min(340px, 84%); max-height: 50%;
-    }
-  }.pb-studio .canvas-theme-grid::after {
+  .pb-studio .pb-caption-field.is-fading { opacity: 0; }
+  .pb-studio .pb-caption-status { margin-top: 2px; }
+  .pb-studio .pb-caption-status .pb-caption-variants-loading,
+  .pb-studio .pb-caption-status .pb-caption-variants-error { margin: 2px 2px 0; }
+  .pb-studio .canvas-theme-grid::after {
     content: ""; position: absolute; inset: 0; pointer-events: none; z-index: 1;
     background-image:
       linear-gradient(rgba(255,255,255,0.16) 1px, transparent 1px),

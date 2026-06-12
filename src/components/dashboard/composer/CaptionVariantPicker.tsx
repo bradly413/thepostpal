@@ -38,6 +38,11 @@ interface Props {
   runSignal?: number;
   /** Hide the built-in "Generate options" button (when driven externally). */
   hideTrigger?: boolean;
+  /** Fires with the full variant set on success — lets a parent render its own
+   *  picker UI (e.g. an in-input rotator) instead of the built-in card list. */
+  onVariants?: (variants: CaptionVariant[]) => void;
+  /** Headless: fetch + surface loading/error/compliance only — no card list. */
+  headless?: boolean;
 }
 
 export default function CaptionVariantPicker({
@@ -50,6 +55,8 @@ export default function CaptionVariantPicker({
   platforms,
   runSignal,
   hideTrigger,
+  onVariants,
+  headless,
 }: Props) {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
@@ -99,6 +106,7 @@ export default function CaptionVariantPicker({
       }
       setCompliance(data.compliance ?? null);
       setVariants(data.variants);
+      onVariants?.(data.variants);
     } catch {
       setError("Network error. Try again.");
     } finally {
@@ -203,7 +211,7 @@ export default function CaptionVariantPicker({
         </div>
       ) : null}
 
-      {variants.length > 0 ? (
+      {variants.length > 0 && !headless ? (
         <div className="pb-caption-variants-list">
           {variants.map((v, i) => {
             const flag = warnFlags?.get(i);

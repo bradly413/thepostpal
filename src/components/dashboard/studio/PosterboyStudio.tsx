@@ -38,7 +38,7 @@ import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
 import FacebookPreview from "@/components/dashboard/studio/FacebookPreview";
 import StrategicIntentPicker from "@/components/dashboard/studio/StrategicIntentPicker";
 import TrashToTreasureUploadZone from "@/components/dashboard/studio/TrashToTreasureUploadZone";
-import CaptionVariantPicker from "@/components/dashboard/composer/CaptionVariantPicker";
+import CaptionVariantPicker, { type CaptionVariant } from "@/components/dashboard/composer/CaptionVariantPicker";
 import {
   buildStructuredBrief,
   STRATEGIC_INTENTS,
@@ -194,6 +194,14 @@ export default function PosterboyStudio() {
   // Caption step (after the image is ready): the prompt bar becomes the caption brief.
   const [captionBrief, setCaptionBrief] = useState("");
   const [captionRun, setCaptionRun] = useState(0);
+  // Caption ideas are generated into the existing input and cycled in place
+  // (no overlay): variants[idx] populates the field, a rotate control crossfades
+  // to the next. captionSourceBrief preserves the brief once the field becomes
+  // the caption, so re-generation still works.
+  const [captionVariants, setCaptionVariants] = useState<CaptionVariant[]>([]);
+  const [captionVariantIdx, setCaptionVariantIdx] = useState(0);
+  const [captionSourceBrief, setCaptionSourceBrief] = useState("");
+  const [capFading, setCapFading] = useState(false);
   // When an image is done the bar lands on a "review" gate (image ready) — the
   // user explicitly steps into caption writing, rather than being dropped into
   // it. From review they can also re-prompt a new image.
@@ -203,17 +211,55 @@ export default function PosterboyStudio() {
     if (genState !== "done") {
       setCaptionBrief("");
       setCaptionRun(0);
+      setCaptionVariants([]);
+      setCaptionVariantIdx(0);
+      setCaptionSourceBrief("");
       setPromptMode("image");
     } else {
       setPromptMode("review");
     }
   }, [genState]);
-  const submitCaption = () => {
-    if (!captionBrief.trim()) return;
-    setCaptionRun((n) => n + 1);
-  };
   // The AI's caption as generated — compared to the final at publish to learn edits.
   const aiCaptionRef = useRef("");
+  const submitCaption = () => {
+    const b = captionBrief.trim();
+    if (!b) return;
+    setCaptionSourceBrief(b); // keep the brief; the field becomes the caption
+    setCaptionVariants([]);
+    setCaptionVariantIdx(0);
+    setCaptionRun((n) => n + 1);
+  };
+  // Apply a generated variant into the editable caption field (and the post).
+  const applyCaptionVariant = (v: CaptionVariant) => {
+    aiCaptionRef.current = v.caption;
+    setCaptionBrief(v.caption);
+    setCaptionText(v.caption);
+    setCaptionTags(v.hashtags.join(" "));
+    setCaptionState("done");
+    setCaptionError("");
+  };
+  // First batch arrives — drop option 1 into the field with a fade-in.
+  const onCaptionVariants = (vs: CaptionVariant[]) => {
+    setCaptionVariants(vs);
+    setCaptionVariantIdx(0);
+    if (!vs[0]) return;
+    setCapFading(true);
+    window.setTimeout(() => {
+      applyCaptionVariant(vs[0]);
+      setCapFading(false);
+    }, 150);
+  };
+  // Crossfade to the next cached option, in place.
+  const rotateCaption = () => {
+    if (captionVariants.length < 2) return;
+    const next = (captionVariantIdx + 1) % captionVariants.length;
+    setCapFading(true);
+    window.setTimeout(() => {
+      setCaptionVariantIdx(next);
+      applyCaptionVariant(captionVariants[next]);
+      setCapFading(false);
+    }, 150);
+  };
 
   // Composer-bar image controls: optional reference photo (grounds the generation
   // in their real product/place) + plan-gated model quality (Nano Banana Pro).
@@ -1298,11 +1344,24 @@ export default function PosterboyStudio() {
               ) : genState === "done" && promptMode === "caption" ? (
                 <input
                   ref={inputRef}
+                  className={`pb-caption-field${capFading ? " is-fading" : ""}`}
                   value={captionBrief}
-                  onChange={(e) => setCaptionBrief(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && submitCaption()}
-                  placeholder="What should the caption be about?"
-                  aria-label="What should the caption be about?"
+                  onChange={(e) => {
+                    setCaptionBrief(e.target.value);
+                    // once the field holds a caption, edits ARE the caption
+                    if (captionVariants.length > 0) setCaptionText(e.target.value);
+                  }}
+                  onKeyDown={(e) =>
+                    e.key === "Enter" && captionVariants.length === 0 && submitCaption()
+                  }
+                  placeholder={
+                    captionVariants.length > 0
+                      ? "Your caption — edit it however you like"
+                      : "What should the caption be about?"
+                  }
+                  aria-label={
+                    captionVariants.length > 0 ? "Caption — editable" : "What should the caption be about?"
+                  }
                 />
               ) : selectedIntent ? (
                 <input
@@ -1584,87 +1643,86 @@ export default function PosterboyStudio() {
 
               <span className="pb-bar-spacer" />
 
-              <button
-                type="button"
-                className="pb-generate"
-                onClick={() => {
-                  if (genState === "done" && promptMode === "review") {
-                    setPromptMode("caption");
-                    window.setTimeout(() => inputRef.current?.focus(), 0);
-                  } else if (genState === "done" && promptMode === "caption") {
-                    submitCaption();
-                  } else {
-                    void composeFromIntent();
-                  }
-                }}
-                disabled={
-                  genState === "done" && promptMode === "review"
-                    ? false
-                    : genState === "done" && promptMode === "caption"
-                      ? !captionBrief.trim()
-                      : genState === "generating" || composerMode === "video" || !composerBrief
-                }
-                aria-label={
-                  genState === "done" && promptMode === "review"
-                    ? "Write a caption"
-                    : genState === "done" && promptMode === "caption"
-                      ? "Write caption options"
-                      : "Make a post"
-                }
-              >
-                {genState === "done" && promptMode === "review" ? (
-                  <ArrowRight size={16} />
-                ) : (
-                  <Wand2 size={16} />
-                )}
-                <span>
-                  {genState === "done" && promptMode === "review"
-                    ? "Write caption"
-                    : genState === "done" && promptMode === "caption"
-                      ? "Captions"
-                      : "Generate"}
-                </span>
-              </button>
+              {(() => {
+                const inReview = genState === "done" && promptMode === "review";
+                const inCaption = genState === "done" && promptMode === "caption";
+                const hasVariants = inCaption && captionVariants.length > 0;
+                return (
+                  <button
+                    type="button"
+                    className="pb-generate"
+                    onClick={() => {
+                      if (inReview) {
+                        setPromptMode("caption");
+                        window.setTimeout(() => inputRef.current?.focus(), 0);
+                      } else if (inCaption) {
+                        if (hasVariants) rotateCaption();
+                        else submitCaption();
+                      } else {
+                        void composeFromIntent();
+                      }
+                    }}
+                    disabled={
+                      inReview
+                        ? false
+                        : inCaption
+                          ? hasVariants
+                            ? captionVariants.length < 2
+                            : !captionBrief.trim()
+                          : genState === "generating" || composerMode === "video" || !composerBrief
+                    }
+                    aria-label={
+                      inReview
+                        ? "Write a caption"
+                        : hasVariants
+                          ? "Try another caption"
+                          : inCaption
+                            ? "Write caption options"
+                            : "Make a post"
+                    }
+                  >
+                    {inReview ? (
+                      <ArrowRight size={16} />
+                    ) : hasVariants ? (
+                      <RotateCw size={16} />
+                    ) : (
+                      <Wand2 size={16} />
+                    )}
+                    <span>
+                      {inReview
+                        ? "Write caption"
+                        : hasVariants
+                          ? `Another ${captionVariantIdx + 1}/${captionVariants.length}`
+                          : inCaption
+                            ? "Captions"
+                            : "Generate"}
+                    </span>
+                  </button>
+                );
+              })()}
             </div>
-          </div>
 
-          {/* Caption step — appears after the image, driven by the prompt bar ("what should the caption be about?") */}
-          {genState === "done" && captionRun > 0 ? (
-            <div className="studio-caption-tools">
-              <div className="pb-caption-head">
-                <span className="pb-caption-head-title">Caption ideas</span>
-                <button
-                  type="button"
-                  className="pb-caption-close"
-                  onClick={() => {
-                    setCaptionRun(0);
-                    setPromptMode("review");
-                  }}
-                  aria-label="Close caption ideas"
-                >
-                  <X size={14} />
-                  <span>Close</span>
-                </button>
+            {/* Caption generation runs headless: variants land in the field
+                above and cycle in place via the "Another" button. This only
+                surfaces a thin loading / error / compliance line — no overlay
+                covering the image. */}
+            {genState === "done" && promptMode === "caption" && captionRun > 0 ? (
+              <div className="pb-caption-status">
+                <CaptionVariantPicker
+                  headless
+                  brief={captionSourceBrief || composerBrief}
+                  platform={platform.id}
+                  runSignal={captionRun}
+                  hideTrigger
+                  approvalPipeline={features.approvalPipeline}
+                  locationId={locationId}
+                  platforms={socialPlatformsFromComposerId(platform.id)}
+                  onVariants={onCaptionVariants}
+                  onSelect={() => {}}
+                />
               </div>
-              <CaptionVariantPicker
-                brief={captionBrief || composerBrief || captionText}
-                platform={platform.id}
-                runSignal={captionRun}
-                hideTrigger
-                approvalPipeline={features.approvalPipeline}
-                locationId={locationId}
-                platforms={socialPlatformsFromComposerId(platform.id)}
-                onSelect={(v) => {
-                  aiCaptionRef.current = v.caption;
-                  setCaptionText(v.caption);
-                  setCaptionTags(v.hashtags.join(" "));
-                  setCaptionState("done");
-                  setCaptionError("");
-                  setCaptionRun(0); // chosen — close the picker
-                }}
-              />
-            </div>
-          ) : null}
+            ) : null}
+          </div>
         </main>
 
       </div>
