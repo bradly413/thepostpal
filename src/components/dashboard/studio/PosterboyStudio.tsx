@@ -50,7 +50,7 @@ import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost, fetchDashboardPosts, createDashboardPhoto } from "@/lib/dashboard-api";
 import StudioHistoryGallery, { type StudioHistoryEntry } from "@/components/dashboard/studio/StudioHistoryGallery";
-import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
+import { usePlanFeatures, usePlan } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
@@ -91,21 +91,56 @@ const PLATFORMS = [
 ] as const;
 
 // Ghost-text autofill for the free-form brief (Tab to accept). Curated,
-// instant, no API calls — completions an SMB owner actually types.
-const AUTOFILL_PROMPTS = [
-  "an instagram post about today's special",
-  "an instagram post about our weekend hours",
-  "an instagram post about something new on the menu",
-  "an instagram post about a customer favorite",
-  "a facebook post about our latest five-star review",
-  "a facebook post about an upcoming event",
-  "a facebook post about a behind-the-scenes moment",
-  "a tiktok about behind the scenes at the shop",
-  "a linkedin post about our latest project",
-  "a post about today's special",
-  "a post about something new this week",
-  "a post that we're hiring",
+// instant, no API calls — and BRAND-AWARE: topics follow the tenant's
+// business type so a salon sees salon things, not menu items.
+const AUTOFILL_FORMS = [
+  "an instagram post about ",
+  "a facebook post about ",
+  "a post about ",
+  "a tiktok about ",
+  "a linkedin post about ",
 ];
+const AUTOFILL_TOPICS: { match: RegExp; topics: string[] }[] = [
+  {
+    match: /food|cafe|café|coffee|restaurant|bak|brew|bar|pizz|deli|kitchen|hospitality/i,
+    topics: ["today's special", "something new on the menu", "our weekend brunch", "a customer favorite", "behind the counter this morning"],
+  },
+  {
+    match: /salon|beauty|spa|barber|hair|nail|lash|aesthet/i,
+    topics: ["a fresh color transformation", "this week's openings", "a client's new look", "our self-care sunday", "booking for the weekend"],
+  },
+  {
+    match: /real ?estate|realtor|property|brokerage|homes/i,
+    topics: ["our newest listing", "a just-sold home", "an open house this weekend", "a neighborhood we love", "tips for first-time buyers"],
+  },
+  {
+    match: /fitness|gym|yoga|pilates|train|crossfit|studio/i,
+    topics: ["this week's class schedule", "a member milestone", "a quick form tip", "our morning crew", "new member specials"],
+  },
+  {
+    match: /retail|boutique|shop|store|clothing|gift/i,
+    topics: ["new arrivals this week", "a staff pick", "our weekend sale", "a customer favorite", "a restock everyone asked for"],
+  },
+];
+const AUTOFILL_GENERIC = [
+  "something new this week",
+  "our latest five-star review",
+  "a behind-the-scenes moment",
+  "an upcoming event",
+];
+
+function buildAutofillPrompts(businessType: string | null): string[] {
+  const vertical = businessType
+    ? AUTOFILL_TOPICS.find((v) => v.match.test(businessType))?.topics ?? []
+    : [];
+  const topics = [...vertical, ...AUTOFILL_GENERIC];
+  const out: string[] = [];
+  for (const form of AUTOFILL_FORMS) {
+    for (const t of topics) out.push(form + t);
+  }
+  out.push("a post that we're hiring");
+  return out;
+}
 
 /** Cover-crop a generated image to the platform's exact pixel dimensions. */
 function resizeToExact(dataUrl: string, w: number, h: number): Promise<string> {
@@ -296,6 +331,7 @@ export default function PosterboyStudio() {
       return next.slice(0, 14);
     });
   const features = usePlanFeatures();
+  const { businessType } = usePlan();
   const activeLocation = useMemo(
     () => locations.find((l) => l.id === locationId) ?? null,
     [locations, locationId],
@@ -405,13 +441,14 @@ export default function PosterboyStudio() {
 
   // Ghost completion for the free-form brief: first curated prompt that
   // extends what's typed (case-insensitive). Tab accepts it.
+  const autofillPrompts = useMemo(() => buildAutofillPrompts(businessType), [businessType]);
   const ghostRest = useMemo(() => {
     if (genState === "generating") return "";
     const typed = prompt.toLowerCase();
     if (typed.trim().length < 4 || typed !== typed.trimStart()) return "";
-    const hit = AUTOFILL_PROMPTS.find((a) => a.startsWith(typed) && a.length > typed.length);
+    const hit = autofillPrompts.find((a) => a.startsWith(typed) && a.length > typed.length);
     return hit ? hit.slice(typed.length) : "";
-  }, [prompt, genState]);
+  }, [prompt, genState, autofillPrompts]);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);

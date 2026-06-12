@@ -14,6 +14,7 @@ interface PlanContextValue {
   locationCount: number;
   role: string | null;
   isSuperadmin: boolean;
+  businessType: string | null;
   loading: boolean;
 }
 
@@ -23,6 +24,7 @@ const PlanContext = createContext<PlanContextValue>({
   locationCount: 0,
   role: null,
   isSuperadmin: false,
+  businessType: null,
   loading: true,
 });
 
@@ -32,6 +34,8 @@ interface MeResponse {
   organizationId: string;
   isSuperadmin: boolean;
   locationCount: number;
+  businessType?: string | null;
+  organization?: { businessType?: string | null };
   addons?: { proImages?: boolean };
 }
 
@@ -42,6 +46,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     locationCount: 0,
     role: null,
     isSuperadmin: false,
+    businessType: null,
     loading: true,
   });
 
@@ -66,6 +71,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           locationCount: data.locationCount,
           role: data.role,
           isSuperadmin: data.isSuperadmin,
+          businessType: data.organization?.businessType ?? data.businessType ?? null,
           loading: false,
         });
       } catch {
