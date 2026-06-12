@@ -125,6 +125,14 @@ const AUTOFILL_TOPICS: { match: RegExp; topics: string[] }[] = [
     topics: ["new arrivals this week", "a staff pick", "our weekend sale", "a customer favorite", "a restock everyone asked for"],
   },
 ];
+const PLATFORM_INK: Record<string, string> = {
+  instagram: "#C13584",
+  facebook: "#1877F2",
+  linkedin: "#0A66C2",
+  tiktok: "#3a3a3e",
+  x: "#3a3a3e",
+};
+
 const AUTOFILL_GENERIC = [
   "something new this week",
   "our latest five-star review",
@@ -252,7 +260,17 @@ export default function PosterboyStudio() {
     () => buildStructuredBrief(selectedIntentId, intentDetail),
     [selectedIntentId, intentDetail],
   );
-  const composerBrief = structuredBrief || prompt.trim();
+  // Prefix mode: the bar reads "make a [platform] post about |" and the user
+  // types only the SUBJECT ("thanksgiving"); the full sentence is composed
+  // here. Typing a platform/post sentence of your own exits prefix mode.
+  const typedOwnSentence = /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b|\bpost\b|^make\b/i.test(prompt);
+  const prefixActive =
+    genState === "idle" && composerMode === "image" && !selectedIntentId && !typedOwnSentence;
+  const composerBrief = structuredBrief
+    ? structuredBrief
+    : prefixActive && prompt.trim()
+      ? `make a ${PLATFORMS[platformIdx].id} post about ${prompt.trim()}`
+      : prompt.trim();
   const previewImageLabel = useMemo(() => {
     const brief = (captionBrief || composerBrief || prompt.trim()).trim();
     return brief ? `Generated image: ${brief}` : "Generated post image";
@@ -288,10 +306,24 @@ export default function PosterboyStudio() {
   const ghostRest = useMemo(() => {
     if (genState === "generating") return "";
     const typed = prompt.toLowerCase();
-    if (typed.trim().length < 4 || typed !== typed.trimStart()) return "";
+    if (typed !== typed.trimStart()) return "";
+    if (prefixActive) {
+      // prefix mode: the user is typing the SUBJECT — complete it from the
+      // "post about …" tails of the curated prompts.
+      if (typed.trim().length < 2) return "";
+      const needle = ` post about ${typed}`;
+      const hit = autofillPrompts.find((a) => {
+        const i = a.indexOf(needle);
+        return i >= 0 && a.length > i + needle.length;
+      });
+      if (!hit) return "";
+      const i = hit.indexOf(needle);
+      return hit.slice(i + needle.length);
+    }
+    if (typed.trim().length < 4) return "";
     const hit = autofillPrompts.find((a) => a.startsWith(typed) && a.length > typed.length);
     return hit ? hit.slice(typed.length) : "";
-  }, [prompt, genState, autofillPrompts]);
+  }, [prompt, genState, autofillPrompts, prefixActive]);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -1294,55 +1326,67 @@ export default function PosterboyStudio() {
                 />
               ) : (
                 <div className="pb-ghost-wrap">
-                  <input
-                    ref={inputRef}
-                    value={prompt}
-                    onChange={(e) => setPrompt(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Tab" && ghostRest) {
-                        e.preventDefault();
-                        setPrompt(prompt + ghostRest);
-                        return;
-                      }
-                      // R5: Enter must not fire the image pipeline while the
-                      // video composer is open (it would unmount it mid-config).
-                      if (e.key === "Enter" && genState !== "generating" && composerMode === "image")
-                        void composeFromIntent();
-                    }}
-                    placeholder={
-                      genState === "done" && promptMode === "image"
-                        ? "Describe the new image you want…"
-                        : ""
-                    }
-                    disabled={genState === "generating"}
-                    aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
-                  />
-                  {genState === "idle" && !prompt ? (
-                    <div className="pb-anim-ph" aria-hidden>
+                  {/* The lead-in is REAL: the user types only the subject and
+                      the full "make a [platform] post about …" is composed at
+                      submit. Empty = flipping platforms; typing freezes it to
+                      the selected platform. */}
+                  {prefixActive ? (
+                    <span className="pb-prefix" aria-hidden>
                       <span>make a&nbsp;</span>
-                      <FlipWords
-                        words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
-                        colors={{
-                          instagram: "#C13584",
-                          facebook: "#1877F2",
-                          linkedin: "#0A66C2",
-                          tiktok: "#3a3a3e",
-                          x: "#3a3a3e",
-                        }}
-                      />
-                      <span>&nbsp;post about…</span>
-                    </div>
+                      {prompt ? (
+                        <span style={{ color: PLATFORM_INK[platform.id] }}>{platform.id}</span>
+                      ) : (
+                        <FlipWords
+                          words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
+                          colors={PLATFORM_INK}
+                        />
+                      )}
+                      <span>&nbsp;post about&nbsp;</span>
+                    </span>
                   ) : null}
-                  <span className="sr-only" aria-live="polite">
-                    {ghostRest ? `Suggestion: ${prompt}${ghostRest} — press Tab to accept.` : ""}
+                  <span className="pb-input-shell">
+                    <input
+                      ref={inputRef}
+                      value={prompt}
+                      onChange={(e) => setPrompt(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Tab" && ghostRest) {
+                          e.preventDefault();
+                          setPrompt(prompt + ghostRest);
+                          return;
+                        }
+                        // R5: Enter must not fire the image pipeline while the
+                        // video composer is open (it would unmount it mid-config).
+                        if (e.key === "Enter" && genState !== "generating" && composerMode === "image")
+                          void composeFromIntent();
+                      }}
+                      placeholder={
+                        genState === "done" && promptMode === "image"
+                          ? "Describe the new image you want…"
+                          : prefixActive
+                            ? "…"
+                            : ""
+                      }
+                      disabled={genState === "generating"}
+                      aria-label={
+                        genState === "done"
+                          ? "Describe a new image"
+                          : prefixActive
+                            ? `What should the ${platform.id} post be about?`
+                            : "Describe your post"
+                      }
+                    />
+                    <span className="sr-only" aria-live="polite">
+                      {ghostRest ? `Suggestion: ${prompt}${ghostRest} — press Tab to accept.` : ""}
+                    </span>
+                    {ghostRest ? (
+                      <div className="pb-ghost" aria-hidden>
+                        <span className="pb-ghost-typed">{prompt}</span>
+                        <span className="pb-ghost-rest">{ghostRest}</span>
+                        <span className="pb-ghost-key">tab</span>
+                      </div>
+                    ) : null}
                   </span>
-                  {ghostRest ? (
-                    <div className="pb-ghost" aria-hidden>
-                      <span className="pb-ghost-typed">{prompt}</span>
-                      <span className="pb-ghost-rest">{ghostRest}</span>
-                      <span className="pb-ghost-key">tab</span>
-                    </div>
-                  ) : null}
                 </div>
               )}
             </div>
