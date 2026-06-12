@@ -189,7 +189,7 @@ export function StudioStyles() {
     border-radius: 9px;
     font-size: 13.5px;
     color: var(--ink);
-    transition: background 0.14s ease;
+    transition: var(--transition-color);
   }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
     display: flex;
     background: rgba(255,255,255,0.85);
@@ -215,7 +215,7 @@ export function StudioStyles() {
     border: 1px solid rgba(0,0,0,0.06);
     box-shadow: 0 2px 12px rgba(0,0,0,0.08);
     font-size: var(--text-body-sm); font-weight: 600; color: var(--ink);
-    cursor: pointer; transition: background 0.2s ease, transform 0.2s ease, color 0.2s ease;
+    cursor: pointer; transition: var(--transition-interactive);
   }.pb-studio .preview-toggle:hover { background: #fff; transform: translateY(-1px); }.pb-studio .preview-toggle svg { width: 15px; height: 15px; }.pb-studio .preview-toggle[aria-pressed="true"] { background: var(--red-press, #c81e2a); color: #fff; border-color: transparent; box-shadow: 0 6px 18px -6px rgba(200,30,42,0.55); }.pb-studio /* Minimal control rail — left of the image */
   .tool-rail {
     position: absolute;
@@ -301,7 +301,7 @@ export function StudioStyles() {
     border-radius: 9px;
     font-size: 13.5px;
     color: var(--ink);
-    transition: background 0.14s ease;
+    transition: var(--transition-color);
   }.pb-studio .tool-rail .rail-pop button svg { width: 15px; height: 15px; color: var(--muted); }.pb-studio .tool-rail .rail-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .tool-rail .rail-pop button.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .tool-rail .rail-pop button.active svg { color: var(--red); }.pb-studio .tool-rail .rail-pop .pro-tag {
     margin-left: auto;
     font-size: 9px;
@@ -420,7 +420,7 @@ export function StudioStyles() {
       radial-gradient(52% 56% at 52% 82%, rgba(150,112,80,0.5), transparent 75%);
     filter: blur(20px);
     opacity: 0;
-    transition: opacity 0.5s ease;
+    transition: opacity var(--duration-slow) var(--ease-standard);
     z-index: 3;
     pointer-events: none;
   }.pb-studio .frame .gen-progress {
@@ -443,7 +443,7 @@ export function StudioStyles() {
     background-size: cover;
     background-position: center;
     opacity: 0;
-    transition: opacity 0.4s ease-out;
+    transition: opacity var(--duration-slow) var(--ease-exit);
     z-index: 4;
   }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio .frame.editable { cursor: grab; touch-action: none; }.pb-studio .frame.editable:active { cursor: grabbing; }
   .pb-studio .frame { transition: filter 0.85s cubic-bezier(0.2,0.7,0.2,1); }
@@ -582,7 +582,7 @@ export function StudioStyles() {
     height: 34px; padding: 0 12px; border-radius: 10px;
     border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
     color: var(--ink-2); font-size: var(--text-caption); font-weight: 600; white-space: nowrap;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: var(--transition-color);
   }
   .pb-studio .pb-ref-chip:hover { border-color: rgba(0,0,0,0.26); color: var(--ink); }
   .pb-studio .pb-ref-chip.has-image { padding: 0 8px 0 4px; }
@@ -597,7 +597,7 @@ export function StudioStyles() {
     height: 34px; padding: 0 12px; border-radius: 10px;
     border: 1px solid rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
     color: var(--ink-2); font-size: var(--text-caption); font-weight: 600; white-space: nowrap;
-    transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    transition: var(--transition-color);
   }
   .pb-studio .pb-model-chip:hover { border-color: rgba(0,0,0,0.26); color: var(--ink); }
   .pb-studio .pb-model-chip.is-pro {
@@ -621,7 +621,7 @@ export function StudioStyles() {
     background: var(--red-press, #c81e2a); border: 1px solid var(--red-press, #c81e2a); color: #fff;
     font-size: var(--text-body); font-weight: 600; white-space: nowrap;
     box-shadow: 0 12px 26px -12px rgba(238,37,50,0.7);
-    transition: background 0.15s ease, opacity 0.15s ease;
+    transition: var(--transition-color), opacity var(--duration-fast) var(--ease-standard);
   }
   .pb-studio .pb-generate:hover:not(:disabled) { background: #d61f2b; }
   .pb-studio .pb-generate:disabled { opacity: 0.4; cursor: default; box-shadow: none; }.pb-studio .prompt-bar:focus-within {
@@ -698,7 +698,7 @@ export function StudioStyles() {
     border-radius: 9px;
     font-size: 13.5px;
     color: var(--ink);
-    transition: background 0.14s ease;
+    transition: var(--transition-color);
   }.pb-studio .pb-tools-pop button:hover { background: rgba(0,0,0,0.05); }.pb-studio .pb-tools-pop .pro-tag {
     margin-left: auto;
     font-size: 9px;
@@ -819,7 +819,7 @@ export function StudioStyles() {
     /* room below for the intent strip AND its pop-up labels; transform is
        GSAP-owned (hero-center <-> home), so transition only paint props */
     bottom: 96px;
-    transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
+    transition: border-color var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), background-color var(--duration-moderate) var(--ease-standard);
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
     border-color: rgba(0, 0, 0, 0.07);
     box-shadow:
@@ -926,7 +926,7 @@ export function StudioStyles() {
   .pb-studio .gs-card:hover .gs-img { filter: saturate(1); }
   @media (max-width: 1100px) { .pb-studio .gen-stack { display: none; } }
   @media (prefers-reduced-motion: reduce) {
-    .pb-studio .gs-card { transition: opacity 0.3s ease; animation: none; }
+    .pb-studio .gs-card { transition: opacity var(--duration-moderate) var(--ease-standard); animation: none; }
   }
 
   /* done: just the image — no paper-sheet pulse, no white glow ring. The
