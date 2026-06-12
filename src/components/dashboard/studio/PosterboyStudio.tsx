@@ -1167,7 +1167,8 @@ export default function PosterboyStudio() {
             <StrategicIntentPicker
               selectedId={selectedIntentId}
               onSelect={(id) => {
-                setSelectedIntentId(id);
+                // Tapping the active intent again deselects it — back to free-form.
+                setSelectedIntentId((cur) => (cur === id ? null : id));
                 setIntentDetail("");
               }}
               uploadSlot={
