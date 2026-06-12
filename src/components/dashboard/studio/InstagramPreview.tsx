@@ -75,7 +75,7 @@ export default function InstagramPreview({
           background: linear-gradient(135deg, #f9ce34 0%, #ee2a7b 50%, #6228d7 100%);
           border: 2px solid #fff; box-shadow: 0 0 0 1px rgba(0,0,0,0.06);
         }
-        .igpv-handle { font-weight: 600; font-size: 13px; flex: 1; min-width: 0; }
+        .igpv-handle { font-weight: 600; font-size: var(--text-body-sm); flex: 1; min-width: 0; }
         .igpv-more { color: rgba(38,38,38,0.7); flex: none; }
         .igpv-media { width: 100%; background-size: cover; background-position: center; }
         .igpv-foot { padding-bottom: 10px; }
@@ -84,15 +84,15 @@ export default function InstagramPreview({
         }
         .igpv-actions-left { display: inline-flex; align-items: center; gap: 14px; }
         .igpv-actions > svg:last-child { margin-left: auto; }
-        .igpv-likes { font-weight: 600; font-size: 13px; padding: 2px 14px; margin: 0; }
+        .igpv-likes { font-weight: 600; font-size: var(--text-body-sm); padding: 2px 14px; margin: 0; }
         .igpv-caption {
-          font-size: 13.5px; line-height: 1.45; padding: 2px 14px 0; margin: 0;
+          font-size: var(--text-body); line-height: var(--leading-body); padding: 2px 14px 0; margin: 0;
           overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
           display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
         }
         .igpv-tags { color: #00376b; }
         .igpv-meta {
-          padding: 6px 14px 0; margin: 0; font-size: 10px; letter-spacing: 0.04em;
+          padding: 6px 14px 0; margin: 0; font-size: var(--text-eyebrow); letter-spacing: 0.04em;
           text-transform: uppercase; color: rgba(38,38,38,0.45);
         }
         .igpv-skel { display: inline-block; width: 100%; }

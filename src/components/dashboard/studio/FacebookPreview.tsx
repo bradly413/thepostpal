@@ -99,14 +99,14 @@ export default function FacebookPreview({
           display: flex; align-items: center; gap: 10px; padding: 12px 12px 8px;
         }
         .fbpv-id { min-width: 0; line-height: 1.25; flex: 1; }
-        .fbpv-name { font-weight: 700; font-size: 14px; }
+        .fbpv-name { font-weight: 700; font-size: var(--text-body); }
         .fbpv-sub {
-          font-size: 11.5px; color: rgba(5,5,5,0.55);
+          font-size: var(--text-label); color: rgba(5,5,5,0.55);
           display: inline-flex; align-items: center; gap: 4px;
         }
         .fbpv-more { color: rgba(5,5,5,0.55); flex: none; }
         .fbpv-text {
-          padding: 0 12px 10px; font-size: 14px; line-height: 1.45; margin: 0;
+          padding: 0 12px 10px; font-size: var(--text-body); line-height: var(--leading-body); margin: 0;
           overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
           display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4;
         }
@@ -115,7 +115,7 @@ export default function FacebookPreview({
         .fbpv-foot { padding-bottom: 6px; }
         .fbpv-stats {
           display: flex; align-items: center; gap: 8px; padding: 8px 12px 4px;
-          font-size: 12.5px; color: rgba(5,5,5,0.55);
+          font-size: var(--text-caption); color: rgba(5,5,5,0.55);
         }
         .fbpv-reacts {
           width: 18px; height: 18px; border-radius: 50%; background: #1877f2;
@@ -130,7 +130,7 @@ export default function FacebookPreview({
         .fbpv-actions { display: flex; padding: 2px 6px 6px; }
         .fbpv-actions span {
           flex: 1; display: inline-flex; align-items: center; justify-content: center;
-          gap: 7px; padding: 8px; font-size: 13px; font-weight: 600;
+          gap: 7px; padding: 8px; font-size: var(--text-body-sm); font-weight: 600;
           color: rgba(5,5,5,0.6); border-radius: 8px;
         }
         .fbpv-skel { display: inline-block; width: 100%; }

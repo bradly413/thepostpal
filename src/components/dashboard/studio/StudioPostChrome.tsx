@@ -244,12 +244,12 @@ function StudioPostChromeStyles() {
     .pc-reveal { will-change: transform, opacity; }
     .pc-head { display: flex; align-items: center; gap: 10px; padding: 11px 13px 9px; }
     .pc-head .pc-id { min-width: 0; line-height: 1.25; }
-    .pc-name { font-weight: 700; font-size: 14px; display: inline-flex; align-items: center; gap: 4px; }
-    .pc-sub { font-size: 11.5px; color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
-    .pc-sub2 { font-size: 11.5px; color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
+    .pc-name { font-weight: 700; font-size: var(--text-body); display: inline-flex; align-items: center; gap: 4px; }
+    .pc-sub { font-size: var(--text-label); color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
+    .pc-sub2 { font-size: var(--text-label); color: rgba(22,22,28,0.5); display: inline-flex; align-items: center; gap: 4px; }
     .pc-more { margin-left: auto; color: rgba(22,22,28,0.55); flex: none; }
     .pc-text {
-      padding: 2px 14px 10px; font-size: 13.5px; line-height: 1.45;
+      padding: 2px 14px 10px; font-size: var(--text-body); line-height: var(--leading-body);
       /* Clamp long AI captions so they never spill past the frame (overflow:hidden). */
       overflow: hidden; overflow-wrap: anywhere; word-break: break-word;
       display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3;
@@ -274,12 +274,12 @@ function StudioPostChromeStyles() {
     .pc-react-love { background: #f33e58; }
     .pc-react-wow { background: #f7b125; }
     .pc-react-clap { background: #00a400; }
-    .pc-stats { display: flex; align-items: center; gap: 7px; padding: 9px 14px 6px; font-size: 12.5px; color: rgba(22,22,28,0.55); }
+    .pc-stats { display: flex; align-items: center; gap: 7px; padding: 9px 14px 6px; font-size: var(--text-caption); color: rgba(22,22,28,0.55); }
     .pc-count { margin-left: 4px; }
     .pc-meta { margin-left: auto; }
     .pc-divider { height: 1px; background: rgba(0,0,0,0.08); margin: 0 12px; }
     .pc-actions-row { display: flex; padding: 4px 6px 8px; }
-    .pc-actions-row span { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px; font-size: 13px; font-weight: 600; color: rgba(22,22,28,0.6); border-radius: 8px; cursor: pointer; }
+    .pc-actions-row span { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 7px; padding: 7px; font-size: var(--text-body-sm); font-weight: 600; color: rgba(22,22,28,0.6); border-radius: 8px; cursor: pointer; }
     .pc-actions-row span:hover { background: rgba(0,0,0,0.04); }
 
     /* X */
@@ -287,9 +287,9 @@ function StudioPostChromeStyles() {
     .pc-x .pc-sub { color: rgba(22,22,28,0.45); }
     .pc-media-rounded { padding: 2px 14px 0; }
     .pc-media-rounded .pc-media { border-radius: 16px; border: 1px solid rgba(0,0,0,0.08); }
-    .pc-x-time { padding: 10px 16px 6px; font-size: 12px; color: rgba(22,22,28,0.45); }
+    .pc-x-time { padding: 10px 16px 6px; font-size: var(--text-caption); color: rgba(22,22,28,0.45); }
     .pc-x-actions { display: flex; align-items: center; justify-content: space-between; padding: 6px 18px 12px; color: rgba(22,22,28,0.5); }
-    .pc-x-actions span { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; }
+    .pc-x-actions span { display: inline-flex; align-items: center; gap: 6px; font-size: var(--text-caption); }
 
     /* LinkedIn */
     .pc-li-logo { margin-left: auto; }
@@ -301,28 +301,28 @@ function StudioPostChromeStyles() {
     .pc-tt-top { position: absolute; top: 0; left: 0; right: 0; z-index: 5; display: flex; align-items: center; gap: 8px; padding: 12px 14px; color: #fff; background: linear-gradient(180deg, rgba(0,0,0,0.45), transparent); }
     .pc-avatar-tt { width: 34px; height: 34px; background: linear-gradient(135deg, #f9ce34, #ee2a7b, #6228d7); color: #fff; border: 2px solid #fff; font-family: Georgia, serif; }
     .pc-avatar-tt.sm { width: 30px; height: 30px; }
-    .pc-tt-name { font-weight: 700; font-size: 13.5px; display: inline-flex; align-items: center; gap: 4px; }
-    .pc-tt-sub { font-size: 12px; opacity: 0.85; }
+    .pc-tt-name { font-weight: 700; font-size: var(--text-body); display: inline-flex; align-items: center; gap: 4px; }
+    .pc-tt-sub { font-size: var(--text-caption); opacity: 0.85; }
     .pc-tt-note { margin-left: auto; }
     .pc-tt-rail { position: absolute; right: 10px; bottom: 96px; z-index: 5; display: flex; flex-direction: column; align-items: center; gap: 16px; color: #fff; }
     .pc-tt-stat { display: flex; flex-direction: column; align-items: center; gap: 3px; }
-    .pc-tt-stat b { font-size: 11px; font-weight: 600; }
+    .pc-tt-stat b { font-size: var(--text-label); font-weight: 600; }
     .pc-tt-follow { position: relative; margin-bottom: 4px; }
     .pc-tt-follow i { position: absolute; bottom: -6px; left: 50%; transform: translateX(-50%); width: 18px; height: 18px; border-radius: 50%; background: #fe2c55; color: #fff; display: grid; place-items: center; }
     .pc-tt-disc { width: 38px; height: 38px; border-radius: 50%; background: linear-gradient(135deg, #333, #111); display: grid; place-items: center; color: #fff; margin-top: 4px; }
     .pc-tt-cap { position: absolute; left: 0; right: 56px; bottom: 14px; z-index: 5; padding: 0 14px; color: #fff; }
-    .pc-tt-handle { font-weight: 700; font-size: 13.5px; }
-    .pc-tt-text { font-size: 12.5px; line-height: 1.4; margin: 4px 0 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow: hidden; overflow-wrap: anywhere; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
-    .pc-tt-sound { font-size: 12px; display: inline-flex; align-items: center; gap: 6px; }
+    .pc-tt-handle { font-weight: 700; font-size: var(--text-body); }
+    .pc-tt-text { font-size: var(--text-caption); line-height: var(--leading-body); margin: 4px 0 6px; text-shadow: 0 1px 4px rgba(0,0,0,0.5); overflow: hidden; overflow-wrap: anywhere; word-break: break-word; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; }
+    .pc-tt-sound { font-size: var(--text-caption); display: inline-flex; align-items: center; gap: 6px; }
 
     /* Instagram */
     .pc-ig-actions { display: flex; align-items: center; padding: 11px 12px 4px; }
     .pc-ig-left { display: inline-flex; align-items: center; gap: 14px; }
     .pc-ig-bm { margin-left: auto; }
-    .pc-ig-likes { font-weight: 600; font-size: 13.5px; padding: 2px 14px; }
-    .pc-ig-comments { padding: 4px 14px 0; font-size: 13px; color: rgba(22,22,28,0.5); }
-    .pc-ig-time { padding: 5px 14px 0; font-size: 10px; letter-spacing: 0.05em; text-transform: uppercase; color: rgba(22,22,28,0.42); }
-    .pc-ig .pc-text { padding: 2px 14px 0; font-size: 13.5px; }
+    .pc-ig-likes { font-weight: 600; font-size: var(--text-body); padding: 2px 14px; }
+    .pc-ig-comments { padding: 4px 14px 0; font-size: var(--text-body-sm); color: rgba(22,22,28,0.5); }
+    .pc-ig-time { padding: 5px 14px 0; font-size: var(--text-eyebrow); letter-spacing: var(--tracking-label); text-transform: uppercase; color: rgba(22,22,28,0.42); }
+    .pc-ig .pc-text { padding: 2px 14px 0; font-size: var(--text-body); }
     `}</style>
   );
 }
