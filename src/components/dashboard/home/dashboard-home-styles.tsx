@@ -209,7 +209,12 @@ export function DashboardHomeStyles() {
       display: flex; flex-direction: column;
     }
     .mhead { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2px 10px; margin-bottom: 16px; }
-    .mtitle2 { margin: 0; font-size: 16px; font-weight: 600; color: var(--ink); letter-spacing: .2px; min-width: 0; }
+    .mtitle2 {
+      margin: 0; min-width: 0;
+      font-size: var(--text-eyebrow, 10.5px); font-weight: 700;
+      letter-spacing: var(--tracking-eyebrow, 0.14em); text-transform: uppercase;
+      color: var(--ink-soft);
+    }
     .viewall { font-size: 12.5px; color: var(--green-deep); font-weight: 600; text-decoration: none; white-space: nowrap; flex-shrink: 0; }
     .viewall:hover { text-decoration: underline; }
     .period { font-size: 12.5px; color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; flex-shrink: 0; }
@@ -234,7 +239,7 @@ export function DashboardHomeStyles() {
 
     /* Total reach */
     .reach2 { position: relative; overflow: hidden; }
-    .bignum { font-size: 46px; font-weight: 800; letter-spacing: -1.5px; line-height: 1; color: var(--ink); }
+    .bignum { font-size: clamp(40px, 4.4vw, 56px); font-weight: 300; letter-spacing: var(--tracking-display, -0.04em); color: var(--ink); line-height: 1; margin: 6px 0 2px; }
     .delta { margin-top: 8px; font-size: 12.5px; font-weight: 600; }
     /* positive-metric green (convention: up = green), independent of brand-red accent */
     .delta.up { color: #157a38; }
@@ -274,7 +279,7 @@ export function DashboardHomeStyles() {
     /* Workspace stats (real counts) */
     .audstats { display: flex; align-items: center; gap: 28px; flex: 1; }
     .audstats > div { display: flex; flex-direction: column; gap: 2px; }
-    .audstats b { font-size: 28px; font-weight: 800; letter-spacing: -1px; color: var(--ink); line-height: 1; }
+    .audstats b { font-size: var(--text-stat, 26px); font-weight: 300; letter-spacing: var(--tracking-display, -0.04em); color: var(--ink); line-height: 1; }
     .audstats small { font-size: 11.5px; color: var(--ink-soft); }
 
     /* Audience */
