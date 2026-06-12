@@ -3033,8 +3033,9 @@ function StudioStyles() {
       border-color 0.6s ease;
   }
 
-  /* composer floats in on entry */
+  /* composer floats in on entry; lifted to make room for the intent strip below */
   .pb-studio .prompt-bar {
+    bottom: 76px;
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
     border-color: rgba(0, 0, 0, 0.07);
     box-shadow:

@@ -67,7 +67,7 @@ export default function StrategicIntentPicker({
     const ctx = gsap.context(() => {
       gsap.from(".pb-intent-item", {
         autoAlpha: 0,
-        x: 14,
+        y: 10,
         duration: 0.42,
         ease: "power2.out",
         stagger: 0.05,
@@ -112,9 +112,10 @@ export default function StrategicIntentPicker({
 
       <style>{`
         .pb-intent-rail {
-          position: absolute; right: 26px; top: 50%; transform: translateY(-54%);
-          display: flex; flex-direction: column; align-items: center; gap: 7px;
-          z-index: 18;
+          /* horizontal strip tucked under the prompt bar */
+          position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
+          display: flex; flex-direction: row; align-items: center; gap: 10px;
+          z-index: 16;
         }
         .pb-intent-item { position: relative; display: flex; }
         .pb-intent-ico {
@@ -125,38 +126,33 @@ export default function StrategicIntentPicker({
         .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .2s ease; }
         .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #0d0d10); }
         .pb-intent-ico:hover:not(:disabled) svg {
-          filter: drop-shadow(0 0 4px rgba(255,255,255,0.6));
+          filter: drop-shadow(0 1px 2px rgba(0,0,0,0.12));
         }
-        .pb-intent-ico.active { color: #fff; }
+        .pb-intent-ico.active { color: #c81e2a; }
         .pb-intent-ico.active svg {
-          filter: drop-shadow(0 0 5px rgba(255,255,255,0.95))
-            drop-shadow(0 0 11px rgba(255,255,255,0.7))
-            drop-shadow(0 0 1px rgba(0,0,0,0.35));
+          filter: drop-shadow(0 1px 3px rgba(200,30,42,0.3));
         }
         .pb-intent-ico:active:not(:disabled) { transform: scale(0.93); }
         .pb-intent-ico:disabled { opacity: 0.4; cursor: not-allowed; }
         .pb-intent-ico-free { color: var(--muted, #6b6b73); }
 
         .pb-intent-div {
-          width: 20px; height: 1px; background: rgba(0,0,0,0.1); margin: 4px 0;
+          width: 1px; height: 20px; background: rgba(0,0,0,0.12); margin: 0 4px;
         }
 
-        /* Description reveal — frosted panel to the LEFT of the icon (right edge). */
-        /* Glowing white title — mirrors the platform rail's .rail-ico-label */
+        /* Label reveal — ABOVE the icon (the rail sits under the prompt bar). */
         .pb-intent-pop {
-          position: absolute; right: calc(100% + 10px); top: 50%;
-          transform: translateY(-50%) translateX(6px);
-          white-space: nowrap; font-size: 12.5px; font-weight: 600; letter-spacing: -0.01em;
-          color: #fff;
-          text-shadow: 0 0 5px rgba(255,255,255,0.95), 0 0 11px rgba(255,255,255,0.65),
-            0 0 2px rgba(0,0,0,0.5);
+          position: absolute; bottom: calc(100% + 8px); left: 50%;
+          transform: translateX(-50%) translateY(4px);
+          white-space: nowrap; font-size: 12px; font-weight: 600; letter-spacing: -0.01em;
+          color: #1c1c1e; text-shadow: 0 1px 0 rgba(255,255,255,0.85);
           opacity: 0; visibility: hidden; pointer-events: none; z-index: 19;
           transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
         }
         .pb-intent-item:hover .pb-intent-pop,
         .pb-intent-ico:focus-visible + .pb-intent-pop,
         .pb-intent-ico.active + .pb-intent-pop {
-          opacity: 1; visibility: visible; transform: translateY(-50%) translateX(0);
+          opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
         }
 
         @media (prefers-reduced-motion: reduce) {
