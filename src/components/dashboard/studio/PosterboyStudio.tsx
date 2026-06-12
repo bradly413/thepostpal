@@ -28,6 +28,7 @@ import {
   X,
   Sparkles,
   Lock,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
@@ -47,8 +48,9 @@ import VideoComposer from "@/components/dashboard/composer/VideoComposer";
 import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
-import { createDashboardPost } from "@/lib/dashboard-api";
+import { createDashboardPost, fetchDashboardPosts } from "@/lib/dashboard-api";
 import ParticleImageAssemble from "@/lib/ui-snippets/animations/ParticleImageAssemble";
+import StudioHistoryGallery, { type StudioHistoryEntry } from "@/components/dashboard/studio/StudioHistoryGallery";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
@@ -134,6 +136,14 @@ export default function PosterboyStudio() {
   // Particle reveal: plays once over the frame each time a NEW image lands.
   const [revealUrl, setRevealUrl] = useState<string | null>(null);
   const lastRevealedRef = useRef<string | null>(null);
+  // Generation history: this session's generations + the tenant's posted images.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [genHistory, setGenHistory] = useState<StudioHistoryEntry[]>([]);
+  const pushHistory = (url: string, promptText: string) =>
+    setGenHistory((h) =>
+      [{ url, prompt: promptText.slice(0, 120), at: Date.now(), source: "session" as const },
+       ...h.filter((e) => e.url !== url)].slice(0, 14),
+    );
   const [captionState, setCaptionState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
@@ -361,6 +371,42 @@ export default function PosterboyStudio() {
     const t = window.setTimeout(() => setRevealUrl(null), 3400);
     return () => window.clearTimeout(t);
   }, [genState, generatedUrl, mediaKind]);
+
+  // Seed history with the tenant's posted images (real, persisted creations) —
+  // session generations stack on top as they happen.
+  useEffect(() => {
+    if (!locationId) return;
+    let cancelled = false;
+    void (async () => {
+      try {
+        const posts = await fetchDashboardPosts(locationId);
+        if (cancelled) return;
+        const seeded = posts
+          .filter(
+            (p) =>
+              (p.mediaType ?? "image") === "image" &&
+              typeof p.mediaUrl === "string" &&
+              p.mediaUrl.startsWith("http"),
+          )
+          .slice(0, 10)
+          .map((p) => ({
+            url: p.mediaUrl as string,
+            prompt: p.copy.slice(0, 120),
+            at: Date.parse(p.scheduledFor ?? p.createdAt) || Date.now(),
+            source: "post" as const,
+          }));
+        setGenHistory((h) => {
+          const seen = new Set(h.map((e) => e.url));
+          return [...h, ...seeded.filter((e) => !seen.has(e.url))].slice(0, 14);
+        });
+      } catch {
+        /* history is optional — never block the studio */
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [locationId]);
 
   // Track the canvas size so the board can be sized in exact pixels — both
   // width and height then animate smoothly between platform aspect ratios.
@@ -662,6 +708,7 @@ export default function PosterboyStudio() {
       stopTimer();
       setProgress(100);
       setGeneratedUrl(data.image);
+      pushHistory(data.image, savedPrompt);
       setGenState("done");
     } catch (err) {
       await holdFloor();
@@ -776,6 +823,7 @@ export default function PosterboyStudio() {
       stopTimer();
       setProgress(100);
       setGeneratedUrl(iData.image);
+      pushHistory(iData.image, intent);
       setCaptionText("");
       setCaptionTags("");
       setCaptionState("idle");
@@ -1059,6 +1107,19 @@ export default function PosterboyStudio() {
             ))}
 
             <span className="rail-div" />
+
+            <div className="rail-item">
+              <button
+                type="button"
+                className={`rail-ico${historyOpen ? " open" : ""}`}
+                onClick={() => setHistoryOpen((o) => !o)}
+                aria-pressed={historyOpen}
+                aria-label="Recent creations"
+                title="Recent creations"
+              >
+                <History size={19} />
+              </button>
+            </div>
 
             <button
               type="button"
@@ -1380,6 +1441,21 @@ export default function PosterboyStudio() {
                 aria-label="Schedule time"
               />
             </div>
+          ) : null}
+
+          {historyOpen ? (
+            <StudioHistoryGallery
+              entries={genHistory}
+              onClose={() => setHistoryOpen(false)}
+              onPick={(e) => {
+                setGeneratedUrl(e.url);
+                setMediaKind("image");
+                setComposerMode("image");
+                setGenState("done");
+                setShowTemplate(false);
+                setHistoryOpen(false);
+              }}
+            />
           ) : null}
 
           <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
