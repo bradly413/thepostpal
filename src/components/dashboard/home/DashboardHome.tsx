@@ -18,6 +18,12 @@ import {
   CloudFog,
   User,
 } from "lucide-react";
+import { Swiper, SwiperSlide } from "swiper/react";
+import { EffectCoverflow, Autoplay, Pagination, A11y, Keyboard } from "swiper/modules";
+import type { Swiper as SwiperInstance } from "swiper";
+import "swiper/css";
+import "swiper/css/effect-coverflow";
+import "swiper/css/pagination";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import {
@@ -27,14 +33,41 @@ import {
 import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
+import { getHolidaysForYear } from "@/lib/holidays";
 
-// ── Hero slideshow (seasonal hooks) ──────────────────────────
+// ── Hero coverflow (seasonal hooks) ──────────────────────────
 // Local seasonal slides only — stock imagery looked like another tenant's
-// photos to beta users, so remote Unsplash slides were removed.
-const SLIDES = [
-  { title: "Father's Day", date: "June 21st", img: "/hero/fathers-day.jpg", baked: false },
-  { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", baked: false },
+// photos to beta users, so remote Unsplash slides were removed. Holidays
+// beyond the two photographed ones render as warm typographic cards.
+interface HeroSlide {
+  title: string;
+  date: string;
+  img?: string;
+  grad: number; // palette index for typographic cards
+}
+
+const SLIDES: HeroSlide[] = [
+  { title: "Father's Day", date: "June 21st", img: "/hero/fathers-day.jpg", grad: 0 },
+  { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", grad: 1 },
 ];
+
+/** Next real holidays (from the calendar's own source) as typographic slides. */
+function buildHeroSlides(): HeroSlide[] {
+  const now = new Date();
+  const todayKey = now.toISOString().slice(0, 10);
+  const photographed = SLIDES.map((s) => s.title.toLowerCase());
+  const upcoming = [...getHolidaysForYear(now.getFullYear()), ...getHolidaysForYear(now.getFullYear() + 1)]
+    .filter((h) => h.date >= todayKey)
+    .filter((h) => !photographed.some((p) => h.name.toLowerCase().includes(p) || p.includes(h.name.toLowerCase())))
+    .filter((h) => h.name !== "Independence Day") // covered by the Fourth of July photo slide
+    .slice(0, 4)
+    .map((h, i) => ({
+      title: h.name,
+      date: new Date(`${h.date}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" }),
+      grad: i % 4,
+    }));
+  return [...SLIDES, ...upcoming];
+}
 
 const POST_PLATFORMS = ["instagram", "facebook", "x"] as const;
 
@@ -106,7 +139,8 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const [slide, setSlide] = useState(0);
+  const heroSlides = useMemo(buildHeroSlides, []);
+  const swiperRef = useRef<SwiperInstance | null>(null);
   const [heroPaused, setHeroPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
   const [wx, setWx] = useState<Weather | null>(null);
@@ -166,10 +200,12 @@ export default function DashboardHome() {
     setReduceMotion(window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   }, []);
 
+  // A6: autoplay yields to the pause control and to prefers-reduced-motion.
   useEffect(() => {
-    if (heroPaused || reduceMotion) return;
-    const t = window.setInterval(() => setSlide((s) => (s + 1) % SLIDES.length), 5000);
-    return () => window.clearInterval(t);
+    const s = swiperRef.current;
+    if (!s || !s.autoplay) return;
+    if (heroPaused || reduceMotion) s.autoplay.stop();
+    else s.autoplay.start();
   }, [heroPaused, reduceMotion]);
 
   // Resolve lat/lon + a display label from the active location's geo. We use
@@ -296,7 +332,6 @@ export default function DashboardHome() {
     );
   }
 
-  const cur = SLIDES[slide];
   // Weather widget only renders when the active location has geo + a forecast.
   const showWeather = wxPlace !== null && wx !== null;
   const wxI = wx ? wxIcon(wx.code) : null;
@@ -361,58 +396,71 @@ export default function DashboardHome() {
             </Link>
           </div>
 
-          {/* Hero + shortcuts */}
-          <div className="top2">
-            <section
-              className="hero2 anim"
-              onMouseEnter={() => setHeroPaused(true)}
-              onMouseLeave={() => setHeroPaused(false)}
-              onFocusCapture={() => setHeroPaused(true)}
-              onBlurCapture={(e) => {
-                if (!e.currentTarget.contains(e.relatedTarget as Node)) setHeroPaused(false);
-              }}
+          {/* Hero coverflow — full-width seasonal carousel */}
+          <section
+            className="hero-cf anim"
+            onMouseEnter={() => setHeroPaused(true)}
+            onMouseLeave={() => setHeroPaused(false)}
+            onFocusCapture={() => setHeroPaused(true)}
+            onBlurCapture={(e) => {
+              if (!e.currentTarget.contains(e.relatedTarget as Node)) setHeroPaused(false);
+            }}
+          >
+            <Swiper
+              modules={[EffectCoverflow, Autoplay, Pagination, A11y, Keyboard]}
+              effect="coverflow"
+              grabCursor
+              centeredSlides
+              loop
+              speed={600}
+              slidesPerView="auto"
+              coverflowEffect={{ rotate: 7, stretch: 80, depth: 170, modifier: 1, slideShadows: false }}
+              autoplay={reduceMotion ? false : { delay: 4500, disableOnInteraction: false }}
+              pagination={{ clickable: true }}
+              keyboard={{ enabled: true }}
+              onSwiper={(s) => { swiperRef.current = s; }}
             >
-              {SLIDES.map((s, i) => (
-                <div key={s.title} className={`slide${i === slide ? " on" : ""}`} style={{ backgroundImage: `url('${s.img}')` }} />
+              {heroSlides.map((s) => (
+                <SwiperSlide key={s.title}>
+                  <div className={`cf-card${s.img ? "" : ` cf-grad-${s.grad}`}`}>
+                    {s.img ? (
+                      <>
+                        <div className="cf-img" style={{ backgroundImage: `url('${s.img}')` }} aria-hidden />
+                        <div className="cf-scrim" aria-hidden />
+                      </>
+                    ) : null}
+                    <div className="cf-body">
+                      <div className="cf-title">{s.title}</div>
+                      <div className="cf-date">{s.date}</div>
+                      <Link href="/dashboard/studio" className="cf-btn">Create Post</Link>
+                    </div>
+                  </div>
+                </SwiperSlide>
               ))}
-              {!cur.baked && <div className="scrim" />}
-              <span className="slabel">
-                {reduceMotion ? "Slideshow paused (reduced motion)" : heroPaused ? "Slideshow paused" : `Auto slideshow · ${SLIDES.length} slides`}
-              </span>
-              <button
-                type="button"
-                className="hero-pause"
-                onClick={() => setHeroPaused((p) => !p)}
-                aria-pressed={heroPaused || reduceMotion}
-                aria-label={heroPaused || reduceMotion ? "Play hero slideshow" : "Pause hero slideshow"}
-                disabled={reduceMotion}
-              >
-                {heroPaused || reduceMotion ? "Play" : "Pause"}
-              </button>
-              {cur.baked ? (
-                <Link href="/dashboard/studio" className="hero-link" aria-label="Create a post" />
-              ) : (
-                <div className="hbody">
-                  <div className="htitle">{cur.title}<br />{cur.date}</div>
-                  <div className="hsub">Let&apos;s schedule your post now.</div>
-                  <Link href="/dashboard/studio" className="herobtn">Create Post</Link>
-                </div>
-              )}
-              <div className="dots">
-                {SLIDES.map((s, i) => (
-                  <button key={s.title} type="button" className={`d${i === slide ? " on" : ""}`} onClick={() => setSlide(i)} aria-label={`Go to slide ${i + 1}: ${s.title}`} />
-                ))}
-              </div>
-            </section>
+            </Swiper>
+            <span className="slabel">
+              {reduceMotion ? "Carousel paused (reduced motion)" : heroPaused ? "Carousel paused" : `Auto carousel · ${heroSlides.length} slides`}
+            </span>
+            <button
+              type="button"
+              className="hero-pause"
+              onClick={() => setHeroPaused((p) => !p)}
+              aria-pressed={heroPaused || reduceMotion}
+              aria-label={heroPaused || reduceMotion ? "Play hero carousel" : "Pause hero carousel"}
+              disabled={reduceMotion}
+            >
+              {heroPaused || reduceMotion ? "Play" : "Pause"}
+            </button>
+          </section>
 
-            <div className="shortcuts2">
-              {SHORTCUTS.map(({ label, sub, href, Icon }) => (
-                <Link key={label} href={href} className="scut anim">
-                  <span className="ic"><Icon size={20} /></span>
-                  <span className="tx"><b>{label}</b><small>{sub}</small></span>
-                </Link>
-              ))}
-            </div>
+          {/* Shortcuts strip below the carousel */}
+          <div className="shortcuts2">
+            {SHORTCUTS.map(({ label, sub, href, Icon }) => (
+              <Link key={label} href={href} className="scut anim">
+                <span className="ic"><Icon size={20} /></span>
+                <span className="tx"><b>{label}</b><small>{sub}</small></span>
+              </Link>
+            ))}
           </div>
 
           {/* Middle row */}

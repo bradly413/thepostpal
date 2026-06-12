@@ -136,48 +136,56 @@ export function DashboardHomeStyles() {
       .notif-panel, .notif-item, .topbar2 .ut .dot.count { transition: none; }
     }
 
-    /* ---------- Top row: hero + shortcuts ---------- */
-    .top2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; align-items: stretch; }
-    .top2 .hero2 { grid-column: span 2; }
-    @media (max-width: 1080px) { .top2 { grid-template-columns: 1fr; } .top2 .hero2 { grid-column: 1 / -1; } }
-
-    .hero2 {
-      position: relative; height: 372px; border-radius: 26px; overflow: hidden;
-      border: 1px solid rgba(255,255,255,0.4); box-shadow: 0 30px 70px -42px rgba(20,20,40,0.55); isolation: isolate;
+    /* ---------- Hero coverflow (full-width, light) ---------- */
+    .hero-cf { position: relative; }
+    .hero-cf .swiper { width: 100%; padding: 10px 0 34px; }
+    .hero-cf .swiper-slide { width: min(560px, 72vw); }
+    .hero-cf .cf-card {
+      position: relative; height: 300px; border-radius: 24px; overflow: hidden;
+      background: var(--card);
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: 0 30px 70px -42px rgba(20,20,40,0.5), inset 0 1px 0 rgba(255,255,255,0.7);
+      isolation: isolate;
     }
-    .hero2 .slide { position: absolute; inset: 0; background-size: cover; background-position: center; opacity: 0; transition: opacity 1.1s ease; }
-    .hero2 .slide.on { opacity: 1; }
-    .hero2 .scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(8,12,20,0.72) 0%, rgba(8,12,20,0.38) 44%, rgba(8,12,20,0) 72%); }
-    .hero2 .slabel { position: absolute; z-index: 3; right: 18px; top: 16px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: rgba(255,255,255,0.92); background: rgba(0,0,0,0.3); padding: 6px 12px; border-radius: 99px; backdrop-filter: blur(6px); }
-    .hero2 .hero-pause {
-      position: absolute; z-index: 3; right: 18px; top: 46px;
-      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
-      color: rgba(255,255,255,0.95); background: rgba(0,0,0,0.38);
-      padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.25);
-      backdrop-filter: blur(6px); cursor: pointer;
+    .hero-cf .cf-img { position: absolute; inset: 0; background-size: cover; background-position: center; }
+    .hero-cf .cf-scrim { position: absolute; inset: 0; z-index: 1; background: linear-gradient(100deg, rgba(8,12,20,0.66) 0%, rgba(8,12,20,0.32) 46%, rgba(8,12,20,0) 72%); }
+    /* typographic holiday cards — warm-light palettes, no stock photos */
+    .hero-cf .cf-grad-0 { background: linear-gradient(135deg, #fff4e6 0%, #ffd9b3 100%); }
+    .hero-cf .cf-grad-1 { background: linear-gradient(135deg, #fdeeee 0%, #f7c2c8 100%); }
+    .hero-cf .cf-grad-2 { background: linear-gradient(135deg, #f3f1ec 0%, #ddd4c3 100%); }
+    .hero-cf .cf-grad-3 { background: linear-gradient(135deg, #eef2ee 0%, #c9dccb 100%); }
+    .hero-cf .cf-body { position: absolute; z-index: 2; left: 34px; bottom: 26px; right: 34px; }
+    .hero-cf .cf-title {
+      font-size: 26px; line-height: 1.08; font-weight: 700; letter-spacing: 1.6px; text-transform: uppercase;
+      color: var(--ink);
     }
-    .hero2 .hero-pause:disabled { opacity: 0.65; cursor: default; }
-    /* Title + subtitle + button form one compact block anchored to the
-       lower-left, sized to fit the same space on every slide. */
-    .hero2 .hbody { position: absolute; z-index: 2; left: 42px; bottom: 28px; right: 40px; max-width: 62%; }
-    .hero2 .htitle { font-size: 27px; line-height: 1.08; font-weight: 700; color: #fff; letter-spacing: 2px; text-transform: uppercase; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
-    .hero2 .hsub { margin-top: 9px; color: rgba(255,255,255,0.88); font-size: 14px; }
-    /* Baked slides are complete designed artwork (title + subtitle in the
-       image): no scrim/overlay; the whole slide links to the composer. */
-    .hero2 .hero-link { position: absolute; inset: 0; z-index: 2; }
-    .hero2 .herobtn {
+    .hero-cf .cf-img ~ .cf-body .cf-title { color: #fff; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
+    .hero-cf .cf-date { margin-top: 6px; font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+    .hero-cf .cf-img ~ .cf-body .cf-date { color: rgba(255,255,255,0.88); }
+    .hero-cf .cf-btn {
       display: inline-block; margin-top: 14px; padding: 10px 22px; border-radius: 99px;
-      background: rgba(255,255,255,0.95); color: #14181f; font-size: 13px; font-weight: 600; text-decoration: none;
-      box-shadow: 0 12px 30px -14px rgba(0,0,0,0.5); transition: transform .2s, background .2s;
+      background: #c81e2a; color: #fff; font-size: 13px; font-weight: 600; text-decoration: none;
+      box-shadow: 0 12px 30px -14px rgba(200,30,42,0.6); transition: transform .2s, background .2s;
     }
-    .hero2 .herobtn:hover { transform: translateY(-2px); background: #fff; }
-    .hero2 .dots { position: absolute; z-index: 3; left: 50%; transform: translateX(-50%); bottom: 22px; display: flex; gap: 8px; }
-    .hero2 .dots .d { width: 8px; height: 8px; border-radius: 99px; background: rgba(255,255,255,0.45); transition: all .3s; cursor: pointer; border: 0; padding: 0; appearance: none; -webkit-appearance: none; }
-    .hero2 .dots .d.on { width: 24px; background: #fff; }
+    .hero-cf .cf-btn:hover { transform: translateY(-2px); background: #b01a25; }
+    .hero-cf .swiper-pagination-bullet { background: rgba(28,28,30,0.35); opacity: 1; transition: all .3s; }
+    .hero-cf .swiper-pagination-bullet-active { width: 20px; border-radius: 99px; background: #c81e2a; }
+    .hero-cf .slabel { position: absolute; z-index: 5; right: 14px; top: 18px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); background: rgba(255,255,255,0.8); padding: 6px 12px; border-radius: 99px; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.7); }
+    .hero-cf .hero-pause {
+      position: absolute; z-index: 5; right: 14px; top: 48px;
+      font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+      color: var(--ink); background: rgba(255,255,255,0.85);
+      padding: 6px 12px; border-radius: 99px; border: 1px solid rgba(255,255,255,0.7);
+      backdrop-filter: blur(6px); cursor: pointer; box-shadow: 0 6px 18px -10px rgba(20,20,40,0.4);
+    }
+    .hero-cf .hero-pause:disabled { opacity: 0.65; cursor: default; }
+    @media (prefers-reduced-motion: reduce) {
+      .hero-cf .swiper-wrapper { transition-duration: 0ms !important; }
+    }
 
-    /* Shortcuts */
-    .shortcuts2 { display: grid; grid-template-rows: repeat(3, 1fr); gap: 20px; }
-    @media (max-width: 1080px) { .shortcuts2 { grid-template-rows: none; grid-template-columns: repeat(3, 1fr); } }
+    /* Shortcuts — horizontal strip under the carousel */
+    .shortcuts2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
+    .shortcuts2 .scut { padding-top: 18px; padding-bottom: 18px; }
     @media (max-width: 560px) { .shortcuts2 { grid-template-columns: 1fr; } }
     .scut {
       display: flex; align-items: center; gap: 16px; padding: 0 22px; border-radius: 22px;
@@ -256,22 +264,10 @@ export function DashboardHomeStyles() {
     .mediathumb { border-radius: 14px; background-size: cover; background-position: center; background-color: #e5e7eb; transition: transform .2s; }
     .mediathumb:hover { transform: scale(1.04); }
 
-    /* Fit-to-one-screen on desktop: lock the home to the viewport and let the
-       rows flex to fill it, so the dashboard never page-scrolls. Smaller or
-       shorter screens fall through to normal scrolling. Long in-card lists
-       scroll internally so no content is lost. */
+    /* The coverflow-first home scrolls naturally (the old one-screen lock
+       flexed the retired .top2 hero grid). Long in-card lists still scroll
+       internally so no content is lost. */
     @media (min-width: 1081px) and (min-height: 720px) {
-      .pb-home2 { overflow: hidden; }
-      .home2 { height: 100%; min-height: 0; overflow: hidden; }
-      .main2 { min-height: 0; gap: 14px; }
-      .main2 > .top2 { flex: 1.5 1 0; min-height: 0; }
-      .main2 > .modules2 { flex: 1.15 1 0; min-height: 0; }
-      .main2 > .row2 { flex: 0.9 1 0; min-height: 0; }
-      .top2 .shortcuts2 { min-height: 0; }
-      /* hero has a fixed 372px height by default — make it fill the flex slot
-         so it never overflows into the modules row */
-      .top2 .hero2 { min-height: 0; height: 100%; }
-      .modules2 .mod, .row2 .mod { min-height: 0; height: 100%; overflow: hidden; }
       .modules2 .mod .uplist { min-height: 0; overflow-y: auto; }
     }
 
@@ -290,9 +286,6 @@ export function DashboardHomeStyles() {
 
     .pb-home2 .anim { will-change: transform; }
 
-    @media (prefers-reduced-motion: reduce) {
-      .hero2 .slide { transition: none; }
-    }
     `}</style>
   );
 }
