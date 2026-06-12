@@ -38,7 +38,14 @@ do not map to motion/typography tokens within ~15%. Left intentionally unchanged
 | `line-height: 1.45` | Upgrade copy | `--leading-body` | 12% off — migrated |
 | `line-height: 1.02` | Hero display | `--leading-tight` (1.1) | 7% off — migrated |
 
-## Skipped files
+## Skipped / partial files
 
-- `PosterboyStudio.tsx` — owned by studio refactor task
-- `studio/studio-styles.tsx` — migrated in studio refactor; GSAP-adjacent durations listed above
+- `PosterboyStudio.tsx` — owned by studio refactor task (skipped)
+- `app/dashboard/brand/page.tsx` — brand-book display voice: most `clamp()` / serif sizes left as-is; only shell states, nav motion, and `transition:all` bans migrated
+- `studio/StudioHistoryGallery.tsx` — `transform 0.6s` card stack uses custom `${EASE}` (choreography, not micro-transition)
+
+## Brand book inline styles (unmigrated)
+
+Display-scale values in `brand/page.tsx` intentionally kept: `clamp(28px–168px)` headlines,
+`22px` trait titles, `letter-spacing: .32em` colophon, `lineHeight: 0.94`, etc. These are
+marketing/display typography outside the UI token scale per TYPOGRAPHY.md § voice split.

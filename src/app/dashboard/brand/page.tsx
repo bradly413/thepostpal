@@ -180,7 +180,7 @@ export default function BrandPage() {
   if (loading) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-        <p style={{ fontSize: 14, opacity: 0.7 }}>Loading brand book…</p>
+        <p style={{ fontSize: "var(--text-body)", opacity: 0.7 }}>Loading brand book…</p>
       </div>
     );
   }
@@ -189,9 +189,9 @@ export default function BrandPage() {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
         <div style={{ textAlign: "center", maxWidth: 400 }}>
-          <h2 style={{ fontSize: 18, fontWeight: 700, marginBottom: 8 }}>No Brand Book Yet</h2>
-          <p style={{ fontSize: 14, opacity: 0.7, marginBottom: 20 }}>Complete the onboarding flow to generate your personalized brand guidelines.</p>
-          <Link href="/onboarding" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#ee2532", color: "#fff", fontSize: 14, fontWeight: 600, textDecoration: "none" }}>
+          <h2 style={{ fontSize: "var(--text-title)", fontWeight: 700, marginBottom: 8 }}>No Brand Book Yet</h2>
+          <p style={{ fontSize: "var(--text-body)", opacity: 0.7, marginBottom: 20 }}>Complete the onboarding flow to generate your personalized brand guidelines.</p>
+          <Link href="/onboarding" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#ee2532", color: "#fff", fontSize: "var(--text-body)", fontWeight: 600, textDecoration: "none" }}>
             Start Onboarding
           </Link>
         </div>
@@ -593,8 +593,8 @@ function SideToc({ active, palette }: { active: string; palette: BrandPalette })
       {SECTIONS.map((s) => {
         const isActive = active === s.id;
         return (
-          <a key={s.id} href={`#${s.id}`} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: isActive ? "var(--primary)" : "var(--neutral)", fontSize: 9.5, fontWeight: 600, letterSpacing: ".22em", textTransform: "uppercase" as const, opacity: isActive ? 1 : 0.6, transition: "all .2s" }}>
-            <span style={{ display: "inline-block", width: isActive ? 28 : 18, height: isActive ? 1 : 0.5, background: "currentColor", transition: "all .2s" }} />
+          <a key={s.id} href={`#${s.id}`} style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", color: isActive ? "var(--primary)" : "var(--neutral)", fontSize: "var(--text-eyebrow)", fontWeight: 600, letterSpacing: "var(--tracking-section)", textTransform: "uppercase" as const, opacity: isActive ? 1 : 0.6, transition: "color var(--duration-standard) var(--ease-standard), opacity var(--duration-standard) var(--ease-standard)" }}>
+            <span style={{ display: "inline-block", width: isActive ? 28 : 18, height: isActive ? 1 : 0.5, background: "currentColor", transition: "width var(--duration-standard) var(--ease-standard), height var(--duration-standard) var(--ease-standard), opacity var(--duration-standard) var(--ease-standard)" }} />
             <span className="hidden xl:inline">{s.no} &middot; {s.label}</span>
           </a>
         );
