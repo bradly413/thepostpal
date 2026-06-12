@@ -48,8 +48,10 @@ interface HeroSlide {
 }
 
 const SLIDES: HeroSlide[] = [
+  { title: "Juneteenth", date: "June 19th", img: "/hero/juneteenth.jpg", grad: 2 },
   { title: "Father's Day", date: "June 21st", img: "/hero/fathers-day.jpg", grad: 0 },
   { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", grad: 1 },
+  { title: "Labor Day", date: "September 7th", img: "/hero/labor-day.jpg", grad: 3 },
 ];
 
 /** Next real holidays (from the calendar's own source) as typographic slides. */
