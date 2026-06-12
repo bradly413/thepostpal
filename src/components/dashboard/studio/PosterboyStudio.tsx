@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -48,7 +48,7 @@ import VideoComposer from "@/components/dashboard/composer/VideoComposer";
 import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
-import { createDashboardPost, fetchDashboardPosts } from "@/lib/dashboard-api";
+import { createDashboardPost, fetchDashboardPosts, createDashboardPhoto } from "@/lib/dashboard-api";
 import ParticleImageAssemble from "@/lib/ui-snippets/animations/ParticleImageAssemble";
 import StudioHistoryGallery, { type StudioHistoryEntry } from "@/components/dashboard/studio/StudioHistoryGallery";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
@@ -136,14 +136,6 @@ export default function PosterboyStudio() {
   // Particle reveal: plays once over the frame each time a NEW image lands.
   const [revealUrl, setRevealUrl] = useState<string | null>(null);
   const lastRevealedRef = useRef<string | null>(null);
-  // Generation history: this session's generations + the tenant's posted images.
-  const [historyOpen, setHistoryOpen] = useState(false);
-  const [genHistory, setGenHistory] = useState<StudioHistoryEntry[]>([]);
-  const pushHistory = (url: string, promptText: string) =>
-    setGenHistory((h) =>
-      [{ url, prompt: promptText.slice(0, 120), at: Date.now(), source: "session" as const },
-       ...h.filter((e) => e.url !== url)].slice(0, 14),
-    );
   const [captionState, setCaptionState] = useState<"idle" | "loading" | "done" | "error">("idle");
   const [captionText, setCaptionText] = useState("");
   const [captionTags, setCaptionTags] = useState("");
@@ -208,6 +200,59 @@ export default function PosterboyStudio() {
   const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
   const [placeholderText, setPlaceholderText] = useState(`Make a post — e.g. “${PROMPT_EXAMPLES[0]}”`);
   const { locationId, locations } = useActiveLocation();
+
+  // Generation history: this session's generations + the tenant's posted images.
+  // The newest 4 session shots live ON the canvas (current + 3 in the 3D stack
+  // behind); older ones are evicted into the Media library for keeps.
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [genHistory, setGenHistory] = useState<StudioHistoryEntry[]>([]);
+  const savedToMediaRef = useRef<Set<string>>(new Set());
+
+  const saveGenerationToMedia = useCallback(
+    (entry: StudioHistoryEntry) => {
+      if (!locationId || savedToMediaRef.current.has(entry.url)) return;
+      savedToMediaRef.current.add(entry.url);
+      const m = entry.url.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/);
+      if (!m) return; // already a hosted url (posted images) — nothing to save
+      void (async () => {
+        try {
+          const bin = atob(m[2]);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const ext = m[1].split("/")[1]?.replace("jpeg", "jpg") || "png";
+          const file = new File([bytes], `generation-${entry.at}.${ext}`, { type: m[1] });
+          // Multipart /api/upload (not the presigned S3-only flow): it falls
+          // back to local disk in dev, so archiving works in every environment.
+          const fd = new FormData();
+          fd.append("file", file);
+          const res = await fetch("/api/upload", { method: "POST", credentials: "same-origin", body: fd });
+          const data = (await res.json()) as { url?: string; error?: string };
+          if (!res.ok || !data.url) throw new Error(data.error || "upload failed");
+          await createDashboardPhoto({
+            locationId,
+            url: data.url,
+            mimeType: m[1],
+            alt: entry.prompt || "Studio generation",
+          });
+        } catch {
+          // Media archiving is best-effort — never interrupt creating.
+          savedToMediaRef.current.delete(entry.url);
+        }
+      })();
+    },
+    [locationId],
+  );
+
+  const pushHistory = (url: string, promptText: string) =>
+    setGenHistory((h) => {
+      const next = [
+        { url, prompt: promptText.slice(0, 120), at: Date.now(), source: "session" as const },
+        ...h.filter((e) => e.url !== url),
+      ];
+      // Session shots beyond the on-canvas 4 graduate to the Media library.
+      next.filter((e) => e.source === "session").slice(4).forEach(saveGenerationToMedia);
+      return next.slice(0, 14);
+    });
   const features = usePlanFeatures();
   const activeLocation = useMemo(
     () => locations.find((l) => l.id === locationId) ?? null,
@@ -1166,6 +1211,35 @@ export default function PosterboyStudio() {
                 />
               }
             />
+          ) : null}
+
+          {/* On-canvas 3D stack: the last few generations recede behind the live
+              image, fading into the white on both sides. Click one to bring it
+              back front-and-center. */}
+          {composerMode === "image" ? (
+            <div className="gen-stack" aria-label="Recent generations">
+              {genHistory
+                .filter((e) => e.source === "session" && e.url !== generatedUrl)
+                .slice(0, 3)
+                .map((e, i) => (
+                  <button
+                    key={`${e.at}-${e.url.slice(0, 32)}`}
+                    type="button"
+                    className={`gs-card gs-${i}`}
+                    onClick={() => {
+                      setGeneratedUrl(e.url);
+                      setMediaKind("image");
+                      setGenState("done");
+                      setShowTemplate(false);
+                    }}
+                    aria-label={`Bring back: ${e.prompt || "earlier generation"}`}
+                    title={e.prompt}
+                  >
+                    <span className="gs-img" style={{ backgroundImage: `url('${e.url}')` }} aria-hidden />
+                    <span className="gs-fade" aria-hidden />
+                  </button>
+                ))}
+            </div>
           ) : null}
 
           <div
@@ -3000,6 +3074,62 @@ function StudioStyles() {
   @keyframes pbsBarIn {
     from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
+  }
+
+  /* on-canvas 3D stack of recent generations behind the live image */
+  .pb-studio .gen-stack {
+    position: absolute;
+    inset: 0;
+    perspective: 1100px;
+    transform-style: preserve-3d;
+    z-index: 5;
+    pointer-events: none;
+  }
+  .pb-studio .gs-card {
+    position: absolute;
+    top: calc((100% - 132px) / 2);
+    left: 50%;
+    width: 250px;
+    aspect-ratio: 4 / 5;
+    border: none;
+    padding: 0;
+    border-radius: 12px;
+    overflow: hidden;
+    background: #fff;
+    cursor: pointer;
+    pointer-events: auto;
+    box-shadow: 0 18px 44px -22px rgba(20,20,40,0.35);
+    transition: transform 0.7s cubic-bezier(0.62, 0.28, 0.23, 0.99), opacity 0.5s ease;
+    animation: gsArrive 0.7s cubic-bezier(0.62, 0.28, 0.23, 0.99);
+  }
+  @keyframes gsArrive { from { opacity: 0; } }
+  .pb-studio .gs-card .gs-img {
+    position: absolute; inset: 0;
+    background-size: cover; background-position: center;
+    filter: saturate(0.85);
+  }
+  /* the white-room fade mask: each card melts toward its outer edge */
+  .pb-studio .gs-card .gs-fade { position: absolute; inset: 0; }
+  .pb-studio .gs-0 {
+    transform: translate(calc(-50% - 330px), -50%) translateZ(-150px) rotateY(40deg);
+    opacity: 0.85;
+  }
+  .pb-studio .gs-0 .gs-fade { background: linear-gradient(270deg, transparent 30%, rgba(252,252,251,0.9) 100%); }
+  .pb-studio .gs-1 {
+    transform: translate(calc(-50% + 330px), -50%) translateZ(-150px) rotateY(-40deg);
+    opacity: 0.85;
+  }
+  .pb-studio .gs-1 .gs-fade { background: linear-gradient(90deg, transparent 30%, rgba(252,252,251,0.9) 100%); }
+  .pb-studio .gs-2 {
+    transform: translate(calc(-50% - 520px), -50%) translateZ(-260px) rotateY(46deg);
+    opacity: 0.55;
+  }
+  .pb-studio .gs-2 .gs-fade { background: linear-gradient(270deg, rgba(252,252,251,0.35) 0%, rgba(252,252,251,0.96) 100%); }
+  .pb-studio .gs-card:hover { opacity: 1; }
+  .pb-studio .gs-card:hover .gs-img { filter: saturate(1); }
+  @media (max-width: 1100px) { .pb-studio .gen-stack { display: none; } }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-studio .gs-card { transition: opacity 0.3s ease; animation: none; }
   }
 
   /* done: just the image — no paper-sheet pulse, no white glow ring. The

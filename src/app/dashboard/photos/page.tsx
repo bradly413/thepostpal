@@ -20,6 +20,7 @@ interface DisplayMedia {
   src: string;
   name: string;
   kind: "image" | "video";
+  createdAt: string;
   pending?: boolean;
 }
 
@@ -35,6 +36,7 @@ function toDisplay(p: DashboardPhotoRecord): DisplayMedia {
     src: p.url,
     name: p.alt || "Media",
     kind: mediaKind(p.mimeType, p.url),
+    createdAt: p.createdAt,
   };
 }
 
@@ -60,6 +62,7 @@ export default function PhotosPage() {
   const [toast, setToast] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
+  const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
   const gridRef = useRef<HTMLDivElement>(null);
 
   const showToast = useCallback((msg: string) => {
@@ -87,12 +90,18 @@ export default function PhotosPage() {
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    return media.filter((item) => {
-      if (filter !== "all" && item.kind !== filter) return false;
-      if (!q) return true;
-      return item.name.toLowerCase().includes(q);
-    });
-  }, [media, search, filter]);
+    return media
+      .filter((item) => {
+        if (filter !== "all" && item.kind !== filter) return false;
+        if (!q) return true;
+        return item.name.toLowerCase().includes(q);
+      })
+      .sort((a, b) =>
+        sortDir === "newest"
+          ? b.createdAt.localeCompare(a.createdAt)
+          : a.createdAt.localeCompare(b.createdAt),
+      );
+  }, [media, search, filter, sortDir]);
 
   const handleFiles = useCallback(
     (files: FileList) => {
@@ -113,6 +122,7 @@ export default function PhotosPage() {
             src: previewSrc,
             name: file.name,
             kind: isVideo ? "video" : "image",
+            createdAt: new Date().toISOString(),
             pending: true,
           },
           ...prev,
@@ -237,6 +247,14 @@ export default function PhotosPage() {
               {f === "all" ? "All" : f === "image" ? "Images" : "Video"}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setSortDir((d) => (d === "newest" ? "oldest" : "newest"))}
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-black/10 opacity-60 hover:opacity-90 transition-colors"
+            aria-label={`Sort by date, currently ${sortDir} first`}
+          >
+            {sortDir === "newest" ? "Newest first" : "Oldest first"}
+          </button>
         </div>
       </div>
 
