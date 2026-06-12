@@ -214,7 +214,7 @@ export default function TrashToTreasureUploadZone({
           display: flex; flex-direction: column; align-items: center; justify-content: center;
           gap: 6px; min-height: 120px; padding: 16px; border-radius: 16px; cursor: pointer;
           border: 1.5px dashed rgba(0,0,0,0.14); background: rgba(255,255,255,0.72);
-          transition: border-color 0.15s, background 0.15s;
+          transition: var(--transition-color);
         }
         .pb-trash-drop:hover:not(:has(.pb-trash-preview)) {
           border-color: rgba(238,37,50,0.35); background: rgba(238,37,50,0.04);
@@ -223,20 +223,20 @@ export default function TrashToTreasureUploadZone({
           border-color: rgba(238,37,50,0.5); background: rgba(238,37,50,0.06);
         }
         .pb-trash-drop-has-file { padding: 0; overflow: hidden; cursor: default; }
-        .pb-trash-label { font-size: 12.5px; font-weight: 600; text-align: center; margin: 0; }
-        .pb-trash-sub { font-size: 11px; color: rgba(22,22,28,0.45); margin: 0; }
+        .pb-trash-label { font-size: var(--text-caption); font-weight: 600; text-align: center; margin: 0; }
+        .pb-trash-sub { font-size: var(--text-label); color: rgba(22,22,28,0.45); margin: 0; }
         .pb-trash-preview { width: 100%; height: 140px; object-fit: cover; display: block; }
         .pb-trash-elevate {
           display: inline-flex; align-items: center; gap: 6px; margin-top: 10px;
-          padding: 7px 12px; border-radius: 10px; font-size: 12px; font-weight: 600;
+          padding: 7px 12px; border-radius: 10px; font-size: var(--text-caption); font-weight: 600;
           border: 1px solid rgba(238,37,50,0.25); background: rgba(238,37,50,0.06); color: #c41e2a;
-          cursor: pointer; transition: background 0.15s, opacity 0.15s;
+          cursor: pointer; transition: var(--transition-color), opacity 0.15s;
         }
         .pb-trash-elevate:hover:not(:disabled) { background: rgba(238,37,50,0.1); }
         .pb-trash-elevate:disabled { opacity: 0.6; cursor: default; }
-        .pb-trash-error { font-size: 11px; color: #c41e2a; margin: 8px 0 0; }
+        .pb-trash-error { font-size: var(--text-label); color: #c41e2a; margin: 8px 0 0; }
         .pb-trash-stub {
-          font-size: 11px; line-height: 1.4; color: rgba(22,22,28,0.55);
+          font-size: var(--text-label); line-height: var(--leading-body); color: rgba(22,22,28,0.55);
           margin: 8px 0 0; padding: 8px 10px; border-radius: 10px; background: rgba(0,0,0,0.04);
         }
         .sr-only {
