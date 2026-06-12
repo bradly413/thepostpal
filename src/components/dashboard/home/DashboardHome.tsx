@@ -34,6 +34,7 @@ import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { getHolidaysForYear } from "@/lib/holidays";
+import ParticleImageAssemble from "@/lib/ui-snippets/animations/ParticleImageAssemble";
 
 // ── Hero coverflow (seasonal hooks) ──────────────────────────
 // Local seasonal slides only — stock imagery looked like another tenant's
@@ -425,7 +426,8 @@ export default function DashboardHome() {
                   <div className={`cf-card${s.img ? "" : ` cf-grad-${s.grad}`}`}>
                     {s.img ? (
                       <>
-                        <div className="cf-img" style={{ backgroundImage: `url('${s.img}')` }} aria-hidden />
+                        {/* photo assembles from a particle swarm on first load */}
+                        <ParticleImageAssemble src={s.img} className="cf-img" delay={350} />
                         <div className="cf-scrim" aria-hidden />
                       </>
                     ) : null}

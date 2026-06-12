@@ -41,6 +41,7 @@ and catalogued here so they can be pulled on demand.
 | Rotating Gradient Border | borders | border, conic, radial, rotate, @property | `borders/RotatingGradientBorder.tsx` | — | adapted from user CodePen |
 | Animated Post Frame | frames | frame, social, post, border, glow, rounded | `frames/AnimatedPostFrame.tsx` | — | original (combination) |
 | Image Choice Cards | inputs | radio, picker, image, grayscale, reflection, select, onboarding | `inputs/ImageChoiceCards.tsx` | — | adapted from user CSS snippet (2026-06-11) |
+| Particle Image Assemble | animations | particles, image, reveal, canvas, swarm, entrance, hero | `animations/ParticleImageAssemble.tsx` | JS (no lib) | technique from ParticleSlider (Tamino Martinius), reimplemented from scratch |
 
 _All seed snippets are authored from scratch (no third-party code) and use the
 brand red `#ee2532` as the default accent. All respect `prefers-reduced-motion`._
