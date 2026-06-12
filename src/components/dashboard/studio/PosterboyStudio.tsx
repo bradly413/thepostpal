@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useMemo, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -46,14 +46,17 @@ import VideoComposer from "@/components/dashboard/composer/VideoComposer";
 import CompositionOverlay from "@/components/dashboard/editor/CompositionOverlay";
 import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers";
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
-import { createDashboardPost, fetchDashboardPosts, createDashboardPhoto } from "@/lib/dashboard-api";
-import StudioHistoryGallery, { type StudioHistoryEntry } from "@/components/dashboard/studio/StudioHistoryGallery";
+import { createDashboardPost } from "@/lib/dashboard-api";
+import StudioHistoryGallery from "@/components/dashboard/studio/StudioHistoryGallery";
 import FlipWords from "@/lib/ui-snippets/text/FlipWords";
 import { usePlanFeatures, usePlan } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 import { StudioStyles } from "./studio-styles";
+import { useGenHistory } from "./hooks/use-gen-history";
+import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
+import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -141,33 +144,6 @@ function buildAutofillPrompts(businessType: string | null): string[] {
   out.push("a post that we're hiring");
   return out;
 }
-
-/** Cover-crop a generated image to the platform's exact pixel dimensions. */
-function resizeToExact(dataUrl: string, w: number, h: number): Promise<string> {
-  return new Promise((resolve) => {
-    const img = new Image();
-    img.onload = () => {
-      try {
-        if (img.width === w && img.height === h) return resolve(dataUrl);
-        const c = document.createElement("canvas");
-        c.width = w;
-        c.height = h;
-        const ctx = c.getContext("2d");
-        if (!ctx) return resolve(dataUrl);
-        const sc = Math.max(w / img.width, h / img.height);
-        const dw = img.width * sc;
-        const dh = img.height * sc;
-        ctx.drawImage(img, (w - dw) / 2, (h - dh) / 2, dw, dh);
-        resolve(c.toDataURL("image/jpeg", 0.92));
-      } catch {
-        resolve(dataUrl); // never block on cosmetics
-      }
-    };
-    img.onerror = () => resolve(dataUrl);
-    img.src = dataUrl;
-  });
-}
-
 
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
@@ -265,66 +241,7 @@ export default function PosterboyStudio() {
   const [activeTool, setActiveTool] = useState<null | "type" | "tools" | "captions">(null);
   const { locationId, locations } = useActiveLocation();
 
-  // Generation history: this session's generations + the tenant's posted images.
-  // The newest 4 session shots live ON the canvas (current + 3 in the 3D stack
-  // behind); older ones are evicted into the Media library for keeps.
   const [historyOpen, setHistoryOpen] = useState(false);
-  const [genHistory, setGenHistory] = useState<StudioHistoryEntry[]>([]);
-  const savedToMediaRef = useRef<Set<string>>(new Set());
-
-  const saveGenerationToMedia = useCallback(
-    (entry: StudioHistoryEntry) => {
-      if (!locationId || savedToMediaRef.current.has(entry.url)) return;
-      savedToMediaRef.current.add(entry.url);
-      const m = entry.url.match(/^data:(image\/[a-z+.-]+);base64,(.+)$/);
-      if (!m) return; // already a hosted url (posted images) — nothing to save
-      void (async () => {
-        try {
-          const bin = atob(m[2]);
-          const bytes = new Uint8Array(bin.length);
-          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
-          const ext = m[1].split("/")[1]?.replace("jpeg", "jpg") || "png";
-          const file = new File([bytes], `generation-${entry.at}.${ext}`, { type: m[1] });
-          // Multipart /api/upload (not the presigned S3-only flow): it falls
-          // back to local disk in dev, so archiving works in every environment.
-          const fd = new FormData();
-          fd.append("file", file);
-          const res = await fetch("/api/upload", { method: "POST", credentials: "same-origin", body: fd });
-          const data = (await res.json()) as { url?: string; error?: string };
-          if (!res.ok || !data.url) throw new Error(data.error || "upload failed");
-          const hostedUrl = data.url;
-          await createDashboardPhoto({
-            locationId,
-            url: hostedUrl,
-            mimeType: m[1],
-            alt: entry.prompt || "Studio generation",
-          });
-          // H6: swap the multi-MB data URL for the hosted one in history
-          savedToMediaRef.current.add(hostedUrl);
-          setGenHistory((h) => h.map((e) => (e.url === entry.url ? { ...e, url: hostedUrl } : e)));
-        } catch {
-          // Media archiving is best-effort — never interrupt creating.
-          savedToMediaRef.current.delete(entry.url);
-        }
-      })();
-    },
-    [locationId],
-  );
-
-  const pushHistory = (url: string, promptText: string) =>
-    setGenHistory((h) =>
-      [
-        { url, prompt: promptText.slice(0, 120), at: Date.now(), source: "session" as const },
-        ...h.filter((e) => e.url !== url),
-      ].slice(0, 14),
-    );
-
-  // H5: archiving is a side effect — run it from an effect on the list, never
-  // inside the updater (StrictMode double-invokes updaters). savedToMediaRef
-  // keeps it idempotent. Session shots beyond the on-canvas 4 graduate to Media.
-  useEffect(() => {
-    genHistory.filter((e) => e.source === "session").slice(4).forEach(saveGenerationToMedia);
-  }, [genHistory, saveGenerationToMedia]);
   const features = usePlanFeatures();
   const { businessType } = usePlan();
   const activeLocation = useMemo(
@@ -358,36 +275,6 @@ export default function PosterboyStudio() {
   } = useCompositionLayers(studioLayerKey);
 
 
-  const EDIT_DEFAULT = { scale: 1, x: 0, y: 0, rotate: 0, brightness: 100, contrast: 100, saturate: 100 };
-  const [edit, setEdit] = useState(EDIT_DEFAULT);
-  // Undo history for image edits — debounced so a full drag/slide collapses to a
-  // single step. Additive: it only records & restores, never alters edit behavior.
-  const editHistory = useRef<(typeof EDIT_DEFAULT)[]>([]);
-  const lastCommittedEdit = useRef(EDIT_DEFAULT);
-  const undoingEdit = useRef(false);
-  const editCommitTimer = useRef<number | null>(null);
-  const [canUndoEdit, setCanUndoEdit] = useState(false);
-  useEffect(() => {
-    if (undoingEdit.current) { undoingEdit.current = false; lastCommittedEdit.current = edit; return; }
-    const prev = lastCommittedEdit.current;
-    if (editCommitTimer.current) clearTimeout(editCommitTimer.current);
-    editCommitTimer.current = window.setTimeout(() => {
-      if (JSON.stringify(prev) !== JSON.stringify(edit)) {
-        editHistory.current.push(prev);
-        if (editHistory.current.length > 50) editHistory.current.shift();
-        setCanUndoEdit(true);
-      }
-      lastCommittedEdit.current = edit;
-    }, 350);
-    return () => { if (editCommitTimer.current) clearTimeout(editCommitTimer.current); };
-  }, [edit]);
-  function undoEdit() {
-    const prev = editHistory.current.pop();
-    if (!prev) return;
-    undoingEdit.current = true;
-    setEdit(prev);
-    setCanUndoEdit(editHistory.current.length > 0);
-  }
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
@@ -411,8 +298,79 @@ export default function PosterboyStudio() {
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
-  const dragRef = useRef<{ px: number; py: number; ex: number; ey: number } | null>(null);
-  const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const platform = PLATFORMS[platformIdx];
+
+  const {
+    edit,
+    setEdit,
+    canUndoEdit,
+    undoEdit,
+    resetEdit,
+    canEditImage,
+    onImagePointerDown,
+    onImagePointerMove,
+    onImagePointerUp,
+    handleCropToFrame,
+    handleDownloadImage,
+    previewStyle,
+  } = useImageEdit({
+    genState,
+    showTemplate,
+    generatedUrl,
+    platform,
+    frameWrapRef,
+    resizeToExact,
+    setGeneratedUrl,
+    setError,
+    setActiveEdit,
+  });
+
+  const { genHistory, pushHistory, adoptImage } = useGenHistory({
+    locationId,
+    genState,
+    setGeneratedUrl,
+    setMediaKind,
+    setComposerMode,
+    setGenState,
+    setShowTemplate,
+    setCaptionText,
+    setCaptionTags,
+    setCaptionState,
+    setCaptionError,
+    setCaptionBrief,
+    setCaptionRun,
+    aiCaptionRef,
+    resetEdit,
+    setError,
+  });
+
+  const { generate, composeFromIntent } = useStudioGeneration({
+    prompt,
+    composerBrief,
+    genState,
+    generatedUrl,
+    platformIdx,
+    platform,
+    platforms: PLATFORMS,
+    refImage,
+    imageQuality,
+    imageSize,
+    platformPinRef,
+    inputRef,
+    setGenState,
+    setGeneratedUrl,
+    setError,
+    setProgress,
+    setShowTemplate,
+    setCaptionState,
+    setCaptionText,
+    setCaptionTags,
+    setPlatformIdx,
+    resetEdit,
+    setActiveEdit,
+    pushHistory,
+  });
 
   useEffect(() => {
     document.title = "Posterboy Studio | posterboy";
@@ -543,42 +501,6 @@ export default function PosterboyStudio() {
   }, [genState, composerMode, generatedUrl, showTemplate]);
 
 
-  // Seed history with the tenant's posted images (real, persisted creations) —
-  // session generations stack on top as they happen.
-  useEffect(() => {
-    if (!locationId) return;
-    let cancelled = false;
-    void (async () => {
-      try {
-        const posts = await fetchDashboardPosts(locationId);
-        if (cancelled) return;
-        const seeded = posts
-          .filter(
-            (p) =>
-              (p.mediaType ?? "image") === "image" &&
-              typeof p.mediaUrl === "string" &&
-              p.mediaUrl.startsWith("http"),
-          )
-          .slice(0, 10)
-          .map((p) => ({
-            url: p.mediaUrl as string,
-            prompt: p.copy.slice(0, 120),
-            at: Date.parse(p.scheduledFor ?? p.createdAt) || Date.now(),
-            source: "post" as const,
-          }));
-        setGenHistory((h) => {
-          const seen = new Set(h.map((e) => e.url));
-          return [...h, ...seeded.filter((e) => !seen.has(e.url))].slice(0, 14);
-        });
-      } catch {
-        /* history is optional — never block the studio */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [locationId]);
-
   // Track the canvas size so the board can be sized in exact pixels — both
   // width and height then animate smoothly between platform aspect ratios.
   useEffect(() => {
@@ -590,22 +512,6 @@ export default function PosterboyStudio() {
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
-
-  // Scroll to zoom the generated image (non-passive so it can preventDefault).
-  useEffect(() => {
-    const el = frameWrapRef.current;
-    if (!el) return;
-    const onWheel = (e: WheelEvent) => {
-      if (genState !== "done" || showTemplate) return;
-      e.preventDefault();
-      setEdit((s) => ({
-        ...s,
-        scale: Math.max(0.5, Math.min(3, Number((s.scale - e.deltaY * 0.0015).toFixed(3)))),
-      }));
-    };
-    el.addEventListener("wheel", onWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onWheel);
-  }, [genState, showTemplate]);
 
   // Close the post-type / tools popover on outside click (lives in the
   // right rail and the prompt bar respectively).
@@ -671,34 +577,7 @@ export default function PosterboyStudio() {
     { dependencies: [showTemplate, genState], scope: frameWrapRef },
   );
 
-  // Selected platform + the frame size that fits a square stage while
-  // preserving the post's aspect ratio (both dims as % so they transition).
-  const platform = PLATFORMS[platformIdx];
   const frameRatio = platform.w / platform.h;
-  // Size the board to the post's aspect ratio in exact pixels (computed from
-  // the measured canvas) so both width and height transition smoothly between
-  // platforms; landscape stays wide, portrait stays tall, centered above the
-  // prompt. Falls back to aspect-ratio sizing before the first measurement.
-  // R6: one path for adopting an existing image (3D stack, gallery, upload).
-  // Resets everything the previous image owned — caption, edits, AI ref —
-  // and refuses while a generation is in flight (it would be overwritten).
-  const adoptImage = (url: string) => {
-    if (genState === "generating") return;
-    setGeneratedUrl(url);
-    setMediaKind("image");
-    setComposerMode("image");
-    setGenState("done");
-    setShowTemplate(false);
-    setCaptionText("");
-    setCaptionTags("");
-    setCaptionState("idle");
-    setCaptionError("");
-    setCaptionBrief("");
-    setCaptionRun(0);
-    aiCaptionRef.current = "";
-    setEdit(EDIT_DEFAULT);
-    setError("");
-  };
 
   const frameWrapStyle: CSSProperties = (() => {
     const { w: cw, h: ch } = canvasSize;
@@ -734,324 +613,6 @@ export default function PosterboyStudio() {
     genState === "generating"
       ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
       : 0;
-
-  // Direct manipulation — drag to pan, wheel to zoom the generated image.
-  const canEditImage = genState === "done" && !showTemplate;
-  const clampPan = (v: number) => Math.max(-50, Math.min(50, v));
-  const onImagePointerDown = (e: React.PointerEvent) => {
-    if (!canEditImage) return;
-    try {
-      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-    } catch {
-      // Pointer capture can fail in some environments; dragging still works.
-    }
-    dragRef.current = { px: e.clientX, py: e.clientY, ex: edit.x, ey: edit.y };
-  };
-  const onImagePointerMove = (e: React.PointerEvent) => {
-    const d = dragRef.current;
-    const box = frameWrapRef.current?.getBoundingClientRect();
-    if (!d || !box) return;
-    const nx = d.ex + ((e.clientX - d.px) / box.width) * 100;
-    const ny = d.ey + ((e.clientY - d.py) / box.height) * 100;
-    setEdit((s) => ({ ...s, x: clampPan(nx), y: clampPan(ny) }));
-  };
-  const onImagePointerUp = () => {
-    dragRef.current = null;
-  };
-
-  // Crop to the post's aspect ratio — center-crop the generated image to the
-  // current platform frame (e.g. square source -> 4:5 portrait) on a canvas.
-  // Canvas drawImage of a data-URL source is reliable (no DOM rasterization,
-  // no CORS taint) — html-to-image does NOT reliably capture a CSS background-image.
-  function handleCropToFrame() {
-    if (genState !== "done" || !generatedUrl) return;
-    const img = new window.Image();
-    img.crossOrigin = "anonymous"; // hosted (S3) images would taint the canvas
-    img.onload = () => {
-      const targetAR = platform.w / platform.h;
-      const srcAR = img.width / img.height;
-      let sw = img.width;
-      let sh = img.height;
-      if (srcAR > targetAR) sw = sh * targetAR; // too wide -> trim sides
-      else sh = sw / targetAR; // too tall -> trim top/bottom
-      const sx = (img.width - sw) / 2;
-      const sy = (img.height - sh) / 2;
-      const canvas = document.createElement("canvas");
-      canvas.width = Math.round(sw);
-      canvas.height = Math.round(sh);
-      const ctx = canvas.getContext("2d");
-      if (!ctx) return;
-      try {
-        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-        const out = canvas.toDataURL("image/png"); // throws on tainted canvas
-        editHistory.current = [];
-        setCanUndoEdit(false);
-        setEdit(EDIT_DEFAULT);
-        lastCommittedEdit.current = EDIT_DEFAULT;
-        setActiveEdit(null);
-        setGeneratedUrl(out);
-      } catch {
-        setError("This image can't be cropped here (it's hosted externally). Download it instead.");
-      }
-    };
-    img.onerror = () => setError("Couldn't crop the image. Try again.");
-    img.src = generatedUrl;
-  }
-
-  // Download the generated image. The source is a base64 data URL, so a direct
-  // anchor download is reliable (and reflects any prior crop).
-  async function handleDownloadImage() {
-    if (genState !== "done" || !generatedUrl) return;
-    const a = document.createElement("a");
-    a.download = `posterboy-${platform.id}-${platform.w}x${platform.h}.jpg`;
-    a.href = await resizeToExact(generatedUrl, platform.w, platform.h);
-    a.click();
-  }
-
-  // Image edit transforms — applied to the preview, carry into the post mockup.
-  const previewStyle = {
-    ...(generatedUrl && (genState === "done" || genState === "generating")
-      ? { backgroundImage: `url('${generatedUrl}')` }
-      : {}),
-    transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
-    filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
-  };
-
-  // Clear the progress timer if the component unmounts mid-generation.
-  useEffect(() => () => {
-    if (genTimer.current) clearInterval(genTimer.current);
-  }, []);
-
-  const generate = async (overridePrompt?: string, recoverGenState: GenState = "idle") => {
-    const savedPrompt = (overridePrompt ?? prompt.trim()).trim();
-    if (!savedPrompt) {
-      if (genTimer.current) {
-        clearInterval(genTimer.current);
-        genTimer.current = null;
-      }
-      setProgress(0);
-      setGenState(recoverGenState);
-      setError("Add a brief before generating.");
-      inputRef.current?.focus();
-      return;
-    }
-    if (!overridePrompt && genState === "generating") {
-      inputRef.current?.focus();
-      return;
-    }
-    setGenState("generating");
-    setError("");
-    setProgress(0);
-    setShowTemplate(false);
-    setCaptionState("idle");
-    setCaptionText("");
-    setCaptionTags("");
-    setEdit(EDIT_DEFAULT);
-    setActiveEdit(null);
-
-    // Simulated diffusion progress: climbs quickly, eases as it nears the
-    // cap, then snaps to 100% when the real image arrives.
-    if (genTimer.current) clearInterval(genTimer.current);
-    genTimer.current = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 92) return p;
-        const inc =
-          p < 30 ? 4 + Math.random() * 5 : p < 70 ? 1.6 + Math.random() * 2.6 : 0.5 + Math.random() * 1.2;
-        return Math.min(92, p + inc);
-      });
-    }, 240);
-    const stopTimer = () => {
-      if (genTimer.current) {
-        clearInterval(genTimer.current);
-        genTimer.current = null;
-      }
-    };
-    // Keep the "thinking → analyzing" choreography perceptible even when the
-    // request resolves (or fails) instantly.
-    const startedAt = Date.now();
-    const holdFloor = async () => {
-      const elapsed = Date.now() - startedAt;
-      if (elapsed < 1600) await new Promise((r) => setTimeout(r, 1600 - elapsed));
-    };
-
-    const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
-    try {
-      const res = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: savedPrompt,
-          aspectRatio: platform.genAspect,
-          ...(refImage ? { referenceImage: refImage } : {}),
-          quality: imageQuality,
-          ...(imageQuality === "pro" ? { imageSize } : {}),
-        }),
-        signal: ctrl.signal,
-      });
-      const data = await res.json();
-      if (!res.ok || data.error) {
-        await holdFloor();
-        stopTimer();
-        setProgress(0);
-        const msg = data.error || "Generation failed";
-        setError(
-          msg.includes("not configured")
-            ? "Image generation is not available yet. API key needs to be configured."
-            : msg,
-        );
-        setGenState("idle");
-        return;
-      }
-      await holdFloor();
-      stopTimer();
-      setProgress(100);
-      // R1: keep the NATIVE image (Pro 2K stays 2K); the exact platform-size
-      // copy is produced at publish/download time against the platform chosen THEN.
-      setGeneratedUrl(data.image);
-      pushHistory(data.image, savedPrompt);
-      setGenState("done");
-    } catch (err) {
-      await holdFloor();
-      stopTimer();
-      setProgress(0);
-      setError(
-        err instanceof DOMException && err.name === "AbortError"
-          ? "Generation timed out. Please try again."
-          : "Network error. Please try again.",
-      );
-      setGenState("idle");
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
-
-  // Non-technical composer: one plain-language intent ("make an instagram post
-  // about our weekend sale") → /api/studio/compose (infers platform, writes a
-  // real image prompt + brand-voice caption) → generates the image → shows the
-  // finished post preview. Falls back to a raw image generation if the intent
-  // router is unavailable.
-  const composeFromIntent = async () => {
-    const intent = composerBrief;
-    if (!intent || genState === "generating") {
-      inputRef.current?.focus();
-      return;
-    }
-    const isReprompt = genState === "done" && !!generatedUrl;
-    setGenState("generating");
-    setError("");
-    setProgress(0);
-    setShowTemplate(false);
-    setCaptionState("idle");
-    if (!isReprompt) {
-      setCaptionText("");
-      setCaptionTags("");
-    }
-    setEdit(EDIT_DEFAULT);
-    setActiveEdit(null);
-
-    if (genTimer.current) clearInterval(genTimer.current);
-    genTimer.current = setInterval(() => {
-      setProgress((p) => {
-        if (p >= 92) return p;
-        const inc =
-          p < 30 ? 4 + Math.random() * 5 : p < 70 ? 1.6 + Math.random() * 2.6 : 0.5 + Math.random() * 1.2;
-        return Math.min(92, p + inc);
-      });
-    }, 240);
-    const stopTimer = () => {
-      if (genTimer.current) {
-        clearInterval(genTimer.current);
-        genTimer.current = null;
-      }
-    };
-
-    const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
-    try {
-      // 1) intent → structured brief
-      const cRes = await fetch("/api/studio/compose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent }),
-        signal: ctrl.signal,
-      });
-      const brief = await cRes.json();
-      if (!cRes.ok || brief.error) {
-        // Graceful fallback: treat the text as a raw image prompt.
-        stopTimer();
-        setCaptionState("idle");
-        clearTimeout(timeoutId);
-        await generate(intent, isReprompt ? "done" : "idle");
-        return;
-      }
-
-      // 2) switch to the inferred platform — but an EXPLICIT chip choice wins
-      // unless the user actually named a platform in their text (R7).
-      const textNamesPlatform = /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
-      const idx = PLATFORMS.findIndex((p) => p.id === brief.platform);
-      const pIdx =
-        idx >= 0 && (textNamesPlatform || !platformPinRef.current)
-          ? idx
-          : platformIdx;
-      if (textNamesPlatform) platformPinRef.current = false;
-      setPlatformIdx(pIdx);
-      const aspect = PLATFORMS[pIdx].genAspect;
-
-      // 3) generate the image from the translated prompt
-      const iRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: brief.imagePrompt,
-          aspectRatio: aspect,
-          ...(refImage ? { referenceImage: refImage } : {}),
-          quality: imageQuality,
-          ...(imageQuality === "pro" ? { imageSize } : {}),
-        }),
-        signal: ctrl.signal,
-      });
-      const iData = await iRes.json();
-      if (!iRes.ok || iData.error) {
-        stopTimer();
-        setProgress(0);
-        setCaptionState("idle");
-        const msg = iData.error || "Generation failed";
-        setError(
-          msg.includes("not configured")
-            ? "Image generation is not available yet. API key needs to be configured."
-            : msg,
-        );
-        setGenState(isReprompt ? "done" : "idle");
-        return;
-      }
-
-      // 4) assemble the finished post preview
-      stopTimer();
-      setProgress(100);
-      // R1: native image kept; exact sizing happens at publish/download.
-      setGeneratedUrl(iData.image);
-      pushHistory(iData.image, intent);
-      setCaptionText("");
-      setCaptionTags("");
-      setCaptionState("idle");
-      setGenState("done");
-      // Land on the BARE image (no post chrome) — the platform mockup appears
-      // later via confirm/caption flow, not at the moment of creation.
-    } catch (err) {
-      stopTimer();
-      setProgress(0);
-      setCaptionState("idle");
-      setError(
-        err instanceof DOMException && err.name === "AbortError"
-          ? "Timed out. Please try again."
-          : "Network error. Please try again.",
-      );
-      setGenState(isReprompt ? "done" : "idle");
-    } finally {
-      clearTimeout(timeoutId);
-    }
-  };
 
   // Parse the /api/ai response into a caption body + a hashtag string.
   const parseCaption = (raw: string): { body: string; tags: string } => {
