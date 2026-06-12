@@ -160,7 +160,7 @@ export function DashboardHomeStyles() {
       color: var(--ink);
     }
     .hero-cf .cf-img ~ .cf-body .cf-title { color: #fff; text-shadow: 0 2px 26px rgba(0,0,0,0.45); }
-    .hero-cf .cf-date { margin-top: 6px; font-size: 14px; font-weight: 500; color: var(--ink-soft); }
+    .hero-cf .cf-date { margin-top: 6px; font-size: 14px; font-weight: 500; color: #4a4a52; }
     .hero-cf .cf-img ~ .cf-body .cf-date { color: rgba(255,255,255,0.88); }
     .hero-cf .cf-btn {
       display: inline-block; margin-top: 14px; padding: 10px 22px; border-radius: 99px;
@@ -168,7 +168,7 @@ export function DashboardHomeStyles() {
       box-shadow: 0 12px 30px -14px rgba(200,30,42,0.6); transition: transform .2s, background .2s;
     }
     .hero-cf .cf-btn:hover { transform: translateY(-2px); background: #b01a25; }
-    .hero-cf .swiper-pagination-bullet { background: rgba(28,28,30,0.35); opacity: 1; transition: all .3s; }
+    .hero-cf .swiper-pagination-bullet { background: rgba(28,28,30,0.55); opacity: 1; transition: all .3s; }
     .hero-cf .swiper-pagination-bullet-active { width: 20px; border-radius: 99px; background: #c81e2a; }
     .hero-cf .slabel { position: absolute; z-index: 5; right: 14px; top: 18px; font-size: 10px; letter-spacing: 1.4px; text-transform: uppercase; color: var(--ink-soft); background: rgba(255,255,255,0.8); padding: 6px 12px; border-radius: 99px; backdrop-filter: blur(6px); border: 1px solid rgba(255,255,255,0.7); }
     .hero-cf .hero-pause {

@@ -54,7 +54,8 @@ const SLIDES: HeroSlide[] = [
 /** Next real holidays (from the calendar's own source) as typographic slides. */
 function buildHeroSlides(): HeroSlide[] {
   const now = new Date();
-  const todayKey = now.toISOString().slice(0, 10);
+  // local date key — toISOString() is UTC and dropped a holiday the evening before
+  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   const photographed = SLIDES.map((s) => s.title.toLowerCase());
   const upcoming = [...getHolidaysForYear(now.getFullYear()), ...getHolidaysForYear(now.getFullYear() + 1)]
     .filter((h) => h.date >= todayKey)
@@ -139,7 +140,7 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const heroSlides = useMemo(buildHeroSlides, []);
+  const heroSlides = useMemo(() => buildHeroSlides(), []);
   const swiperRef = useRef<SwiperInstance | null>(null);
   const [heroPaused, setHeroPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);

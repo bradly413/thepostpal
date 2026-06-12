@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { X, ChevronLeft, ChevronRight } from "lucide-react";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 /**
  * StudioHistoryGallery — browse recent creations as a 3D coverflow of cards.
@@ -34,24 +35,38 @@ export default function StudioHistoryGallery({
 }) {
   const [active, setActive] = useState(0);
   const closeRef = useRef<HTMLButtonElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
+
+  // H2: a real modal — focus trapped inside, Escape closes.
+  useFocusTrap(true, rootRef, onClose);
+
+  // Clamp the active index when a fresh generation prepends entries.
+  useEffect(() => {
+    setActive((a) => Math.min(a, Math.max(0, entries.length - 1)));
+  }, [entries.length]);
 
   useEffect(() => {
     closeRef.current?.focus();
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-      else if (e.key === "ArrowLeft") setActive((a) => Math.max(0, a - 1));
+      // Buttons handle their own Enter/Space; arrows shouldn't fight inputs.
+      const t = e.target as HTMLElement | null;
+      if (t && (t.closest("input, textarea") || (e.key === "Enter" && t.closest("button")))) return;
+      if (e.key === "ArrowLeft") setActive((a) => Math.max(0, a - 1));
       else if (e.key === "ArrowRight") setActive((a) => Math.min(entries.length - 1, a + 1));
       else if (e.key === "Enter" && entries[active]) onPick(entries[active]);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [entries, active, onPick, onClose]);
+  }, [entries, active, onPick]);
 
   const fmt = (t: number) =>
     new Date(t).toLocaleDateString("en-US", { month: "short", day: "numeric" });
 
   return (
-    <div className="shg" role="dialog" aria-modal="true" aria-label="Your recent creations">
+    <div className="shg" role="dialog" aria-modal="true" aria-label="Your recent creations" ref={rootRef}>
       <div className="shg-backdrop" onClick={onClose} aria-hidden />
       <button type="button" ref={closeRef} className="shg-close" onClick={onClose} aria-label="Close history">
         <X size={18} />
@@ -77,12 +92,12 @@ export default function StudioHistoryGallery({
                 pointerEvents: abs > 3 ? "none" : "auto",
               };
               return (
-                <div
+                <button
+                  type="button"
                   key={`${e.url.slice(0, 48)}-${e.at}`}
                   className={`shg-card${off === 0 ? " is-active" : ""}`}
                   style={style}
                   onClick={() => (off === 0 ? onPick(e) : setActive(i))}
-                  role="button"
                   tabIndex={abs <= 1 ? 0 : -1}
                   aria-label={off === 0 ? `Open: ${e.prompt || "creation"}` : `Show ${e.prompt || "creation"}`}
                 >
@@ -96,7 +111,7 @@ export default function StudioHistoryGallery({
                     {e.prompt ? <p className="shg-prompt">{e.prompt}</p> : null}
                     {off === 0 ? <span className="shg-open">Open in studio</span> : null}
                   </div>
-                </div>
+                </button>
               );
             })}
           </div>
@@ -147,6 +162,7 @@ export default function StudioHistoryGallery({
           perspective: 1100px; transform-style: preserve-3d;
         }
         .shg-card {
+          border: 0; padding: 0; text-align: left; font: inherit; color: inherit;
           position: absolute; top: 50%; left: 50%;
           width: min(340px, 52vw); aspect-ratio: 4 / 5;
           border-radius: 14px; overflow: hidden; cursor: pointer;
@@ -164,8 +180,8 @@ export default function StudioHistoryGallery({
         .shg-chips { margin: 0 0 6px; display: flex; gap: 6px; }
         .shg-chips span {
           font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
-          padding: 3px 8px; border-radius: 99px; background: rgba(255,255,255,0.18);
-          border: 1px solid rgba(255,255,255,0.3);
+          padding: 3px 8px; border-radius: 99px; background: rgba(0,0,0,0.55);
+          border: 1px solid rgba(255,255,255,0.25);
         }
         .shg-prompt {
           margin: 0; font-size: 13px; line-height: 1.4; font-weight: 500;

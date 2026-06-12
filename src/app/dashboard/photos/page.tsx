@@ -250,7 +250,7 @@ export default function PhotosPage() {
           <button
             type="button"
             onClick={() => setSortDir((d) => (d === "newest" ? "oldest" : "newest"))}
-            className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-black/10 opacity-60 hover:opacity-90 transition-colors"
+            className="rounded-lg px-3 py-1.5 text-xs font-semibold border border-black/15 text-black/70 hover:text-black transition-colors"
             aria-label={`Sort by date, currently ${sortDir} first`}
           >
             {sortDir === "newest" ? "Newest first" : "Oldest first"}
