@@ -64,7 +64,7 @@ Offer or event: ${offer || "(none)"}`;
   try {
     const client = new Anthropic({ apiKey: key });
     const resp = await client.messages.create({
-      model: "claude-haiku-4-5-20251001",
+      model: "claude-sonnet-4-6", // same model id the rest of the app uses — the prod key rejected the Haiku id
       max_tokens: 700,
       system,
       messages: [{ role: "user", content: user }],
