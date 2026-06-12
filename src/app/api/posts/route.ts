@@ -3,6 +3,7 @@ import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
+import { isSafeMediaUrl } from "@/lib/safe-media-url";
 
 const VALID_STATUSES = new Set([
   "draft",
@@ -84,9 +85,14 @@ export async function POST(request: NextRequest) {
           templateId:
             typeof body.templateId === "string" ? body.templateId : null,
           pillar: typeof body.pillar === "string" ? body.pillar : null,
-          mediaUrl: typeof body.mediaUrl === "string" ? body.mediaUrl : null,
+          mediaUrl:
+            typeof body.mediaUrl === "string" && isSafeMediaUrl(body.mediaUrl)
+              ? body.mediaUrl
+              : null,
           mediaUrls: Array.isArray(body.mediaUrls)
-            ? body.mediaUrls.filter((url: unknown) => typeof url === "string" && url.trim())
+            ? body.mediaUrls.filter(
+                (url: unknown): url is string => typeof url === "string" && isSafeMediaUrl(url),
+              )
             : null,
           mediaType:
             typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)

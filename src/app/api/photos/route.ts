@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
+import { isSafeMediaUrl } from "@/lib/safe-media-url";
 
 export async function GET(request: NextRequest) {
   try {
@@ -41,6 +42,9 @@ export async function POST(request: NextRequest) {
       const url = typeof body.url === "string" ? body.url.trim() : "";
       if (!url) {
         return NextResponse.json({ error: "url is required" }, { status: 400 });
+      }
+      if (!isSafeMediaUrl(url)) {
+        return NextResponse.json({ error: "url must be a valid http(s) media URL" }, { status: 400 });
       }
 
       const access = await resolveAccess(auth.userId, locationId, tx);

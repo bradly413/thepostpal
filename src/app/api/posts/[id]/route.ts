@@ -3,6 +3,7 @@ import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
+import { isSafeMediaUrl } from "@/lib/safe-media-url";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -110,11 +111,13 @@ export async function PUT(request: NextRequest, { params }: Params) {
           mediaUrl:
             "mediaUrl" in body && body.mediaUrl === null
               ? null
-              : typeof body.mediaUrl === "string"
+              : typeof body.mediaUrl === "string" && isSafeMediaUrl(body.mediaUrl)
                 ? body.mediaUrl
                 : undefined,
           mediaUrls: Array.isArray(body.mediaUrls)
-            ? body.mediaUrls.filter((url: unknown) => typeof url === "string" && url.trim())
+            ? body.mediaUrls.filter(
+                (url: unknown): url is string => typeof url === "string" && isSafeMediaUrl(url),
+              )
             : body.mediaUrls === null
               ? null
               : undefined,
