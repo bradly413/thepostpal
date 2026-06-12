@@ -581,25 +581,25 @@ export function StudioStyles() {
   .pb-studio .prompt-bar::before {
     content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px;
     background: conic-gradient(from var(--pb-bar-angle),
-      rgba(238,37,50,0) 0deg, rgba(238,37,50,0) 208deg,
-      rgba(238,37,50,0.7) 286deg, #ff5560 318deg, rgba(238,37,50,0.7) 350deg,
-      rgba(238,37,50,0) 360deg);
+      rgba(238,37,50,0.18) 0deg, rgba(238,37,50,0.24) 130deg,
+      rgba(238,37,50,0.62) 250deg, #ff5560 312deg, rgba(238,37,50,0.62) 350deg,
+      rgba(238,37,50,0.18) 360deg);
     -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     -webkit-mask-composite: xor;
     mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
     mask-composite: exclude;
     pointer-events: none;
-    opacity: 0.7;
-    filter: drop-shadow(0 0 5px rgba(238,37,50,0.32));
-    animation: pbBarGlow 5.5s linear infinite;
+    opacity: 0.8;
+    filter: drop-shadow(0 0 8px rgba(238,37,50,0.45)) drop-shadow(0 0 18px rgba(238,37,50,0.28));
+    animation: pbBarGlow 9s linear infinite;
     transition: opacity var(--duration-moderate) var(--ease-standard), filter var(--duration-moderate) var(--ease-standard);
   }
   .pb-studio .prompt-bar:focus-within::before {
     opacity: 1;
-    filter: drop-shadow(0 0 8px rgba(238,37,50,0.5));
+    filter: drop-shadow(0 0 11px rgba(238,37,50,0.6)) drop-shadow(0 0 24px rgba(238,37,50,0.42));
   }
   .pb-studio .prompt-bar.is-generating::before {
-    animation-duration: 1.8s;
+    animation-duration: 3s;
     opacity: 1;
   }
   @keyframes pbBarGlow { to { --pb-bar-angle: 360deg; } }
