@@ -119,13 +119,10 @@ export default function StrategicIntentPicker({
           justify-content: space-between;
           z-index: 16;
         }
-        @media (max-width: 600px) {
-          .pb-intent-rail { width: 92%; }
-        }
         .pb-intent-item { position: relative; display: flex; }
         .pb-intent-rail .pb-intent-ico {
           width: 50px; height: 50px; display: grid; place-items: center;
-          border-radius: 14px; color: #b6b4b0; background: transparent;
+          border-radius: 14px; color: #8a8884; background: transparent;
           transition: color .22s ease, transform .16s ease, filter .25s ease;
         }
         .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .25s ease; }
@@ -160,6 +157,14 @@ export default function StrategicIntentPicker({
         .pb-intent-ico:focus-visible + .pb-intent-pop,
         .pb-intent-ico.active + .pb-intent-pop {
           opacity: 1; visibility: visible; transform: translateX(-50%) translateY(0);
+        }
+
+        @media (max-width: 600px) {
+          .pb-intent-rail { width: 92%; }
+          /* R4: 7 fixed 50px items clip on phones — shrink to fit */
+          .pb-intent-rail .pb-intent-ico { width: 38px; height: 42px; }
+          .pb-intent-rail .pb-intent-ico svg { width: 19px; height: 19px; }
+          .pb-intent-div { margin: 0 2px; }
         }
 
         @media (prefers-reduced-motion: reduce) {

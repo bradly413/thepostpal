@@ -321,15 +321,19 @@ export default function PosterboyStudio() {
   );
 
   const pushHistory = (url: string, promptText: string) =>
-    setGenHistory((h) => {
-      const next = [
+    setGenHistory((h) =>
+      [
         { url, prompt: promptText.slice(0, 120), at: Date.now(), source: "session" as const },
         ...h.filter((e) => e.url !== url),
-      ];
-      // Session shots beyond the on-canvas 4 graduate to the Media library.
-      next.filter((e) => e.source === "session").slice(4).forEach(saveGenerationToMedia);
-      return next.slice(0, 14);
-    });
+      ].slice(0, 14),
+    );
+
+  // H5: archiving is a side effect — run it from an effect on the list, never
+  // inside the updater (StrictMode double-invokes updaters). savedToMediaRef
+  // keeps it idempotent. Session shots beyond the on-canvas 4 graduate to Media.
+  useEffect(() => {
+    genHistory.filter((e) => e.source === "session").slice(4).forEach(saveGenerationToMedia);
+  }, [genHistory, saveGenerationToMedia]);
   const features = usePlanFeatures();
   const { businessType } = usePlan();
   const activeLocation = useMemo(
@@ -438,6 +442,8 @@ export default function PosterboyStudio() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const platformMenuRef = useRef<HTMLDivElement>(null);
+  // true after the user explicitly picks a platform from the chip menu
+  const platformPinRef = useRef(false);
 
   // Ghost completion for the free-form brief: first curated prompt that
   // extends what's typed (case-insensitive). Tab accepts it.
@@ -682,6 +688,27 @@ export default function PosterboyStudio() {
   // the measured canvas) so both width and height transition smoothly between
   // platforms; landscape stays wide, portrait stays tall, centered above the
   // prompt. Falls back to aspect-ratio sizing before the first measurement.
+  // R6: one path for adopting an existing image (3D stack, gallery, upload).
+  // Resets everything the previous image owned — caption, edits, AI ref —
+  // and refuses while a generation is in flight (it would be overwritten).
+  const adoptImage = (url: string) => {
+    if (genState === "generating") return;
+    setGeneratedUrl(url);
+    setMediaKind("image");
+    setComposerMode("image");
+    setGenState("done");
+    setShowTemplate(false);
+    setCaptionText("");
+    setCaptionTags("");
+    setCaptionState("idle");
+    setCaptionError("");
+    setCaptionBrief("");
+    setCaptionRun(0);
+    aiCaptionRef.current = "";
+    setEdit(EDIT_DEFAULT);
+    setError("");
+  };
+
   const frameWrapStyle: CSSProperties = (() => {
     const { w: cw, h: ch } = canvasSize;
     if (!cw || !ch) {
@@ -776,11 +803,11 @@ export default function PosterboyStudio() {
 
   // Download the generated image. The source is a base64 data URL, so a direct
   // anchor download is reliable (and reflects any prior crop).
-  function handleDownloadImage() {
+  async function handleDownloadImage() {
     if (genState !== "done" || !generatedUrl) return;
     const a = document.createElement("a");
-    a.download = `posterboy-${Date.now()}.png`;
-    a.href = generatedUrl;
+    a.download = `posterboy-${platform.id}-${platform.w}x${platform.h}.jpg`;
+    a.href = await resizeToExact(generatedUrl, platform.w, platform.h);
     a.click();
   }
 
@@ -882,9 +909,10 @@ export default function PosterboyStudio() {
       await holdFloor();
       stopTimer();
       setProgress(100);
-      const exactImg = await resizeToExact(data.image, platform.w, platform.h);
-      setGeneratedUrl(exactImg);
-      pushHistory(exactImg, savedPrompt);
+      // R1: keep the NATIVE image (Pro 2K stays 2K); the exact platform-size
+      // copy is produced at publish/download time against the platform chosen THEN.
+      setGeneratedUrl(data.image);
+      pushHistory(data.image, savedPrompt);
       setGenState("done");
     } catch (err) {
       await holdFloor();
@@ -961,9 +989,15 @@ export default function PosterboyStudio() {
         return;
       }
 
-      // 2) switch to the inferred platform
+      // 2) switch to the inferred platform — but an EXPLICIT chip choice wins
+      // unless the user actually named a platform in their text (R7).
+      const textNamesPlatform = /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
       const idx = PLATFORMS.findIndex((p) => p.id === brief.platform);
-      const pIdx = idx >= 0 ? idx : 0;
+      const pIdx =
+        idx >= 0 && (textNamesPlatform || !platformPinRef.current)
+          ? idx
+          : platformIdx;
+      if (textNamesPlatform) platformPinRef.current = false;
       setPlatformIdx(pIdx);
       const aspect = PLATFORMS[pIdx].genAspect;
 
@@ -998,9 +1032,9 @@ export default function PosterboyStudio() {
       // 4) assemble the finished post preview
       stopTimer();
       setProgress(100);
-      const exactImg = await resizeToExact(iData.image, PLATFORMS[pIdx].w, PLATFORMS[pIdx].h);
-      setGeneratedUrl(exactImg);
-      pushHistory(exactImg, intent);
+      // R1: native image kept; exact sizing happens at publish/download.
+      setGeneratedUrl(iData.image);
+      pushHistory(iData.image, intent);
       setCaptionText("");
       setCaptionTags("");
       setCaptionState("idle");
@@ -1130,7 +1164,13 @@ export default function PosterboyStudio() {
         // C8: store a fetchable URL, not in-memory base64 — the publish cron hands
         // mediaUrl straight to Meta, which cannot fetch a data: URI.
         const { resolvePublicImageUrl } = await import("@/lib/upload-public-image");
-        const mediaPublicUrl = generatedUrl ? await resolvePublicImageUrl(generatedUrl) : null;
+        // R1: exact platform pixels are produced HERE, from the native image,
+        // against the platform selected at publish time.
+        const exactNow =
+          generatedUrl && mediaKind === "image"
+            ? await resizeToExact(generatedUrl, platform.w, platform.h)
+            : generatedUrl;
+        const mediaPublicUrl = exactNow ? await resolvePublicImageUrl(exactNow) : null;
         await createDashboardPost({
           locationId,
           copy: fullCaption,
@@ -1151,12 +1191,15 @@ export default function PosterboyStudio() {
       return;
     }
 
-    const metaTarget =
-      platform.id === "facebook"
-        ? "facebook"
-        : platform.id === "instagram" || platform.id === "tiktok"
-          ? "instagram"
-          : null;
+    // R3: never silently re-route a preview-only platform (TikTok used to
+    // quietly publish to Instagram). Block with a way forward instead.
+    if (!platform.publishable) {
+      setError(
+        `${platform.label} publishing isn't connected yet. Use the platform menu (top left) to switch to Instagram or Facebook, or download the image instead.`,
+      );
+      return;
+    }
+    const metaTarget = platform.id === "facebook" ? "facebook" : "instagram";
 
     setPublishing(true);
     setError("");
@@ -1165,12 +1208,15 @@ export default function PosterboyStudio() {
     try {
       if (metaTarget) {
         const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
+        const exactPublish = isVideo
+          ? generatedUrl
+          : await resizeToExact(generatedUrl as string, platform.w, platform.h);
         const payload = await buildMetaPublishPayload({
           platform: metaTarget,
           caption: fullCaption,
           ...(isVideo
             ? { videoUrl: generatedUrl, mediaType: "video" as const }
-            : { imageUrl: generatedUrl, mediaType: "image" as const }),
+            : { imageUrl: exactPublish, mediaType: "image" as const }),
         });
         publishedMediaUrl = payload.imageUrl ?? payload.videoUrl ?? generatedUrl;
         const res = await fetch("/api/meta/publish", {
@@ -1227,7 +1273,7 @@ export default function PosterboyStudio() {
             <div className="top-left">
               {/* Platform is INFERRED from the prompt (default Instagram) — no
                   pre-deciding. The chip appears once work exists, to switch. */}
-              {genState !== "idle" || generatedUrl ? (
+              {genState !== "idle" || generatedUrl || composerMode === "video" ? (
                 <div className="post-select" ref={platformMenuRef}>
                   <button
                     type="button"
@@ -1253,6 +1299,7 @@ export default function PosterboyStudio() {
                             aria-selected={platformIdx === i}
                             onClick={() => {
                               setPlatformIdx(i);
+                              platformPinRef.current = true;
                               setPlatformMenuOpen(false);
                             }}
                           >
@@ -1269,6 +1316,18 @@ export default function PosterboyStudio() {
                 </div>
               ) : null}
               {genState === "done" ? (
+                <button
+                  type="button"
+                  className={`preview-toggle${when === "schedule" ? " is-sched" : ""}`}
+                  onClick={() => setWhen((w) => (w === "now" ? "schedule" : "now"))}
+                  aria-pressed={when === "schedule"}
+                  title={when === "schedule" ? "Will schedule for the chosen time" : "Will publish immediately"}
+                >
+                  <Calendar size={15} />
+                  <span>{when === "schedule" ? "Scheduled" : "Post now"}</span>
+                </button>
+              ) : null}
+              {genState === "done" && mediaKind !== "video" ? (
                 <button
                   type="button"
                   className="preview-toggle"
@@ -1324,12 +1383,7 @@ export default function PosterboyStudio() {
               uploadSlot={
                 <TrashToTreasureUploadZone
                   variant="icon"
-                  onUploaded={(url) => {
-                    setGeneratedUrl(url);
-                    setGenState("done");
-                    setMediaKind("image");
-                    setShowTemplate(false);
-                  }}
+                  onUploaded={(url) => adoptImage(url)}
                   onElevated={(caption, hashtags) => {
                     setCaptionText(caption);
                     setCaptionTags(hashtags.join(" "));
@@ -1344,7 +1398,7 @@ export default function PosterboyStudio() {
           {/* On-canvas 3D stack: the last few generations recede behind the live
               image, fading into the white on both sides. Click one to bring it
               back front-and-center. */}
-          {composerMode === "image" ? (
+          {composerMode === "image" && !showTemplate ? (
             <div className="gen-stack" aria-label="Recent generations">
               {genHistory
                 .filter((e) => e.source === "session" && e.url !== generatedUrl)
@@ -1354,12 +1408,7 @@ export default function PosterboyStudio() {
                     key={`${e.at}-${e.url.slice(0, 32)}`}
                     type="button"
                     className={`gs-card gs-${i}`}
-                    onClick={() => {
-                      setGeneratedUrl(e.url);
-                      setMediaKind("image");
-                      setGenState("done");
-                      setShowTemplate(false);
-                    }}
+                    onClick={() => adoptImage(e.url)}
                     aria-label={`Bring back: ${e.prompt || "earlier generation"}`}
                     title={e.prompt}
                   >
@@ -1654,11 +1703,7 @@ export default function PosterboyStudio() {
               entries={genHistory}
               onClose={() => setHistoryOpen(false)}
               onPick={(e) => {
-                setGeneratedUrl(e.url);
-                setMediaKind("image");
-                setComposerMode("image");
-                setGenState("done");
-                setShowTemplate(false);
+                adoptImage(e.url);
                 setHistoryOpen(false);
               }}
             />
@@ -1682,7 +1727,10 @@ export default function PosterboyStudio() {
                   value={intentDetail}
                   onChange={(e) => setIntentDetail(e.target.value)}
                   onKeyDown={(e) =>
-                    e.key === "Enter" && genState !== "generating" && void composeFromIntent()
+                    e.key === "Enter" &&
+                    genState !== "generating" &&
+                    composerMode === "image" &&
+                    void composeFromIntent()
                   }
                   placeholder={selectedIntent.detailPlaceholder}
                   disabled={genState === "generating"}
@@ -1700,7 +1748,10 @@ export default function PosterboyStudio() {
                         setPrompt(prompt + ghostRest);
                         return;
                       }
-                      if (e.key === "Enter" && genState !== "generating") void composeFromIntent();
+                      // R5: Enter must not fire the image pipeline while the
+                      // video composer is open (it would unmount it mid-config).
+                      if (e.key === "Enter" && genState !== "generating" && composerMode === "image")
+                        void composeFromIntent();
                     }}
                     placeholder={
                       genState === "done" && promptMode === "image"
@@ -1710,6 +1761,9 @@ export default function PosterboyStudio() {
                     disabled={genState === "generating"}
                     aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
                   />
+                  <span className="sr-only" aria-live="polite">
+                    {ghostRest ? `Suggestion: ${prompt}${ghostRest} — press Tab to accept.` : ""}
+                  </span>
                   {ghostRest ? (
                     <div className="pb-ghost" aria-hidden>
                       <span className="pb-ghost-typed">{prompt}</span>
@@ -2637,6 +2691,9 @@ function StudioStyles() {
     55% { opacity: 0.5; }
     100% { opacity: 0.1; transform: translateX(0); }
   }.pb-studio .frame-wrap.as-post {
+    /* R2: share the lifted centerline so the mockup clears the prompt bar */
+    top: calc((100% - 210px) / 2);
+    max-height: calc(100% - 240px);
     aspect-ratio: auto;
     width: min(360px, 58%);
     max-width: 380px;
@@ -2965,7 +3022,7 @@ function StudioStyles() {
   }.pb-studio .prompt-bar input::placeholder {
     color: rgba(20, 20, 25, 0.62);
   }.pb-studio .studio-schedule-row {
-    position: absolute; bottom: 96px; left: 50%; transform: translateX(-50%);
+    position: absolute; bottom: 216px; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 8px; padding: 8px 12px;
     border-radius: 12px; background: rgba(255,255,255,0.88);
     border: 1px solid rgba(0,0,0,0.08); font-size: 12px; z-index: 6;
@@ -3242,7 +3299,7 @@ function StudioStyles() {
   .pb-studio .pb-ghost-key {
     margin-left: 10px; padding: 2px 7px; border-radius: 5px; flex: none;
     font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    color: rgba(20,20,25,0.45); border: 1px solid rgba(20,20,25,0.16);
+    color: rgba(20,20,25,0.66); border: 1px solid rgba(20,20,25,0.3);
     background: rgba(255,255,255,0.6);
   }
   @media (max-width: 600px) { .pb-studio .pb-ghost { font-size: 14px; } }
@@ -3301,7 +3358,7 @@ function StudioStyles() {
     opacity: 0.55;
   }
   .pb-studio .gs-2 .gs-fade { background: linear-gradient(270deg, rgba(252,252,251,0.35) 0%, rgba(252,252,251,0.96) 100%); }
-  .pb-studio .gs-card:hover { opacity: 1; }
+  .pb-studio .gs-card:hover, .pb-studio .gs-card:focus-visible { opacity: 1; }
   .pb-studio .gs-card:hover .gs-img { filter: saturate(1); }
   @media (max-width: 1100px) { .pb-studio .gen-stack { display: none; } }
   @media (prefers-reduced-motion: reduce) {
@@ -3338,6 +3395,12 @@ function StudioStyles() {
   @media (prefers-reduced-motion: reduce) {
     .pb-studio .prompt-bar { animation: none; }
     .pb-studio .frame-wrap .ambient-glow { animation: none; opacity: 0.55; }
+  }
+
+  /* R4: the white-room overrides above out-cascade the ≤600px rules that
+     live earlier in this sheet — re-assert mobile layout here, last. */
+  @media (max-width: 600px) {
+    .pb-studio .prompt-bar { bottom: 70px; width: 92%; }
   }
     `}</style>
   );
