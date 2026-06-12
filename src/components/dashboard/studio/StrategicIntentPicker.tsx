@@ -123,9 +123,9 @@ export default function StrategicIntentPicker({
         .pb-intent-rail .pb-intent-ico {
           width: 50px; height: 50px; display: grid; place-items: center;
           border-radius: 14px; color: #8a8884; background: transparent;
-          transition: color .22s ease, transform .16s ease, filter .25s ease;
+          transition: color var(--duration-standard) var(--ease-standard), transform var(--duration-fast) var(--ease-spring), filter var(--duration-moderate) var(--ease-standard);
         }
-        .pb-intent-ico svg { width: 22px; height: 22px; transition: filter .25s ease; }
+        .pb-intent-ico svg { width: 22px; height: 22px; transition: filter var(--duration-moderate) var(--ease-standard); }
         .pb-intent-rail .pb-intent-ico:hover:not(:disabled):not(.active) { color: var(--ink, #1c1c1e); }
         .pb-intent-ico:hover:not(:disabled) svg {
           filter: drop-shadow(0 0 6px rgba(238,37,50,0.4))
@@ -148,10 +148,10 @@ export default function StrategicIntentPicker({
         .pb-intent-pop {
           position: absolute; bottom: calc(100% + 8px); left: 50%;
           transform: translateX(-50%) translateY(4px);
-          white-space: nowrap; font-size: 12px; font-weight: 600; letter-spacing: -0.01em;
+          white-space: nowrap; font-size: var(--text-caption); font-weight: 600; letter-spacing: var(--tracking-tight);
           color: #1c1c1e; text-shadow: 0 1px 0 rgba(255,255,255,0.85);
           opacity: 0; visibility: hidden; pointer-events: none; z-index: 19;
-          transition: opacity .18s ease, transform .18s ease, visibility .18s ease;
+          transition: var(--transition-enter), visibility var(--duration-standard) var(--ease-enter);
         }
         .pb-intent-item:hover .pb-intent-pop,
         .pb-intent-ico:focus-visible + .pb-intent-pop,
