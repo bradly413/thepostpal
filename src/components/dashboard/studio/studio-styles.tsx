@@ -824,7 +824,28 @@ export function StudioStyles() {
   @media (max-width: 1379px) {.pb-studio .app {
       grid-template-columns: 232px minmax(0, 1fr);
       grid-template-areas: "sidebar canvas";
-    }.pb-studio .canvas { min-height: 620px; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .canvas { min-height: 540px; }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
+    }.pb-studio .canvas { min-height: 620px; }}@media (max-width: 860px) {.pb-studio .canvas { min-height: 540px; }
+    /* The composer is 78%-width in this band, so the full control row no
+       longer fits on one line. Collapse the wordy chips to icons and let the
+       row wrap (Generate drops below) rather than overflow the bar. */
+    .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
+    .pb-studio .pb-ref-chip span, .pb-studio .pb-plat-cue span { display: none; }
+    .pb-studio .pb-ref-chip { padding: 0 9px; }
+  }
+  @media (min-width: 601px) and (max-width: 860px) {
+    /* Slim icon rail — keep the canvas + composer beside the nav instead of
+       stacking a full-width nav card on top of them. Stacks only <=600. */
+    .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); grid-template-areas: "sidebar canvas"; }
+    .pb-studio .pb-side { padding: 20px 10px; align-items: center; }
+    .pb-studio .pb-side .logo { display: none; }
+    .pb-studio .pb-side nav { width: 100%; }
+    .pb-studio .pb-side nav a { justify-content: center; gap: 0; padding: 11px 0; letter-spacing: 0; }
+    /* keep labels in the a11y tree (nav links have no aria-label) — hide visually only */
+    .pb-studio .pb-side nav a span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
+    .pb-studio .pb-side nav .grp-gap { margin: 8px 8px; }
+    .pb-studio .pb-side .foot { justify-content: center; gap: 0; }
+    .pb-studio .pb-side .foot > span:not(.av), .pb-studio .pb-side .foot > svg { display: none; }
+  }@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
 
   /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
      Enter: clean white. Composer floats in. Generate: frame materializes.
