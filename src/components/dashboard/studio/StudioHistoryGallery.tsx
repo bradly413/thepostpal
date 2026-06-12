@@ -150,10 +150,10 @@ export default function StudioHistoryGallery({
           -webkit-backdrop-filter: blur(18px) saturate(1.4);
         }
         .shg-title {
-          position: relative; z-index: 2; margin: 26px 0 0; font-size: 15px; font-weight: 700;
-          letter-spacing: -0.01em; color: #1c1c1e;
+          position: relative; z-index: 2; margin: 26px 0 0; font-size: var(--text-ui); font-weight: 700;
+          letter-spacing: var(--tracking-tight); color: #1c1c1e;
         }
-        .shg-empty { position: relative; z-index: 2; margin-top: 40px; font-size: 13.5px; color: #6e6e76; }
+        .shg-empty { position: relative; z-index: 2; margin-top: 40px; font-size: var(--text-body); color: #6e6e76; }
         .shg-close {
           position: absolute; z-index: 3; top: 18px; right: 18px; width: 34px; height: 34px;
           display: grid; place-items: center; border-radius: 50%;
@@ -179,20 +179,20 @@ export default function StudioHistoryGallery({
         .shg-card:not(.is-active) .shg-img { filter: saturate(0.75) brightness(0.96); }
         .shg-grad { position: absolute; inset: 0; background: linear-gradient(0deg, rgba(0,0,0,0.72) 0%, transparent 46%); }
         .shg-meta { position: absolute; left: 0; right: 0; bottom: 0; padding: 16px 18px; color: #fff; }
-        .shg-card:not(.is-active) .shg-meta { opacity: 0; transition: opacity 0.3s ease; }
+        .shg-card:not(.is-active) .shg-meta { opacity: 0; transition: opacity var(--duration-moderate) var(--ease-standard); }
         .shg-chips { margin: 0 0 6px; display: flex; gap: 6px; }
         .shg-chips span {
-          font-size: 10.5px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase;
+          font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: var(--tracking-label); text-transform: uppercase;
           padding: 3px 8px; border-radius: 99px; background: rgba(0,0,0,0.55);
           border: 1px solid rgba(255,255,255,0.25);
         }
         .shg-prompt {
-          margin: 0; font-size: 13px; line-height: 1.4; font-weight: 500;
+          margin: 0; font-size: var(--text-body-sm); line-height: var(--leading-body); font-weight: 500;
           display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;
         }
         .shg-open {
           display: inline-block; margin-top: 10px; padding: 8px 16px; border-radius: 99px;
-          background: #c81e2a; font-size: 12px; font-weight: 600;
+          background: #c81e2a; font-size: var(--text-caption); font-weight: 600;
           box-shadow: 0 10px 24px -12px rgba(200,30,42,0.7);
         }
         .shg-nav {
@@ -203,13 +203,13 @@ export default function StudioHistoryGallery({
           width: 38px; height: 38px; display: grid; place-items: center; border-radius: 50%;
           background: rgba(255,255,255,0.92); border: 1px solid rgba(0,0,0,0.08);
           color: #1c1c1e; cursor: pointer; box-shadow: 0 8px 20px -12px rgba(20,20,40,0.45);
-          transition: transform 0.15s ease;
+          transition: var(--transition-lift);
         }
         .shg-nav button:hover:not(:disabled) { transform: translateY(-2px); }
         .shg-nav button:disabled { opacity: 0.35; cursor: default; }
-        .shg-count { font-size: 12px; font-weight: 600; color: #6e6e76; font-variant-numeric: tabular-nums; }
+        .shg-count { font-size: var(--text-caption); font-weight: 600; color: #6e6e76; font-variant-numeric: tabular-nums; }
         @media (prefers-reduced-motion: reduce) {
-          .shg-card { transition: opacity 0.2s ease; }
+          .shg-card { transition: opacity var(--duration-standard) var(--ease-standard); }
         }
       `}</style>
     </div>
