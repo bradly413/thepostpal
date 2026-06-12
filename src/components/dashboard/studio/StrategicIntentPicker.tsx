@@ -112,10 +112,15 @@ export default function StrategicIntentPicker({
 
       <style>{`
         .pb-intent-rail {
-          /* horizontal strip tucked under the prompt bar */
+          /* horizontal strip tucked under the prompt bar, matching its width */
           position: absolute; left: 50%; bottom: 14px; transform: translateX(-50%);
-          display: flex; flex-direction: row; align-items: center; gap: 10px;
+          width: min(680px, 78%);
+          display: flex; flex-direction: row; align-items: center;
+          justify-content: space-between;
           z-index: 16;
+        }
+        @media (max-width: 600px) {
+          .pb-intent-rail { width: 92%; }
         }
         .pb-intent-item { position: relative; display: flex; }
         .pb-intent-ico {
