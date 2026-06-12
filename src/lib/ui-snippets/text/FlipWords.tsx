@@ -18,7 +18,7 @@ import { useEffect, useState } from "react";
 export default function FlipWords({
   words,
   colors = {},
-  interval = 2800,
+  interval = 4500,
 }: {
   words: string[];
   /** optional per-word color */
@@ -56,7 +56,7 @@ export default function FlipWords({
           style={
             mode === "static"
               ? undefined
-              : { animationDelay: mode === "in" ? `${300 + i * 55}ms` : `${i * 55}ms` }
+              : { animationDelay: mode === "in" ? `${420 + i * 85}ms` : `${i * 85}ms` }
           }
         >
           {ch}
@@ -86,10 +86,10 @@ export default function FlipWords({
         }
         .fw-in .fw-letter {
           transform: rotateX(-90deg);
-          animation: fwIn 0.38s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+          animation: fwIn 0.55s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
         }
         .fw-out .fw-letter {
-          animation: fwOut 0.32s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
+          animation: fwOut 0.45s cubic-bezier(0.55, 0.055, 0.675, 0.19) forwards;
         }
         @keyframes fwIn { from { transform: rotateX(-90deg); } to { transform: rotateX(0deg); } }
         @keyframes fwOut { from { transform: rotateX(0deg); } to { transform: rotateX(90deg); } }
