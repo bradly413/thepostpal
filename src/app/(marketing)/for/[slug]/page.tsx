@@ -15,7 +15,7 @@ export async function generateMetadata({
 
   if (!vertical) {
     return {
-      title: "Social media that sells | Posterboy",
+      title: "Social media that sells",
       description:
         "A calm social-media tool for businesses that don't want one. Your week is drafted.",
     };

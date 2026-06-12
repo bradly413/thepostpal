@@ -2,7 +2,7 @@ import LegalDocument, { LegalSection } from "@/components/marketing/LegalDocumen
 import { CONTACT_EMAIL, SITE_DOMAIN } from "@/lib/site";
 
 export const metadata = {
-  title: "Privacy Policy | posterboy",
+  title: "Privacy Policy",
   description: "How posterboy handles your data, cookies, and Meta integrations.",
 };
 

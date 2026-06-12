@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 
 export const metadata: Metadata = {
-  title: "What to post this week — free social media idea generator | Posterboy",
+  title: "What to post this week — free social media idea generator",
   description:
     "Stuck on what to post? Answer three questions about your business and get a calm, on-brand week of social media drafts in seconds. Free, no signup required.",
   alternates: {

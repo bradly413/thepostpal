@@ -184,28 +184,30 @@ export default function Hero() {
               <PosterboyAppIcon className="hero-mobile-mark-icon" />
             </div>
             <p className="type-label hero-mobile-kicker">AI social for busy owners</p>
-            <h1 className="type-display hero-mobile-title">
+            <div className="type-display hero-mobile-title" aria-hidden>
               Post like you
               <br />
               like it.
-            </h1>
+            </div>
           </div>
 
+          {/* the page's single accessible h1 — visual rows below are decorative */}
+          <h1 className="sr-only">Post like you like it.</h1>
           <div className="hero-headline">
-            <h1 className="type-display hero-title-row">
+            <div className="type-display hero-title-row" aria-hidden>
               <span className="hero-word-static">{splitChars("Post", "post")}</span>
               <span className="hero-word-static">{splitChars("like", "like1")}</span>
               <span className="hero-word-you">{splitChars("you", "you")}</span>
-            </h1>
+            </div>
 
             <div className="hero-icon-slot">
               <PosterboyAppIcon className="hero-icon-svg" />
             </div>
 
-            <h1 className="type-display hero-title-row">
+            <div className="type-display hero-title-row" aria-hidden>
               <span className="hero-word-like">{splitChars("like", "like2")}</span>
               <span className="hero-word-static">{splitChars("it.", "it")}</span>
-            </h1>
+            </div>
           </div>
 
           <div className="hero-sub">

@@ -15,19 +15,10 @@ export default function Footer() {
     {
       title: "Company",
       items: [
-        { label: "About", href: "/#founder" },
         { label: "Free tool", href: "/tools/what-to-post" },
         { label: "Contact", href: "mailto:hello@posterboysocial.com" },
         { label: "Privacy", href: "/privacy" },
         { label: "Terms", href: "/terms" },
-      ],
-    },
-    {
-      title: "Find us",
-      items: [
-        { label: "Instagram", href: "https://instagram.com" },
-        { label: "LinkedIn", href: "https://linkedin.com" },
-        { label: "X", href: "https://x.com" },
       ],
     },
   ] as const;

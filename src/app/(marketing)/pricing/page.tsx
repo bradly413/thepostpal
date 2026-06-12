@@ -6,7 +6,7 @@ import { getPublicTiers, getPremiumTiers } from "@/lib/pricing";
 import { CORE } from "@/lib/posterboy-copy";
 
 export const metadata = {
-  title: "Pricing | posterboy",
+  title: "Pricing",
   description:
     "Solo and Command — premium social publishing for operators and multi-location brands. BRC Custom for done-with-you brand systems.",
 };

@@ -58,6 +58,7 @@ export const metadata: Metadata = {
     template: `%s | ${SITE_NAME}`,
   },
   description: "A calm social-media tool for businesses that don't want one. Your week is drafted.",
+  alternates: { canonical: "./" },
   openGraph: {
     siteName: SITE_NAME,
     type: "website",
@@ -81,7 +82,37 @@ export default function RootLayout({
       lang="en"
       className={`${instrumentSerif.variable} ${playfairDisplay.variable} ${instrumentSans.variable} ${geist.variable} ${playfair.variable} ${inter.variable} ${jakarta.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col font-sans">{children}</body>
+      <body className="min-h-full flex flex-col font-sans">
+        <script
+          type="application/ld+json"
+          // eslint-disable-next-line react/no-danger
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  name: "Posterboy Social",
+                  url: SITE_URL,
+                  logo: `${SITE_URL}/opengraph-image`,
+                  email: "hello@posterboysocial.com",
+                },
+                {
+                  "@type": "SoftwareApplication",
+                  name: "Posterboy",
+                  applicationCategory: "BusinessApplication",
+                  operatingSystem: "Web",
+                  description:
+                    "A calm social-media tool for businesses that don't want one. Posterboy creates, schedules, and publishes posts in your brand voice.",
+                  offers: [
+                    { "@type": "Offer", name: "Solo", price: "99", priceCurrency: "USD" },
+                    { "@type": "Offer", name: "Command", price: "249", priceCurrency: "USD" },
+                  ],
+                },
+              ],
+            }),
+          }}
+        />{children}</body>
     </html>
   );
 }

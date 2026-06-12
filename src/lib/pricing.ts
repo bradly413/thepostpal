@@ -35,7 +35,7 @@ export const PRICING_TIERS: PricingTier[] = [
     name: "Solo",
     price: "$99",
     priceNote: "/mo",
-    annualPriceNote: "$79/mo billed annually",
+    annualPriceNote: "or $79/mo when billed annually ($948/yr)",
     description:
       "One premium operator, one calm workspace. Three social profiles, brand consistency, and scheduling without the noise.",
     bestFor:

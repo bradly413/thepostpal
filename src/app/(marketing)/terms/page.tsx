@@ -3,7 +3,7 @@ import Link from "next/link";
 import { CONTACT_EMAIL, SITE_DOMAIN } from "@/lib/site";
 
 export const metadata = {
-  title: "Terms of Service | posterboy",
+  title: "Terms of Service",
   description: "Terms of use for posterboy Social closed beta.",
 };
 
