@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Throwaway prototype scratch dir — not shipped, not linted.
+    "tmp-ascii-reveal/**",
   ]),
 ]);
 

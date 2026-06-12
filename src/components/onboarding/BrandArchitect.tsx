@@ -430,6 +430,21 @@ export default function BrandArchitect() {
     setStep(3);
   };
 
+  // Progress is computed against the steps actually REACHABLE on the current
+  // path, not the full ORDER. The zero-shot path skips the manual voice steps
+  // (5–8); the manual path skips the zero-shot voice review (14). Using the full
+  // ORDER as the denominator made the bar advance unevenly and only hit 100% on
+  // the final, immediately-redirecting step. (Off-path transient steps fall back
+  // to the full-ORDER ratio so the bar never reads 0% mid-flow.)
+  const reachableOrder = ORDER.filter((n) =>
+    prefilledVoice ? !VOICE_STEP_NUMBERS.includes(n) : n !== 14,
+  );
+  const reachedIndex = reachableOrder.indexOf(step);
+  const progressPct =
+    reachedIndex >= 0
+      ? ((reachedIndex + 1) / reachableOrder.length) * 100
+      : ((ORDER.indexOf(step) + 1) / ORDER.length) * 100;
+
   // Auto-apply the guardrail vertical from the business they already picked
   // (changeable later in Settings), then advance. Fire-and-forget — on a guest
   // 401 it caches a pending slug that syncs during generation.
@@ -691,7 +706,7 @@ export default function BrandArchitect() {
       <div className="absolute top-0 left-0 right-0 z-30 h-[3px] bg-black/[0.06]">
         <div
           className="h-full bg-[#ee2532] transition-all duration-500 ease-out"
-          style={{ width: `${((ORDER.indexOf(step) + 1) / ORDER.length) * 100}%` }}
+          style={{ width: `${progressPct}%` }}
         />
       </div>
 

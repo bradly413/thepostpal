@@ -10,7 +10,7 @@ export function safeRedirectPath(
 
 // Canonical onboarding is the Brand Architect at /onboarding — it now collects
 // the business identity + industry and generates a real brand book (Stage 1).
-// /onboarding/classic stays reachable as a fallback until it's retired.
+// The old /onboarding/classic + /onboarding/concept prototypes have been retired.
 export const SIGNUP_NEXT_DEFAULT = "/onboarding";
 export const SIGNIN_NEXT_DEFAULT = "/dashboard";
 
