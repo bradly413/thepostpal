@@ -1626,12 +1626,9 @@ export default function PosterboyStudio() {
             </div>
           ) : null}
 
-          {genState === "generating" && (
-            <div className="gen-status">
-              <span className="gen-dots"><i /><i /><i /></span>
-              <span>{statusText}</span>
-            </div>
-          )}
+          {/* The frame's own corner label carries the staged generating text —
+              the floating .gen-status pill duplicated it and collided with the
+              lifted prompt bar. */}
 
           {when === "schedule" ? (
             <div className="studio-schedule-row">
