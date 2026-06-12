@@ -7,7 +7,6 @@ import { useGSAP } from "@gsap/react";
 import {
   Calendar,
   Image as ImageIcon,
-  Settings,
   Sun,
   Eye,
   Pencil,
@@ -30,7 +29,6 @@ import {
   Lock,
   History,
 } from "lucide-react";
-import Link from "next/link";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import { PRO_IMAGES_ADDON_PRICE } from "@/lib/plan-features";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
@@ -206,7 +204,6 @@ export default function PosterboyStudio() {
   const [prompt, setPrompt] = useState("");
   const [selectedIntentId, setSelectedIntentId] = useState<StrategicIntentId | null>(null);
   const [intentDetail, setIntentDetail] = useState("");
-  const [freeFormMode, setFreeFormMode] = useState(false);
   const [genState, setGenState] = useState<GenState>("idle");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [error, setError] = useState("");
@@ -305,12 +302,16 @@ export default function PosterboyStudio() {
           const res = await fetch("/api/upload", { method: "POST", credentials: "same-origin", body: fd });
           const data = (await res.json()) as { url?: string; error?: string };
           if (!res.ok || !data.url) throw new Error(data.error || "upload failed");
+          const hostedUrl = data.url;
           await createDashboardPhoto({
             locationId,
-            url: data.url,
+            url: hostedUrl,
             mimeType: m[1],
             alt: entry.prompt || "Studio generation",
           });
+          // H6: swap the multi-MB data URL for the hosted one in history
+          savedToMediaRef.current.add(hostedUrl);
+          setGenHistory((h) => h.map((e) => (e.url === entry.url ? { ...e, url: hostedUrl } : e)));
         } catch {
           // Media archiving is best-effort — never interrupt creating.
           savedToMediaRef.current.delete(entry.url);
@@ -341,8 +342,8 @@ export default function PosterboyStudio() {
     [locations, locationId],
   );
   const structuredBrief = useMemo(
-    () => (freeFormMode ? prompt.trim() : buildStructuredBrief(selectedIntentId, intentDetail)),
-    [freeFormMode, prompt, selectedIntentId, intentDetail],
+    () => buildStructuredBrief(selectedIntentId, intentDetail),
+    [selectedIntentId, intentDetail],
   );
   const composerBrief = structuredBrief || prompt.trim();
   const previewImageLabel = useMemo(() => {
@@ -481,6 +482,7 @@ export default function PosterboyStudio() {
     setGeneratedUrl(mediaUrl);
     setGenState("done");
     setShowTemplate(true);
+    if (type !== "video") void generateCaption(); // parity with confirmToTemplate
     if (type === "video") {
       setMediaKind("video");
       setComposerMode("video");
@@ -516,13 +518,18 @@ export default function PosterboyStudio() {
   // center; the moment creation starts they glide down to their working
   // position at the bottom (GSAP owns their transform).
   const composerHeroInit = useRef(false);
+  const heroMountAtRef = useRef(0);
+  const heroTweensRef = useRef<gsap.core.Tween[]>([]);
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
+    if (!heroMountAtRef.current) heroMountAtRef.current = performance.now();
     const bar = canvas.querySelector<HTMLElement>(".prompt-bar");
     const rail = canvas.querySelector<HTMLElement>(".pb-intent-rail");
     if (!bar) return;
     const els = rail ? [bar, rail] : [bar];
+    heroTweensRef.current.forEach((t) => t.kill());
+    heroTweensRef.current = [];
     const heroIdle =
       genState === "idle" && composerMode === "image" && !generatedUrl && !showTemplate;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
@@ -535,20 +542,32 @@ export default function PosterboyStudio() {
       return cH / 2 - (topEdge + bottomEdge) / 2;
     };
 
+    // a deep link (?mediaUrl=) flips state right after mount — snap, don't glide
+    const justMounted = performance.now() - heroMountAtRef.current < 600;
     if (heroIdle) {
-      if (!composerHeroInit.current || reduce) {
+      if (!composerHeroInit.current || reduce || justMounted) {
         gsap.set(els, { xPercent: -50, y: heroDelta() });
       } else {
-        gsap.to(els, { xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" });
+        heroTweensRef.current.push(
+          gsap.to(els, { xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" }),
+        );
       }
       composerHeroInit.current = true;
       const onResize = () => gsap.set(els, { xPercent: -50, y: heroDelta() });
       window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
+      return () => {
+        window.removeEventListener("resize", onResize);
+        heroTweensRef.current.forEach((t) => t.kill());
+        heroTweensRef.current = [];
+      };
     }
     composerHeroInit.current = true;
-    if (reduce) gsap.set(els, { xPercent: -50, y: 0 });
-    else gsap.to(els, { xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" });
+    if (reduce || justMounted) gsap.set(els, { xPercent: -50, y: 0 });
+    else heroTweensRef.current.push(gsap.to(els, { xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" }));
+    return () => {
+      heroTweensRef.current.forEach((t) => t.kill());
+      heroTweensRef.current = [];
+    };
   }, [genState, composerMode, generatedUrl, showTemplate]);
 
 
@@ -775,6 +794,7 @@ export default function PosterboyStudio() {
   function handleCropToFrame() {
     if (genState !== "done" || !generatedUrl) return;
     const img = new window.Image();
+    img.crossOrigin = "anonymous"; // hosted (S3) images would taint the canvas
     img.onload = () => {
       const targetAR = platform.w / platform.h;
       const srcAR = img.width / img.height;
@@ -789,13 +809,18 @@ export default function PosterboyStudio() {
       canvas.height = Math.round(sh);
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
-      editHistory.current = [];
-      setCanUndoEdit(false);
-      setEdit(EDIT_DEFAULT);
-      lastCommittedEdit.current = EDIT_DEFAULT;
-      setActiveEdit(null);
-      setGeneratedUrl(canvas.toDataURL("image/png"));
+      try {
+        ctx.drawImage(img, sx, sy, sw, sh, 0, 0, canvas.width, canvas.height);
+        const out = canvas.toDataURL("image/png"); // throws on tainted canvas
+        editHistory.current = [];
+        setCanUndoEdit(false);
+        setEdit(EDIT_DEFAULT);
+        lastCommittedEdit.current = EDIT_DEFAULT;
+        setActiveEdit(null);
+        setGeneratedUrl(out);
+      } catch {
+        setError("This image can't be cropped here (it's hosted externally). Download it instead.");
+      }
     };
     img.onerror = () => setError("Couldn't crop the image. Try again.");
     img.src = generatedUrl;
@@ -1289,9 +1314,25 @@ export default function PosterboyStudio() {
                     <svg className="chev" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden><path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" /></svg>
                   </button>
                   {platformMenuOpen ? (
-                    <ul className="post-menu" role="listbox" aria-label="Choose platform">
+                    <ul
+                      className="post-menu"
+                      role="listbox"
+                      aria-label="Choose platform"
+                      ref={(el) => {
+                        // focus the selected option when the menu opens
+                        el?.querySelectorAll("button")[platformIdx]?.focus();
+                      }}
+                      onKeyDown={(e) => {
+                        if (e.key !== "ArrowDown" && e.key !== "ArrowUp") return;
+                        e.preventDefault();
+                        const opts = [...e.currentTarget.querySelectorAll("button")];
+                        const cur = opts.indexOf(document.activeElement as HTMLButtonElement);
+                        const next = e.key === "ArrowDown" ? Math.min(cur + 1, opts.length - 1) : Math.max(cur - 1, 0);
+                        opts[next]?.focus();
+                      }}
+                    >
                       {PLATFORMS.map((p, i) => (
-                        <li key={p.id}>
+                        <li key={p.id} role="presentation">
                           <button
                             type="button"
                             className="post-option"
@@ -1346,7 +1387,8 @@ export default function PosterboyStudio() {
                 className={historyOpen ? "active" : ""}
                 onClick={() => setHistoryOpen((o) => !o)}
                 aria-label="Recent creations"
-                aria-pressed={historyOpen}
+                aria-haspopup="dialog"
+                aria-expanded={historyOpen}
               >
                 <History size={16} />
               </button>
@@ -1372,7 +1414,7 @@ export default function PosterboyStudio() {
           </div>
 
           {/* Intent rail — mirrors the tool-rail on the opposite (right) edge */}
-          {genState === "idle" && composerMode === "image" && !freeFormMode ? (
+          {genState === "idle" && composerMode === "image" ? (
             <StrategicIntentPicker
               selectedId={selectedIntentId}
               onSelect={(id) => {
@@ -1530,20 +1572,6 @@ export default function PosterboyStudio() {
                 )}
                 {genState === "idle" && composerMode === "image" ? (
                   <div className="studio-intent-stage">
-                    {freeFormMode ? (
-                      <p className="studio-freeform-hint">
-                        Free-form brief — describe the post in your own words below.
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setFreeFormMode(false);
-                            setPrompt("");
-                          }}
-                        >
-                          Back to intents
-                        </button>
-                      </p>
-                    ) : null}
                     {/* Captions moved to the post-image step (driven by the prompt bar). */}
                   </div>
                 ) : null}
@@ -2899,7 +2927,7 @@ function StudioStyles() {
   .pb-studio .pb-generate:disabled { opacity: 0.4; cursor: default; box-shadow: none; }.pb-studio .prompt-bar:focus-within {
     background: rgba(255, 255, 255, 0.35);
     border-color: rgba(255, 255, 255, 0.7);
-    transform: translateX(-50%) translateY(-2px);
+    /* transform is GSAP-owned (hero glide) — no transform here */
   }.pb-studio .prompt-bar.is-generating {
     border-color: rgba(217,119,87,0.55);
     animation: pbsAgentPulse 2s ease-in-out infinite;
@@ -3054,7 +3082,7 @@ function StudioStyles() {
   }
   @media (max-width: 1240px) {
     .pb-studio .studio-caption-tools {
-      top: auto; bottom: 96px; right: 50%; transform: translateX(50%);
+      top: auto; bottom: 226px; right: 50%; transform: translateX(50%);
       width: min(340px, 84%); max-height: 50%;
     }
   }.pb-studio .canvas-theme-grid::after {

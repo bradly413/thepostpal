@@ -3,7 +3,6 @@ import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
-import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
 
 // POST /api/studio/compose
 //   body: { intent: string }   e.g. "make an instagram post about our weekend happy hour"
@@ -89,17 +88,15 @@ Return ONLY a JSON object (no prose, no markdown fences) with exactly these keys
     IF styleDirected: honor the owner's stated look fully and skillfully — translate it into real photography language (specific lighting, lens, surface, composition, mood) that delivers exactly the style they asked for at a high professional standard. Do not water it down toward casual realism.
     OTHERWISE (no style stated — the default): a realistic, true-to-life photo that looks like a genuine photo this business would actually take and post — NOT a glossy advertisement, stock image, or staged studio shoot. Describe: (1) the concrete real subject and setting with specific, honest detail (the actual product/place/moment, not an idealized version of it); (2) natural, available light — soft window light, plain overcast daylight, ordinary warm indoor light — NOT dramatic "golden-hour", "blue hour", or studio lighting; (3) a natural, slightly candid composition, as if a capable person shot it on a recent phone or a normal 35-50mm lens, with realistic, not dreamy, depth of field. Keep it believable: real textures, true colors, normal imperfections are good. Actively avoid anything that reads as AI or fake — no HDR, no over-saturation, no plastic or CGI or 3D-render look, no overly perfect glossy polish, no cinematic over-processing, no "award-winning" drama. Ordinary and real, in the best way.
     ALWAYS: do NOT render any text, words, captions, watermarks, or logos in the image. Never describe it as an illustration, render, or cartoon.,
-  "caption": a finished, ready-to-publish caption in the brand's voice. Match the platform (Instagram/Facebook warm + conversational, X punchy under 240 chars, LinkedIn professional, TikTok casual). Do NOT include hashtags here. Write like a real small-business owner — a person, not a brand and not an AI.
-${CAPTION_SOUND_HUMAN}
-${CAPTION_ANTI_AI_TELLS},
-  "hashtags": an array of 4-8 relevant hashtag strings, WITHOUT the # sign
+  (No caption here — captions are written in a dedicated step after the image,
+  with the brand's voice rules. Keep this response to the three keys above.)
 }${brand}`;
 
   try {
     const client = new Anthropic({ apiKey: key });
     const resp = await client.messages.create({
       model: "claude-sonnet-4-6",
-      max_tokens: 800,
+      max_tokens: 450,
       system,
       messages: [{ role: "user", content: intent }],
     });
@@ -112,20 +109,11 @@ ${CAPTION_ANTI_AI_TELLS},
       platform?: string;
       styleDirected?: unknown;
       imagePrompt?: string;
-      caption?: string;
-      hashtags?: unknown;
     };
     const styleDirected = parsed.styleDirected === true;
     const platform: Platform = (PLATFORMS as readonly string[]).includes(parsed.platform || "")
       ? (parsed.platform as Platform)
       : "instagram";
-    const hashtags = Array.isArray(parsed.hashtags)
-      ? parsed.hashtags
-          .filter((h): h is string => typeof h === "string")
-          .map((h) => h.replace(/^#/, "").trim())
-          .filter(Boolean)
-          .slice(0, 8)
-      : [];
     return Response.json({
       platform,
       imagePrompt:
@@ -136,8 +124,10 @@ ${CAPTION_ANTI_AI_TELLS},
         (styleDirected
           ? " A real photograph with true-to-life detail and textures, no CGI or 3D-render look, no text or watermark."
           : " Realistic, true-to-life photo, natural available light, natural true colors, looks like a real unedited phone photo, not over-processed, no HDR, no CGI, no glossy stock-photo look, no text or watermark."),
-      caption: typeof parsed.caption === "string" ? parsed.caption.trim() : "",
-      hashtags,
+      // M2 (audit): the studio writes captions in a dedicated post-image step;
+      // generating one here was paid tokens thrown away on every request.
+      caption: "",
+      hashtags: [],
     });
   } catch (err) {
     console.error("[api/studio/compose] failed:", err instanceof Error ? err.message : err);

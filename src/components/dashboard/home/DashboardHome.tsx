@@ -413,6 +413,18 @@ export default function DashboardHome() {
               grabCursor
               centeredSlides
               loop
+              watchSlidesProgress
+              onSlidesUpdated={(sw) => {
+                // H8: occluded slides (and loop clones) leave the tab order
+                sw.slides.forEach((sl) =>
+                  sl.toggleAttribute("inert", !sl.classList.contains("swiper-slide-visible")),
+                );
+              }}
+              onSlideChangeTransitionEnd={(sw) => {
+                sw.slides.forEach((sl) =>
+                  sl.toggleAttribute("inert", !sl.classList.contains("swiper-slide-visible")),
+                );
+              }}
               speed={600}
               slidesPerView="auto"
               coverflowEffect={{ rotate: 7, stretch: 80, depth: 170, modifier: 1, slideShadows: false }}
@@ -422,7 +434,7 @@ export default function DashboardHome() {
               onSwiper={(s) => { swiperRef.current = s; }}
             >
               {heroSlides.map((s) => (
-                <SwiperSlide key={s.title}>
+                <SwiperSlide key={`${s.title}-${s.date}`}>
                   <div className={`cf-card${s.img ? "" : ` cf-grad-${s.grad}`}`}>
                     {s.img ? (
                       <>

@@ -81,6 +81,9 @@ export default function StudioHistoryGallery({
             {entries.map((e, i) => {
               const off = i - active;
               const abs = Math.abs(off);
+              // H6: far cards were painted at opacity 0 — every one decodes a
+              // full bitmap. Don't render them at all.
+              if (abs > 3) return null;
               const dir = off > 0 ? 1 : -1;
               const style: CSSProperties = {
                 transform:

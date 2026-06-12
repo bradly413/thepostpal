@@ -3,6 +3,7 @@ import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 import { isSafeMediaUrl } from "@/lib/safe-media-url";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +32,16 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const auth = await requireAuthContext();
+    try {
+      if (!(await rateLimit(buildRateLimitKey("photos-create", request.headers, auth), 20, 60_000))) {
+        return NextResponse.json({ error: "Too many requests" }, { status: 429 });
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
     return await withTenantDb(auth, async (tx) => {
       const body = await request.json();
 
