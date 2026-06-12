@@ -506,6 +506,45 @@ export default function PosterboyStudio() {
     };
   }, [platformMenuOpen]);
 
+  // Hero composer: while the room is empty the bar + intent strip sit dead
+  // center; the moment creation starts they glide down to their working
+  // position at the bottom (GSAP owns their transform).
+  const composerHeroInit = useRef(false);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const bar = canvas.querySelector<HTMLElement>(".prompt-bar");
+    const rail = canvas.querySelector<HTMLElement>(".pb-intent-rail");
+    if (!bar) return;
+    const els = rail ? [bar, rail] : [bar];
+    const heroIdle =
+      genState === "idle" && composerMode === "image" && !generatedUrl && !showTemplate;
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    // distance from the group's resting spot (bottom-anchored) to room center
+    const heroDelta = () => {
+      const cH = canvas.clientHeight;
+      const topEdge = cH - 96 - bar.offsetHeight;
+      const bottomEdge = rail ? cH - 14 : cH - 96;
+      return cH / 2 - (topEdge + bottomEdge) / 2;
+    };
+
+    if (heroIdle) {
+      if (!composerHeroInit.current || reduce) {
+        gsap.set(els, { xPercent: -50, y: heroDelta() });
+      } else {
+        gsap.to(els, { xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" });
+      }
+      composerHeroInit.current = true;
+      const onResize = () => gsap.set(els, { xPercent: -50, y: heroDelta() });
+      window.addEventListener("resize", onResize);
+      return () => window.removeEventListener("resize", onResize);
+    }
+    composerHeroInit.current = true;
+    if (reduce) gsap.set(els, { xPercent: -50, y: 0 });
+    else gsap.to(els, { xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" });
+  }, [genState, composerMode, generatedUrl, showTemplate]);
+
 
   // Seed history with the tenant's posted images (real, persisted creations) —
   // session generations stack on top as they happen.
@@ -3174,8 +3213,10 @@ function StudioStyles() {
 
   /* composer floats in on entry; lifted to make room for the intent strip below */
   .pb-studio .prompt-bar {
-    /* room below for the intent strip AND its pop-up labels */
+    /* room below for the intent strip AND its pop-up labels; transform is
+       GSAP-owned (hero-center <-> home), so transition only paint props */
     bottom: 96px;
+    transition: border-color 0.25s ease, box-shadow 0.25s ease, background 0.25s ease;
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
     border-color: rgba(0, 0, 0, 0.07);
     box-shadow:
@@ -3183,8 +3224,8 @@ function StudioStyles() {
       0 12px 44px rgba(0,0,0,0.12);
   }
   @keyframes pbsBarIn {
-    from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
-    to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
+    from { opacity: 0; filter: blur(10px); }
+    to { opacity: 1; filter: blur(0); }
   }
 
   .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
