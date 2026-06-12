@@ -461,20 +461,17 @@ export function StudioStyles() {
     align-items: center; justify-content: center; padding: 24px 16px 16px;
     overflow-y: auto; background: rgba(255,255,255,0.55); backdrop-filter: blur(8px);
   }
-    to { opacity: 1; transform: scale(1); }
-  }
-    55% { opacity: 0.5; }
-    100% { opacity: 0.1; transform: translateX(0); }
-  }.pb-studio .frame-wrap.as-post {
-    /* R2: share the lifted centerline so the mockup clears the prompt bar */
-    top: calc((100% - 210px) / 2);
-    max-height: calc(100% - 240px);
+  /* Platform-preview media (portrait FB/IG) is aspect-driven and would push the
+     post card past the canvas; cap it so the whole mockup fits the band. */
+  .pb-studio .fbpv-media, .pb-studio .igpv-media { max-height: min(38vh, 360px); }
+  .pb-studio .frame-wrap.as-post {
     aspect-ratio: auto;
-    width: min(360px, 58%);
-    max-width: 380px;
+    width: min(320px, 52%);
+    max-width: 340px;
     height: auto;
-    max-height: calc(100% - 150px);
-    top: calc((100% - 132px) / 2);
+    /* centered in the band between the top toolbar and the prompt bar */
+    max-height: calc(100% - 268px);
+    top: calc(50% - 74px);
     transform: translate(-50%, -50%);
     display: flex;
     flex-direction: column;
@@ -497,8 +494,8 @@ export function StudioStyles() {
   }.pb-studio .frame-wrap.as-post.pc-platform-facebook,
   .pb-studio .frame-wrap.as-post.pc-platform-x,
   .pb-studio .frame-wrap.as-post.pc-platform-linkedin {
-    width: min(424px, 64%);
-    max-width: 440px;
+    width: min(372px, 56%);
+    max-width: 388px;
   }.pb-studio .frame-wrap.as-post.pc-platform-tiktok {
     background: #0b0b0d;
     padding-bottom: 0;
@@ -544,7 +541,7 @@ export function StudioStyles() {
   }.pb-studio .frame-wrap.as-post .frame {
     width: 100% !important;
     height: auto !important;
-    max-height: min(42vh, 400px);
+    max-height: min(40vh, 360px);
     flex: none;
     border: none;
     border-radius: 0;
