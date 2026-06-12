@@ -572,7 +572,7 @@ export function StudioStyles() {
       inset 0 1px 0 rgba(255,255,255,0.5),
       0 10px 40px rgba(0,0,0,0.18);
     z-index: 15;
-    transition: all 0.25s ease;
+    transition: border-color var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), background-color var(--duration-moderate) var(--ease-standard);
   }
   .pb-studio .pb-bar-input { display: flex; align-items: center; min-height: 30px; }
   .pb-studio .pb-bar-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
@@ -844,8 +844,14 @@ export function StudioStyles() {
   @media (max-width: 600px) { .pb-studio .pb-anim-ph { font-size: var(--text-body); } }
 
   /* ghost-text autofill in the free-form brief */
-  .pb-studio .pb-ghost-wrap { position: relative; flex: 1; display: flex; min-width: 0; }
-  .pb-studio .pb-ghost-wrap input { width: 100%; }
+  .pb-studio .pb-ghost-wrap { position: relative; flex: 1; display: flex; align-items: center; min-width: 0; }
+  .pb-studio .pb-prefix {
+    display: inline-flex; align-items: center; flex: none;
+    white-space: pre; color: rgba(20, 20, 25, 0.55);
+    font-size: var(--text-ui); font-weight: 400;
+  }
+  .pb-studio .pb-input-shell { position: relative; flex: 1; display: flex; min-width: 0; }
+  .pb-studio .pb-input-shell input { width: 100%; }
   .pb-studio .pb-ghost {
     position: absolute; inset: 0;
     display: flex; align-items: center;
