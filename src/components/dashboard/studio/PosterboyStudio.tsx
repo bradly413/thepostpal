@@ -1631,6 +1631,21 @@ export default function PosterboyStudio() {
           {/* Caption step — appears after the image, driven by the prompt bar ("what should the caption be about?") */}
           {genState === "done" && captionRun > 0 ? (
             <div className="studio-caption-tools">
+              <div className="pb-caption-head">
+                <span className="pb-caption-head-title">Caption ideas</span>
+                <button
+                  type="button"
+                  className="pb-caption-close"
+                  onClick={() => {
+                    setCaptionRun(0);
+                    setPromptMode("review");
+                  }}
+                  aria-label="Close caption ideas"
+                >
+                  <X size={14} />
+                  <span>Close</span>
+                </button>
+              </div>
               <CaptionVariantPicker
                 brief={captionBrief || composerBrief || captionText}
                 platform={platform.id}
@@ -1645,6 +1660,7 @@ export default function PosterboyStudio() {
                   setCaptionTags(v.hashtags.join(" "));
                   setCaptionState("done");
                   setCaptionError("");
+                  setCaptionRun(0); // chosen — close the picker
                 }}
               />
             </div>

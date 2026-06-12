@@ -807,6 +807,23 @@ export function StudioStyles() {
     border: 1px solid rgba(0,0,0,0.07);
     box-shadow: 0 16px 38px -12px rgba(15,15,20,0.34);
   }
+  .pb-studio .pb-caption-head {
+    display: flex; align-items: center; justify-content: space-between;
+    margin: 2px 2px 10px;
+  }
+  .pb-studio .pb-caption-head-title {
+    font-size: var(--text-eyebrow, 10.5px); font-weight: 700;
+    letter-spacing: var(--tracking-eyebrow, 0.14em); text-transform: uppercase;
+    color: var(--muted, #8a8884);
+  }
+  .pb-studio .pb-caption-close {
+    display: inline-flex; align-items: center; gap: 4px;
+    border: 0; background: transparent; cursor: pointer; padding: 4px 6px;
+    border-radius: 8px; color: var(--ink-2, #2a2a2e);
+    font-size: var(--text-caption, 12.5px); font-weight: 600;
+    transition: var(--transition-color);
+  }
+  .pb-studio .pb-caption-close:hover { background: rgba(20,20,30,0.06); color: var(--ink, #1c1c1e); }
   @media (max-width: 1240px) {
     .pb-studio .studio-caption-tools {
       top: auto; bottom: 226px; right: 50%; transform: translateX(50%);
