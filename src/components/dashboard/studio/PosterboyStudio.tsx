@@ -3322,17 +3322,17 @@ function StudioStyles() {
   /* ambient backlight: blurred copy of the generated image behind the frame */
   .pb-studio .frame-wrap .ambient-glow {
     position: absolute;
-    inset: -16% -19% -21%;
-    border-radius: 48px;
+    inset: -9% -11% -12%;
+    border-radius: 40px;
     background-size: cover;
     background-position: center;
-    filter: blur(54px) saturate(1.55) brightness(1.05);
+    filter: blur(48px) saturate(1.3);
     opacity: 0;
     z-index: -1;
     pointer-events: none;
     animation: pbsAmbient 1.4s ease 0.5s forwards;
   }
-  @keyframes pbsAmbient { to { opacity: 0.95; } }
+  @keyframes pbsAmbient { to { opacity: 0.55; } }
 
   @media (prefers-reduced-motion: reduce) {
     .pb-studio .prompt-bar { animation: none; }
