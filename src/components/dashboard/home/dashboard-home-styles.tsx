@@ -192,7 +192,7 @@ export function DashboardHomeStyles() {
       background: var(--card); backdrop-filter: blur(20px) saturate(1.5); -webkit-backdrop-filter: blur(20px) saturate(1.5);
       border: 1px solid rgba(255,255,255,0.65); text-decoration: none; color: var(--ink);
       box-shadow: 0 18px 44px -32px rgba(20,20,40,0.45), inset 0 1px 0 rgba(255,255,255,0.7);
-      transition: transform .25s cubic-bezier(.2,.8,.2,1), box-shadow .25s;
+      transition: var(--transition-lift);
     }
     .scut:hover { transform: translateY(-3px); box-shadow: 0 26px 52px -30px rgba(238,37,50,0.35), inset 0 1px 0 rgba(255,255,255,0.8); }
     .scut .ic { width: 46px; height: 46px; border-radius: 14px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #c81e2a; color: #fff; box-shadow: 0 8px 18px -10px rgba(200,30,42,0.6); }

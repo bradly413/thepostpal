@@ -98,7 +98,12 @@
   box-shadow:
     6px 6px 12px var(--neu-shadow-dark),
     -6px -6px 12px var(--neu-shadow-light);
-  transition: all 0.3s ease;
+  transition: var(--transition-interactive, all 0.3s ease);
+}
+
+.pb-marketing-site .neu-btn:active {
+  transform: translateY(2px);
+  transition-duration: 60ms;
 }
 
 .pb-marketing-site .neu-btn:hover {

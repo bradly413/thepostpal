@@ -2328,7 +2328,7 @@ function StudioStyles() {
     border-radius: 13px;
     color: var(--ink-2);
     background: transparent;
-    transition: color 0.16s ease, background 0.16s ease, transform 0.16s ease, box-shadow 0.16s ease;
+    transition: var(--transition-interactive);
   }.pb-studio .tool-rail .rail-ico:hover { color: var(--ink-2); }.pb-studio .tool-rail .rail-ico:hover svg { filter: drop-shadow(0 0 4px rgba(255,255,255,0.6)); }.pb-studio .tool-rail .rail-ico.active, .pb-studio .tool-rail .rail-ico.open {
     background: transparent;
     color: #fff;
