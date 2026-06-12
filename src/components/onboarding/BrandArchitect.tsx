@@ -107,6 +107,9 @@ const VOICE_STEP_NUMBERS = [5, 6, 7, 8];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const BIRTH_YEARS = Array.from({ length: 2008 - 1940 + 1 }, (_, i) => String(2008 - i));
+// Mirrors the server-side check in src/lib/onboarding-lead.ts — email is required
+// before the paid brand-book generate call (gates the Continue on the details step).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONSENTS: { key: "terms" | "privacy" | "emails"; label: string; required: boolean }[] = [
   { key: "terms", label: "I agree to the Terms of Service", required: true },
   { key: "privacy", label: "I agree to the Privacy Policy", required: true },
@@ -200,6 +203,7 @@ export default function BrandArchitect() {
   // Identity + industry — the real OnboardingAnswers inputs the brand-book
   // generator needs (ported from the classic wizard). Step 2 collects these.
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [location, setLocation] = useState("");
   const [industryId, setIndustryId] = useState("");
@@ -299,6 +303,7 @@ export default function BrandArchitect() {
       .join(", ");
     return {
       name: name.trim() || "Owner",
+      email: email.trim() || undefined,
       company: business.trim() || undefined,
       industry: industryId || undefined,
       industries:
@@ -471,7 +476,7 @@ export default function BrandArchitect() {
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers }),
+          body: JSON.stringify({ answers, email: email.trim() || undefined }),
         });
         const data = await res.json();
         if (!res.ok || data.error || !data.brandBook) {
@@ -1085,6 +1090,15 @@ export default function BrandArchitect() {
             <div className="mb-4">
               <FloatingField label="Your name" value={name} onChange={setName} autoComplete="name" />
             </div>
+            <div className="mb-4">
+              <FloatingField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                type="email"
+                autoComplete="email"
+              />
+            </div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
               Birthday
             </div>
@@ -1111,7 +1125,9 @@ export default function BrandArchitect() {
             <div className="flex items-center justify-end">
               <button
                 type="button"
-                disabled={!name.trim() || !birthMonth || !birthDay || !birthYear}
+                disabled={
+                  !name.trim() || !EMAIL_RE.test(email.trim()) || !birthMonth || !birthDay || !birthYear
+                }
                 onClick={next}
                 className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
