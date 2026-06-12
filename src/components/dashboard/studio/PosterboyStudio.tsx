@@ -780,7 +780,8 @@ export default function PosterboyStudio() {
       setCaptionTags("");
       setCaptionState("idle");
       setGenState("done");
-      setShowTemplate(true);
+      // Land on the BARE image (no post chrome) — the platform mockup appears
+      // later via confirm/caption flow, not at the moment of creation.
     } catch (err) {
       stopTimer();
       setProgress(0);
@@ -2924,6 +2925,17 @@ function StudioStyles() {
     from { opacity: 0; transform: translateX(-50%) translateY(30px) scale(0.96); filter: blur(10px); }
     to { opacity: 1; transform: translateX(-50%) translateY(0) scale(1); filter: blur(0); }
   }
+
+  /* done: just the image — no paper-sheet pulse, no white glow ring. The
+     ambient color glow behind it is the only halo. */
+  .pb-studio .frame.done {
+    animation: none;
+    border: none;
+    border-radius: 10px;
+    background: transparent;
+    box-shadow: 0 22px 54px rgba(0,0,0,0.22);
+  }
+  .pb-studio .frame-wrap:not(.as-post):has(.frame.done)::before { opacity: 0; animation: none; }
 
   /* generation reveal: particle swarm assembles the new image over the frame,
      then the whole overlay dissolves to the real result beneath */
