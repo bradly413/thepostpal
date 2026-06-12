@@ -54,11 +54,11 @@ export default function MetricBarChart({ title, points, color = "#ee2532" }: Pro
         }
         .pb-metric-bar {
           width: 100%; max-width: 28px; border-radius: 6px 6px 2px 2px;
-          opacity: 0.88; transition: opacity 0.15s;
+          opacity: 0.88; transition: var(--transition-opacity);
         }
         .pb-metric-bar-col:hover .pb-metric-bar { opacity: 1; }
         .pb-metric-bar-label {
-          font-size: 9px; opacity: 0.45; margin-top: 6px;
+          font-size: var(--text-eyebrow); opacity: 0.45; margin-top: 6px;
           white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
           max-width: 100%; transform: rotate(-35deg); transform-origin: top center;
         }
