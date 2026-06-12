@@ -11,6 +11,13 @@ import {
 import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
+import { withTenantDb } from "@/lib/db";
+import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
+import {
+  checkViolations,
+  guardrailsPromptBlock,
+  type ResolvedGuardrails,
+} from "@/lib/compliance/guardrails";
 
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
@@ -101,6 +108,38 @@ The user's request matches these brand templates. Use the template structure and
 ${templateInfo}`;
 }
 
+// Post-validate generated chat text against the tenant's compliance guardrails.
+// Preserves the legacy `{ message: text }` shape byte-for-byte when there are no
+// guardrails or no violations, so existing chat clients are unaffected. On a
+// `block`-level violation the restricted text is withheld and an explicit
+// compliance payload is returned; `warn`/`suggest` keep the message and attach
+// an additive, non-blocking flag.
+function buildChatResponse(text: string, guardrails: ResolvedGuardrails | null) {
+  if (!guardrails) return Response.json({ message: text });
+  const violations = checkViolations(text, guardrails);
+  if (violations.length === 0) return Response.json({ message: text });
+
+  const flaggedPhrases = [...new Set(violations.map((v) => v.phrase))];
+  if (guardrails.enforcementLevel === "block") {
+    const bodies = guardrails.regulatoryBodies.join(", ");
+    return Response.json({
+      message: "",
+      compliance: {
+        blocked: true,
+        level: "block",
+        flaggedPhrases,
+        message: `This response conflicts with your compliance guardrails${
+          bodies ? ` (${bodies})` : ""
+        }. Rephrase without restricted claims, or send for compliance review.`,
+      },
+    });
+  }
+  return Response.json({
+    message: text,
+    compliance: { level: guardrails.enforcementLevel, flaggedPhrases },
+  });
+}
+
 export async function POST(req: Request) {
   let auth: AuthContext;
   try {
@@ -164,7 +203,22 @@ export async function POST(req: Request) {
   const templateContext = lastUserMsg
     ? buildTemplateContext(lastUserMsg.content, templateCatalog)
     : "";
-  const systemPrompt = SYSTEM_PROMPT + tenantBrandContext + knowledgeContext + templateContext;
+
+  // Compliance guardrails (parity with /api/ai/captions + /api/studio/elevate).
+  // Best-effort: null = tenant has no vertical → behave exactly as before.
+  // Injected into the system prompt up front; the generated text is then
+  // post-validated below so banned phrasing is caught even if the model ignores
+  // the instruction.
+  let guardrails: ResolvedGuardrails | null = null;
+  try {
+    guardrails = await withTenantDb(auth, (tx) => resolveTenantGuardrails(tx, auth.tenantId));
+  } catch {
+    guardrails = null;
+  }
+  const guardrailBlock = guardrails ? guardrailsPromptBlock(guardrails) : "";
+
+  const systemPrompt =
+    SYSTEM_PROMPT + tenantBrandContext + knowledgeContext + templateContext + guardrailBlock;
   const chat = messages.filter(
     (m: { role: string }) => m.role === "user" || m.role === "assistant",
   );
@@ -185,7 +239,7 @@ export async function POST(req: Request) {
       });
       const text =
         response.content[0].type === "text" ? response.content[0].text : "";
-      return Response.json({ message: text });
+      return buildChatResponse(text, guardrails);
     }
 
     const res = await fetch(
@@ -213,7 +267,7 @@ export async function POST(req: Request) {
     }
     const parts = data?.candidates?.[0]?.content?.parts || [];
     const text = parts.map((p: { text?: string }) => p.text || "").join("");
-    return Response.json({ message: text });
+    return buildChatResponse(text, guardrails);
   } catch (err) {
     console.error("[api/ai] request failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "AI request failed" }, { status: 500 });
