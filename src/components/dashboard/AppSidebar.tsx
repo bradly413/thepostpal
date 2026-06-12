@@ -92,8 +92,8 @@ const SIDEBAR_CSS = `
 .pb-side nav .grp-gap { height: 22px; margin: 8px 0; border-top: 1px solid var(--line); }
 .pb-side nav a {
   display: flex; align-items: center; gap: 13px; padding: 11px 13px; border-radius: 14px;
-  color: var(--ink-soft); text-decoration: none; font-size: 13.5px; font-weight: 600;
-  letter-spacing: 0.6px; text-transform: uppercase; transition: color .2s, background .2s;
+  color: var(--ink-soft); text-decoration: none; font-size: var(--text-body); font-weight: 600;
+  letter-spacing: 0.6px; text-transform: uppercase; transition: var(--transition-color);
 }
 .pb-side nav a svg { width: 18px; height: 18px; opacity: .85; }
 .pb-side nav a:hover { color: var(--ink); background: rgba(20,20,40,0.04); }
@@ -107,10 +107,10 @@ const SIDEBAR_CSS = `
 }
 .pb-side .foot .av {
   width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, var(--red), #c81e2a);
-  color: #fff; font-size: 12px; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+  color: #fff; font-size: var(--text-caption); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
 }
-.pb-side .foot .nm { font-size: 13px; font-weight: 600; color: var(--ink); }
-.pb-side .foot .rl { font-size: 11px; color: var(--ink-soft); }
+.pb-side .foot .nm { font-size: var(--text-body-sm); font-weight: 600; color: var(--ink); }
+.pb-side .foot .rl { font-size: var(--text-label); color: var(--ink-soft); }
 `;
 
 export default function AppSidebar() {
