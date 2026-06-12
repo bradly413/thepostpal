@@ -663,6 +663,14 @@ export function StudioStyles() {
     height: 34px; padding: 0 11px; border-radius: 10px; white-space: nowrap;
     border: 1px dashed rgba(0,0,0,0.14); color: var(--ink-2); font-size: var(--text-caption); font-weight: 600;
   }
+  /* read-only platform status (not a button) — shown while composing once
+     the flipping lead-in is hidden. Borderless + muted to read as a label. */
+  .pb-studio .pb-plat-cue {
+    flex: none; display: inline-flex; align-items: center; gap: 5px;
+    height: 34px; padding: 0 6px; white-space: nowrap; cursor: default;
+    color: var(--muted, #8a8884); font-size: var(--text-caption); font-weight: 600;
+  }
+  .pb-studio .pb-plat-cue svg { width: 15px; height: 15px; opacity: 0.9; }
   .pb-studio .pb-size-toggle { font: inherit; color: #c41e2a; font-weight: 700; }
   .pb-studio .pb-size-toggle:hover { text-decoration: underline; }
   .pb-studio .pb-generate {
@@ -816,7 +824,7 @@ export function StudioStyles() {
   @media (max-width: 1379px) {.pb-studio .app {
       grid-template-columns: 232px minmax(0, 1fr);
       grid-template-areas: "sidebar canvas";
-    }.pb-studio .canvas { min-height: 620px; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .canvas { min-height: 540px; }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
+    }.pb-studio .canvas { min-height: 620px; }}@media (max-width: 860px) {.pb-studio .app { grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .canvas { min-height: 540px; }}@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
 
   /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
      Enter: clean white. Composer floats in. Generate: frame materializes.

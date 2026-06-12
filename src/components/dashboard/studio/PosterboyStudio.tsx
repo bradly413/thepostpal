@@ -1285,7 +1285,7 @@ export default function PosterboyStudio() {
             {/* row 1 — the brief / caption input */}
             <div className="pb-bar-input">
               {genState === "done" && promptMode === "review" ? (
-                <div className="pb-ready">
+                <div className="pb-ready" role="status" aria-live="polite">
                   <span className="pb-ready-title">Your image is ready</span>
                   <span className="pb-ready-sub">Write a caption next, or make another image.</span>
                 </div>
@@ -1408,6 +1408,19 @@ export default function PosterboyStudio() {
               >
                 <ImageIcon size={18} />
               </button>
+
+              {/* Platform cue — once the user types, the flipping lead-in is
+                  gone, so surface which platform they're posting to (it's set
+                  in the top-left menu; default Instagram). Read-only status. */}
+              {prefixActive && prompt.trim() ? (
+                <span
+                  className="pb-plat-cue"
+                  title={`Posting to ${platform.label} — change it in the menu at the top left`}
+                >
+                  <PlatformIcon type={platform.id} />
+                  <span>{platform.label}</span>
+                </span>
+              ) : null}
 
               {genState === "done" && (promptMode === "review" || promptMode === "caption") ? (
                 <button
