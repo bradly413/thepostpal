@@ -342,7 +342,7 @@ export function StudioStyles() {
     height: 100%;
     transition: width 0.55s cubic-bezier(0.65, 0, 0.35, 1), height 0.55s cubic-bezier(0.65, 0, 0.35, 1);
     background: linear-gradient(180deg, #fbfbfb 0%, #efefef 100%);
-    border-radius: 4px;
+    border-radius: 0;
     border: 1.5px solid rgba(255,255,255,1);
     box-shadow:
       inset 0 0 0 1px rgba(255,255,255,1),
@@ -1006,7 +1006,7 @@ export function StudioStyles() {
   .pb-studio .frame.done {
     animation: none;
     border: none;
-    border-radius: 10px;
+    border-radius: 0;
     background: transparent;
     box-shadow: 0 22px 54px rgba(0,0,0,0.22);
   }
