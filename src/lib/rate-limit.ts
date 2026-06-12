@@ -24,6 +24,8 @@ function rateLimitInMemory(key: string, maxRequests: number, windowMs: number): 
   return true;
 }
 
+let warnedNoRedis = false;
+
 export async function rateLimit(
   key: string,
   maxRequests: number,
@@ -31,8 +33,16 @@ export async function rateLimit(
 ): Promise<boolean> {
   const redis = getRedis();
   if (!redis) {
-    if (process.env.NODE_ENV === "production") {
-      throw new RateLimitUnavailableError();
+    // Fail SAFE, not closed: prod runs without Upstash (graceful-degrade env),
+    // and throwing here 503'd EVERY rate-limited route — generation, captions,
+    // uploads — the moment this shipped. Per-instance in-memory limiting is
+    // weaker than shared Redis, but a bypassable limit beats a broken product.
+    // Configure UPSTASH_REDIS_REST_URL for real enforcement.
+    if (process.env.NODE_ENV === "production" && !warnedNoRedis) {
+      warnedNoRedis = true;
+      console.warn(
+        "[rate-limit] No Redis in production — using per-instance in-memory limits. Configure Upstash for shared enforcement.",
+      );
     }
     return rateLimitInMemory(key, maxRequests, windowMs);
   }
