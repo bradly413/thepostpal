@@ -38,8 +38,8 @@ import { getHolidaysForYear } from "@/lib/holidays";
 
 // ── Hero coverflow (seasonal hooks) ──────────────────────────
 // Local seasonal slides only — stock imagery looked like another tenant's
-// photos to beta users, so remote Unsplash slides were removed. Holidays
-// beyond the two photographed ones render as warm typographic cards.
+// photos to beta users, so remote Unsplash slides were removed. Photo
+// slides only (typographic holiday cards retired 2026-06-12).
 interface HeroSlide {
   title: string;
   date: string;
@@ -53,25 +53,6 @@ const SLIDES: HeroSlide[] = [
   { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", grad: 1 },
   { title: "Labor Day", date: "September 7th", img: "/hero/labor-day.jpg", grad: 3 },
 ];
-
-/** Next real holidays (from the calendar's own source) as typographic slides. */
-function buildHeroSlides(): HeroSlide[] {
-  const now = new Date();
-  // local date key — toISOString() is UTC and dropped a holiday the evening before
-  const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-  const photographed = SLIDES.map((s) => s.title.toLowerCase());
-  const upcoming = [...getHolidaysForYear(now.getFullYear()), ...getHolidaysForYear(now.getFullYear() + 1)]
-    .filter((h) => h.date >= todayKey)
-    .filter((h) => !photographed.some((p) => h.name.toLowerCase().includes(p) || p.includes(h.name.toLowerCase())))
-    .filter((h) => h.name !== "Independence Day") // covered by the Fourth of July photo slide
-    .slice(0, 4)
-    .map((h, i) => ({
-      title: h.name,
-      date: new Date(`${h.date}T12:00:00`).toLocaleDateString("en-US", { month: "long", day: "numeric" }),
-      grad: i % 4,
-    }));
-  return [...SLIDES, ...upcoming];
-}
 
 const POST_PLATFORMS = ["instagram", "facebook", "x"] as const;
 
@@ -143,7 +124,9 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  const heroSlides = useMemo(() => buildHeroSlides(), []);
+  // Photo slides only — typographic holiday cards retired by Brad's call;
+  // the week rail's holiday suggestion covers "what's coming" instead.
+  const heroSlides = SLIDES;
   const swiperRef = useRef<SwiperInstance | null>(null);
   const [heroPaused, setHeroPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
