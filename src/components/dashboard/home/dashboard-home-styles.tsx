@@ -209,6 +209,31 @@ export function DashboardHomeStyles() {
       display: flex; flex-direction: column;
     }
     .mhead { display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 2px 10px; margin-bottom: 16px; }
+    
+    /* Your Week rail */
+    .weekrail { display: flex; gap: 6px; }
+    .wday {
+      flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center;
+      gap: 7px; padding: 12px 0 10px; border-radius: 14px; text-decoration: none;
+      border: 1px solid transparent;
+      transition: var(--transition-interactive);
+    }
+    .wday .wd-l { font-size: 10px; font-weight: 700; letter-spacing: var(--tracking-label, 0.1em); color: var(--ink-soft); }
+    .wday.today { border-color: rgba(238,37,50,0.25); background: rgba(238,37,50,0.04); }
+    .wday.filled .wd-dot { width: 9px; height: 9px; border-radius: 99px; background: var(--red); box-shadow: 0 0 0 3px rgba(238,37,50,0.14); }
+    .wday.filled:hover { transform: translateY(-2px); background: rgba(255,255,255,0.8); border-color: rgba(20,20,40,0.08); }
+    .wday.empty .wd-plus { font-size: 15px; line-height: 9px; height: 9px; color: rgba(20,20,30,0.28); font-weight: 400; transition: color var(--duration-fast, 120ms) var(--ease-standard, ease); }
+    .wday.empty:hover { transform: translateY(-2px); background: rgba(255,255,255,0.85); border-color: rgba(238,37,50,0.3); }
+    .wday.empty:hover .wd-plus { color: var(--green-deep, #c81e2a); }
+    .wday.past { opacity: 0.45; }
+    .wday.past .wd-e { font-size: 13px; line-height: 9px; height: 9px; color: var(--ink-soft); }
+    .wk-suggest {
+      display: inline-flex; align-items: center; gap: 7px; margin-top: 14px;
+      font-size: var(--text-caption, 12.5px); font-weight: 600; color: var(--green-deep, #c81e2a);
+      text-decoration: none; transition: var(--transition-color);
+    }
+    .wk-suggest:hover { color: var(--red, #ee2532); }
+
     .mtitle2 {
       margin: 0; min-width: 0;
       font-size: var(--text-eyebrow, 10.5px); font-weight: 700;

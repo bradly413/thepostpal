@@ -20,6 +20,8 @@ const HERO_IMAGES = [
 export interface DashboardWeeklyOverview {
   rangeLabel: string;
   barHeights: number[];
+  /** raw posts-per-day (Monday-start) — barHeights has a visual floor */
+  dayCounts: number[];
   activeBarIndex: number;
   postsCount: number;
   engagementLabel: string;
@@ -104,6 +106,7 @@ function buildWeeklyOverview(posts: DashboardPostRecord[]): DashboardWeeklyOverv
   return {
     rangeLabel: formatWeekRange(weekDates),
     barHeights,
+    dayCounts: countsPerDay,
     activeBarIndex,
     postsCount,
     engagementLabel,

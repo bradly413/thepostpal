@@ -9,6 +9,7 @@ import {
   CalendarPlus,
   Send,
   Bell,
+  Sparkles,
   Sun as SunIcon,
   CloudSun,
   Cloud,
@@ -288,20 +289,40 @@ export default function DashboardHome() {
     return { line, area: `${line} L ${w} ${h} L 0 ${h} Z` };
   }, [data]);
 
-  // Upcoming posts
-  const upcoming = useMemo(() => {
-    const posts = (data?.recentPosts || []).slice(0, 3);
-    return posts.map((p, i) => ({
-      title: p.copy.length > 26 ? p.copy.slice(0, 26) + "…" : p.copy || "Untitled post",
-      when: p.scheduledFor
-        ? new Date(p.scheduledFor).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })
-        : "Unscheduled",
-      // Real posts use their own media (no stock fallback — that looked like
-      // someone else's photo). Empty string → neutral placeholder thumbnail.
-      img: p.mediaUrl || p.mediaUrls?.[0] || "",
-      platform: (p.platforms?.[0] as string) || POST_PLATFORMS[i % 3],
+  // Your Week rail — seven Monday-start slots. Filled = real posts on that day
+  // (from the snapshot's per-day counts); empty future days open the studio
+  // pre-briefed for that day. Planning, not reporting.
+  const weekDays = useMemo(() => {
+    const NAMES = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"];
+    const counts = data?.weeklyOverview?.dayCounts ?? [];
+    const todayIdx = (new Date().getDay() + 6) % 7; // Monday-start
+    return NAMES.map((name, i) => ({
+      name,
+      letter: name[0],
+      filled: (counts[i] ?? 0) > 0,
+      isToday: i === todayIdx,
+      past: i < todayIdx,
     }));
   }, [data]);
+
+  // Posterboy suggests: the next real holiday within 14 days, pre-briefed.
+  const holidaySuggestion = useMemo(() => {
+    const now = new Date();
+    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const next = [...getHolidaysForYear(now.getFullYear()), ...getHolidaysForYear(now.getFullYear() + 1)]
+      .filter((h) => h.date >= todayKey)
+      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    if (!next) return null;
+    const days = Math.round(
+      (new Date(`${next.date}T12:00:00`).getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86400000,
+    );
+    if (days > 14) return null;
+    const when = days === 0 ? "today" : days === 1 ? "tomorrow" : `in ${days} days`;
+    return {
+      label: `${next.name} is ${when} — draft a post?`,
+      brief: `a post about ${next.name.toLowerCase()}`,
+    };
+  }, []);
 
   if (loading && !data) {
     return (
@@ -480,20 +501,47 @@ export default function DashboardHome() {
           <div className="modules2">
             {/* Upcoming posts */}
             <div className="mod up2 anim">
-              <div className="mhead"><h2 className="mtitle2">Upcoming Posts</h2><Link href="/dashboard/calendar" className="viewall">View all</Link></div>
-              <div className="uplist">
-                {upcoming.length === 0 ? (
-                  <div style={{ fontSize: 13, color: "var(--ink-soft)", padding: "14px 2px" }}>
-                    No upcoming posts yet. <Link href="/dashboard/studio" className="viewall">Create one</Link>.
-                  </div>
-                ) : upcoming.map((u, i) => (
-                  <div className="uprow" key={i}>
-                    <span className="upthumb" style={u.img ? { backgroundImage: `url('${u.img}')` } : undefined} />
-                    <span className="upinfo"><span className="upt">{u.title}</span><span className="upd">{u.when}</span></span>
-                    <span className="upplat"><PlatformIcon p={u.platform} /></span>
-                  </div>
-                ))}
+              <div className="mhead"><h2 className="mtitle2">Your Week</h2><Link href="/dashboard/calendar" className="viewall">View all</Link></div>
+              <div className="weekrail" role="list" aria-label="This week's posting plan">
+                {weekDays.map((d) =>
+                  d.filled ? (
+                    <Link
+                      key={d.name}
+                      role="listitem"
+                      href="/dashboard/calendar"
+                      className={`wday filled${d.isToday ? " today" : ""}`}
+                      aria-label={`${d.name}: post planned — view in calendar`}
+                    >
+                      <span className="wd-l">{d.letter}</span>
+                      <span className="wd-dot" aria-hidden />
+                    </Link>
+                  ) : d.past ? (
+                    <span key={d.name} role="listitem" className="wday past" aria-label={`${d.name}: no post`}>
+                      <span className="wd-l">{d.letter}</span>
+                      <span className="wd-e" aria-hidden>·</span>
+                    </span>
+                  ) : (
+                    <Link
+                      key={d.name}
+                      role="listitem"
+                      href={`/dashboard/studio?brief=${encodeURIComponent(`a post for ${d.name.toLowerCase()} about `)}`}
+                      className={`wday empty${d.isToday ? " today" : ""}`}
+                      aria-label={`Plan a post for ${d.name}`}
+                    >
+                      <span className="wd-l">{d.letter}</span>
+                      <span className="wd-plus" aria-hidden>+</span>
+                    </Link>
+                  ),
+                )}
               </div>
+              {holidaySuggestion ? (
+                <Link
+                  href={`/dashboard/studio?brief=${encodeURIComponent(holidaySuggestion.brief)}`}
+                  className="wk-suggest"
+                >
+                  <Sparkles size={13} aria-hidden /> {holidaySuggestion.label}
+                </Link>
+              ) : null}
             </div>
 
             {/* Total reach */}

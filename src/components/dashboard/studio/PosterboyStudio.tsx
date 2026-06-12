@@ -443,6 +443,29 @@ export default function PosterboyStudio() {
     router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
   }, [searchParams, router]);
 
+  // ?brief= — arrive with the composer pre-filled (home week rail, holiday
+  // suggestions). Prefill only: the user still pulls the trigger.
+  const consumedBriefParam = useRef(false);
+  useEffect(() => {
+    if (consumedBriefParam.current) return;
+    const brief = searchParams.get("brief");
+    if (!brief) return;
+    consumedBriefParam.current = true;
+    setPrompt(brief.slice(0, 300));
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("brief");
+    const qs = next.toString();
+    router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
+    // land ready to type the rest
+    setTimeout(() => {
+      const el = inputRef.current;
+      if (el) {
+        el.focus();
+        el.setSelectionRange(el.value.length, el.value.length);
+      }
+    }, 150);
+  }, [searchParams, router]);
+
   // Platform chip menu: outside-click + Escape to close.
   useEffect(() => {
     if (!platformMenuOpen) return;
