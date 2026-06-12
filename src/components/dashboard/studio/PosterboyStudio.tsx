@@ -686,11 +686,12 @@ export default function PosterboyStudio() {
     const { w: cw, h: ch } = canvasSize;
     if (!cw || !ch) {
       return frameRatio >= 1
-        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "58%" }
-        : { height: "min(58%, 560px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
+        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "52%" }
+        : { height: "min(52%, 520px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
     }
     const fitW = Math.min(cw * 0.58, 600);
-    const fitH = Math.min(ch * 0.58, 560);
+    // height capped tighter so the image clears the lifted prompt bar
+    const fitH = Math.min(ch * 0.52, 520);
     let w = fitW;
     let h = fitW / frameRatio;
     if (h > fitH) {
@@ -2360,7 +2361,7 @@ function StudioStyles() {
   }.pb-studio /* The glowing magic frame */
   .frame-wrap {
     position: absolute;
-    top: calc((100% - 132px) / 2);
+    top: calc((100% - 210px) / 2);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
@@ -3262,7 +3263,7 @@ function StudioStyles() {
   }
   .pb-studio .gs-card {
     position: absolute;
-    top: calc((100% - 132px) / 2);
+    top: calc((100% - 210px) / 2);
     left: 50%;
     width: 250px;
     aspect-ratio: 4 / 5;
