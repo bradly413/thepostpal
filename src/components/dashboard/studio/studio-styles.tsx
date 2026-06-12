@@ -574,6 +574,36 @@ export function StudioStyles() {
     z-index: 15;
     transition: border-color var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), background-color var(--duration-moderate) var(--ease-standard);
   }
+  @property --pb-bar-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
+  /* animated brand-red glow that travels around the composer border; the
+     conic is masked to a 1.6px ring (no interior bleed) and drop-shadowed
+     for the halo. Brighter on focus. */
+  .pb-studio .prompt-bar::before {
+    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px;
+    background: conic-gradient(from var(--pb-bar-angle),
+      rgba(238,37,50,0) 0deg, rgba(238,37,50,0) 208deg,
+      rgba(238,37,50,0.7) 286deg, #ff5560 318deg, rgba(238,37,50,0.7) 350deg,
+      rgba(238,37,50,0) 360deg);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    mask-composite: exclude;
+    pointer-events: none;
+    opacity: 0.7;
+    filter: drop-shadow(0 0 5px rgba(238,37,50,0.32));
+    animation: pbBarGlow 5.5s linear infinite;
+    transition: opacity var(--duration-moderate) var(--ease-standard), filter var(--duration-moderate) var(--ease-standard);
+  }
+  .pb-studio .prompt-bar:focus-within::before {
+    opacity: 1;
+    filter: drop-shadow(0 0 8px rgba(238,37,50,0.5));
+  }
+  .pb-studio .prompt-bar.is-generating::before {
+    animation-duration: 1.8s;
+    opacity: 1;
+  }
+  @keyframes pbBarGlow { to { --pb-bar-angle: 360deg; } }
+
   .pb-studio .pb-bar-input { display: flex; align-items: center; min-height: 30px; }
   .pb-studio .pb-bar-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
   .pb-studio .pb-bar-spacer { flex: 1; }
