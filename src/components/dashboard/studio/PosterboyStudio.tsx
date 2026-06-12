@@ -90,6 +90,23 @@ const PLATFORMS = [
   { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16", publishable: false },
 ] as const;
 
+// Ghost-text autofill for the free-form brief (Tab to accept). Curated,
+// instant, no API calls — completions an SMB owner actually types.
+const AUTOFILL_PROMPTS = [
+  "an instagram post about today's special",
+  "an instagram post about our weekend hours",
+  "an instagram post about something new on the menu",
+  "an instagram post about a customer favorite",
+  "a facebook post about our latest five-star review",
+  "a facebook post about an upcoming event",
+  "a facebook post about a behind-the-scenes moment",
+  "a tiktok about behind the scenes at the shop",
+  "a linkedin post about our latest project",
+  "a post about today's special",
+  "a post about something new this week",
+  "a post that we're hiring",
+];
+
 /** Cover-crop a generated image to the platform's exact pixel dimensions. */
 function resizeToExact(dataUrl: string, w: number, h: number): Promise<string> {
   return new Promise((resolve) => {
@@ -385,6 +402,16 @@ export default function PosterboyStudio() {
   const inputRef = useRef<HTMLInputElement>(null);
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const platformMenuRef = useRef<HTMLDivElement>(null);
+
+  // Ghost completion for the free-form brief: first curated prompt that
+  // extends what's typed (case-insensitive). Tab accepts it.
+  const ghostRest = useMemo(() => {
+    if (genState === "generating") return "";
+    const typed = prompt.toLowerCase();
+    if (typed.trim().length < 4 || typed !== typed.trimStart()) return "";
+    const hit = AUTOFILL_PROMPTS.find((a) => a.startsWith(typed) && a.length > typed.length);
+    return hit ? hit.slice(typed.length) : "";
+  }, [prompt, genState]);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -1588,21 +1615,35 @@ export default function PosterboyStudio() {
                   aria-label={`Details for ${selectedIntent.label}`}
                 />
               ) : (
-                <input
-                  ref={inputRef}
-                  value={prompt}
-                  onChange={(e) => setPrompt(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && genState !== "generating" && void composeFromIntent()
-                  }
-                  placeholder={
-                    genState === "done" && promptMode === "image"
-                      ? "Describe the new image you want…"
-                      : placeholderText
-                  }
-                  disabled={genState === "generating"}
-                  aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
-                />
+                <div className="pb-ghost-wrap">
+                  <input
+                    ref={inputRef}
+                    value={prompt}
+                    onChange={(e) => setPrompt(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Tab" && ghostRest) {
+                        e.preventDefault();
+                        setPrompt(prompt + ghostRest);
+                        return;
+                      }
+                      if (e.key === "Enter" && genState !== "generating") void composeFromIntent();
+                    }}
+                    placeholder={
+                      genState === "done" && promptMode === "image"
+                        ? "Describe the new image you want…"
+                        : placeholderText
+                    }
+                    disabled={genState === "generating"}
+                    aria-label={genState === "done" ? "Describe a new image" : "Describe your post"}
+                  />
+                  {ghostRest ? (
+                    <div className="pb-ghost" aria-hidden>
+                      <span className="pb-ghost-typed">{prompt}</span>
+                      <span className="pb-ghost-rest">{ghostRest}</span>
+                      <span className="pb-ghost-key">tab</span>
+                    </div>
+                  ) : null}
+                </div>
               )}
             </div>
 
@@ -3110,6 +3151,25 @@ function StudioStyles() {
   }
 
   .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
+
+  /* ghost-text autofill in the free-form brief */
+  .pb-studio .pb-ghost-wrap { position: relative; flex: 1; display: flex; min-width: 0; }
+  .pb-studio .pb-ghost-wrap input { width: 100%; }
+  .pb-studio .pb-ghost {
+    position: absolute; inset: 0;
+    display: flex; align-items: center;
+    pointer-events: none; white-space: pre; overflow: hidden;
+    font-size: 15.5px; font-weight: 400;
+  }
+  .pb-studio .pb-ghost-typed { color: transparent; }
+  .pb-studio .pb-ghost-rest { color: rgba(20, 20, 25, 0.32); }
+  .pb-studio .pb-ghost-key {
+    margin-left: 10px; padding: 2px 7px; border-radius: 5px; flex: none;
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: rgba(20,20,25,0.45); border: 1px solid rgba(20,20,25,0.16);
+    background: rgba(255,255,255,0.6);
+  }
+  @media (max-width: 600px) { .pb-studio .pb-ghost { font-size: 14px; } }
   .pb-studio .post-soon {
     font-style: normal; font-size: 10px; font-weight: 600; letter-spacing: 0.04em;
     text-transform: uppercase; color: #c81e2a; margin-left: 6px;
