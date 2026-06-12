@@ -4,6 +4,7 @@ import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { isProImageEntitled } from "@/lib/plan-features";
 import { isInlineReferenceImage } from "@/lib/reference-image";
+import { expandImageBrief } from "@/lib/studio/art-director";
 
 // Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
 // plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
@@ -41,6 +42,7 @@ export async function POST(req: NextRequest) {
     referenceImage?: unknown;
     quality?: unknown;
     imageSize?: unknown;
+    businessType?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -111,6 +113,19 @@ export async function POST(req: NextRequest) {
     }
   }
 
+  // Hidden art-director pass: expand the short brief into a rich, on-brand
+  // image prompt before the model runs (no UI — invisible to the user). Skip it
+  // for reference edits (follow the user's literal direction so we don't fight
+  // the source photo) and for already-detailed briefs (>320 chars = the user
+  // art-directed it themselves). Falls back to the raw brief on any failure.
+  const businessType =
+    typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 80) : undefined;
+  const hasReference = isInlineReferenceImage(referenceImage);
+  const promptForModel =
+    hasReference || prompt.length > 320
+      ? prompt
+      : await expandImageBrief({ brief: prompt, aspectRatio, businessType });
+
   // Gemini image gen has no aspectRatio config field — hint it in the prompt
   // so portrait/landscape platform formats aren't all returned square.
   const ratioHint =
@@ -118,8 +133,8 @@ export async function POST(req: NextRequest) {
   parts.push({
     text:
       (referenceImage && typeof referenceImage === "string"
-        ? `Using the uploaded image as a reference, generate a new image based on this description: ${prompt}`
-        : prompt) + ratioHint,
+        ? `Using the uploaded image as a reference, generate a new image based on this description: ${promptForModel}`
+        : promptForModel) + ratioHint,
   });
 
   try {

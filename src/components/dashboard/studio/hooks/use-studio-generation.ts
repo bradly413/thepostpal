@@ -51,6 +51,8 @@ export type UseStudioGenerationParams = {
   refImage: string | null;
   imageQuality: "standard" | "pro";
   imageSize: "1K" | "2K";
+  /** Tenant business type — a hint for the hidden art-director prompt expansion. */
+  businessType?: string;
   platformPinRef: MutableRefObject<boolean>;
   inputRef: RefObject<HTMLInputElement | null>;
   setGenState: Dispatch<SetStateAction<GenState>>;
@@ -78,6 +80,7 @@ export function useStudioGeneration({
   refImage,
   imageQuality,
   imageSize,
+  businessType,
   platformPinRef,
   inputRef,
   setGenState,
@@ -166,6 +169,7 @@ export function useStudioGeneration({
             ...(refImage ? { referenceImage: refImage } : {}),
             quality: imageQuality,
             ...(imageQuality === "pro" ? { imageSize } : {}),
+            ...(businessType ? { businessType } : {}),
           }),
           signal: ctrl.signal,
         });
@@ -210,6 +214,7 @@ export function useStudioGeneration({
       refImage,
       imageQuality,
       imageSize,
+      businessType,
       inputRef,
       setGenState,
       setError,
@@ -283,6 +288,7 @@ export function useStudioGeneration({
           ...(refImage ? { referenceImage: refImage } : {}),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
+          ...(businessType ? { businessType } : {}),
         }),
         signal: ctrl.signal,
       });

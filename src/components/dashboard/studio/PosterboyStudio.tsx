@@ -394,6 +394,7 @@ export default function PosterboyStudio() {
     refImage,
     imageQuality,
     imageSize,
+    businessType: businessType ?? undefined,
     platformPinRef,
     inputRef,
     setGenState,
