@@ -1,6 +1,17 @@
 # Remediation Plan — Full Repo Audit (2026-06-12)
 
-**Owner:** engineering · **Status:** proposed · **Scope:** code remediation only (this doc is a plan, no code changes)
+**Owner:** engineering · **Status:** ✅ IMPLEMENTED (PR #2, branch `remediation-2026-06-12`) · **Scope:** code remediation only
+
+> **Implementation status (2026-06-14):** All phases P0–P4 implemented and committed.
+> Verified: `next build` exit 0 · `tsc` clean · 73 tests (47 prior + 26 new) · eslint 48/53 (down from 52/58).
+> Commits: P0 `777e8be` · P1 `56c2632` · P2 `6dc10e9` · P3 `9b29b8a` · P4 `a5797e9`.
+> Deviations from the plan below:
+> - **P0.2** (generate-route cap) folded into the **P2** commit (same file, touched once).
+> - **P2** lead persistence is best-effort logging only — a durable `Lead` Prisma model needs a prod-gated migration (Brad). No Stripe added; **confirmed** signup provisions paid plans with no checkout gate (`tenant-provisioning.ts:33`) — open product decision.
+> - **P1** the guardrails module's "not yet wired" comment was stale (captions/elevate already enforced it); now wired into `/api/ai` too and comment corrected.
+> - **P3.3** hero de-gate done via CSS-visible-baseline + GSAP `.from()`; not browser-verified (dev server targets the canonical repo) — visual spot-check recommended.
+> - **P4.3** `/api/issues` left in place — it is reachable from `dashboard-api.ts:218`, so the "dead from client" finding did not hold.
+> - Deferred: the 36 `react-hooks/set-state-in-effect` warnings (shared fetch-in-effect refactor) — tracked as separate follow-up, not done here.
 
 > Repo note: paths below are verified against `~/Code/thepostpal-readable-v2`. Per `CLAUDE.md`, the canonical deploy repo is `~/Desktop/ventures/thepostpal`. Confirm each path mirrors canonical before landing a change there, and land fixes in the canonical repo (it auto-deploys prod from `main`).
 
