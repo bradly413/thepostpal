@@ -14,10 +14,10 @@ import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import {
-  checkViolations,
   guardrailsPromptBlock,
   type ResolvedGuardrails,
 } from "@/lib/compliance/guardrails";
+import { computeGuardedChatPayload } from "@/lib/compliance/chat-response";
 
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
@@ -108,36 +108,10 @@ The user's request matches these brand templates. Use the template structure and
 ${templateInfo}`;
 }
 
-// Post-validate generated chat text against the tenant's compliance guardrails.
-// Preserves the legacy `{ message: text }` shape byte-for-byte when there are no
-// guardrails or no violations, so existing chat clients are unaffected. On a
-// `block`-level violation the restricted text is withheld and an explicit
-// compliance payload is returned; `warn`/`suggest` keep the message and attach
-// an additive, non-blocking flag.
+// Wrap the pure payload computation in an HTTP response. The shaping logic lives
+// in @/lib/compliance/chat-response (unit-tested); the route just serializes it.
 function buildChatResponse(text: string, guardrails: ResolvedGuardrails | null) {
-  if (!guardrails) return Response.json({ message: text });
-  const violations = checkViolations(text, guardrails);
-  if (violations.length === 0) return Response.json({ message: text });
-
-  const flaggedPhrases = [...new Set(violations.map((v) => v.phrase))];
-  if (guardrails.enforcementLevel === "block") {
-    const bodies = guardrails.regulatoryBodies.join(", ");
-    return Response.json({
-      message: "",
-      compliance: {
-        blocked: true,
-        level: "block",
-        flaggedPhrases,
-        message: `This response conflicts with your compliance guardrails${
-          bodies ? ` (${bodies})` : ""
-        }. Rephrase without restricted claims, or send for compliance review.`,
-      },
-    });
-  }
-  return Response.json({
-    message: text,
-    compliance: { level: guardrails.enforcementLevel, flaggedPhrases },
-  });
+  return Response.json(computeGuardedChatPayload(text, guardrails));
 }
 
 export async function POST(req: Request) {
