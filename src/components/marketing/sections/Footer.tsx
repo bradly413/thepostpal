@@ -31,7 +31,7 @@ export default function Footer() {
             <PosterboyLogo href="/" size="footer" />
           </div>
           <p className="type-caption" style={{ color: 'var(--newsprint)', maxWidth: 220, lineHeight: 1.6 }}>
-            Social media for people who'd rather not.<br />Built by Bradly for his mom.
+            Social media for people who&apos;d rather not.<br />Built by Bradly for his mom.
           </p>
         </div>
         {columns.map((col) => (

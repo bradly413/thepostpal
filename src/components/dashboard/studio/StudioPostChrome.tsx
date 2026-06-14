@@ -13,7 +13,6 @@ import {
   MessageSquare,
   Share2,
   Music2,
-  Play,
   Plus,
   Forward,
 } from "lucide-react";
