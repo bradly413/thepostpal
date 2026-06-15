@@ -1,8 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { resolveBrandBookAuth } from "@/lib/onboarding-auth";
+import { withTenantDb } from "@/lib/db";
+import { resolveAccess } from "@/lib/authz";
 import { extractPaletteFromImageBytes } from "@/lib/brand-dna/image-decode";
 import { assembleBrandDna } from "@/lib/brand-dna/profile";
+import { persistBrandDna } from "@/lib/brand-dna/persist";
 import {
   INGEST_LIMITS,
   isAnalyzableImageType,
@@ -104,33 +107,60 @@ export async function POST(req: NextRequest) {
 
   // Optional, opt-in model enrichment (PAID). Gated behind the daily cap.
   const enrich = parseEnrich(form.get("enrich"));
-  if (!enrich) {
-    return NextResponse.json({ profile, authMode: brandAuth.mode });
+  let enrichment: Awaited<ReturnType<typeof enrichBrandDna>> | undefined;
+  if (enrich) {
+    try {
+      if (
+        !(await rateLimit(
+          buildRateLimitKey("brand-dna-enrich-day", req.headers, actor),
+          ENRICH_DAILY_CAP,
+          ONE_DAY_MS,
+        ))
+      ) {
+        return NextResponse.json(
+          { error: "Daily enrichment limit reached. Try again tomorrow.", profile, authMode: brandAuth.mode },
+          { status: 429 },
+        );
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
+
+    enrichment = await enrichBrandDna({
+      captions: enrich === "visual" ? [] : captions,
+      images: enrich === "voice" ? [] : buffers,
+    });
   }
 
-  try {
-    if (
-      !(await rateLimit(
-        buildRateLimitKey("brand-dna-enrich-day", req.headers, actor),
-        ENRICH_DAILY_CAP,
-        ONE_DAY_MS,
-      ))
-    ) {
-      return NextResponse.json(
-        { error: "Daily enrichment limit reached. Try again tomorrow.", profile, authMode: brandAuth.mode },
-        { status: 429 },
-      );
+  // Optional persistence: a signed-in caller can save the result to a location
+  // they own (the dashboard "re-analyze my brand" use case). Guests have no
+  // location, so they're skipped. Best-effort — never fails the response.
+  const locationId =
+    typeof form.get("locationId") === "string" ? String(form.get("locationId")).trim() : "";
+  let persisted = false;
+  if (brandAuth.mode === "session" && locationId) {
+    try {
+      await withTenantDb(brandAuth.auth, async (tx) => {
+        const access = await resolveAccess(brandAuth.auth.userId, locationId, tx);
+        if (!access.hasAccess) return;
+        await persistBrandDna(tx, locationId, {
+          voice: enrichment?.voice ?? null,
+          palette: profile.visual.palette,
+        });
+        persisted = true;
+      });
+    } catch (err) {
+      console.warn("[brand-dna/analyze] persist failed:", err instanceof Error ? err.message : err);
     }
-  } catch (error) {
-    if (error instanceof RateLimitUnavailableError) {
-      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
-    }
-    throw error;
   }
 
-  const enrichment = await enrichBrandDna({
-    captions: enrich === "visual" ? [] : captions,
-    images: enrich === "voice" ? [] : buffers,
+  return NextResponse.json({
+    profile,
+    ...(enrichment ? { enrichment } : {}),
+    persisted,
+    authMode: brandAuth.mode,
   });
-  return NextResponse.json({ profile, enrichment, authMode: brandAuth.mode });
 }
