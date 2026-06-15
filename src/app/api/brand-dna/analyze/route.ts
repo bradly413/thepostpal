@@ -8,8 +8,18 @@ import {
   isAnalyzableImageType,
   sanitizeCaptions,
 } from "@/lib/brand-dna/ingest";
+import { enrichBrandDna } from "@/lib/brand-dna/semantic-enrichment";
 
 export const runtime = "nodejs";
+
+// Opt-in model semantics (tone/pillars + vision) spend money, so they ride a
+// hard per-tenant/day cap on top of the burst limit.
+const ENRICH_DAILY_CAP = 25;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
+type EnrichMode = "voice" | "visual" | "all";
+function parseEnrich(v: FormDataEntryValue | null): EnrichMode | null {
+  return v === "voice" || v === "visual" || v === "all" ? v : null;
+}
 
 // ─────────────────────────────────────────────────────────────
 //  POST /api/brand-dna/analyze  (multipart/form-data)
@@ -76,17 +86,51 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Decode each image to its palette; skip any that fail to decode.
+  // Decode each image to its palette; keep the buffers in case the optional
+  // vision enrichment is requested. Skip any image that fails to decode.
   const imagePalettes = [];
+  const buffers: Buffer[] = [];
   for (const file of uploads) {
     try {
       const buffer = Buffer.from(await file.arrayBuffer());
       imagePalettes.push(await extractPaletteFromImageBytes(buffer, 5));
+      buffers.push(buffer);
     } catch (err) {
       console.warn("[brand-dna/analyze] skipped undecodable image:", err instanceof Error ? err.message : err);
     }
   }
 
   const profile = assembleBrandDna({ captions, imagePalettes });
-  return NextResponse.json({ profile, authMode: brandAuth.mode });
+
+  // Optional, opt-in model enrichment (PAID). Gated behind the daily cap.
+  const enrich = parseEnrich(form.get("enrich"));
+  if (!enrich) {
+    return NextResponse.json({ profile, authMode: brandAuth.mode });
+  }
+
+  try {
+    if (
+      !(await rateLimit(
+        buildRateLimitKey("brand-dna-enrich-day", req.headers, actor),
+        ENRICH_DAILY_CAP,
+        ONE_DAY_MS,
+      ))
+    ) {
+      return NextResponse.json(
+        { error: "Daily enrichment limit reached. Try again tomorrow.", profile, authMode: brandAuth.mode },
+        { status: 429 },
+      );
+    }
+  } catch (error) {
+    if (error instanceof RateLimitUnavailableError) {
+      return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+    }
+    throw error;
+  }
+
+  const enrichment = await enrichBrandDna({
+    captions: enrich === "visual" ? [] : captions,
+    images: enrich === "voice" ? [] : buffers,
+  });
+  return NextResponse.json({ profile, enrichment, authMode: brandAuth.mode });
 }
