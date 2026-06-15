@@ -39,6 +39,9 @@ const PUBLIC_PREFIXES = [
   // public — the rest of /api/brand-book (GET/PUT CRUD) stays tenant-gated.
   "/onboarding",
   "/api/brand-book/generate",
+  // Guest onboarding upload analysis (resolveBrandBookAuth handles guest vs
+  // session; the route enforces input caps + a rate limit; no paid AI call).
+  "/api/brand-dna/analyze",
   // public lead-magnet tool (its own IP rate limit lives in the route)
   "/api/tools/",
 ];
