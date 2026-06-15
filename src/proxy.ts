@@ -42,6 +42,8 @@ const PUBLIC_PREFIXES = [
   // Guest onboarding upload analysis (resolveBrandBookAuth handles guest vs
   // session; the route enforces input caps + a rate limit; no paid AI call).
   "/api/brand-dna/analyze",
+  // Guest onboarding voice calibration (resolveBrandBookAuth; paid + day-capped).
+  "/api/brand-dna/calibrate",
   // public lead-magnet tool (its own IP rate limit lives in the route)
   "/api/tools/",
 ];
