@@ -148,7 +148,9 @@ export async function POST(req: NextRequest) {
         if (!access.hasAccess) return;
         await persistBrandDna(tx, locationId, {
           voice: enrichment?.voice ?? null,
+          fingerprint: profile.voice,
           palette: profile.visual.palette,
+          visual: enrichment?.visual ?? null,
         });
         persisted = true;
       });

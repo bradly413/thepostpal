@@ -1,8 +1,11 @@
 import "server-only";
 
+import { Prisma } from "@prisma/client";
 import type { TenantDbClient } from "@/lib/db";
 import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 import type { PaletteColor } from "@/lib/brand-dna/palette";
+import type { VoiceFingerprint } from "@/lib/brand-dna/voice-fingerprint";
+import type { VisualSemantics } from "@/lib/brand-dna/semantic-enrichment";
 
 // ─────────────────────────────────────────────────────────────
 //  Brand DNA — persistence
@@ -51,16 +54,31 @@ export function paletteToBrandColors(palette: PaletteColor[]): {
   };
 }
 
+export interface PersistBrandDnaInput {
+  /** AI voice extraction (tone/we-say/etc.) — null when enrichment didn't run. */
+  voice: ZeroShotExtraction | null;
+  /** Deterministic voice fingerprint (always present). */
+  fingerprint: VoiceFingerprint;
+  /** Aggregated brand palette (may be empty when no images were analyzed). */
+  palette: PaletteColor[];
+  /** AI visual semantics — null when not analyzed. */
+  visual: VisualSemantics | null;
+}
+
+const asJson = (v: unknown): Prisma.InputJsonValue => v as Prisma.InputJsonValue;
+
 /**
- * Persist the Brand DNA for a location. Best-effort and conditional: upserts
- * BrandKit colors only when a palette exists, and BrandVoiceProfile only when an
- * AI voice was inferred. Caller must already be tenant-scoped (withTenantDb) and
- * access-checked.
+ * Persist the Brand DNA for a location. Best-effort and conditional so a partial
+ * analysis never wipes existing data:
+ *  • BrandKit colors — only when a palette exists.
+ *  • BrandVoiceProfile normalized voice fields — only when an AI voice was inferred.
+ *  • Rich JSON (fingerprint always; palette/visualIdentity only when present).
+ * Caller must already be tenant-scoped (withTenantDb) and access-checked.
  */
 export async function persistBrandDna(
   tx: TenantDbClient,
   locationId: string,
-  input: { voice: ZeroShotExtraction | null; palette: PaletteColor[] },
+  input: PersistBrandDnaInput,
 ): Promise<void> {
   const colors = paletteToBrandColors(input.palette);
   if (colors.primaryColor) {
@@ -71,12 +89,34 @@ export async function persistBrandDna(
     });
   }
 
-  if (input.voice) {
-    const f = voiceProfileFields(input.voice);
-    await tx.brandVoiceProfile.upsert({
-      where: { locationId },
-      create: { locationId, ...f },
-      update: f,
-    });
-  }
+  // Rich fields freshly computed this run — always written. Conditionals avoid
+  // overwriting prior data we don't have this time (voice, visual).
+  const data: Prisma.BrandVoiceProfileUncheckedUpdateInput = {
+    voiceFingerprint: asJson(input.fingerprint),
+  };
+  if (input.palette.length > 0) data.palette = asJson(input.palette);
+  if (input.visual) data.visualIdentity = asJson(input.visual);
+  if (input.voice) Object.assign(data, voiceProfileFields(input.voice));
+
+  await tx.brandVoiceProfile.upsert({
+    where: { locationId },
+    create: Object.assign({ locationId }, data) as Prisma.BrandVoiceProfileUncheckedCreateInput,
+    update: data,
+  });
+}
+
+/**
+ * Load the persisted deterministic voice fingerprint for a location, if any.
+ * Unblocks the voice-fidelity gate (score generated copy against the user's
+ * measured style). Returns null when no Brand DNA has been analyzed yet.
+ */
+export async function loadBrandDnaFingerprint(
+  tx: TenantDbClient,
+  locationId: string,
+): Promise<VoiceFingerprint | null> {
+  const row = await tx.brandVoiceProfile.findUnique({
+    where: { locationId },
+    select: { voiceFingerprint: true },
+  });
+  return (row?.voiceFingerprint as VoiceFingerprint | null) ?? null;
 }
