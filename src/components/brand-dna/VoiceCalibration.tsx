@@ -17,9 +17,13 @@ interface Voice {
 export default function VoiceCalibration({
   voice,
   locationId,
+  onSaved,
 }: {
   voice: Voice;
   locationId?: string;
+  /** Called with the approved captions when the user saves — lets onboarding
+   *  fold them into the brand-book generation as voice samples. */
+  onSaved?: (approved: string[]) => void;
 }) {
   const [captions, setCaptions] = useState<string[]>([]);
   const [choice, setChoice] = useState<Record<number, "yes" | "no">>({});
@@ -62,6 +66,7 @@ export default function VoiceCalibration({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Couldn't save");
       setSaved(approved.length);
+      onSaved?.(approved);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Couldn't save");
     } finally {

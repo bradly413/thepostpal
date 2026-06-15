@@ -24,6 +24,7 @@ import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
+import VoiceCalibration from "@/components/brand-dna/VoiceCalibration";
 import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
 import { suggestVerticalSlugForIndustry } from "@/lib/compliance/vertical-catalog";
@@ -245,6 +246,9 @@ export default function BrandArchitect() {
   const [uploadFiles, setUploadFiles] = useState<File[]>([]);
   const [uploadBusy, setUploadBusy] = useState(false);
   const [uploadErr, setUploadErr] = useState<string | null>(null);
+  // Captions the user approved during voice calibration (step 15) — folded into
+  // generation as voice samples so the brand book is built from blessed examples.
+  const [calibratedSamples, setCalibratedSamples] = useState<string[]>([]);
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -484,7 +488,9 @@ export default function BrandArchitect() {
   const reachableOrder = ORDER.filter((n) =>
     prefilledVoice ? !VOICE_STEP_NUMBERS.includes(n) : n !== 14,
   );
-  const reachedIndex = reachableOrder.indexOf(step);
+  // Step 15 (voice calibration) is a side-step not in ORDER — show it at the
+  // review step's position so the bar doesn't snap back to 0%.
+  const reachedIndex = reachableOrder.indexOf(step === 15 ? 14 : step);
   const progressPct =
     reachedIndex >= 0
       ? ((reachedIndex + 1) / reachableOrder.length) * 100
@@ -526,7 +532,13 @@ export default function BrandArchitect() {
         const answers = prefilledVoice
           ? {
               ...base,
-              voiceSamples: [...(base.voiceSamples ?? []), ...prefilledVoice.weSay],
+              // Blessed calibration captions are the strongest signal — they lead
+              // the voice samples, ahead of the we-say phrases.
+              voiceSamples: [
+                ...calibratedSamples,
+                ...(base.voiceSamples ?? []),
+                ...prefilledVoice.weSay,
+              ],
               personalityTraits: prefilledVoice.tone
                 .split(/[.•]/)
                 .map((t) => t.trim())
@@ -1347,8 +1359,31 @@ export default function BrandArchitect() {
           <BrandVoiceReview
             voice={prefilledVoice}
             onChange={setPrefilledVoice}
-            onContinue={next}
+            onContinue={() => {
+              setDir("fwd");
+              setStep(15);
+            }}
           />
+        )}
+
+        {step === 15 && prefilledVoice && (
+          <div className="architect-fade w-full max-w-md">
+            <VoiceCalibration voice={prefilledVoice} onSaved={setCalibratedSamples} />
+            <div className="mt-6 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  // Calibration is optional — continue to the business step (the
+                  // deterministic next after the voice review when prefilled).
+                  setDir("fwd");
+                  setStep(3);
+                }}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
         )}
       </div>
       )}
