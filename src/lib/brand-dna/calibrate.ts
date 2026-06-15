@@ -71,3 +71,41 @@ export function clampCalibrationCount(n: unknown): number {
   if (!Number.isFinite(v)) return CALIBRATION_DEFAULT_COUNT;
   return Math.min(Math.max(Math.round(v), 1), CALIBRATION_MAX_COUNT);
 }
+
+export const EXEMPLAR_CAP = 20;
+const EXEMPLAR_MAX_LEN = 600;
+
+/** Normalize raw approved captions (trim, drop empties/over-long, dedup). */
+export function sanitizeApproved(raw: unknown): string[] {
+  if (!Array.isArray(raw)) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const x of raw) {
+    if (typeof x !== "string") continue;
+    const s = x.trim();
+    if (!s || s.length > EXEMPLAR_MAX_LEN) continue;
+    const key = s.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(s);
+  }
+  return out;
+}
+
+/**
+ * Merge newly-approved captions into the existing exemplar bank: dedup
+ * (case-insensitive), newest-first, capped. These become the few-shot examples
+ * injected into future generation.
+ */
+export function mergeExemplars(existing: string[], approved: string[], cap = EXEMPLAR_CAP): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const s of [...sanitizeApproved(approved), ...(existing ?? [])]) {
+    const key = s.trim().toLowerCase();
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    out.push(s.trim());
+    if (out.length >= cap) break;
+  }
+  return out;
+}

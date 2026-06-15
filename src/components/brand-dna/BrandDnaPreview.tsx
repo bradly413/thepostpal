@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
+import VoiceCalibration from "@/components/brand-dna/VoiceCalibration";
 
 // Brand DNA preview — uploads the user's captions (+ optional post images) to
 // POST /api/brand-dna/analyze and renders the resulting profile: brand palette,
@@ -116,6 +117,7 @@ export default function BrandDnaPreview() {
       </div>
 
       {result && (
+        <>
         <div className="pb-panel" data-testid="brand-dna-result">
           <h2 className="pb-panel-h">Your Brand DNA</h2>
           <p className="pb-press-text" style={{ opacity: 0.6 }}>
@@ -171,6 +173,8 @@ export default function BrandDnaPreview() {
             </>
           )}
         </div>
+        {result.enrichment?.voice && <VoiceCalibration voice={result.enrichment.voice} />}
+        </>
       )}
     </div>
   );

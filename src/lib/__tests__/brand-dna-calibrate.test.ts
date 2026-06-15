@@ -4,6 +4,9 @@ import {
   parseCaptionArray,
   isUsableVoice,
   clampCalibrationCount,
+  sanitizeApproved,
+  mergeExemplars,
+  EXEMPLAR_CAP,
   CALIBRATION_MAX_COUNT,
   CALIBRATION_DEFAULT_COUNT,
 } from "@/lib/brand-dna/calibrate";
@@ -63,5 +66,29 @@ describe("clampCalibrationCount", () => {
     expect(clampCalibrationCount(99)).toBe(CALIBRATION_MAX_COUNT);
     expect(clampCalibrationCount(0)).toBe(1);
     expect(clampCalibrationCount("nope")).toBe(CALIBRATION_DEFAULT_COUNT);
+  });
+});
+
+describe("sanitizeApproved", () => {
+  it("trims, drops empties/non-strings, dedups case-insensitively", () => {
+    expect(sanitizeApproved([" Come through ", "come through", "", 5, "Real talk"])).toEqual([
+      "Come through",
+      "Real talk",
+    ]);
+  });
+  it("returns [] for non-arrays", () => {
+    expect(sanitizeApproved("nope")).toEqual([]);
+  });
+});
+
+describe("mergeExemplars", () => {
+  it("puts newly-approved first, dedups against existing, caps", () => {
+    expect(mergeExemplars(["old one"], ["new one", "old one"])).toEqual(["new one", "old one"]);
+  });
+  it("never exceeds the cap", () => {
+    const existing = Array.from({ length: EXEMPLAR_CAP }, (_, i) => `e${i}`);
+    const merged = mergeExemplars(existing, ["fresh"]);
+    expect(merged.length).toBe(EXEMPLAR_CAP);
+    expect(merged[0]).toBe("fresh");
   });
 });
