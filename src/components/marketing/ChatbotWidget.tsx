@@ -35,7 +35,7 @@ const MOCK_RESPONSES: Record<string, string> = {
   trial:
     "Start at /sign-in with signup — you'll walk through brand onboarding, then the dashboard. This is a beta; features and billing may change.",
   posts:
-    "Every plan drafts a full week of posts for you — no per-post cap. **Solo** ($99/mo) covers 3 social profiles for one operator; **Command** ($249/mo base + $39/location) adds multi-location rollups and approvals; **BRC Custom** (from $3,500) is done-with-you brand + content. Everything follows your brand voice.",
+    "Create as many posts as you want — no per-post cap on any plan. **Solo** ($99/mo) covers 3 social profiles for one operator; **Command** ($249/mo base + $39/location) adds multi-location rollups and approvals; **BRC Custom** (from $3,500) is done-with-you brand + content. Everything follows your brand voice.",
   bradly:
     "Bradly built posterboy for his mom, who ran a small business and hated dealing with social media. The product is built for operators who want the week handled.",
 };

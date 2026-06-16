@@ -158,6 +158,16 @@ export default function DashboardHome() {
   const { photos: livePhotos } = useDashboardPhotos();
   const recentMedia = livePhotos.slice(0, 4).map((p) => p.src);
 
+  // Fresh tenant — nothing scheduled, in review, posted, or uploaded. The home
+  // page is otherwise empty scaffolding for them, so show a clear first step.
+  const isFresh =
+    !loading &&
+    !error &&
+    (data?.scheduledCount ?? 0) === 0 &&
+    (data?.pendingCount ?? 0) === 0 &&
+    (data?.weeklyOverview?.postsCount ?? 0) === 0 &&
+    recentMedia.length === 0;
+
   // Active location drives the weather widget's geo + label (per-tenant).
   const { locationId, locations } = useActiveLocation();
   const activeLocation = useMemo(
@@ -402,6 +412,23 @@ export default function DashboardHome() {
               <User size={18} />
             </Link>
           </div>
+
+          {/* First-run: a clear first step instead of empty scaffolding */}
+          {isFresh ? (
+            <section className="firstrun anim" aria-label="Get started">
+              <div className="firstrun-copy">
+                <p className="firstrun-eyebrow">Get started</p>
+                <h2 className="firstrun-title">Make your first post</h2>
+                <p className="firstrun-sub">
+                  Describe it in a few plain words — Posterboy writes the caption and makes the
+                  image in your brand voice. No blank page, no design tools.
+                </p>
+              </div>
+              <Link href="/dashboard/studio" className="firstrun-cta">
+                Open the studio
+              </Link>
+            </section>
+          ) : null}
 
           {/* Hero coverflow — full-width seasonal carousel */}
           <section

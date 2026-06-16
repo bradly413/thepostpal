@@ -172,7 +172,15 @@ export default function DraftsPage() {
           onRetry={() => void load(locationId ?? null)}
         />
       ) : count === 0 ? (
-        <EmptyState title="Nothing awaiting review" sub={MICROCOPY.emptyDrafts} />
+        <EmptyState
+          title="Nothing awaiting review"
+          sub={MICROCOPY.emptyDrafts}
+          action={
+            <a href="/dashboard/studio" className="pb-btn-primary">
+              Create a post
+            </a>
+          }
+        />
       ) : (
         <div className="pb-draft-list">
           {drafts.map((draft) => (

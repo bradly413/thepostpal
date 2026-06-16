@@ -13,29 +13,29 @@ gsap.registerPlugin(ScrollTrigger);
 // owner would actually describe it.
 const STEPS = [
   {
+    title: "Set your voice",
+    badge: "once",
+    desc: "A quick setup learns your brand voice and look — so everything that follows sounds like you, not a robot.",
+  },
+  {
     title: "Connect",
     badge: "2 min",
-    desc: "Link your accounts once. Takes about two minutes — then you're set.",
+    desc: "Link your Facebook and Instagram once. Takes about two minutes — then you're set.",
   },
   {
-    title: "Draft",
-    badge: "Mon AM",
-    desc: "Every Monday, a full week of posts shows up, written in your voice.",
+    title: "Create",
+    badge: "seconds",
+    desc: "Describe a post in a few plain words. Posterboy writes the caption and makes the image, on-brand, in seconds.",
   },
   {
-    title: "Approve",
-    badge: "under a minute",
-    desc: "Skim them and tap approve. Tweak anything you like, or just say yes.",
-  },
-  {
-    title: "Publish",
+    title: "Schedule",
     badge: "automatic",
-    desc: "Posterboy posts them at the right times, across all your platforms.",
+    desc: "Pick when it goes out — Posterboy publishes it to Facebook and Instagram for you. Or post it right now.",
   },
   {
-    title: "Report",
-    badge: "monthly",
-    desc: "Once a month, a simple recap lands in your inbox. No dashboards to dig through.",
+    title: "Stay on top",
+    badge: "anytime",
+    desc: "Every post lives in one simple calendar you can skim anytime. No dashboards to dig through.",
   },
 ];
 
@@ -98,13 +98,13 @@ export default function Solution() {
       <div className="sol-head">
         <span className="section-num sol-num-kicker">How it works</span>
         <h2 className="type-display sol-title">
-          Set it up once.
+          Set up your voice once.
           <br />
-          <span className="sol-accent">Then forget about it.</span>
+          <span className="sol-accent">Then every post takes minutes.</span>
         </h2>
         <p className="sol-lede">
-          Connect your accounts, and Posterboy takes the week from there — drafting,
-          scheduling, and posting while you run your business.
+          Describe a post in plain words — Posterboy writes it in your voice, makes the
+          image, and publishes it to Facebook and Instagram on your schedule.
         </p>
       </div>
 
