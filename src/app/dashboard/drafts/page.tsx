@@ -3,6 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import StatusBadge from "@/components/StatusBadge";
+import HumanityBadge from "@/components/dashboard/HumanityBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import {
   EmptyState,
@@ -188,8 +189,9 @@ export default function DraftsPage() {
               <div className="pb-draft-meta">{formatSchedule(draft)}</div>
               <div>
                 <p className="pb-draft-copy">{draft.copy}</p>
-                <div className="mt-2 flex gap-2 items-center">
+                <div className="mt-2 flex gap-2 items-center flex-wrap">
                   <StatusBadge status={draft.status} />
+                  <HumanityBadge text={draft.copy} />
                   {draft.platforms.map((p) => (
                     <span key={p} className="text-[10px] uppercase tracking-wide opacity-50">{p}</span>
                   ))}

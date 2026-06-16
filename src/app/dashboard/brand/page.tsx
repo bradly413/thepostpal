@@ -26,6 +26,7 @@ import { SITE_NAME } from "@/lib/site";
 import { applyCuratedPaletteToBook } from "@/lib/color-registry";
 import { useBrandBook } from "@/lib/use-brand-book";
 import RegenerateBrandButton from "@/components/dashboard/brand/RegenerateBrandButton";
+import LearnVoiceFromDocs from "@/components/dashboard/brand/LearnVoiceFromDocs";
 import CollateralPromptsSection from "@/components/dashboard/brand/CollateralPromptsSection";
 
 /* eslint-disable @next/next/no-img-element */
@@ -235,12 +236,15 @@ export default function BrandPage() {
           style={{
             display: "flex",
             justifyContent: "flex-end",
+            alignItems: "flex-start",
+            gap: 10,
             padding: "20px 0 8px",
             position: "sticky",
             top: 12,
             zIndex: 30,
           }}
         >
+          <LearnVoiceFromDocs locationId={locationId} onLearned={reload} />
           <RegenerateBrandButton
             book={brandBook}
             locationId={locationId}
