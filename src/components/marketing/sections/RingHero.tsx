@@ -26,6 +26,30 @@ const IMAGES = Array.from(
 // The cascade reuses the post-images as a deck that fans into 3D.
 const CASCADE = IMAGES;
 
+// One industry per card — the title flips to the next as each card bumps out.
+const INDUSTRIES = [
+  "Restaurants",
+  "Med spas",
+  "Nursing",
+  "Florists",
+  "Retail",
+  "Salons",
+  "Realtors",
+  "Fitness",
+  "Dentists",
+  "Cafés",
+  "Boutiques",
+  "Auto shops",
+  "Bakeries",
+  "Law firms",
+  "Contractors",
+  "Pet care",
+  "Yoga studios",
+  "Coffee",
+  "Events",
+  "Clinics",
+];
+
 const NAV = [
   { label: "How", href: "#solution" },
   { label: "Features", href: "#features" },
@@ -62,7 +86,11 @@ export default function RingHero() {
       place();
 
       // Cascade starts as a tight centered stack (a "deck" with thin edges).
-      gsap.set(".rh-casc-card", { xPercent: -50, yPercent: -50, x: 0, y: 0, z: (i) => -i * 4 });
+      const cascCards = gsap.utils.toArray<HTMLElement>(".rh-casc-card");
+      const titles = gsap.utils.toArray<HTMLElement>(".rh-casc-title");
+      gsap.set(cascCards, { xPercent: -50, yPercent: -50, x: 0, y: 0, z: (i) => -i * 4 });
+      gsap.set(titles, { rotationX: -75, autoAlpha: 0, transformOrigin: "50% 100%" });
+      if (titles[0]) gsap.set(titles[0], { rotationX: 0, autoAlpha: 1 });
 
       if (reducedMotion) {
         gsap.set(wheel, { rotation: 0 });
@@ -101,19 +129,28 @@ export default function RingHero() {
       // Phase 2: VISION — deck appears, thickens, then fans into a 3D cascade.
       tl.to(".rh-cascade", { autoAlpha: 1, duration: 0.5 });
       // thicken the deck
-      tl.to(".rh-casc-card", { z: (i) => -i * 18, duration: 1, ease: "none" });
-      // fan open into the diagonal cascade (up-right, receding)
-      tl.to(".rh-casc-card", {
-        x: (i) => i * 30,
-        y: (i) => -i * 20,
-        z: (i) => -i * 66,
-        rotateY: 2,
-        duration: 3.4,
-        stagger: 0.015,
-        ease: "power1.inOut",
+      tl.to(cascCards, { z: (i) => -i * 18, duration: 1, ease: "none" });
+      // copy rail fades in
+      tl.from(".rh-casc-titles", { autoAlpha: 0, y: 16, duration: 0.6 }, "<");
+      tl.from(".rh-casc-line", { autoAlpha: 0, y: 16, duration: 0.6 }, "<0.1");
+      // fan open card-by-card; each card's industry title flips in as it bumps out
+      const STEPX = 30,
+        STEPY = 20,
+        STEPZ = 66;
+      cascCards.forEach((card, i) => {
+        tl.to(
+          card,
+          { x: i * STEPX, y: -i * STEPY, z: -i * STEPZ, rotateY: 2, duration: 0.5, ease: "power2.out" },
+          i === 0 ? ">" : "<0.22",
+        );
+        if (i > 0 && titles[i]) {
+          tl.to(titles[i - 1], { rotationX: 75, autoAlpha: 0, duration: 0.25, ease: "power1.in" }, "<0.04").to(
+            titles[i],
+            { rotationX: 0, autoAlpha: 1, duration: 0.3, ease: "power2.out" },
+            "<0.06",
+          );
+        }
       });
-      // copy fades in with the cascade
-      tl.from(".rh-casc-copy > *", { autoAlpha: 0, y: 16, stagger: 0.12, duration: 0.8 }, "<0.5");
 
       const onResize = () => {
         place();
@@ -181,10 +218,16 @@ export default function RingHero() {
             ))}
           </div>
           <div className="rh-casc-copy">
-            <p className="rh-casc-word">A month of posts</p>
+            <div className="rh-casc-titles">
+              {INDUSTRIES.map((w) => (
+                <span key={w} className="rh-casc-title">
+                  {w}
+                </span>
+              ))}
+            </div>
             <p className="rh-casc-line">
-              Posterboy turns a blank calendar into a stream of on-brand posts — written, designed,
-              and scheduled in your voice.
+              On-brand posts for every kind of local business — written, designed, and scheduled in
+              your voice.
             </p>
           </div>
         </div>
@@ -259,14 +302,18 @@ export default function RingHero() {
           position: absolute; top: 50%; left: 50%;
           width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
           background-size: cover; background-position: center;
-          border-radius: 14px;
-          box-shadow: 0 30px 70px -28px rgba(20,25,40,0.45), inset 0 0 0 1px rgba(255,255,255,0.45);
-          will-change: transform;
+          border-radius: 0; border: 1px solid rgba(30,39,45,0.08);
+          opacity: 0.58; will-change: transform;
         }
-        .rh-casc-copy { position: absolute; left: 0; right: 0; bottom: 13%; text-align: center; }
-        .rh-casc-word { margin: 0; font-size: clamp(24px, 3.4vw, 44px); font-weight: 400; color: #1E272D; }
+        .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; text-align: left; max-width: 32ch; }
+        .rh-casc-titles { position: relative; height: 1.2em; perspective: 800px; }
+        .rh-casc-title {
+          position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap;
+          font-size: clamp(28px, 4vw, 52px); font-weight: 400; color: #1E272D; line-height: 1.2;
+          transform-origin: 50% 100%; backface-visibility: hidden;
+        }
         .rh-casc-line {
-          margin: 14px auto 0; max-width: 48ch; padding: 0 24px;
+          margin: 20px 0 0; max-width: 32ch;
           font-size: clamp(14px, 1.4vw, 17px); font-weight: 300; color: rgba(30,39,45,0.45); line-height: 1.5;
         }
 
