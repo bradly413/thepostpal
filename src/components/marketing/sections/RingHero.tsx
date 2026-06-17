@@ -11,39 +11,36 @@ import PosterboyLogo from "@/components/PosterboyLogo";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, CustomEase);
 
-// Cinematic easings (per gsap-cinematic-scroll-3d house set).
 CustomEase.create("cineFlow", "0.33,0,0.2,1");
-CustomEase.create("cineSilk", "0.45,0.05,0.55,0.95");
 
-// ONE set of cards carried through the whole timeline:
-//   Phase 1 — the 20 post-images orbit the wordmark; the ring spins one full turn.
-//   Collapse — the cards fly inward and STACK behind the card they land on
-//              (card 0 = the breakfast flatlay), forming an opaque deck.
-//   Phase 2 (VISION) — the deck fans into a diagonal 3D cascade, the cards
-//              turning to translucent thick-glass as they spread; a bottom-left
-//              title flips through local-business verticals as each card bumps out.
+// ONE set of 20 cards carried through the timeline:
+//   Phase 1 — the post-images orbit the wordmark; the ring spins one full turn.
+//   Collapse — the cards fly inward and stack behind card 0 (breakfast flatlay).
+//   Phase 2 — 9 cards spread into a diagonal receding LINE; the rest fade out.
 //
-// CSS 3D (no WebGL). Lenis-gated; reduced-motion stays a static ring.
+// Card material = native LUME effect: dark image "planes" that brighten where a
+// cursor-following light falls, and the whole line tilts toward the cursor.
 
-// Curated deck — each card's image is paired to the vertical it represents,
-// so the title that flips in actually matches the photo. Breakfast/Restaurants
-// is card 0 (the anchor the ring collapses onto).
-const CARDS = [
-  { img: "/hero-ring/01.jpg", word: "Restaurants" },
-  { img: "/hero-ring/06.jpg", word: "Salons" },
-  { img: "/hero-ring/13.jpg", word: "Dentists" },
-  { img: "/hero-ring/02.jpg", word: "Real estate" },
-  { img: "/hero-ring/04.jpg", word: "Florists" },
-  { img: "/hero-ring/19.jpg", word: "Med spas" },
-  { img: "/hero-ring/07.jpg", word: "Retail" },
-  { img: "/hero-ring/11.jpg", word: "Cafés" },
-  { img: "/hero-ring/16.jpg", word: "Bakeries" },
-  { img: "/hero-ring/14.jpg", word: "Fitness" },
-  { img: "/hero-ring/10.jpg", word: "Home services" },
-  { img: "/hero-ring/12.jpg", word: "Auto shops" },
+const IMAGES = Array.from(
+  { length: 20 },
+  (_, i) => `/hero-ring/${String(i + 1).padStart(2, "0")}.jpg`,
+);
+
+const LINE = 9; // cards that stay and line up after the stack
+
+// One industry per lined-up card; the title flips as each card slides out.
+const INDUSTRIES = [
+  "Restaurants",
+  "Salons",
+  "Dentists",
+  "Real estate",
+  "Florists",
+  "Med spas",
+  "Retail",
+  "Cafés",
+  "Fitness",
 ];
 
-// Ring cards are the same slabs scaled down — keeps image crisp (downscale, not up).
 const RING_SCALE = 0.29;
 
 const NAV = [
@@ -66,9 +63,9 @@ export default function RingHero() {
 
       const cards = gsap.utils.toArray<HTMLElement>(".rh-card");
       const titles = gsap.utils.toArray<HTMLElement>(".rh-casc-title");
+      const lineCards = cards.slice(0, LINE);
       const N = cards.length;
 
-      // Lay the cards out on the ring (billboarded, scaled down, opaque).
       const place = () => {
         const radius = Math.min(window.innerWidth, window.innerHeight) * 0.38;
         cards.forEach((card, i) => {
@@ -88,10 +85,10 @@ export default function RingHero() {
       };
       place();
 
-      // The flip-title stack starts on the first vertical, the rest folded away.
       gsap.set(titles, { rotationX: -75, autoAlpha: 0, transformOrigin: "50% 100%" });
       if (titles[0]) gsap.set(titles[0], { rotationX: 0, autoAlpha: 1 });
       gsap.set(".rh-casc-copy", { autoAlpha: 0 });
+      gsap.set(wheel, { "--dim-base": 0 });
 
       if (reducedMotion) {
         gsap.from(".rh-center > *", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.6 });
@@ -105,6 +102,46 @@ export default function RingHero() {
         ease: "power2.out",
       });
 
+      // ── Native LUME light: cursor-following shine + group tilt ──
+      const tiltX = gsap.quickTo(wheel, "rotationX", { duration: 0.5, ease: "power2.out" });
+      const tiltY = gsap.quickTo(wheel, "rotationY", { duration: 0.5, ease: "power2.out" });
+      let progress = 0;
+      let rafId = 0;
+      let point: { x: number; y: number } | null = null;
+      const seedLight = () => {
+        const rect = section.getBoundingClientRect();
+        // default light over the front card so the line reads even before the cursor moves
+        point = { x: rect.left + rect.width * 0.42, y: rect.top + rect.height * 0.46 };
+      };
+      const applyLight = () => {
+        rafId = 0;
+        const p = point;
+        if (!p) return;
+        if (progress <= 0.62) {
+          tiltX(0);
+          tiltY(0);
+          lineCards.forEach((c) => c.style.setProperty("--shine", "0"));
+          return;
+        }
+        const rect = section.getBoundingClientRect();
+        tiltY(((p.x - rect.left) / rect.width - 0.5) * 16);
+        tiltX(-((p.y - rect.top) / rect.height - 0.5) * 14);
+        lineCards.forEach((c) => {
+          const r = c.getBoundingClientRect();
+          const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
+          c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 340)).toFixed(3));
+        });
+      };
+      const schedule = () => {
+        if (!rafId) rafId = requestAnimationFrame(applyLight);
+      };
+      const onMove = (e: PointerEvent) => {
+        point = { x: e.clientX, y: e.clientY };
+        schedule();
+      };
+      seedLight();
+      section.addEventListener("pointermove", onMove);
+
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: section,
@@ -113,17 +150,19 @@ export default function RingHero() {
           pin: true,
           scrub: 1,
           anticipatePin: 1,
+          onUpdate: (self) => {
+            progress = self.progress;
+            schedule();
+          },
         },
       });
 
-      // Anchor opacity at the start so scrubbing back to the top always
-      // restores the opaque ring (the fan tween below animates opacity).
       tl.set(cards, { opacity: 1 }, 0);
 
       // Phase 1 — one full clockwise turn.
       tl.to(wheel, { rotation: 360, ease: "none", duration: 5 });
 
-      // Collapse — cards fly inward and stack behind card 0 (the breakfast flatlay).
+      // Collapse — every card stacks behind card 0 (the breakfast flatlay).
       tl.to(
         cards,
         {
@@ -142,26 +181,21 @@ export default function RingHero() {
       tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1.2 }, "collapse");
       tl.to(".rh-casc-copy", { autoAlpha: 1, duration: 0.8 }, "collapse+=0.8");
 
-      // Thicken the deck before it opens.
-      tl.to(cards, { z: (i) => -i * 18, duration: 1, ease: "none" });
+      tl.to(cards, { z: (i) => -i * 18, duration: 0.8, ease: "none" });
 
-      // Phase 2 — fan open card-by-card; cards turn to glass, titles flip in.
-      const STEPX = 30,
-        STEPY = 20,
-        STEPZ = 66;
-      cards.forEach((card, i) => {
+      // Phase 2 — dim into "planes", drop the extra cards, line up 9.
+      tl.addLabel("lineup");
+      tl.to(wheel, { "--dim-base": 0.8, duration: 0.8 }, "lineup");
+      tl.to(cards.slice(LINE), { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, "lineup");
+
+      const STEPX = 104,
+        STEPY = 34,
+        STEPZ = 132;
+      lineCards.forEach((card, i) => {
         tl.to(
           card,
-          {
-            x: i * STEPX,
-            y: -i * STEPY,
-            z: -i * STEPZ,
-            rotateY: 2,
-            opacity: i === 0 ? 1 : 0.9,
-            duration: 0.5,
-            ease: "power2.out",
-          },
-          i === 0 ? ">" : "<0.22",
+          { x: i * STEPX, y: -i * STEPY, z: -i * STEPZ, rotateY: 3, duration: 0.5, ease: "power2.out" },
+          i === 0 ? "lineup" : "<0.2",
         );
         if (i > 0 && titles[i]) {
           tl.to(titles[i - 1], { rotationX: 75, autoAlpha: 0, duration: 0.25, ease: "power1.in" }, "<0.04").to(
@@ -172,9 +206,16 @@ export default function RingHero() {
         }
       });
 
-      const onResize = () => ScrollTrigger.refresh();
+      const onResize = () => {
+        ScrollTrigger.refresh();
+        seedLight();
+      };
       window.addEventListener("resize", onResize);
-      return () => window.removeEventListener("resize", onResize);
+      return () => {
+        window.removeEventListener("resize", onResize);
+        section.removeEventListener("pointermove", onMove);
+        if (rafId) cancelAnimationFrame(rafId);
+      };
     },
     { dependencies: [ready, reducedMotion], scope: root },
   );
@@ -217,20 +258,20 @@ export default function RingHero() {
         </div>
 
         <div ref={wheelRef} className="rh-wheel" aria-hidden>
-          {CARDS.map((card, i) => (
+          {IMAGES.map((src, i) => (
             <div
-              key={card.img}
+              key={src}
               className="rh-card"
-              style={{ backgroundImage: `url(${card.img})`, zIndex: CARDS.length - i }}
+              style={{ backgroundImage: `url(${src})`, zIndex: IMAGES.length - i }}
             />
           ))}
         </div>
 
         <div className="rh-casc-copy">
           <div className="rh-casc-titles">
-            {CARDS.map((card) => (
-              <span key={card.word} className="rh-casc-title">
-                {card.word}
+            {INDUSTRIES.map((w) => (
+              <span key={w} className="rh-casc-title">
+                {w}
               </span>
             ))}
           </div>
@@ -285,26 +326,27 @@ export default function RingHero() {
         .rh-wheel {
           position: absolute; top: calc(50% + 36px); left: 50%;
           width: 0; height: 0; transform-style: preserve-3d; will-change: transform;
+          --dim-base: 0;
         }
-        /* Card = thick-glass slab. Ring shows it scaled down + opaque; the fan
-           grows it to full size and turns it translucent. */
-        /* Thick, bright glass slab — opaque photo, crisp white rim, light-only
-           edges (no dark bevel), faint top glare. */
+        /* Card = image "plane". A dark veil dims it; the cursor light lifts the
+           veil and adds a soft glow where it falls (native LUME look). */
         .rh-card {
           position: absolute; top: 0; left: 0;
           width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
-          background-size: cover; background-position: center;
+          background-size: cover; background-position: center; background-color: #000;
           border-radius: 0; opacity: 1; isolation: isolate; will-change: transform;
-          filter: brightness(1.06) saturate(1.06);
-          border: 1.5px solid rgba(255,255,255,0.82);
-          box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,0.45),
-            inset 0 3px 4px rgba(255,255,255,0.55),
-            inset -3px -4px 8px rgba(255,255,255,0.3);
+          --shine: 0;
+        }
+        .rh-card::after {
+          content: ""; position: absolute; inset: 0; pointer-events: none; background: #000;
+          opacity: max(0, calc(var(--dim-base, 0) - var(--shine, 0)));
+          transition: opacity 0.12s ease-out;
         }
         .rh-card::before {
-          content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
-          background: linear-gradient(125deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.06) 28%, rgba(255,255,255,0) 50%);
+          content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: soft-light;
+          background: radial-gradient(circle at 50% 45%, rgba(255,255,255,0.95), rgba(255,255,255,0) 72%);
+          opacity: calc(var(--shine, 0) * 0.8);
+          transition: opacity 0.12s ease-out;
         }
 
         .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; z-index: 14; text-align: left; max-width: 32ch; }
