@@ -5,24 +5,26 @@ import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { CustomEase } from "gsap/CustomEase";
+import { SplitText } from "gsap/SplitText";
 import { useGSAP } from "@gsap/react";
 import { useMarketingScroll } from "@/components/marketing/MarketingScrollProvider";
 import PosterboyLogo from "@/components/PosterboyLogo";
 
-gsap.registerPlugin(useGSAP, ScrollTrigger, CustomEase);
+gsap.registerPlugin(useGSAP, ScrollTrigger, CustomEase, SplitText);
 
 CustomEase.create("cineFlow", "0.33,0,0.2,1");
 
 // ONE set of 20 cards carried through the timeline:
 //   Phase 1 — the post-images orbit the wordmark; the ring spins one full turn.
+//            Cards near the cursor flip in 3D + scale; the ring parallax-tilts
+//            toward the cursor (the inkwell "alive" feel).
 //   Collapse — the cards fly inward and stack behind card 0 (breakfast flatlay).
-//   Phase 2 — 9 cards spread into a diagonal receding LINE; the rest fade out.
+//   Phase 2 — 9 cards spread into a diagonal line; each pops forward on scroll
+//            and its matching title reveals word-by-word (SplitText).
 //
 // Card material = native LUME effect: dark image "planes" that brighten where a
-// cursor-following light falls, and the whole line tilts toward the cursor.
+// cursor-following light falls.
 
-// First 9 are the lineup, paired to INDUSTRIES (in order) so the popped card
-// matches its sliding title; the remaining 11 just fill out the ring.
 const IMAGES = [
   "/hero-ring/01.jpg", // Restaurants — brunch
   "/hero-ring/06.jpg", // Salons
@@ -46,9 +48,8 @@ const IMAGES = [
   "/hero-ring/20.jpg",
 ];
 
-const LINE = 9; // cards that stay and line up after the stack
+const LINE = 9;
 
-// One industry per lined-up card; the title flips as each card slides out.
 const INDUSTRIES = [
   "Restaurants",
   "Salons",
@@ -62,6 +63,8 @@ const INDUSTRIES = [
 ];
 
 const RING_SCALE = 0.29;
+const RING_END = 0.18; // proximity-flip interactivity active below this scroll progress
+const LIGHT_START = 0.33; // LUME light active above this
 
 const NAV = [
   { label: "How", href: "#solution" },
@@ -72,14 +75,16 @@ const NAV = [
 export default function RingHero() {
   const root = useRef<HTMLElement | null>(null);
   const wheelRef = useRef<HTMLDivElement | null>(null);
+  const parallaxRef = useRef<HTMLDivElement | null>(null);
   const { ready, reducedMotion, scrollToAnchor } = useMarketingScroll();
 
   useGSAP(
     () => {
       if (!ready) return;
       const wheel = wheelRef.current;
+      const parallax = parallaxRef.current;
       const section = root.current;
-      if (!wheel || !section) return;
+      if (!wheel || !parallax || !section) return;
 
       const cards = gsap.utils.toArray<HTMLElement>(".rh-card");
       const titles = gsap.utils.toArray<HTMLElement>(".rh-casc-title");
@@ -105,13 +110,16 @@ export default function RingHero() {
       };
       place();
 
-      gsap.set(titles, { x: -70, autoAlpha: 0 });
       gsap.set(".rh-casc-copy", { autoAlpha: 0 });
 
       if (reducedMotion) {
         gsap.from(".rh-center > *", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.6 });
         return;
       }
+
+      // Word-by-word title reveals (SplitText), hidden below their clip box.
+      const splits = titles.map((t) => new SplitText(t, { type: "words", wordsClass: "rh-word" }));
+      splits.forEach((s) => gsap.set(s.words, { yPercent: 125 }));
 
       gsap.from(".rh-card", {
         autoAlpha: 0,
@@ -120,45 +128,72 @@ export default function RingHero() {
         ease: "power2.out",
       });
 
-      // ── Native LUME light: cursor-following shine + group tilt ──
-      const tiltX = gsap.quickTo(wheel, "rotationX", { duration: 0.5, ease: "power2.out" });
-      const tiltY = gsap.quickTo(wheel, "rotationY", { duration: 0.5, ease: "power2.out" });
+      // ── Interactive layer: proximity flip (ring) + light (lineup) + parallax ──
       let progress = 0;
       let rafId = 0;
-      let point: { x: number; y: number } | null = null;
-      const seedLight = () => {
-        const rect = section.getBoundingClientRect();
-        // default light over the front card so the line reads even before the cursor moves
-        point = { x: rect.left + rect.width * 0.42, y: rect.top + rect.height * 0.46 };
+      let ptr: { x: number; y: number } | null = null;
+      const ringSt = cards.map(() => ({ rot: 0, sf: 0 }));
+      const par = { cx: 0, cy: 0, cz: 0 };
+      let ringWasActive = false;
+      const SENS = 520,
+        FALLOFF = 260;
+      const seed = () => {
+        const r = section.getBoundingClientRect();
+        ptr = { x: r.left + r.width * 0.42, y: r.top + r.height * 0.46 };
       };
-      const applyLight = () => {
-        rafId = 0;
-        const p = point;
-        if (!p) return;
-        if (progress <= 0.33) {
-          tiltX(0);
-          tiltY(0);
-          lineCards.forEach((c) => c.style.setProperty("--shine", "0"));
-          return;
+      const loop = () => {
+        rafId = requestAnimationFrame(loop);
+        const p = ptr;
+        // parallax container tilt toward the cursor (ring + lineup phases)
+        let tX = 0,
+          tY = 0,
+          tZ = 0;
+        if (p && (progress < RING_END || progress > LIGHT_START)) {
+          const nx = (p.x - window.innerWidth / 2) / (window.innerWidth / 2);
+          const ny = (p.y - window.innerHeight / 2) / (window.innerHeight / 2);
+          tX = -ny * 12;
+          tY = nx * 12;
+          tZ = (nx + ny) * 4;
         }
-        const rect = section.getBoundingClientRect();
-        tiltY(((p.x - rect.left) / rect.width - 0.5) * 16);
-        tiltX(-((p.y - rect.top) / rect.height - 0.5) * 14);
-        lineCards.forEach((c) => {
-          const r = c.getBoundingClientRect();
-          const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
-          c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 400)).toFixed(3));
-        });
-      };
-      const schedule = () => {
-        if (!rafId) rafId = requestAnimationFrame(applyLight);
+        par.cx += (tX - par.cx) * 0.1;
+        par.cy += (tY - par.cy) * 0.1;
+        par.cz += (tZ - par.cz) * 0.1;
+        gsap.set(parallax, { rotateX: par.cx, rotateY: par.cy, rotation: par.cz });
+
+        if (p && progress < RING_END) {
+          ringWasActive = true;
+          cards.forEach((card, i) => {
+            const r = card.getBoundingClientRect();
+            const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
+            const ff = d < SENS ? Math.max(0, 1 - d / FALLOFF) : 0;
+            const st = ringSt[i];
+            st.rot += (180 * ff - st.rot) * 0.15;
+            st.sf += (0.3 * ff - st.sf) * 0.15;
+            gsap.set(card, { rotationY: st.rot, scale: RING_SCALE * (1 + st.sf) });
+          });
+        } else if (ringWasActive) {
+          ringWasActive = false;
+          cards.forEach((card, i) => {
+            ringSt[i].rot = 0;
+            ringSt[i].sf = 0;
+            gsap.set(card, { rotationY: 0, scale: RING_SCALE });
+          });
+        }
+
+        if (p && progress > LIGHT_START) {
+          lineCards.forEach((c) => {
+            const r = c.getBoundingClientRect();
+            const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
+            c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 400)).toFixed(3));
+          });
+        }
       };
       const onMove = (e: PointerEvent) => {
-        point = { x: e.clientX, y: e.clientY };
-        schedule();
+        ptr = { x: e.clientX, y: e.clientY };
       };
-      seedLight();
+      seed();
       section.addEventListener("pointermove", onMove);
+      rafId = requestAnimationFrame(loop);
 
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -170,7 +205,6 @@ export default function RingHero() {
           anticipatePin: 1,
           onUpdate: (self) => {
             progress = self.progress;
-            schedule();
           },
         },
       });
@@ -218,8 +252,8 @@ export default function RingHero() {
         );
       });
 
-      // Each card pops forward out of the line in turn; its matching title
-      // slides in from the left (and out to the right as the card settles back).
+      // Each card pops forward out of the line; its matching title reveals
+      // word-by-word, then settles back as the next pops.
       tl.addLabel("pops");
       lineCards.forEach((card, i) => {
         const b = i * 1.3;
@@ -229,12 +263,7 @@ export default function RingHero() {
           { x: 24, y: -12, z: 220, scale: 1.22, rotateY: 0, "--dim-base": 0, duration: 0.4, ease: "cineFlow" },
           P(0),
         );
-        tl.fromTo(
-          titles[i],
-          { x: -70, autoAlpha: 0 },
-          { x: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" },
-          P(0.1),
-        );
+        tl.to(splits[i].words, { yPercent: 0, duration: 0.55, stagger: 0.08, ease: "power4.out" }, P(0.12));
         if (i < LINE - 1) {
           tl.to(
             card,
@@ -248,21 +277,22 @@ export default function RingHero() {
               duration: 0.4,
               ease: "cineFlow",
             },
-            P(0.8),
+            P(0.85),
           );
-          tl.to(titles[i], { x: 70, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, P(0.8));
+          tl.to(splits[i].words, { yPercent: -125, duration: 0.45, stagger: 0.06, ease: "power4.in" }, P(0.85));
         }
       });
 
       const onResize = () => {
         ScrollTrigger.refresh();
-        seedLight();
+        seed();
       };
       window.addEventListener("resize", onResize);
       return () => {
         window.removeEventListener("resize", onResize);
         section.removeEventListener("pointermove", onMove);
         if (rafId) cancelAnimationFrame(rafId);
+        splits.forEach((s) => s.revert());
       };
     },
     { dependencies: [ready, reducedMotion], scope: root },
@@ -305,14 +335,16 @@ export default function RingHero() {
           <p className="rh-scroll">SCROLL&nbsp;&nbsp;TO&nbsp;&nbsp;EXPLORE</p>
         </div>
 
-        <div ref={wheelRef} className="rh-wheel" aria-hidden>
-          {IMAGES.map((src, i) => (
-            <div
-              key={src}
-              className="rh-card"
-              style={{ backgroundImage: `url(${src})`, zIndex: IMAGES.length - i }}
-            />
-          ))}
+        <div ref={parallaxRef} className="rh-parallax">
+          <div ref={wheelRef} className="rh-wheel" aria-hidden>
+            {IMAGES.map((src, i) => (
+              <div
+                key={src}
+                className="rh-card"
+                style={{ backgroundImage: `url(${src})`, zIndex: IMAGES.length - i }}
+              />
+            ))}
+          </div>
         </div>
 
         <div className="rh-casc-copy">
@@ -371,10 +403,10 @@ export default function RingHero() {
           font-size: 11px; letter-spacing: 0.22em; color: rgba(30,39,45,0.5);
         }
 
+        .rh-parallax { position: absolute; inset: 0; transform-style: preserve-3d; will-change: transform; }
         .rh-wheel {
           position: absolute; top: calc(50% + 36px); left: 50%;
           width: 0; height: 0; transform-style: preserve-3d; will-change: transform;
-          --dim-base: 0;
         }
         /* Card = image "plane". A dark veil dims it; the cursor light lifts the
            veil and adds a soft glow where it falls (native LUME look). */
@@ -383,7 +415,7 @@ export default function RingHero() {
           width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
           background-size: cover; background-position: center; background-color: #000;
           border-radius: 0; opacity: 1; isolation: isolate; will-change: transform;
-          --shine: 0;
+          --dim-base: 0; --shine: 0; backface-visibility: hidden;
         }
         .rh-card::after {
           content: ""; position: absolute; inset: 0; pointer-events: none; background: #000;
@@ -398,12 +430,13 @@ export default function RingHero() {
         }
 
         .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; z-index: 14; text-align: left; max-width: 32ch; }
-        .rh-casc-titles { position: relative; height: 1.2em; perspective: 800px; }
+        .rh-casc-titles { position: relative; height: 1.25em; }
         .rh-casc-title {
-          position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap;
+          position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap; overflow: hidden;
+          padding-bottom: 0.08em;
           font-size: clamp(28px, 4vw, 52px); font-weight: 400; color: #1E272D; line-height: 1.2;
-          transform-origin: 50% 100%; backface-visibility: hidden;
         }
+        .rh-word { display: inline-block; will-change: transform; }
         .rh-casc-line {
           margin: 20px 0 0; max-width: 32ch;
           font-size: clamp(14px, 1.4vw, 17px); font-weight: 300; color: rgba(30,39,45,0.45); line-height: 1.5;
