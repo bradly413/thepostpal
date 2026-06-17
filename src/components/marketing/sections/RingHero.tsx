@@ -164,9 +164,9 @@ export default function RingHero() {
         }
         .rh-card {
           position: absolute; top: 0; left: 0;
-          width: clamp(64px, 7vw, 104px);
+          width: clamp(32px, 3.5vw, 52px);
           aspect-ratio: 4 / 5;
-          border-radius: 10px;
+          border-radius: 0;
           background-size: cover;
           background-position: center;
           box-shadow: 0 14px 34px -12px rgba(20,25,40,0.28);
@@ -175,7 +175,7 @@ export default function RingHero() {
 
         @media (max-width: 640px) {
           .rh-rail { gap: 20px; font-size: 10px; }
-          .rh-card { width: clamp(48px, 13vw, 72px); }
+          .rh-card { width: clamp(24px, 6.5vw, 36px); }
         }
       `}</style>
     </section>
