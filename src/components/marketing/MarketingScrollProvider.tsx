@@ -36,6 +36,15 @@ export default function MarketingScrollProvider({ children }: { children: ReactN
   const lenisRef = useRef<Lenis | null>(null);
 
   useEffect(() => {
+    // The hero is a pinned, scroll-scrubbed sequence — always open it on the
+    // first frame (the ring), never mid-timeline. Browsers default to
+    // restoring the prior scroll position on reload, which would drop a
+    // returning/reloading visitor into the middle of the collapse/cascade.
+    if ("scrollRestoration" in window.history) {
+      window.history.scrollRestoration = "manual";
+    }
+    window.scrollTo(0, 0);
+
     initMarketingScrollConfig();
 
     const setVh = () =>
