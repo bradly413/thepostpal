@@ -21,10 +21,30 @@ CustomEase.create("cineFlow", "0.33,0,0.2,1");
 // Card material = native LUME effect: dark image "planes" that brighten where a
 // cursor-following light falls, and the whole line tilts toward the cursor.
 
-const IMAGES = Array.from(
-  { length: 20 },
-  (_, i) => `/hero-ring/${String(i + 1).padStart(2, "0")}.jpg`,
-);
+// First 9 are the lineup, paired to INDUSTRIES (in order) so the popped card
+// matches its sliding title; the remaining 11 just fill out the ring.
+const IMAGES = [
+  "/hero-ring/01.jpg", // Restaurants — brunch
+  "/hero-ring/06.jpg", // Salons
+  "/hero-ring/13.jpg", // Dentists — scrubs
+  "/hero-ring/02.jpg", // Real estate — house
+  "/hero-ring/04.jpg", // Florists — roses
+  "/hero-ring/19.jpg", // Med spas — beauty
+  "/hero-ring/07.jpg", // Retail — clothing
+  "/hero-ring/11.jpg", // Cafés — coffee
+  "/hero-ring/14.jpg", // Fitness — smoothie
+  "/hero-ring/03.jpg",
+  "/hero-ring/05.jpg",
+  "/hero-ring/08.jpg",
+  "/hero-ring/09.jpg",
+  "/hero-ring/10.jpg",
+  "/hero-ring/12.jpg",
+  "/hero-ring/15.jpg",
+  "/hero-ring/16.jpg",
+  "/hero-ring/17.jpg",
+  "/hero-ring/18.jpg",
+  "/hero-ring/20.jpg",
+];
 
 const LINE = 9; // cards that stay and line up after the stack
 
@@ -85,10 +105,8 @@ export default function RingHero() {
       };
       place();
 
-      gsap.set(titles, { rotationX: -75, autoAlpha: 0, transformOrigin: "50% 100%" });
-      if (titles[0]) gsap.set(titles[0], { rotationX: 0, autoAlpha: 1 });
+      gsap.set(titles, { x: -70, autoAlpha: 0 });
       gsap.set(".rh-casc-copy", { autoAlpha: 0 });
-      gsap.set(wheel, { "--dim-base": 0 });
 
       if (reducedMotion) {
         gsap.from(".rh-center > *", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.6 });
@@ -117,7 +135,7 @@ export default function RingHero() {
         rafId = 0;
         const p = point;
         if (!p) return;
-        if (progress <= 0.62) {
+        if (progress <= 0.33) {
           tiltX(0);
           tiltY(0);
           lineCards.forEach((c) => c.style.setProperty("--shine", "0"));
@@ -146,7 +164,7 @@ export default function RingHero() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: "+=5200",
+          end: "+=7000",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
@@ -183,26 +201,56 @@ export default function RingHero() {
 
       tl.to(cards, { z: (i) => -i * 18, duration: 0.8, ease: "none" });
 
-      // Phase 2 — dim into "planes", drop the extra cards, line up 9.
+      // Phase 2 — dim into "planes", drop the extras, line up 9.
       tl.addLabel("lineup");
-      tl.to(wheel, { "--dim-base": 0.48, duration: 0.8 }, "lineup");
+      tl.to(lineCards, { "--dim-base": 0.5, duration: 0.8 }, "lineup");
       tl.to(cards.slice(LINE), { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, "lineup");
 
       const STEPX = 104,
         STEPY = 34,
         STEPZ = 132;
+      const lineZ = (i: number) => -i * STEPZ;
       lineCards.forEach((card, i) => {
         tl.to(
           card,
-          { x: i * STEPX, y: -i * STEPY, z: -i * STEPZ, rotateY: 3, duration: 0.5, ease: "power2.out" },
+          { x: i * STEPX, y: -i * STEPY, z: lineZ(i), rotateY: 3, duration: 0.5, ease: "power2.out" },
           i === 0 ? "lineup" : "<0.2",
         );
-        if (i > 0 && titles[i]) {
-          tl.to(titles[i - 1], { rotationX: 75, autoAlpha: 0, duration: 0.25, ease: "power1.in" }, "<0.04").to(
-            titles[i],
-            { rotationX: 0, autoAlpha: 1, duration: 0.3, ease: "power2.out" },
-            "<0.06",
+      });
+
+      // Each card pops forward out of the line in turn; its matching title
+      // slides in from the left (and out to the right as the card settles back).
+      tl.addLabel("pops");
+      lineCards.forEach((card, i) => {
+        const b = i * 1.3;
+        const P = (o: number) => `pops+=${(b + o).toFixed(2)}`;
+        tl.to(
+          card,
+          { x: 24, y: -12, z: 220, scale: 1.22, rotateY: 0, "--dim-base": 0, duration: 0.4, ease: "cineFlow" },
+          P(0),
+        );
+        tl.fromTo(
+          titles[i],
+          { x: -70, autoAlpha: 0 },
+          { x: 0, autoAlpha: 1, duration: 0.35, ease: "power3.out" },
+          P(0.1),
+        );
+        if (i < LINE - 1) {
+          tl.to(
+            card,
+            {
+              x: i * STEPX,
+              y: -i * STEPY,
+              z: lineZ(i),
+              scale: 1,
+              rotateY: 3,
+              "--dim-base": 0.5,
+              duration: 0.4,
+              ease: "cineFlow",
+            },
+            P(0.8),
           );
+          tl.to(titles[i], { x: 70, autoAlpha: 0, duration: 0.3, ease: "power2.in" }, P(0.8));
         }
       });
 
