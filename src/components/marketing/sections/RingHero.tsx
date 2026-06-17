@@ -302,8 +302,28 @@ export default function RingHero() {
           position: absolute; top: 50%; left: 50%;
           width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
           background-size: cover; background-position: center;
-          border-radius: 0; border: 1px solid rgba(30,39,45,0.08);
-          opacity: 0.58; will-change: transform;
+          background-color: rgba(244, 248, 252, 0.12);
+          background-blend-mode: soft-light;
+          border-radius: 0; opacity: 0.72; isolation: isolate; will-change: transform;
+          /* thick-glass edge: beveled rim (inset highlight + depth), no drop shadow */
+          box-shadow:
+            inset 0 0 0 1px rgba(255,255,255,0.6),
+            inset 7px 7px 16px rgba(255,255,255,0.42),
+            inset -9px -12px 22px rgba(28,40,58,0.22),
+            inset 0 0 30px rgba(255,255,255,0.16);
+        }
+        /* specular sheen — the glare of light across glass */
+        .rh-casc-card::before {
+          content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
+          background:
+            linear-gradient(118deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.12) 16%, rgba(255,255,255,0) 38%),
+            linear-gradient(305deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 16%);
+        }
+        /* inner pane — the second edge that sells the slab's thickness */
+        .rh-casc-card::after {
+          content: ""; position: absolute; inset: 5px; pointer-events: none;
+          border: 1px solid rgba(255,255,255,0.32);
+          background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 42%);
         }
         .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; text-align: left; max-width: 32ch; }
         .rh-casc-titles { position: relative; height: 1.2em; perspective: 800px; }
