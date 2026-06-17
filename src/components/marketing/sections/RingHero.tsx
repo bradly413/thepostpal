@@ -129,7 +129,7 @@ export default function RingHero() {
         lineCards.forEach((c) => {
           const r = c.getBoundingClientRect();
           const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
-          c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 340)).toFixed(3));
+          c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 400)).toFixed(3));
         });
       };
       const schedule = () => {
@@ -185,7 +185,7 @@ export default function RingHero() {
 
       // Phase 2 — dim into "planes", drop the extra cards, line up 9.
       tl.addLabel("lineup");
-      tl.to(wheel, { "--dim-base": 0.8, duration: 0.8 }, "lineup");
+      tl.to(wheel, { "--dim-base": 0.48, duration: 0.8 }, "lineup");
       tl.to(cards.slice(LINE), { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, "lineup");
 
       const STEPX = 104,
