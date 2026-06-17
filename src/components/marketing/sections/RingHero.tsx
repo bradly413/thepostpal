@@ -17,7 +17,7 @@ gsap.registerPlugin(useGSAP, ScrollTrigger);
 // Honors prefers-reduced-motion (static ring, no pin) via the scroll provider.
 
 const IMAGES = Array.from(
-  { length: 24 },
+  { length: 20 },
   (_, i) => `/hero-ring/${String(i + 1).padStart(2, "0")}.jpg`,
 );
 
@@ -165,7 +165,7 @@ export default function RingHero() {
         }
         .rh-card {
           position: absolute; top: 0; left: 0;
-          width: clamp(32px, 3.5vw, 52px);
+          width: clamp(40px, 4.4vw, 66px);
           aspect-ratio: 4 / 5;
           border-radius: 0;
           background-size: cover;
@@ -176,7 +176,7 @@ export default function RingHero() {
 
         @media (max-width: 640px) {
           .rh-rail { gap: 20px; font-size: 10px; }
-          .rh-card { width: clamp(24px, 6.5vw, 36px); }
+          .rh-card { width: clamp(30px, 8vw, 46px); }
         }
       `}</style>
     </section>
