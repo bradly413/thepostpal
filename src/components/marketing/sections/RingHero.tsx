@@ -10,29 +10,22 @@ import PosterboyLogo from "@/components/PosterboyLogo";
 gsap.registerPlugin(useGSAP, ScrollTrigger);
 
 // Inkwell-inspired cinematic hero, one pinned master timeline:
-//   Phase 1 — 20 real post-images orbit the serif posterboy wordmark; the ring
-//             scrub-rotates a full turn.
-//   Transition — the ring scales up + fades (you "pass through" it), center fades.
-//   Phase 2 (VISION) — a card centers; "AI is changing the way you post about […]"
-//             cross-fades through topics while side cards drift to the edges.
+//   Phase 1 — 20 real post-images orbit the serif posterboy wordmark; ring spins.
+//   Transition — ring scales up + fades (you "pass through" it), center fades.
+//   Phase 2 (VISION) — a card thickens into a 3D deck, then FANS open into a
+//             diagonal 3D cascade receding into space (the inkwell motion).
 //
-// Gemini's 3D-diamond Phase 3 was intentionally dropped — off-brand vs. the
-// screenshots, which are the word-cycle beat above. 2D CSS transforms (no WebGL).
+// 2D/3D CSS transforms (no WebGL). Lenis-gated; reduced-motion stays static.
 
 const IMAGES = Array.from(
   { length: 20 },
   (_, i) => `/hero-ring/${String(i + 1).padStart(2, "0")}.jpg`,
 );
 
-const SECTIONS = ["INTRO", "VISION", "INTELLIGENCE", "APPLICATIONS"];
+// The cascade reuses the post-images as a deck that fans into 3D.
+const CASCADE = IMAGES;
 
-// VISION beat: each topic pairs a centered card image with the cycling word.
-const VISION = [
-  { img: "/hero-ring/03.jpg", word: "your listings" },
-  { img: "/hero-ring/02.jpg", word: "the weekend special" },
-  { img: "/hero-ring/09.jpg", word: "the open house" },
-  { img: "/hero-ring/15.jpg", word: "your community" },
-];
+const SECTIONS = ["INTRO", "VISION", "INTELLIGENCE", "APPLICATIONS"];
 
 export default function RingHero() {
   const root = useRef<HTMLElement | null>(null);
@@ -48,7 +41,6 @@ export default function RingHero() {
 
       const cards = gsap.utils.toArray<HTMLElement>(".rh-card");
       const N = cards.length;
-
       const place = () => {
         const radius = Math.min(window.innerWidth, window.innerHeight) * 0.38;
         cards.forEach((card, i) => {
@@ -64,16 +56,17 @@ export default function RingHero() {
       };
       place();
 
-      // Reduced motion: static ring + center, no sequence.
+      // Cascade starts as a tight centered stack (a "deck" with thin edges).
+      gsap.set(".rh-casc-card", { xPercent: -50, yPercent: -50, x: 0, y: 0, z: (i) => -i * 4 });
+
       if (reducedMotion) {
         gsap.set(wheel, { rotation: 0 });
-        gsap.set(".rh-vision", { autoAlpha: 0 });
+        gsap.set(".rh-cascade", { autoAlpha: 0 });
         gsap.from(".rh-center > *", { autoAlpha: 0, y: 12, stagger: 0.08, duration: 0.6 });
         return;
       }
 
-      gsap.set(".rh-vision", { autoAlpha: 0 });
-      gsap.set(".rh-vis-card, .rh-vis-word", { autoAlpha: 0 });
+      gsap.set(".rh-cascade", { autoAlpha: 0 });
       gsap.from(".rh-card", {
         autoAlpha: 0,
         scale: 0.86,
@@ -86,49 +79,36 @@ export default function RingHero() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: "+=5200",
+          end: "+=5600",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
         },
       });
 
-      // ── Phase 1: ring spins a full turn
+      // Phase 1: ring spins a full turn.
       tl.to(wheel, { rotation: 360, ease: "none", duration: 5 });
 
-      // ── Transition: pass through the ring; center fades
+      // Transition: pass through the ring; center fades.
       tl.to(wheel, { scale: 4.4, autoAlpha: 0, ease: "power2.in", duration: 1.6 })
         .to(".rh-center", { autoAlpha: 0, scale: 1.3, ease: "power2.in", duration: 1.6 }, "<");
 
-      // ── Phase 2: VISION
-      tl.to(".rh-vision", { autoAlpha: 1, duration: 0.4 });
-      tl.addLabel("vision");
-
-      // Side cards drift from near-center out to the edges over the whole beat.
-      tl.fromTo(
-        ".rh-vis-side",
-        { x: (i) => (i % 2 === 0 ? -90 : 90), y: 40, autoAlpha: 0 },
-        {
-          x: (i) => (i % 2 === 0 ? -480 : 480),
-          y: (i) => (i % 2 === 0 ? -60 : 80),
-          autoAlpha: 0.55,
-          ease: "none",
-          duration: 6,
-        },
-        "vision",
-      );
-
-      // Centered card + word cross-fade through the topics.
-      VISION.forEach((_, i) => {
-        const cur = [`.rh-vis-card-${i}`, `.rh-vis-word-${i}`];
-        if (i === 0) {
-          tl.to(cur, { autoAlpha: 1, duration: 0.5 }, "vision");
-        } else {
-          tl.to([`.rh-vis-card-${i - 1}`, `.rh-vis-word-${i - 1}`], { autoAlpha: 0, duration: 0.5 })
-            .to(cur, { autoAlpha: 1, duration: 0.5 }, "<0.25");
-        }
-        tl.to({}, { duration: 1 }); // hold on this topic
+      // Phase 2: VISION — deck appears, thickens, then fans into a 3D cascade.
+      tl.to(".rh-cascade", { autoAlpha: 1, duration: 0.5 });
+      // thicken the deck
+      tl.to(".rh-casc-card", { z: (i) => -i * 18, duration: 1, ease: "none" });
+      // fan open into the diagonal cascade (up-right, receding)
+      tl.to(".rh-casc-card", {
+        x: (i) => i * 30,
+        y: (i) => -i * 20,
+        z: (i) => -i * 66,
+        rotateY: 2,
+        duration: 3.4,
+        stagger: 0.015,
+        ease: "power1.inOut",
       });
+      // copy fades in with the cascade
+      tl.from(".rh-casc-copy > *", { autoAlpha: 0, y: 16, stagger: 0.12, duration: 0.8 }, "<0.5");
 
       const onResize = () => {
         place();
@@ -164,28 +144,23 @@ export default function RingHero() {
           ))}
         </div>
 
-        {/* Phase 2 — VISION beat */}
-        <div className="rh-vision" aria-hidden>
-          {VISION.map((v, i) => (
-            <div
-              key={i}
-              className={`rh-vis-card rh-vis-card-${i}`}
-              style={{ backgroundImage: `url(${v.img})` }}
-            />
-          ))}
-          {/* drifting side cards (reuse a couple ring images) */}
-          <div className="rh-vis-side" style={{ backgroundImage: "url(/hero-ring/06.jpg)" }} />
-          <div className="rh-vis-side" style={{ backgroundImage: "url(/hero-ring/12.jpg)" }} />
-
-          <div className="rh-vis-copy">
-            <p className="rh-vis-lead">AI is changing the way you post about</p>
-            <span className="rh-vis-words">
-              {VISION.map((v, i) => (
-                <span key={i} className={`rh-vis-word rh-vis-word-${i}`}>
-                  {v.word}
-                </span>
-              ))}
-            </span>
+        {/* Phase 2 — VISION 3D cascade */}
+        <div className="rh-cascade" aria-hidden>
+          <div className="rh-casc-deck">
+            {CASCADE.map((src, i) => (
+              <div
+                key={i}
+                className="rh-casc-card"
+                style={{ backgroundImage: `url(${src})`, zIndex: CASCADE.length - i }}
+              />
+            ))}
+          </div>
+          <div className="rh-casc-copy">
+            <p className="rh-casc-word">A month of posts</p>
+            <p className="rh-casc-line">
+              Posterboy turns a blank calendar into a stream of on-brand posts — written, designed,
+              and scheduled in your voice.
+            </p>
           </div>
         </div>
       </div>
@@ -229,38 +204,36 @@ export default function RingHero() {
           transform-origin: center center;
         }
 
-        /* ── VISION beat ── */
-        .rh-vision { position: absolute; inset: 0; z-index: 12; pointer-events: none; }
-        .rh-vis-card {
+        /* ── VISION 3D cascade ── */
+        .rh-cascade {
+          position: absolute; inset: 0; z-index: 12; pointer-events: none;
+          display: flex; align-items: center; justify-content: center;
+          perspective: 1600px;
+        }
+        .rh-casc-deck {
+          position: relative; width: 0; height: 0;
+          transform-style: preserve-3d;
+          transform: translateY(-24px) rotateX(6deg) rotateY(-16deg);
+        }
+        .rh-casc-card {
           position: absolute; top: 50%; left: 50%;
-          width: clamp(150px, 16vw, 230px); aspect-ratio: 4 / 5;
-          transform: translate(-50%, -50%) translateY(-40px);
+          width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
           background-size: cover; background-position: center;
-          border-radius: 14px; box-shadow: 0 30px 70px -24px rgba(20,25,40,0.4);
+          border-radius: 14px;
+          box-shadow: 0 30px 70px -28px rgba(20,25,40,0.45), inset 0 0 0 1px rgba(255,255,255,0.45);
+          will-change: transform;
         }
-        .rh-vis-side {
-          position: absolute; top: 50%; left: 50%;
-          width: clamp(120px, 12vw, 180px); aspect-ratio: 4 / 5;
-          transform: translate(-50%, -50%);
-          background-size: cover; background-position: center;
-          border-radius: 12px; box-shadow: 0 24px 60px -22px rgba(20,25,40,0.3);
-        }
-        .rh-vis-copy {
-          position: absolute; left: 0; right: 0; bottom: 16%;
-          text-align: center;
-        }
-        .rh-vis-lead { margin: 0; font-size: clamp(15px, 1.5vw, 19px); font-weight: 300; color: rgba(30,39,45,0.55); }
-        .rh-vis-words { position: relative; display: inline-block; margin-top: 8px; min-height: 1.3em; }
-        .rh-vis-word {
-          position: absolute; left: 50%; top: 0; transform: translateX(-50%);
-          white-space: nowrap; font-size: clamp(28px, 4vw, 52px); font-weight: 400; color: #1E272D;
+        .rh-casc-copy { position: absolute; left: 0; right: 0; bottom: 13%; text-align: center; }
+        .rh-casc-word { margin: 0; font-size: clamp(24px, 3.4vw, 44px); font-weight: 400; color: #1E272D; }
+        .rh-casc-line {
+          margin: 14px auto 0; max-width: 48ch; padding: 0 24px;
+          font-size: clamp(14px, 1.4vw, 17px); font-weight: 300; color: rgba(30,39,45,0.45); line-height: 1.5;
         }
 
         @media (max-width: 640px) {
           .rh-rail { gap: 20px; font-size: 10px; }
           .rh-card { width: clamp(30px, 8vw, 46px); }
-          .rh-vis-card { width: clamp(120px, 40vw, 170px); }
-          .rh-vis-side { display: none; }
+          .rh-casc-card { width: clamp(120px, 40vw, 180px); }
         }
       `}</style>
     </section>
