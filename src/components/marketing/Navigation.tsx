@@ -30,6 +30,16 @@ export default function Navigation() {
         const y = window.scrollY;
         const diff = y - lastY;
         setScrolled(y > 80);
+        // The cinematic hero owns the top bar (its own rail is the nav while
+        // it's pinned). Stay hidden until the hero has scrolled off-screen.
+        const hero = document.querySelector("[data-hero]");
+        const heroCovering = hero ? hero.getBoundingClientRect().bottom > 80 : false;
+        if (heroCovering && !open) {
+          setHidden(true);
+          lastY = y;
+          ticking = false;
+          return;
+        }
         if (open) {
           setHidden(false);
         } else if (y < HIDE_THRESHOLD) {
@@ -46,6 +56,7 @@ export default function Navigation() {
       });
     };
 
+    onScroll(); // set initial state (hidden while the hero owns the top bar)
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, [open]);

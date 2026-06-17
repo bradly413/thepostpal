@@ -1,6 +1,7 @@
 "use client";
 
 import { useRef } from "react";
+import Link from "next/link";
 import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
@@ -25,12 +26,16 @@ const IMAGES = Array.from(
 // The cascade reuses the post-images as a deck that fans into 3D.
 const CASCADE = IMAGES;
 
-const SECTIONS = ["INTRO", "VISION", "INTELLIGENCE", "APPLICATIONS"];
+const NAV = [
+  { label: "How", href: "#solution" },
+  { label: "Features", href: "#features" },
+  { label: "Pricing", href: "#pricing" },
+];
 
 export default function RingHero() {
   const root = useRef<HTMLElement | null>(null);
   const wheelRef = useRef<HTMLDivElement | null>(null);
-  const { ready, reducedMotion } = useMarketingScroll();
+  const { ready, reducedMotion, scrollToAnchor } = useMarketingScroll();
 
   useGSAP(
     () => {
@@ -121,14 +126,34 @@ export default function RingHero() {
   );
 
   return (
-    <section ref={root} className="rh" aria-label="Posterboy — the future is built on AI">
-      <nav className="rh-rail" aria-label="Sections">
-        {SECTIONS.map((s, i) => (
-          <span key={s} className={`rh-rail-item${i === 0 ? " is-active" : ""}`}>
-            {s}
-          </span>
-        ))}
-      </nav>
+    <section ref={root} className="rh" data-hero aria-label="Posterboy — the future is built on AI">
+      <header className="rh-rail">
+        <PosterboyLogo
+          href="#hero"
+          className="rh-rail-logo"
+          onClick={(e) => {
+            e.preventDefault();
+            scrollToAnchor("#hero");
+          }}
+        />
+        <nav className="rh-rail-nav" aria-label="Primary">
+          {NAV.map((item) => (
+            <a
+              key={item.label}
+              href={item.href}
+              onClick={(e) => {
+                e.preventDefault();
+                scrollToAnchor(item.href);
+              }}
+            >
+              {item.label}
+            </a>
+          ))}
+        </nav>
+        <Link href="/sign-in" className="rh-rail-cta">
+          Sign in
+        </Link>
+      </header>
 
       <div className="rh-stage">
         {/* Phase 1 — ring + center */}
@@ -169,12 +194,27 @@ export default function RingHero() {
         .rh { position: relative; background: #F6F8FA; color: #1E272D; }
         .rh-rail {
           position: absolute; top: 0; left: 0; right: 0; z-index: 20;
-          display: flex; gap: 34px; justify-content: center; padding: 28px 0;
-          font-family: ui-monospace, "Roboto Mono", "SFMono-Regular", Menlo, monospace;
-          font-size: 11px; letter-spacing: 0.18em;
+          display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+          padding: 22px clamp(20px, 4vw, 56px);
         }
-        .rh-rail-item { color: rgba(30,39,45,0.32); transition: color 0.3s ease; }
-        .rh-rail-item.is-active { color: #1E272D; }
+        .rh-rail-logo { justify-self: start; font-size: clamp(18px, 1.5vw, 22px); color: #1E272D; line-height: 1; }
+        .rh-rail-nav {
+          justify-self: center; display: flex; gap: clamp(22px, 3vw, 44px);
+          font-family: ui-monospace, "Roboto Mono", "SFMono-Regular", Menlo, monospace;
+          font-size: 11px; letter-spacing: 0.18em; text-transform: uppercase;
+        }
+        .rh-rail-nav a {
+          color: rgba(30,39,45,0.5); text-decoration: none; transition: color 0.25s ease;
+        }
+        .rh-rail-nav a:hover { color: #1E272D; }
+        .rh-rail-cta {
+          justify-self: end;
+          font-family: ui-monospace, "Roboto Mono", "SFMono-Regular", Menlo, monospace;
+          font-size: 10px; letter-spacing: 0.14em; text-transform: uppercase; text-decoration: none;
+          color: #F6F8FA; background: #1E272D; padding: 10px 18px; border-radius: 999px;
+          transition: background 0.25s ease, transform 0.2s ease;
+        }
+        .rh-rail-cta:hover { background: #000; transform: translateY(-1px); }
 
         .rh-stage {
           position: relative; height: 100vh;
@@ -231,7 +271,8 @@ export default function RingHero() {
         }
 
         @media (max-width: 640px) {
-          .rh-rail { gap: 20px; font-size: 10px; }
+          .rh-rail { padding: 18px 20px; }
+          .rh-rail-nav { display: none; }
           .rh-card { width: clamp(30px, 8vw, 46px); }
           .rh-casc-card { width: clamp(120px, 40vw, 180px); }
         }
