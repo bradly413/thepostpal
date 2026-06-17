@@ -25,10 +25,23 @@ CustomEase.create("cineSilk", "0.45,0.05,0.55,0.95");
 //
 // CSS 3D (no WebGL). Lenis-gated; reduced-motion stays a static ring.
 
-const IMAGES = Array.from(
-  { length: 20 },
-  (_, i) => `/hero-ring/${String(i + 1).padStart(2, "0")}.jpg`,
-);
+// Curated deck — each card's image is paired to the vertical it represents,
+// so the title that flips in actually matches the photo. Breakfast/Restaurants
+// is card 0 (the anchor the ring collapses onto).
+const CARDS = [
+  { img: "/hero-ring/01.jpg", word: "Restaurants" },
+  { img: "/hero-ring/06.jpg", word: "Salons" },
+  { img: "/hero-ring/13.jpg", word: "Dentists" },
+  { img: "/hero-ring/02.jpg", word: "Real estate" },
+  { img: "/hero-ring/04.jpg", word: "Florists" },
+  { img: "/hero-ring/19.jpg", word: "Med spas" },
+  { img: "/hero-ring/07.jpg", word: "Retail" },
+  { img: "/hero-ring/11.jpg", word: "Cafés" },
+  { img: "/hero-ring/16.jpg", word: "Bakeries" },
+  { img: "/hero-ring/14.jpg", word: "Fitness" },
+  { img: "/hero-ring/10.jpg", word: "Home services" },
+  { img: "/hero-ring/12.jpg", word: "Auto shops" },
+];
 
 // Ring cards are the same slabs scaled down — keeps image crisp (downscale, not up).
 const RING_SCALE = 0.29;
@@ -37,30 +50,6 @@ const NAV = [
   { label: "How", href: "#solution" },
   { label: "Features", href: "#features" },
   { label: "Pricing", href: "#pricing" },
-];
-
-// One industry per card — the title flips to the next as each card bumps out.
-const INDUSTRIES = [
-  "Restaurants",
-  "Med spas",
-  "Nursing",
-  "Florists",
-  "Retail",
-  "Salons",
-  "Realtors",
-  "Fitness",
-  "Dentists",
-  "Cafés",
-  "Boutiques",
-  "Auto shops",
-  "Bakeries",
-  "Law firms",
-  "Contractors",
-  "Pet care",
-  "Yoga studios",
-  "Coffee",
-  "Events",
-  "Clinics",
 ];
 
 export default function RingHero() {
@@ -120,12 +109,16 @@ export default function RingHero() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: "+=6200",
+          end: "+=5200",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
         },
       });
+
+      // Anchor opacity at the start so scrubbing back to the top always
+      // restores the opaque ring (the fan tween below animates opacity).
+      tl.set(cards, { opacity: 1 }, 0);
 
       // Phase 1 — one full clockwise turn.
       tl.to(wheel, { rotation: 360, ease: "none", duration: 5 });
@@ -164,7 +157,7 @@ export default function RingHero() {
             y: -i * STEPY,
             z: -i * STEPZ,
             rotateY: 2,
-            opacity: i === 0 ? 0.72 : 0.56,
+            opacity: i === 0 ? 1 : 0.9,
             duration: 0.5,
             ease: "power2.out",
           },
@@ -224,20 +217,20 @@ export default function RingHero() {
         </div>
 
         <div ref={wheelRef} className="rh-wheel" aria-hidden>
-          {IMAGES.map((src, i) => (
+          {CARDS.map((card, i) => (
             <div
-              key={i}
+              key={card.img}
               className="rh-card"
-              style={{ backgroundImage: `url(${src})`, zIndex: IMAGES.length - i }}
+              style={{ backgroundImage: `url(${card.img})`, zIndex: CARDS.length - i }}
             />
           ))}
         </div>
 
         <div className="rh-casc-copy">
           <div className="rh-casc-titles">
-            {INDUSTRIES.map((w) => (
-              <span key={w} className="rh-casc-title">
-                {w}
+            {CARDS.map((card) => (
+              <span key={card.word} className="rh-casc-title">
+                {card.word}
               </span>
             ))}
           </div>
@@ -295,28 +288,23 @@ export default function RingHero() {
         }
         /* Card = thick-glass slab. Ring shows it scaled down + opaque; the fan
            grows it to full size and turns it translucent. */
+        /* Thick, bright glass slab — opaque photo, crisp white rim, light-only
+           edges (no dark bevel), faint top glare. */
         .rh-card {
           position: absolute; top: 0; left: 0;
           width: clamp(150px, 15vw, 224px); aspect-ratio: 4 / 5;
           background-size: cover; background-position: center;
-          background-color: rgba(244, 248, 252, 0.12); background-blend-mode: soft-light;
           border-radius: 0; opacity: 1; isolation: isolate; will-change: transform;
+          filter: brightness(1.06) saturate(1.06);
+          border: 1.5px solid rgba(255,255,255,0.82);
           box-shadow:
-            inset 0 0 0 1px rgba(255,255,255,0.6),
-            inset 7px 7px 16px rgba(255,255,255,0.42),
-            inset -9px -12px 22px rgba(28,40,58,0.22),
-            inset 0 0 30px rgba(255,255,255,0.16);
+            inset 0 0 0 1px rgba(255,255,255,0.45),
+            inset 0 3px 4px rgba(255,255,255,0.55),
+            inset -3px -4px 8px rgba(255,255,255,0.3);
         }
         .rh-card::before {
           content: ""; position: absolute; inset: 0; pointer-events: none; mix-blend-mode: screen;
-          background:
-            linear-gradient(118deg, rgba(255,255,255,0.7) 0%, rgba(255,255,255,0.12) 16%, rgba(255,255,255,0) 38%),
-            linear-gradient(305deg, rgba(255,255,255,0.4) 0%, rgba(255,255,255,0) 16%);
-        }
-        .rh-card::after {
-          content: ""; position: absolute; inset: 5px; pointer-events: none;
-          border: 1px solid rgba(255,255,255,0.32);
-          background: linear-gradient(160deg, rgba(255,255,255,0.16), rgba(255,255,255,0) 42%);
+          background: linear-gradient(125deg, rgba(255,255,255,0.45) 0%, rgba(255,255,255,0.06) 28%, rgba(255,255,255,0) 50%);
         }
 
         .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; z-index: 14; text-align: left; max-width: 32ch; }
