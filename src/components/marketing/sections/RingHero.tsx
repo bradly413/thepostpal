@@ -40,7 +40,7 @@ export default function RingHero() {
 
       // Lay the cards out on a circle; each card faces outward (tangent).
       const place = () => {
-        const radius = Math.min(window.innerWidth, window.innerHeight) * 0.42;
+        const radius = Math.min(window.innerWidth, window.innerHeight) * 0.38;
         cards.forEach((card, i) => {
           const angle = (i / N) * Math.PI * 2 - Math.PI / 2; // start at top
           gsap.set(card, {
@@ -135,6 +135,7 @@ export default function RingHero() {
         }
         .rh-center {
           position: relative; z-index: 10; text-align: center; pointer-events: none;
+          transform: translateY(36px); /* drop below the header for breathing room */
         }
         .rh-center .rh-logo {
           font-size: clamp(40px, 6vw, 76px);
@@ -157,7 +158,7 @@ export default function RingHero() {
 
         /* Rotation pivot at exact viewport center */
         .rh-wheel {
-          position: absolute; top: 50%; left: 50%;
+          position: absolute; top: calc(50% + 36px); left: 50%;
           width: 0; height: 0;
           transform-origin: center center;
           will-change: transform;
