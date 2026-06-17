@@ -5,7 +5,7 @@ import MarketingScrollProvider from "@/components/marketing/MarketingScrollProvi
 import MarketingReveal from "@/components/marketing/MarketingReveal";
 import Navigation from "@/components/marketing/Navigation";
 import ChatbotWidget from "@/components/marketing/ChatbotWidget";
-import Hero from "@/components/marketing/sections/Hero";
+import RingHero from "@/components/marketing/sections/RingHero";
 import TryIt from "@/components/marketing/sections/TryIt";
 import TheAlternatives from "@/components/marketing/sections/TheAlternatives";
 import DashboardZoomSection from "@/components/marketing/sections/DashboardZoomSection";
@@ -27,7 +27,7 @@ export default function MarketingSite() {
       <div className="pb-marketing-site">
         <MarketingReveal />
         <Navigation />
-        <Hero />
+        <RingHero />
         {/* The sell, in order: promise -> live proof -> the honest VS ->
             how it works -> why it's safe -> the workspace -> who it's for ->
             the feeling -> the price. */}
