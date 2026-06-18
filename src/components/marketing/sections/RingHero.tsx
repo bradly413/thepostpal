@@ -153,6 +153,9 @@ export default function RingHero() {
       const splits = titles.map((t) => new SplitText(t, { type: "words", wordsClass: "rh-word" }));
       splits.forEach((s) => gsap.set(s.words, { yPercent: 125 }));
 
+      // Ring starts small and grows as you scroll into it.
+      gsap.set(wheel, { scale: 0.7 });
+
       gsap.from(".rh-card", {
         autoAlpha: 0,
         stagger: { each: 0.02, from: "random" },
