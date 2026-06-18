@@ -151,9 +151,9 @@ export default function RingHero() {
         return;
       }
 
-      // Word-by-word title reveals (SplitText), hidden below their clip box.
-      const splits = titles.map((t) => new SplitText(t, { type: "words", wordsClass: "rh-word" }));
-      splits.forEach((s) => gsap.set(s.words, { yPercent: 125 }));
+      // Letter-by-letter title reveals (SplitText chars), hidden below the clip box.
+      const splits = titles.map((t) => new SplitText(t, { type: "chars", charsClass: "rh-char" }));
+      splits.forEach((s) => gsap.set(s.chars, { yPercent: 130 }));
 
       // Ring starts small and grows as you scroll into it.
       gsap.set(wheel, { scale: 0.7 });
@@ -229,9 +229,12 @@ export default function RingHero() {
           lineCards.forEach((card, i) => {
             const c = conveyorPos(i, t);
             gsap.set(card, { x: c.x, y: c.y, z: c.z, scale: c.s, rotateY: c.ry, rotation: 0, "--dim-base": c.dim });
-            // matching title slides with the card (focal = readable, else clipped away)
-            gsap.set(splits[i].words, {
-              yPercent: (j: number) => Math.max(-135, Math.min(135, (i - t) * 200 + j * 8)),
+            // matching title rolls letter-by-letter (flat + readable at focal,
+            // each letter cascading up with a slight 3D tilt as it leaves/enters)
+            const ti = i - t;
+            gsap.set(splits[i].chars, {
+              yPercent: (c: number) => Math.max(-130, Math.min(130, ti * (150 + c * 16))),
+              rotationX: (c: number) => Math.max(-70, Math.min(70, ti * (60 + c * 6))),
             });
           });
           // cursor light on top of the conveyor
@@ -473,10 +476,10 @@ export default function RingHero() {
         .rh-casc-titles { position: relative; height: 1.5em; }
         .rh-casc-title {
           position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap; overflow: hidden;
-          padding-bottom: 0.08em;
+          padding-bottom: 0.12em; perspective: 600px;
           font-size: clamp(28px, 4vw, 52px); font-weight: 400; color: #1E272D; line-height: 1.2;
         }
-        .rh-word { display: inline-block; will-change: transform; }
+        .rh-char { display: inline-block; will-change: transform; transform-origin: 50% 100%; }
         .rh-casc-line {
           margin: 28px 0 0; max-width: 32ch;
           font-size: clamp(14px, 1.4vw, 17px); font-weight: 300; color: rgba(30,39,45,0.45); line-height: 1.5;
