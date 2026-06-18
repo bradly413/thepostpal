@@ -259,8 +259,9 @@ export default function RingHero() {
 
       tl.set(cards, { opacity: 1 }, 0);
 
-      // Phase 1 — one full clockwise turn, the ring growing as you scroll in.
-      tl.to(wheel, { rotation: 360, scale: 1.3, ease: "none", duration: 5 });
+      // Phase 1 — one full clockwise turn, the ring growing as you scroll in
+      // (caps at 1.0 — its natural size — so the top cards never reach the nav).
+      tl.to(wheel, { rotation: 360, scale: 1, ease: "none", duration: 5 });
 
       // Collapse — the ring resolves straight into the conveyor's start state:
       // card 0 at the focal point (front, bright), the rest queued behind it,
