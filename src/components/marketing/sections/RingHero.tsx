@@ -331,7 +331,7 @@ export default function RingHero() {
       <div className="rh-stage">
         <div className="rh-center">
           <PosterboyLogo href={null} className="rh-logo" />
-          <p className="rh-tagline">For business owners who&rsquo;d rather run the business than social media.</p>
+          <p className="rh-tagline">You run the place. We&rsquo;ll run the feed.</p>
           <p className="rh-scroll">SCROLL&nbsp;&nbsp;TO&nbsp;&nbsp;EXPLORE</p>
         </div>
 
