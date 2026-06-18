@@ -12,7 +12,9 @@ import PosterboyLogo from "@/components/PosterboyLogo";
 
 gsap.registerPlugin(useGSAP, ScrollTrigger, CustomEase, SplitText);
 
-CustomEase.create("cineFlow", "0.33,0,0.2,1");
+// Cinematic easing set (gsap-cinematic-scroll-3d house curves).
+CustomEase.create("cineFlow", "0.33,0,0.2,1"); // deliberate exit, sharp arrival
+CustomEase.create("cineSilk", "0.45,0.05,0.55,0.95"); // slow start + end, gentle middle
 
 // ONE set of 20 cards carried through the timeline:
 //   Phase 1 — the post-images orbit the wordmark; the ring spins one full turn.
@@ -156,11 +158,13 @@ export default function RingHero() {
       // Ring starts small and grows as you scroll into it.
       gsap.set(wheel, { scale: 0.7 });
 
+      // Graceful load-in: wordmark/tagline rise, ring cards fade in.
+      gsap.from(".rh-center > *", { autoAlpha: 0, y: 18, stagger: 0.12, duration: 1, ease: "power3.out", delay: 0.15 });
       gsap.from(".rh-card", {
         autoAlpha: 0,
-        stagger: { each: 0.02, from: "random" },
-        duration: 0.7,
-        ease: "power2.out",
+        stagger: { each: 0.025, from: "random" },
+        duration: 0.9,
+        ease: "power3.out",
       });
 
       // ── Interactive layer: proximity flip (ring) + light (lineup) + parallax ──
@@ -172,6 +176,7 @@ export default function RingHero() {
       let ringWasActive = false;
       const SENS = 520,
         FALLOFF = 260;
+      const advEase = gsap.parseEase("sine.inOut"); // settle each card at the focal point
       const seed = () => {
         const r = section.getBoundingClientRect();
         ptr = { x: r.left + r.width * 0.42, y: r.top + r.height * 0.46 };
@@ -216,8 +221,11 @@ export default function RingHero() {
         }
 
         if (progress > CONVEYOR_START) {
-          // Scroll position -> focal index. Cards bump out of line one by one.
-          const t = Math.min(1, (progress - CONVEYOR_START) / (1 - CONVEYOR_START)) * (LINE - 1);
+          // Scroll position -> focal index. Ease each unit step so cards settle
+          // into the focal point rather than sliding at constant speed.
+          const raw = Math.min(1, (progress - CONVEYOR_START) / (1 - CONVEYOR_START)) * (LINE - 1);
+          const base = Math.floor(raw);
+          const t = base + advEase(raw - base);
           lineCards.forEach((card, i) => {
             const c = conveyorPos(i, t);
             gsap.set(card, { x: c.x, y: c.y, z: c.z, scale: c.s, rotateY: c.ry, rotation: 0, "--dim-base": c.dim });
@@ -284,7 +292,7 @@ export default function RingHero() {
       tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1 }, "collapse");
 
       // B) Flip the whole stack down to the center of the page.
-      tl.to(cards, { y: 0, rotationY: 360, duration: 1.2, ease: "cineFlow" }, ">");
+      tl.to(cards, { y: 0, rotationY: 360, duration: 1.3, ease: "cineSilk" }, ">-0.2");
       tl.set(cards, { rotationY: 0 });
 
       // C) Expand the stack into the line; drop the extras; bring in the copy.
@@ -299,9 +307,9 @@ export default function RingHero() {
           rotateY: (i: number) => conveyorPos(i, 0).ry,
           rotation: 0,
           "--dim-base": (i: number) => conveyorPos(i, 0).dim,
-          duration: 1.2,
-          ease: "cineFlow",
-          stagger: { each: 0.04, from: "start" },
+          duration: 1.3,
+          ease: "power3.out",
+          stagger: { each: 0.05, from: "start" },
         },
         "expand",
       );
@@ -462,7 +470,7 @@ export default function RingHero() {
         }
 
         .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; z-index: 14; text-align: left; max-width: 32ch; }
-        .rh-casc-titles { position: relative; height: 1.25em; }
+        .rh-casc-titles { position: relative; height: 1.5em; }
         .rh-casc-title {
           position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap; overflow: hidden;
           padding-bottom: 0.08em;
@@ -470,7 +478,7 @@ export default function RingHero() {
         }
         .rh-word { display: inline-block; will-change: transform; }
         .rh-casc-line {
-          margin: 20px 0 0; max-width: 32ch;
+          margin: 28px 0 0; max-width: 32ch;
           font-size: clamp(14px, 1.4vw, 17px); font-weight: 300; color: rgba(30,39,45,0.45); line-height: 1.5;
         }
 
