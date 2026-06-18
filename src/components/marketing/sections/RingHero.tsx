@@ -29,8 +29,8 @@ CustomEase.create("cineSilk", "0.45,0.05,0.55,0.95"); // slow start + end, gentl
 
 const IMAGES = [
   "/hero-ring/01.jpg", // Restaurants — brunch
-  "/hero-ring/06.jpg", // Salons
-  "/hero-ring/13.jpg", // Dentists — scrubs
+  "/hero-ring/06.jpg", // Dentists — chair
+  "/hero-ring/13.jpg", // Nursing — scrubs
   "/hero-ring/02.jpg", // Real estate — house
   "/hero-ring/04.jpg", // Florists — roses
   "/hero-ring/19.jpg", // Med spas — beauty
@@ -54,8 +54,8 @@ const LINE = 9;
 
 const INDUSTRIES = [
   "Restaurants",
-  "Salons",
   "Dentists",
+  "Nursing",
   "Real estate",
   "Florists",
   "Med spas",
