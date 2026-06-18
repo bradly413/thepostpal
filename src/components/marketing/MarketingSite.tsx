@@ -6,6 +6,7 @@ import MarketingReveal from "@/components/marketing/MarketingReveal";
 import Navigation from "@/components/marketing/Navigation";
 import ChatbotWidget from "@/components/marketing/ChatbotWidget";
 import RingHero from "@/components/marketing/sections/RingHero";
+import StudioFlow from "@/components/marketing/sections/StudioFlow";
 import TryIt from "@/components/marketing/sections/TryIt";
 import TheAlternatives from "@/components/marketing/sections/TheAlternatives";
 import DashboardZoomSection from "@/components/marketing/sections/DashboardZoomSection";
@@ -28,9 +29,10 @@ export default function MarketingSite() {
         <MarketingReveal />
         <Navigation />
         <RingHero />
-        {/* The sell, in order: promise -> live proof -> the honest VS ->
-            how it works -> why it's safe -> the workspace -> who it's for ->
-            the feeling -> the price. */}
+        {/* The sell, in order: where the images come from -> live proof ->
+            the honest VS -> how it works -> why it's safe -> the workspace ->
+            who it's for -> the feeling -> the price. */}
+        <StudioFlow />
         <TryIt />
         <TheAlternatives />
         <Solution />
