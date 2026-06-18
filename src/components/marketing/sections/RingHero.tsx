@@ -256,8 +256,8 @@ export default function RingHero() {
 
       tl.set(cards, { opacity: 1 }, 0);
 
-      // Phase 1 — one full clockwise turn.
-      tl.to(wheel, { rotation: 360, ease: "none", duration: 5 });
+      // Phase 1 — one full clockwise turn, the ring growing as you scroll in.
+      tl.to(wheel, { rotation: 360, scale: 1.3, ease: "none", duration: 5 });
 
       // Collapse — the ring resolves straight into the conveyor's start state:
       // card 0 at the focal point (front, bright), the rest queued behind it,
@@ -283,6 +283,7 @@ export default function RingHero() {
         { x: 0, y: 0, z: 0, scale: 1, rotation: 0, rotateY: 0, autoAlpha: 0, duration: 1.2, ease: "power2.in" },
         "collapse",
       );
+      tl.to(wheel, { scale: 1, duration: 1.7, ease: "cineFlow" }, "collapse");
       tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1.2 }, "collapse");
       tl.to(".rh-casc-copy", { autoAlpha: 1, duration: 0.8 }, "collapse+=0.8");
 
