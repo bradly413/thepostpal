@@ -63,7 +63,7 @@ const INDUSTRIES = [
 ];
 
 const RING_SCALE = 0.29;
-const RING_END = 0.2; // proximity-flip interactivity active below this scroll progress
+const RING_END = 0.15; // proximity-flip interactivity active below this scroll progress (ends before the stack beat)
 
 const NAV = [
   { label: "How", href: "#solution" },
@@ -263,9 +263,32 @@ export default function RingHero() {
       // (caps at 1.0 — its natural size — so the top cards never reach the nav).
       tl.to(wheel, { rotation: 360, scale: 1, ease: "none", duration: 5 });
 
-      // Collapse — the ring resolves straight into the conveyor's start state:
-      // card 0 at the focal point (front, bright), the rest queued behind it,
-      // receding up-right. The scroll-driven loop takes over from here.
+      const ringR = Math.min(window.innerWidth, window.innerHeight) * 0.38;
+
+      // A) End of rotation — every card stacks tightly behind card 0, up top.
+      tl.to(
+        cards,
+        {
+          x: 0,
+          y: -ringR,
+          z: (i: number) => -i * 5,
+          rotation: 0,
+          rotateY: 0,
+          scale: 0.3,
+          duration: 1.2,
+          ease: "cineFlow",
+          stagger: { each: 0.025, from: "end" },
+        },
+        "collapse",
+      );
+      tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1 }, "collapse");
+
+      // B) Flip the whole stack down to the center of the page.
+      tl.to(cards, { y: 0, rotationY: 360, duration: 1.2, ease: "cineFlow" }, ">");
+      tl.set(cards, { rotationY: 0 });
+
+      // C) Expand the stack into the line; drop the extras; bring in the copy.
+      tl.addLabel("expand");
       tl.to(
         lineCards,
         {
@@ -276,25 +299,19 @@ export default function RingHero() {
           rotateY: (i: number) => conveyorPos(i, 0).ry,
           rotation: 0,
           "--dim-base": (i: number) => conveyorPos(i, 0).dim,
-          duration: 1.7,
+          duration: 1.2,
           ease: "cineFlow",
-          stagger: { each: 0.03, from: "end" },
+          stagger: { each: 0.04, from: "start" },
         },
-        "collapse",
+        "expand",
       );
-      tl.to(
-        cards.slice(LINE),
-        { x: 0, y: 0, z: 0, scale: 1, rotation: 0, rotateY: 0, autoAlpha: 0, duration: 1.2, ease: "power2.in" },
-        "collapse",
-      );
-      tl.to(wheel, { scale: 1, duration: 1.7, ease: "cineFlow" }, "collapse");
-      tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1.2 }, "collapse");
-      tl.to(".rh-casc-copy", { autoAlpha: 1, duration: 0.8 }, "collapse+=0.8");
+      tl.to(cards.slice(LINE), { autoAlpha: 0, scale: 0.3, duration: 0.8, ease: "power2.in" }, "expand");
+      tl.to(".rh-casc-copy", { autoAlpha: 1, duration: 0.8 }, "expand");
 
       // Spacer — holds the timeline still so the rest of the pinned scroll
       // (progress > CONVEYOR_START) is driven by the conveyor loop. Sized so
-      // the collapse finishes right at CONVEYOR_START.
-      const introEnd = 6.7; // spin(5) + collapse(1.7)
+      // the intro (spin + stack + flip + expand) finishes right at CONVEYOR_START.
+      const introEnd = 8.6; // spin(5) + stack(1.2) + flip(1.2) + expand(1.2)
       const spacer = (introEnd / CONVEYOR_START) * (1 - CONVEYOR_START);
       tl.to({}, { duration: spacer });
 
