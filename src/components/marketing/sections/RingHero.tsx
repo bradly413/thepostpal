@@ -63,8 +63,7 @@ const INDUSTRIES = [
 ];
 
 const RING_SCALE = 0.29;
-const RING_END = 0.18; // proximity-flip interactivity active below this scroll progress
-const LIGHT_START = 0.33; // LUME light active above this
+const RING_END = 0.2; // proximity-flip interactivity active below this scroll progress
 
 const NAV = [
   { label: "How", href: "#solution" },
@@ -90,6 +89,39 @@ export default function RingHero() {
       const titles = gsap.utils.toArray<HTMLElement>(".rh-casc-title");
       const lineCards = cards.slice(0, LINE);
       const N = cards.length;
+
+      // Conveyor geometry. `t` is the focal index (0..LINE-1) driven by scroll.
+      // Each card's phase = i - t: phase 0 = focal (front, bright); phase > 0 =
+      // still queued (receding up-right, dim); phase < 0 = bumped out of line,
+      // trailing down-left. The card at the focal point is the "current" one.
+      const FX = -50,
+        FY = -70,
+        FZ = 210,
+        FS = 1.22;
+      const conveyorPos = (i: number, t: number) => {
+        const ph = i - t;
+        if (ph >= 0) {
+          const k = ph;
+          return {
+            x: FX + k * 72,
+            y: FY - k * 40,
+            z: FZ - k * 150,
+            s: Math.max(0.5, FS - k * 0.05),
+            ry: 4,
+            dim: Math.min(0.62, k * 0.16),
+          };
+        }
+        const k = -ph;
+        return {
+          x: FX - k * 168,
+          y: FY + k * 30,
+          z: FZ - k * 70,
+          s: Math.max(0.42, FS - k * 0.11),
+          ry: -8,
+          dim: Math.min(0.5, 0.1 + k * 0.16),
+        };
+      };
+      const CONVEYOR_START = 0.3;
 
       const place = () => {
         const radius = Math.min(window.innerWidth, window.innerHeight) * 0.38;
@@ -148,7 +180,7 @@ export default function RingHero() {
         let tX = 0,
           tY = 0,
           tZ = 0;
-        if (p && (progress < RING_END || progress > LIGHT_START)) {
+        if (p && (progress < RING_END || progress > CONVEYOR_START)) {
           const nx = (p.x - window.innerWidth / 2) / (window.innerWidth / 2);
           const ny = (p.y - window.innerHeight / 2) / (window.innerHeight / 2);
           tX = -ny * 12;
@@ -180,12 +212,25 @@ export default function RingHero() {
           });
         }
 
-        if (p && progress > LIGHT_START) {
-          lineCards.forEach((c) => {
-            const r = c.getBoundingClientRect();
-            const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
-            c.style.setProperty("--shine", Math.max(0, 0.85 * (1 - d / 400)).toFixed(3));
+        if (progress > CONVEYOR_START) {
+          // Scroll position -> focal index. Cards bump out of line one by one.
+          const t = Math.min(1, (progress - CONVEYOR_START) / (1 - CONVEYOR_START)) * (LINE - 1);
+          lineCards.forEach((card, i) => {
+            const c = conveyorPos(i, t);
+            gsap.set(card, { x: c.x, y: c.y, z: c.z, scale: c.s, rotateY: c.ry, rotation: 0, "--dim-base": c.dim });
+            // matching title slides with the card (focal = readable, else clipped away)
+            gsap.set(splits[i].words, {
+              yPercent: (j: number) => Math.max(-135, Math.min(135, (i - t) * 200 + j * 8)),
+            });
           });
+          // cursor light on top of the conveyor
+          if (p) {
+            lineCards.forEach((c) => {
+              const r = c.getBoundingClientRect();
+              const d = Math.hypot(p.x - (r.left + r.width / 2), p.y - (r.top + r.height / 2));
+              c.style.setProperty("--shine", Math.max(0, 0.7 * (1 - d / 420)).toFixed(3));
+            });
+          }
         }
       };
       const onMove = (e: PointerEvent) => {
@@ -214,74 +259,39 @@ export default function RingHero() {
       // Phase 1 — one full clockwise turn.
       tl.to(wheel, { rotation: 360, ease: "none", duration: 5 });
 
-      // Collapse — every card stacks behind card 0 (the breakfast flatlay).
+      // Collapse — the ring resolves straight into the conveyor's start state:
+      // card 0 at the focal point (front, bright), the rest queued behind it,
+      // receding up-right. The scroll-driven loop takes over from here.
       tl.to(
-        cards,
+        lineCards,
         {
-          x: 0,
-          y: 0,
-          z: (i) => -i * 4,
+          x: (i: number) => conveyorPos(i, 0).x,
+          y: (i: number) => conveyorPos(i, 0).y,
+          z: (i: number) => conveyorPos(i, 0).z,
+          scale: (i: number) => conveyorPos(i, 0).s,
+          rotateY: (i: number) => conveyorPos(i, 0).ry,
           rotation: 0,
-          rotateY: 0,
-          scale: 1,
+          "--dim-base": (i: number) => conveyorPos(i, 0).dim,
           duration: 1.7,
           ease: "cineFlow",
           stagger: { each: 0.03, from: "end" },
         },
         "collapse",
       );
+      tl.to(
+        cards.slice(LINE),
+        { x: 0, y: 0, z: 0, scale: 1, rotation: 0, rotateY: 0, autoAlpha: 0, duration: 1.2, ease: "power2.in" },
+        "collapse",
+      );
       tl.to(".rh-center", { autoAlpha: 0, scale: 1.1, ease: "power2.in", duration: 1.2 }, "collapse");
       tl.to(".rh-casc-copy", { autoAlpha: 1, duration: 0.8 }, "collapse+=0.8");
 
-      tl.to(cards, { z: (i) => -i * 18, duration: 0.8, ease: "none" });
-
-      // Phase 2 — dim into "planes", drop the extras, line up 9.
-      tl.addLabel("lineup");
-      tl.to(lineCards, { "--dim-base": 0.5, duration: 0.8 }, "lineup");
-      tl.to(cards.slice(LINE), { autoAlpha: 0, duration: 0.6, ease: "power2.in" }, "lineup");
-
-      const STEPX = 104,
-        STEPY = 34,
-        STEPZ = 132;
-      const lineZ = (i: number) => -i * STEPZ;
-      lineCards.forEach((card, i) => {
-        tl.to(
-          card,
-          { x: i * STEPX, y: -i * STEPY, z: lineZ(i), rotateY: 3, duration: 0.5, ease: "power2.out" },
-          i === 0 ? "lineup" : "<0.2",
-        );
-      });
-
-      // Each card pops forward out of the line; its matching title reveals
-      // word-by-word, then settles back as the next pops.
-      tl.addLabel("pops");
-      lineCards.forEach((card, i) => {
-        const b = i * 1.3;
-        const P = (o: number) => `pops+=${(b + o).toFixed(2)}`;
-        tl.to(
-          card,
-          { x: 24, y: -12, z: 220, scale: 1.22, rotateY: 0, "--dim-base": 0, duration: 0.4, ease: "cineFlow" },
-          P(0),
-        );
-        tl.to(splits[i].words, { yPercent: 0, duration: 0.55, stagger: 0.08, ease: "power4.out" }, P(0.12));
-        if (i < LINE - 1) {
-          tl.to(
-            card,
-            {
-              x: i * STEPX,
-              y: -i * STEPY,
-              z: lineZ(i),
-              scale: 1,
-              rotateY: 3,
-              "--dim-base": 0.5,
-              duration: 0.4,
-              ease: "cineFlow",
-            },
-            P(0.85),
-          );
-          tl.to(splits[i].words, { yPercent: -125, duration: 0.45, stagger: 0.06, ease: "power4.in" }, P(0.85));
-        }
-      });
+      // Spacer — holds the timeline still so the rest of the pinned scroll
+      // (progress > CONVEYOR_START) is driven by the conveyor loop. Sized so
+      // the collapse finishes right at CONVEYOR_START.
+      const introEnd = 6.7; // spin(5) + collapse(1.7)
+      const spacer = (introEnd / CONVEYOR_START) * (1 - CONVEYOR_START);
+      tl.to({}, { duration: spacer });
 
       const onResize = () => {
         ScrollTrigger.refresh();
