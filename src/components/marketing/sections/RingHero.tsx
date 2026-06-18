@@ -258,7 +258,7 @@ export default function RingHero() {
         scrollTrigger: {
           trigger: section,
           start: "top top",
-          end: "+=7000",
+          end: "+=10500",
           pin: true,
           scrub: 1,
           anticipatePin: 1,
