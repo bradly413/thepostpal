@@ -32,8 +32,8 @@ const BASE_SYSTEM = `You are a brand voice analyst for posterboy onboarding. You
 - If a vertical seed is provided, treat it as law.
 - traits: short labels (2–5 words), specific — never generic "professional" or "trustworthy" alone.
 
-## Lifestyle collateral (collateralPrompts — strict)
-Generate 3 highly detailed image generation prompts (optimized for Midjourney/Kling AI). These prompts must visualize the new brand identity applied to physical lifestyle collateral. Specifically generate:
+## Lifestyle collateral (collateralPrompts)
+Generate up to 3 (ideally 3) highly detailed image generation prompts (optimized for Midjourney/Kling AI). These prompts must visualize the new brand identity applied to physical lifestyle collateral. Prefer, in order:
 1. Custom packaging, bags, or boxes.
 2. A premium branded coaster or physical touchpoint on a textured surface.
 3. Modern staff apparel (e.g., a heavy-cotton t-shirt, jacket, or apron).
@@ -160,13 +160,34 @@ export async function generateBrandVoiceStructured(
     throw new Error("ANTHROPIC_API_KEY not configured");
   }
 
-  const { object } = await generateObject({
-    model: anthropic("claude-sonnet-4-6"),
-    schema: brandVoiceAiSchema,
-    system: buildBrandVoiceSystemPrompt(answers),
-    prompt: buildBrandVoiceUserPrompt(answers),
-    maxOutputTokens: 2800,
-  });
+  const system = buildBrandVoiceSystemPrompt(answers);
+  const prompt = buildBrandVoiceUserPrompt(answers);
 
-  return object;
+  // Retry once before giving up. A single attempt that fails schema validation
+  // (or hits a transient model error) used to drop the user straight to the
+  // deterministic fallback; one retry recovers most of those at modest cost.
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      const { object } = await generateObject({
+        model: anthropic("claude-sonnet-4-6"),
+        schema: brandVoiceAiSchema,
+        system,
+        prompt,
+        maxOutputTokens: 2800,
+      });
+      return object;
+    } catch (err) {
+      lastError = err;
+      if (attempt === 0) {
+        console.warn(
+          "[brand-book-voice-ai] structured voice attempt 1 failed, retrying:",
+          err instanceof Error ? err.message : err,
+        );
+      }
+    }
+  }
+  throw lastError instanceof Error
+    ? lastError
+    : new Error("structured voice generation failed");
 }

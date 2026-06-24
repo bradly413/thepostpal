@@ -197,13 +197,15 @@
   text-wrap: balance;
 }
 
-/* ── Hero char-reveal initial state (GSAP timeline animates from here) ── */
+/* ── Hero char-reveal: VISIBLE baseline ──
+   First paint must show the hero immediately. The GSAP timeline supplies the
+   hidden start-state at runtime via .from() (see Hero.tsx) and animates to this
+   resting state, so the headline is never gated on hydration/GSAP. If JS never
+   runs, the hero is simply visible and sharp. The icon slot is hidden by a JS
+   gsap.set() (not CSS) because its intro is a motion-path flight. */
 .pb-marketing-site .hero-char {
   display: inline-block;
   white-space: pre;
-  opacity: 0;
-  transform: translate(-2px, 4px) scale(0.9);
-  filter: blur(6px);
   will-change: transform, opacity, filter;
 }
 .pb-marketing-site .hero-word-you {
@@ -216,12 +218,13 @@
   will-change: transform;
 }
 .pb-marketing-site .hero-icon-slot {
+  /* Hidden start is fine here: the icon's intro is a JS motion-path flight
+     (gsap.set + timeline in Hero.tsx), and it's decorative — not the headline. */
   opacity: 0;
   will-change: transform, opacity;
 }
 .pb-marketing-site .hero-sub,
 .pb-marketing-site .hero-cta {
-  opacity: 0;
   will-change: transform, opacity;
 }
 

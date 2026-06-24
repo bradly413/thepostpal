@@ -11,6 +11,13 @@ import {
 import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
+import { withTenantDb } from "@/lib/db";
+import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
+import {
+  guardrailsPromptBlock,
+  type ResolvedGuardrails,
+} from "@/lib/compliance/guardrails";
+import { computeGuardedChatPayload } from "@/lib/compliance/chat-response";
 
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
@@ -101,6 +108,12 @@ The user's request matches these brand templates. Use the template structure and
 ${templateInfo}`;
 }
 
+// Wrap the pure payload computation in an HTTP response. The shaping logic lives
+// in @/lib/compliance/chat-response (unit-tested); the route just serializes it.
+function buildChatResponse(text: string, guardrails: ResolvedGuardrails | null) {
+  return Response.json(computeGuardedChatPayload(text, guardrails));
+}
+
 export async function POST(req: Request) {
   let auth: AuthContext;
   try {
@@ -164,7 +177,22 @@ export async function POST(req: Request) {
   const templateContext = lastUserMsg
     ? buildTemplateContext(lastUserMsg.content, templateCatalog)
     : "";
-  const systemPrompt = SYSTEM_PROMPT + tenantBrandContext + knowledgeContext + templateContext;
+
+  // Compliance guardrails (parity with /api/ai/captions + /api/studio/elevate).
+  // Best-effort: null = tenant has no vertical → behave exactly as before.
+  // Injected into the system prompt up front; the generated text is then
+  // post-validated below so banned phrasing is caught even if the model ignores
+  // the instruction.
+  let guardrails: ResolvedGuardrails | null = null;
+  try {
+    guardrails = await withTenantDb(auth, (tx) => resolveTenantGuardrails(tx, auth.tenantId));
+  } catch {
+    guardrails = null;
+  }
+  const guardrailBlock = guardrails ? guardrailsPromptBlock(guardrails) : "";
+
+  const systemPrompt =
+    SYSTEM_PROMPT + tenantBrandContext + knowledgeContext + templateContext + guardrailBlock;
   const chat = messages.filter(
     (m: { role: string }) => m.role === "user" || m.role === "assistant",
   );
@@ -185,7 +213,7 @@ export async function POST(req: Request) {
       });
       const text =
         response.content[0].type === "text" ? response.content[0].text : "";
-      return Response.json({ message: text });
+      return buildChatResponse(text, guardrails);
     }
 
     const res = await fetch(
@@ -213,7 +241,7 @@ export async function POST(req: Request) {
     }
     const parts = data?.candidates?.[0]?.content?.parts || [];
     const text = parts.map((p: { text?: string }) => p.text || "").join("");
-    return Response.json({ message: text });
+    return buildChatResponse(text, guardrails);
   } catch (err) {
     console.error("[api/ai] request failed:", err instanceof Error ? err.message : err);
     return Response.json({ error: "AI request failed" }, { status: 500 });

@@ -107,6 +107,9 @@ const VOICE_STEP_NUMBERS = [5, 6, 7, 8];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const BIRTH_YEARS = Array.from({ length: 2008 - 1940 + 1 }, (_, i) => String(2008 - i));
+// Mirrors the server-side check in src/lib/onboarding-lead.ts — email is required
+// before the paid brand-book generate call (gates the Continue on the details step).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONSENTS: { key: "terms" | "privacy" | "emails"; label: string; required: boolean }[] = [
   { key: "terms", label: "I agree to the Terms of Service", required: true },
   { key: "privacy", label: "I agree to the Privacy Policy", required: true },
@@ -200,6 +203,7 @@ export default function BrandArchitect() {
   // Identity + industry — the real OnboardingAnswers inputs the brand-book
   // generator needs (ported from the classic wizard). Step 2 collects these.
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [location, setLocation] = useState("");
   const [industryId, setIndustryId] = useState("");
@@ -299,6 +303,7 @@ export default function BrandArchitect() {
       .join(", ");
     return {
       name: name.trim() || "Owner",
+      email: email.trim() || undefined,
       company: business.trim() || undefined,
       industry: industryId || undefined,
       industries:
@@ -425,6 +430,21 @@ export default function BrandArchitect() {
     setStep(3);
   };
 
+  // Progress is computed against the steps actually REACHABLE on the current
+  // path, not the full ORDER. The zero-shot path skips the manual voice steps
+  // (5–8); the manual path skips the zero-shot voice review (14). Using the full
+  // ORDER as the denominator made the bar advance unevenly and only hit 100% on
+  // the final, immediately-redirecting step. (Off-path transient steps fall back
+  // to the full-ORDER ratio so the bar never reads 0% mid-flow.)
+  const reachableOrder = ORDER.filter((n) =>
+    prefilledVoice ? !VOICE_STEP_NUMBERS.includes(n) : n !== 14,
+  );
+  const reachedIndex = reachableOrder.indexOf(step);
+  const progressPct =
+    reachedIndex >= 0
+      ? ((reachedIndex + 1) / reachableOrder.length) * 100
+      : ((ORDER.indexOf(step) + 1) / ORDER.length) * 100;
+
   // Auto-apply the guardrail vertical from the business they already picked
   // (changeable later in Settings), then advance. Fire-and-forget — on a guest
   // 401 it caches a pending slug that syncs during generation.
@@ -471,7 +491,7 @@ export default function BrandArchitect() {
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers }),
+          body: JSON.stringify({ answers, email: email.trim() || undefined }),
         });
         const data = await res.json();
         if (!res.ok || data.error || !data.brandBook) {
@@ -481,8 +501,20 @@ export default function BrandArchitect() {
         cacheStoredOnboardingAnswers(answers);
         markOnboardingComplete();
 
+        // The server returns voice: "structured" | "fallback". Don't silently
+        // treat the deterministic fallback as the AI-grade voice — forward a hint
+        // so the studio can surface "starter voice" and log it for monitoring.
+        const usedFallback = data.voice === "fallback";
+        if (usedFallback) {
+          console.warn("[onboarding] brand voice fell back to deterministic starter voice");
+        }
+        const studioHref = usedFallback
+          ? "/dashboard/studio?voice=starter"
+          : "/dashboard/studio";
+
         if (data.authMode === "guest") {
-          router.push("/sign-in?next=%2Fdashboard%2Fstudio");
+          const next = encodeURIComponent(studioHref);
+          router.push(`/sign-in?next=${next}`);
           return;
         }
         try {
@@ -495,7 +527,7 @@ export default function BrandArchitect() {
         // Hand off into MAKING something — the studio now reads the brand book
         // they just built (voice + photography direction), so the payoff of
         // onboarding is their first on-brand post, not a read-only brand page.
-        router.push("/dashboard/studio");
+        router.push(studioHref);
       } catch {
         setBookState("error");
         setSaving(false);
@@ -674,7 +706,7 @@ export default function BrandArchitect() {
       <div className="absolute top-0 left-0 right-0 z-30 h-[3px] bg-black/[0.06]">
         <div
           className="h-full bg-[#ee2532] transition-all duration-500 ease-out"
-          style={{ width: `${((ORDER.indexOf(step) + 1) / ORDER.length) * 100}%` }}
+          style={{ width: `${progressPct}%` }}
         />
       </div>
 
@@ -1085,6 +1117,15 @@ export default function BrandArchitect() {
             <div className="mb-4">
               <FloatingField label="Your name" value={name} onChange={setName} autoComplete="name" />
             </div>
+            <div className="mb-4">
+              <FloatingField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                type="email"
+                autoComplete="email"
+              />
+            </div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
               Birthday
             </div>
@@ -1111,7 +1152,9 @@ export default function BrandArchitect() {
             <div className="flex items-center justify-end">
               <button
                 type="button"
-                disabled={!name.trim() || !birthMonth || !birthDay || !birthYear}
+                disabled={
+                  !name.trim() || !EMAIL_RE.test(email.trim()) || !birthMonth || !birthDay || !birthYear
+                }
                 onClick={next}
                 className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
