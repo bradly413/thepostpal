@@ -8,7 +8,7 @@ export const metadata: Metadata = {
     canonical: "/tools/what-to-post",
   },
   openGraph: {
-    title: "What to post this week — free social media idea generator | Posterboy",
+    title: "What to post this week — free social media idea generator | posterboy",
     description:
       "Answer three questions and get a calm, on-brand week of social media drafts in seconds. Free, no signup required.",
     url: "/tools/what-to-post",

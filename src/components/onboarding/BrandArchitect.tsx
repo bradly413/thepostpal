@@ -24,6 +24,7 @@ import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
+import VoiceCalibration from "@/components/brand-dna/VoiceCalibration";
 import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
 import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
 import { suggestVerticalSlugForIndustry } from "@/lib/compliance/vertical-catalog";
@@ -107,6 +108,9 @@ const VOICE_STEP_NUMBERS = [5, 6, 7, 8];
 const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
 const BIRTH_DAYS = Array.from({ length: 31 }, (_, i) => String(i + 1));
 const BIRTH_YEARS = Array.from({ length: 2008 - 1940 + 1 }, (_, i) => String(2008 - i));
+// Mirrors the server-side check in src/lib/onboarding-lead.ts — email is required
+// before the paid brand-book generate call (gates the Continue on the details step).
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const CONSENTS: { key: "terms" | "privacy" | "emails"; label: string; required: boolean }[] = [
   { key: "terms", label: "I agree to the Terms of Service", required: true },
   { key: "privacy", label: "I agree to the Privacy Policy", required: true },
@@ -200,6 +204,7 @@ export default function BrandArchitect() {
   // Identity + industry — the real OnboardingAnswers inputs the brand-book
   // generator needs (ported from the classic wizard). Step 2 collects these.
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
   const [business, setBusiness] = useState("");
   const [location, setLocation] = useState("");
   const [industryId, setIndustryId] = useState("");
@@ -233,6 +238,17 @@ export default function BrandArchitect() {
   // Zero-shot: brand voice inferred from the user's past posts (null until the
   // history analysis returns; manual / guest onboarding falls back when null).
   const [prefilledVoice, setPrefilledVoice] = useState<ZeroShotExtraction | null>(null);
+
+  // Upload path (Brand DNA engine): analyze the user's own captions/images
+  // without connecting an account, then reuse the zero-shot review (step 14).
+  const [showUpload, setShowUpload] = useState(false);
+  const [uploadCaptions, setUploadCaptions] = useState("");
+  const [uploadFiles, setUploadFiles] = useState<File[]>([]);
+  const [uploadBusy, setUploadBusy] = useState(false);
+  const [uploadErr, setUploadErr] = useState<string | null>(null);
+  // Captions the user approved during voice calibration (step 15) — folded into
+  // generation as voice samples so the brand book is built from blessed examples.
+  const [calibratedSamples, setCalibratedSamples] = useState<string[]>([]);
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -299,6 +315,7 @@ export default function BrandArchitect() {
       .join(", ");
     return {
       name: name.trim() || "Owner",
+      email: email.trim() || undefined,
       company: business.trim() || undefined,
       industry: industryId || undefined,
       industries:
@@ -425,6 +442,60 @@ export default function BrandArchitect() {
     setStep(3);
   };
 
+  // Upload-based analysis: POST the user's own captions/images to the Brand DNA
+  // engine. When the AI voice extraction succeeds it has the same shape as the
+  // connected-account zero-shot result, so we set prefilledVoice and jump to the
+  // existing review step (14). Falls back to manual when no voice is inferred.
+  const canAnalyzeUpload = uploadCaptions.trim().length > 0 || uploadFiles.length > 0;
+  const analyzeUpload = () => {
+    void (async () => {
+      setUploadBusy(true);
+      setUploadErr(null);
+      try {
+        const form = new FormData();
+        if (uploadCaptions.trim()) form.append("captions", uploadCaptions);
+        for (const f of uploadFiles) form.append("image", f);
+        form.append("enrich", "all");
+        const res = await fetch("/api/brand-dna/analyze", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok || !data.profile) {
+          throw new Error(data.error || "Couldn't analyze your posts. Try again.");
+        }
+        const voice = (data.enrichment?.voice ?? null) as ZeroShotExtraction | null;
+        if (voice) {
+          setPrefilledVoice(voice);
+          setDir("fwd");
+          setStep(14);
+        } else {
+          setUploadErr(
+            "We read your posts, but couldn't auto-draft your voice right now. Continue and we'll build it from a few quick questions.",
+          );
+        }
+      } catch (e) {
+        setUploadErr(e instanceof Error ? e.message : "Something went wrong. Try again.");
+      } finally {
+        setUploadBusy(false);
+      }
+    })();
+  };
+
+  // Progress is computed against the steps actually REACHABLE on the current
+  // path, not the full ORDER. The zero-shot path skips the manual voice steps
+  // (5–8); the manual path skips the zero-shot voice review (14). Using the full
+  // ORDER as the denominator made the bar advance unevenly and only hit 100% on
+  // the final, immediately-redirecting step. (Off-path transient steps fall back
+  // to the full-ORDER ratio so the bar never reads 0% mid-flow.)
+  const reachableOrder = ORDER.filter((n) =>
+    prefilledVoice ? !VOICE_STEP_NUMBERS.includes(n) : n !== 14,
+  );
+  // Step 15 (voice calibration) is a side-step not in ORDER — show it at the
+  // review step's position so the bar doesn't snap back to 0%.
+  const reachedIndex = reachableOrder.indexOf(step === 15 ? 14 : step);
+  const progressPct =
+    reachedIndex >= 0
+      ? ((reachedIndex + 1) / reachableOrder.length) * 100
+      : ((ORDER.indexOf(step) + 1) / ORDER.length) * 100;
+
   // Auto-apply the guardrail vertical from the business they already picked
   // (changeable later in Settings), then advance. Fire-and-forget — on a guest
   // 401 it caches a pending slug that syncs during generation.
@@ -461,7 +532,13 @@ export default function BrandArchitect() {
         const answers = prefilledVoice
           ? {
               ...base,
-              voiceSamples: [...(base.voiceSamples ?? []), ...prefilledVoice.weSay],
+              // Blessed calibration captions are the strongest signal — they lead
+              // the voice samples, ahead of the we-say phrases.
+              voiceSamples: [
+                ...calibratedSamples,
+                ...(base.voiceSamples ?? []),
+                ...prefilledVoice.weSay,
+              ],
               personalityTraits: prefilledVoice.tone
                 .split(/[.•]/)
                 .map((t) => t.trim())
@@ -471,7 +548,7 @@ export default function BrandArchitect() {
         const res = await fetch("/api/brand-book/generate", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ answers }),
+          body: JSON.stringify({ answers, email: email.trim() || undefined }),
         });
         const data = await res.json();
         if (!res.ok || data.error || !data.brandBook) {
@@ -481,8 +558,20 @@ export default function BrandArchitect() {
         cacheStoredOnboardingAnswers(answers);
         markOnboardingComplete();
 
+        // The server returns voice: "structured" | "fallback". Don't silently
+        // treat the deterministic fallback as the AI-grade voice — forward a hint
+        // so the studio can surface "starter voice" and log it for monitoring.
+        const usedFallback = data.voice === "fallback";
+        if (usedFallback) {
+          console.warn("[onboarding] brand voice fell back to deterministic starter voice");
+        }
+        const studioHref = usedFallback
+          ? "/dashboard/studio?voice=starter"
+          : "/dashboard/studio";
+
         if (data.authMode === "guest") {
-          router.push("/sign-in?next=%2Fdashboard%2Fstudio");
+          const next = encodeURIComponent(studioHref);
+          router.push(`/sign-in?next=${next}`);
           return;
         }
         try {
@@ -495,7 +584,7 @@ export default function BrandArchitect() {
         // Hand off into MAKING something — the studio now reads the brand book
         // they just built (voice + photography direction), so the payoff of
         // onboarding is their first on-brand post, not a read-only brand page.
-        router.push("/dashboard/studio");
+        router.push(studioHref);
       } catch {
         setBookState("error");
         setSaving(false);
@@ -674,7 +763,7 @@ export default function BrandArchitect() {
       <div className="absolute top-0 left-0 right-0 z-30 h-[3px] bg-black/[0.06]">
         <div
           className="h-full bg-[#ee2532] transition-all duration-500 ease-out"
-          style={{ width: `${((ORDER.indexOf(step) + 1) / ORDER.length) * 100}%` }}
+          style={{ width: `${progressPct}%` }}
         />
       </div>
 
@@ -761,6 +850,54 @@ export default function BrandArchitect() {
                   <ArrowRight size={18} className="text-[#9a9aa2] transition-colors group-hover:text-[#ee2532]" />
                 </button>
               ))}
+
+              {!showUpload ? (
+                <button
+                  type="button"
+                  onClick={() => setShowUpload(true)}
+                  className="group flex w-full items-center justify-between rounded-2xl border border-black/10 bg-white/60 px-5 py-4 text-left transition-all hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.04]"
+                >
+                  <span>
+                    <span className="block text-[15px] font-semibold text-[#1c1c1e]">Upload past posts</span>
+                    <span className="block text-[12px] text-[#76767e]">No account needed — paste captions or add images</span>
+                  </span>
+                  <ArrowRight size={18} className="text-[#9a9aa2] transition-colors group-hover:text-[#ee2532]" />
+                </button>
+              ) : (
+                <div className="rounded-2xl border border-black/10 bg-white/60 p-4">
+                  <label className="block text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-1.5">
+                    Captions (one per line)
+                  </label>
+                  <textarea
+                    rows={4}
+                    value={uploadCaptions}
+                    onChange={(e) => setUploadCaptions(e.target.value)}
+                    placeholder={"fresh fades every day\ncome hungry, leave happy"}
+                    className="w-full resize-y rounded-xl border border-black/10 bg-white/85 px-3 py-2 text-[14px] text-[#1c1c1e] focus:border-[#ee2532]/60 focus:outline-none focus:ring-2 focus:ring-[#ee2532]/12"
+                  />
+                  <label className="mt-3 block text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-1.5">
+                    Post images (optional)
+                  </label>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={(e) => setUploadFiles(Array.from(e.target.files ?? []))}
+                    className="block text-[13px] text-[#76767e]"
+                  />
+                  {uploadErr && (
+                    <p className="mt-2 text-[13px] text-[#c81e2a]" role="alert">{uploadErr}</p>
+                  )}
+                  <button
+                    type="button"
+                    disabled={!canAnalyzeUpload || uploadBusy}
+                    onClick={analyzeUpload}
+                    className="mt-3 w-full rounded-full bg-[#ee2532] px-6 py-3 text-sm font-semibold text-white transition-all hover:bg-[#c81e2a] disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {uploadBusy ? "Reading your voice…" : "Analyze my posts"}
+                  </button>
+                </div>
+              )}
             </div>
 
             <div className="mt-8 text-center">
@@ -1085,6 +1222,15 @@ export default function BrandArchitect() {
             <div className="mb-4">
               <FloatingField label="Your name" value={name} onChange={setName} autoComplete="name" />
             </div>
+            <div className="mb-4">
+              <FloatingField
+                label="Email"
+                value={email}
+                onChange={setEmail}
+                type="email"
+                autoComplete="email"
+              />
+            </div>
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
               Birthday
             </div>
@@ -1111,7 +1257,9 @@ export default function BrandArchitect() {
             <div className="flex items-center justify-end">
               <button
                 type="button"
-                disabled={!name.trim() || !birthMonth || !birthDay || !birthYear}
+                disabled={
+                  !name.trim() || !EMAIL_RE.test(email.trim()) || !birthMonth || !birthDay || !birthYear
+                }
                 onClick={next}
                 className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all disabled:opacity-40 disabled:cursor-not-allowed"
               >
@@ -1211,8 +1359,31 @@ export default function BrandArchitect() {
           <BrandVoiceReview
             voice={prefilledVoice}
             onChange={setPrefilledVoice}
-            onContinue={next}
+            onContinue={() => {
+              setDir("fwd");
+              setStep(15);
+            }}
           />
+        )}
+
+        {step === 15 && prefilledVoice && (
+          <div className="architect-fade w-full max-w-md">
+            <VoiceCalibration voice={prefilledVoice} onSaved={setCalibratedSamples} />
+            <div className="mt-6 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => {
+                  // Calibration is optional — continue to the business step (the
+                  // deterministic next after the voice review when prefilled).
+                  setDir("fwd");
+                  setStep(3);
+                }}
+                className="rounded-full bg-[#ee2532] text-white px-11 py-3 text-sm font-semibold shadow-[0_16px_34px_-18px_rgba(238,37,50,0.7)] hover:bg-[#c81e2a] transition-all"
+              >
+                Continue
+              </button>
+            </div>
+          </div>
         )}
       </div>
       )}

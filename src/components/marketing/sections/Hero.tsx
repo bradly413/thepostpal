@@ -73,13 +73,15 @@ export default function Hero() {
 
       const tl = gsap.timeline({ delay: 0.25 });
 
-      // 1. Characters fade-blur-in, left to right.
-      tl.to(chars, {
-        opacity: 1,
-        x: 0,
-        y: 0,
-        scale: 1,
-        filter: "blur(0px)",
+      // 1. Characters fade-blur-in, left to right. .from() supplies the hidden
+      //    start-state at runtime (the CSS resting state is visible/sharp), so
+      //    first paint is never gated on GSAP — see posterboy-marketing.css.
+      tl.from(chars, {
+        opacity: 0,
+        x: -2,
+        y: 4,
+        scale: 0.9,
+        filter: "blur(6px)",
         duration: 0.5,
         ease: "power2.out",
         stagger: 0.045,
@@ -159,12 +161,13 @@ export default function Hero() {
         "plane+=1.2",
       );
 
-      // 4. Subtitle + CTAs fade in last.
-      tl.to(
+      // 4. Subtitle + CTAs fade in last. .from() so the resting state stays the
+      //    visible CSS baseline (no first-paint gating).
+      tl.from(
         [sub, cta],
         {
-          opacity: 1,
-          y: 0,
+          opacity: 0,
+          y: 12,
           duration: 0.55,
           ease: "power2.out",
           stagger: 0.12,

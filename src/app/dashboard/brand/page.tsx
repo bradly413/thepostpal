@@ -16,8 +16,6 @@ import type {
   BrandPalette,
   BrandTypography,
   BrandVoice,
-  PhotographyStyle,
-  ContentPillar,
   BrandApplications,
   VoiceTrait,
   Tagline,

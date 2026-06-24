@@ -1,15 +1,17 @@
 import "server-only";
 
 /**
- * Compliance & brand guardrail engine — PROTOTYPE (review only).
+ * Compliance & brand guardrail engine.
  *
  * Pure, dependency-free functions that resolve a tenant's effective guardrails
  * from a Parent-Child vertical registry, inject them into an AI system prompt,
- * and post-validate generated output. NOT yet wired into the live AI routes —
- * see docs/COMPLIANCE-ENGINE-DESIGN.md for the rollout plan.
+ * and post-validate generated output. Wired into the live AI routes:
+ * /api/ai (chat), /api/ai/captions, and /api/studio/elevate all resolve
+ * guardrails per-tenant (best-effort, null = no vertical → no enforcement) and
+ * post-validate output with checkViolations. See docs/COMPLIANCE-ENGINE-DESIGN.md.
  *
  * Decoupled from Prisma on purpose: operates on plain nodes so it can be unit
- * tested and reviewed before the VerticalSeed model exists.
+ * tested independently of the VerticalSeed model.
  */
 
 export type EnforcementLevel = "block" | "warn" | "suggest";

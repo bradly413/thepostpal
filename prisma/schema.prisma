@@ -253,6 +253,12 @@ model BrandVoiceProfile {
   services         String?
   offers           String?
   recurringThemes  String[]
+  // Rich Brand DNA (analyzed from the user's real posts). Nullable JSON so the
+  // deterministic voice fingerprint, full palette, and visual semantics persist
+  // alongside the normalized fields above without losing fidelity.
+  voiceFingerprint Json?
+  palette          Json?
+  visualIdentity   Json?
   updatedAt        DateTime @updatedAt
 }
 

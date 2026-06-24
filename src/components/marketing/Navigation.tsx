@@ -88,7 +88,7 @@ export default function Navigation() {
         }}
       >
         <PosterboyLogo
-          href="#"
+          href="/"
           size="header"
           onClick={(e) => {
             e.preventDefault();
