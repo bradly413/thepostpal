@@ -109,6 +109,22 @@ async function graphPost(path: string, body: Record<string, unknown>): Promise<u
   }
 }
 
+async function graphGet(path: string, params: Record<string, string>): Promise<unknown> {
+  const qs = new URLSearchParams(params).toString();
+  try {
+    const res = await fetch(`${GRAPH_BASE}${path}?${qs}`, { method: "GET" });
+    return await parseMetaResponse(res, path);
+  } catch (error) {
+    if (error instanceof MetaApiError) throw error;
+    const message = error instanceof Error ? error.message : "Network error";
+    throw new MetaApiError(message, "GRAPH_API", 0);
+  }
+}
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export interface MetaPublishTarget {
   pageId: string;
   igAccountId: string | null;
@@ -200,10 +216,42 @@ async function publishInstagramPost(
     throw new MetaApiError("Instagram media container missing id", "GRAPH_API", 500);
   }
 
+  // Instagram processes the uploaded media asynchronously. Calling media_publish
+  // before the container is FINISHED returns "Media ID is not available"
+  // (fb:9007), so poll the container's status until it's ready.
+  await waitForInstagramContainer(container.id, pageToken);
+
   return graphPost(`/${igAccountId}/media_publish`, {
     creation_id: container.id,
     access_token: pageToken,
   });
+}
+
+async function waitForInstagramContainer(containerId: string, accessToken: string): Promise<void> {
+  // Images usually finish in a second or two; videos can take longer.
+  const MAX_ATTEMPTS = 12;
+  const DELAY_MS = 2000;
+  for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
+    const status = (await graphGet(`/${containerId}`, {
+      fields: "status_code",
+      access_token: accessToken,
+    })) as { status_code?: string };
+
+    if (status.status_code === "FINISHED") return;
+    if (status.status_code === "ERROR" || status.status_code === "EXPIRED") {
+      throw new MetaApiError(
+        `Instagram media processing returned ${status.status_code}`,
+        "GRAPH_API",
+        502,
+      );
+    }
+    await sleep(DELAY_MS);
+  }
+  throw new MetaApiError(
+    "Instagram media did not finish processing in time",
+    "GRAPH_API",
+    504,
+  );
 }
 
 /**
