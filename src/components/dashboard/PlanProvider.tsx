@@ -16,6 +16,7 @@ interface PlanContextValue {
   isSuperadmin: boolean;
   businessType: string | null;
   loading: boolean;
+  planLoadError: boolean;
 }
 
 const PlanContext = createContext<PlanContextValue>({
@@ -26,6 +27,7 @@ const PlanContext = createContext<PlanContextValue>({
   isSuperadmin: false,
   businessType: null,
   loading: true,
+  planLoadError: false,
 });
 
 interface MeResponse {
@@ -48,6 +50,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
     isSuperadmin: false,
     businessType: null,
     loading: true,
+    planLoadError: false,
   });
 
   useEffect(() => {
@@ -73,12 +76,13 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           isSuperadmin: data.isSuperadmin,
           businessType: data.organization?.businessType ?? data.businessType ?? null,
           loading: false,
+          planLoadError: false,
         });
       } catch {
         if (cancelled) return;
         // Fail closed to the streamlined surface — never flash enterprise UI
         // to a tenant that may not be entitled to it.
-        setState((prev) => ({ ...prev, loading: false }));
+        setState((prev) => ({ ...prev, loading: false, planLoadError: true }));
       }
     }
 

@@ -90,16 +90,14 @@ export default function MetaAdsBuilderPage() {
       ]);
       setAccounts(acct);
       setPhotos(photoList);
-      if (acct.length > 0 && !adAccountId) {
-        setAdAccountId(acct[0].adAccountId);
-      }
+      setAdAccountId((prev) => prev || acct[0]?.adAccountId || "");
     } catch (err) {
       setError(formatDashboardApiMessage(err, "Could not load Meta Ads data."));
       setAccounts([]);
     } finally {
       setLoading(false);
     }
-  }, [locationId, features.metaAds, adAccountId]);
+  }, [locationId, features.metaAds]);
 
   useEffect(() => {
     void load();
