@@ -140,7 +140,9 @@ export default function BulkScheduler() {
 
   const uploading = items.some((i) => i.uploading);
   const readyCount = items.filter((i) => i.mediaUrl).length;
-  const canSchedule = !scheduling && !uploading && readyCount > 0 && !!locationId;
+  const schedulableCount = items.filter((i) => i.mediaUrl && !i.posted).length;
+  const allScheduled = items.length > 0 && items.every((i) => i.posted);
+  const canSchedule = !scheduling && !uploading && schedulableCount > 0 && !!locationId;
 
   async function generateAllCaptions() {
     if (generatingCaptions) return;
@@ -357,11 +359,15 @@ export default function BulkScheduler() {
             fontSize: 14,
             fontWeight: 500,
             color: "#fff",
-            background: canSchedule ? RED : "#e3b9bc",
-            cursor: canSchedule ? "pointer" : "not-allowed",
+            background: allScheduled ? "#1f9d4d" : canSchedule ? RED : "#e3b9bc",
+            cursor: canSchedule ? "pointer" : "default",
           }}
         >
-          {scheduling ? "Scheduling…" : `Schedule all ${readyCount || ""}`.trim()}
+          {scheduling
+            ? "Scheduling…"
+            : allScheduled
+              ? "✓ Scheduled"
+              : `Schedule all ${schedulableCount || ""}`.trim()}
         </button>
       </div>
     </div>
