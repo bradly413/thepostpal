@@ -1,10 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import * as Sentry from "@sentry/nextjs";
 import { processDueScheduledPosts } from "@/lib/cron-publish";
-import { withCronDb } from "@/lib/db";
 import { verifyCronSecret } from "@/lib/cron-auth";
 
 export const runtime = "nodejs";
+// Sequential Meta publishes can take a few seconds each; give the batch room
+// so the function isn't killed mid-run (leftover posts retry next tick anyway).
+export const maxDuration = 60;
 
 export async function GET(request: NextRequest) {
   if (!verifyCronSecret(request)) {
@@ -12,7 +14,7 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    const result = await withCronDb((tx) => processDueScheduledPosts(tx));
+    const result = await processDueScheduledPosts();
 
     if (result.processed === 0) {
       return NextResponse.json({
