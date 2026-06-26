@@ -599,6 +599,15 @@ export default function CalendarPage() {
             </svg>
             Schedule Post
           </button>
+          <a
+            href="/dashboard/calendar/bulk"
+            className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2 px-4"
+          >
+            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6h16.5M3.75 12h16.5M3.75 18h16.5" />
+            </svg>
+            Bulk
+          </a>
         </div>
       </div>
 
@@ -973,6 +982,12 @@ export default function CalendarPage() {
             </div>
 
             <div className="space-y-4">
+              {features.multiLocation && (
+                <div>
+                  <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
+                  <LocationSwitcher />
+                </div>
+              )}
               <div>
                 <label className="block text-xs font-medium text-black mb-1.5">Template</label>
                 <select
