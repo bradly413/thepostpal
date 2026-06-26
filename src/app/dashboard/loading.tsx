@@ -1,30 +1,13 @@
+import { Skeleton } from "@/components/dashboard/StateViews";
+
 export default function DashboardLoading() {
   return (
-    <div className="flex items-center justify-center min-h-[50vh]">
-      <div className="flex flex-col items-center gap-3">
-        <svg
-          width="24"
-          height="24"
-          fill="none"
-          viewBox="0 0 24 24"
-          className="animate-spin text-accent"
-        >
-          <circle
-            cx="12"
-            cy="12"
-            r="10"
-            stroke="currentColor"
-            strokeWidth="3"
-            className="opacity-20"
-          />
-          <path
-            d="M4 12a8 8 0 018-8"
-            stroke="currentColor"
-            strokeWidth="3"
-            strokeLinecap="round"
-          />
-        </svg>
-        <p className="text-sm text-text-secondary">Loading...</p>
+    <div className="pb-app flex min-h-[50vh] flex-col gap-4 p-6">
+      <Skeleton className="h-8 w-48" />
+      <Skeleton className="h-4 w-72 max-w-full" />
+      <div className="mt-4 grid gap-4 md:grid-cols-2">
+        <Skeleton className="h-40 w-full" />
+        <Skeleton className="h-40 w-full" />
       </div>
     </div>
   );

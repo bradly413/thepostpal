@@ -324,11 +324,14 @@ export default function DashboardHome() {
       <div className="pb-home2">
         <DashboardHomeStyles />
         <div className="home2">
-          <div className="anim" style={{ borderRadius: 28, background: "rgba(255,255,255,0.6)", minHeight: 400 }} />
-          <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-            <div style={{ height: 320, borderRadius: 26, background: "rgba(255,255,255,0.5)" }} />
-            <div style={{ height: 220, borderRadius: 24, background: "rgba(255,255,255,0.5)" }} />
-          </div>
+          <AppSidebar />
+          <main className="main2">
+            <div className="anim" style={{ borderRadius: 28, background: "rgba(255,255,255,0.6)", minHeight: 400 }} />
+            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
+              <div style={{ height: 320, borderRadius: 26, background: "rgba(255,255,255,0.5)" }} />
+              <div style={{ height: 220, borderRadius: 24, background: "rgba(255,255,255,0.5)" }} />
+            </div>
+          </main>
         </div>
       </div>
     );

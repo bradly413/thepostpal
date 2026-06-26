@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useState, useEffect, useMemo, Suspense } from "react";
 import { useSearchParams } from "next/navigation";
 import { templates as staticTemplates, type Template } from "@/lib/templates";
+import { EmptyState } from "@/components/dashboard/StateViews";
 
 const bgPreview: Record<string, string> = {
   navy: "bg-navy",
@@ -207,7 +208,12 @@ function TemplatesContent() {
         <span className="text-xs opacity-55">{filtered.length} template{filtered.length !== 1 && "s"}</span>
       </div>
 
-      {view === "grid" ? (
+      {filteredGroups.length === 0 ? (
+        <EmptyState
+          title="No matches"
+          sub={templateCatalog.length === 0 ? "No templates are available yet." : "Try another pillar or search term."}
+        />
+      ) : view === "grid" ? (
         <div className="space-y-8">
           {filteredGroups.map((group) => (
             <div key={group.pillar}>

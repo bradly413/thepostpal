@@ -5,6 +5,7 @@ import PageTransition from "./PageTransition";
 import FeedbackWidget from "./FeedbackWidget";
 import AppSidebar from "@/components/dashboard/AppSidebar";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
+import { usePlan } from "@/components/dashboard/PlanProvider";
 
 // ────────────────────────────────────────────────────────────────
 //  DashboardShell — the single dashboard frame.
@@ -18,6 +19,7 @@ import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
+  const { planLoadError } = usePlan();
   const selfFramed =
     pathname === "/dashboard" || pathname.startsWith("/dashboard/studio");
 
@@ -31,6 +33,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           Skip to content
         </a>
         <main id="main-content" className="flex-1 flex flex-col min-h-0 overflow-hidden">
+          {planLoadError && (
+            <div className="shrink-0 border-b border-[rgba(238,37,50,0.2)] bg-[rgba(238,37,50,0.08)] px-4 py-2 text-center text-xs text-[#c81e2a]">
+              Some account features could not be loaded. Refresh the page or try again shortly.
+            </div>
+          )}
           <PageTransition>
             <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
               <div className="flex-1 min-h-0 overflow-y-auto overscroll-y-contain">
@@ -57,6 +64,11 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         <div className="home2">
           <AppSidebar />
           <main id="main-content" className="main2">
+            {planLoadError && (
+              <div className="mb-4 rounded-xl border border-[rgba(238,37,50,0.2)] bg-[rgba(238,37,50,0.08)] px-4 py-2 text-center text-xs text-[#c81e2a]">
+                Some account features could not be loaded. Refresh the page or try again shortly.
+              </div>
+            )}
             <PageTransition>{children}</PageTransition>
           </main>
         </div>
