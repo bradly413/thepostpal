@@ -21,6 +21,7 @@ interface BulkItem {
   uploading: boolean;
   error: string | null;
   posted: boolean;
+  captioning: boolean;
 }
 
 function platformsFor(p: PlatformChoice): SocialPlatform[] {
@@ -69,6 +70,7 @@ export default function BulkScheduler() {
   const [platform, setPlatform] = useState<PlatformChoice>("both");
   const [scheduling, setScheduling] = useState(false);
   const [done, setDone] = useState(false);
+  const [generatingCaptions, setGeneratingCaptions] = useState(false);
 
   useEffect(() => {
     fetchDashboardLocations()
@@ -93,6 +95,7 @@ export default function BulkScheduler() {
       uploading: true,
       error: null,
       posted: false,
+      captioning: false,
     }));
     setItems((prev) => [...prev, ...incoming]);
     incoming.forEach((it) => {
@@ -138,6 +141,36 @@ export default function BulkScheduler() {
   const uploading = items.some((i) => i.uploading);
   const readyCount = items.filter((i) => i.mediaUrl).length;
   const canSchedule = !scheduling && !uploading && readyCount > 0 && !!locationId;
+
+  async function generateAllCaptions() {
+    if (generatingCaptions) return;
+    setGeneratingCaptions(true);
+    const plat = platform === "facebook" ? "facebook" : "instagram";
+    const targets = items.filter((i) => i.mediaUrl && !i.captioning);
+    for (const it of targets) {
+      if (!it.mediaUrl) continue;
+      setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, captioning: true } : p)));
+      try {
+        const res = await fetch("/api/ai/caption-from-image", {
+          method: "POST",
+          credentials: "same-origin",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ imageUrl: it.mediaUrl, platform: plat }),
+        });
+        const data = (await res.json()) as { caption?: string; hashtags?: string[]; error?: string };
+        if (res.ok && data.caption) {
+          const tags = Array.isArray(data.hashtags) && data.hashtags.length ? "\n\n" + data.hashtags.join(" ") : "";
+          const caption = data.caption + tags;
+          setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, caption, captioning: false } : p)));
+        } else {
+          setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, captioning: false } : p)));
+        }
+      } catch {
+        setItems((prev) => prev.map((p) => (p.id === it.id ? { ...p, captioning: false } : p)));
+      }
+    }
+    setGeneratingCaptions(false);
+  }
 
   async function scheduleAll() {
     if (!canSchedule) return;
@@ -238,6 +271,30 @@ export default function BulkScheduler() {
 
       {items.length > 0 && (
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+          <div style={{ display: "flex", justifyContent: "flex-end" }}>
+            <button
+              type="button"
+              onClick={generateAllCaptions}
+              disabled={generatingCaptions || uploading || readyCount === 0}
+              style={{
+                display: "flex",
+                alignItems: "center",
+                gap: 6,
+                padding: "8px 14px",
+                borderRadius: 10,
+                border: `1px solid ${RED}`,
+                background: generatingCaptions ? "#fdeaec" : "#fff",
+                color: RED,
+                fontSize: 13,
+                fontWeight: 500,
+                cursor: generatingCaptions || uploading || readyCount === 0 ? "not-allowed" : "pointer",
+                opacity: uploading || readyCount === 0 ? 0.5 : 1,
+              }}
+            >
+              <span aria-hidden="true">✨</span>
+              {generatingCaptions ? "Writing captions…" : "Caption all with AI"}
+            </button>
+          </div>
           {items.map((it, i) => {
             const iso = scheduledForISO(startDate, time, i * intervalDays);
             return (
@@ -269,6 +326,8 @@ export default function BulkScheduler() {
                     <span style={{ fontSize: 11, color: "#a32d2d", textAlign: "right" }}>{it.error}</span>
                   ) : it.uploading ? (
                     <span style={{ fontSize: 12, color: "#9a9a9a" }}>Uploading…</span>
+                  ) : it.captioning ? (
+                    <span style={{ fontSize: 12, color: RED }}>✨ writing…</span>
                   ) : (
                     <button type="button" onClick={() => removeItem(it.id)} style={{ fontSize: 12, color: "#9a9a9a", border: "none", background: "none", cursor: "pointer" }}>Remove</button>
                   )}
