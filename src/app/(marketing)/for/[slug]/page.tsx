@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import MarketingSubpageChrome from "@/components/marketing/MarketingSubpageChrome";
 import { getVertical, getVerticalAliases, VERTICALS } from "@/lib/verticals";
 import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
+import { SITE_NAME } from "@/lib/site";
 
 export async function generateMetadata({
   params,
@@ -21,7 +22,10 @@ export async function generateMetadata({
     };
   }
 
-  const title = `${vertical.name} social media that sells | Posterboy`;
+  // Bare title — the root layout's `%s | ${SITE_NAME}` template appends the brand
+  // once. (Previously hand-baked "| Posterboy" here, which doubled the suffix and
+  // clashed casing with the lowercase template.)
+  const title = `${vertical.name} social media that sells`;
   const description = `${vertical.painPoint} ${vertical.headline}`.trim();
 
   return {
@@ -31,7 +35,9 @@ export async function generateMetadata({
       canonical: `/for/${slug}`,
     },
     openGraph: {
-      title,
+      // OG title isn't run through the template, so apply the brand suffix
+      // explicitly (lowercase, matching the rendered <title>).
+      title: `${title} | ${SITE_NAME}`,
       description,
       url: `/for/${slug}`,
       type: "website",

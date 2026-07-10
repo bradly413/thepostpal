@@ -1,6 +1,6 @@
 import Link from "next/link";
 import CheckoutQueryToast from "@/components/billing/CheckoutQueryToast";
-import PosterboyLogo from "@/components/PosterboyLogo";
+import MarketingSubpageChrome from "@/components/marketing/MarketingSubpageChrome";
 import PricingCards from "@/components/PricingCards";
 import { getPublicTiers, getPremiumTiers } from "@/lib/pricing";
 import { CORE } from "@/lib/posterboy-copy";
@@ -13,18 +13,7 @@ export const metadata = {
 
 export default function PricingPage() {
   return (
-    <div className="pb-marketing">
-      <header className="pb-marketing-nav">
-        <div className="pb-marketing-nav-inner">
-          <PosterboyLogo href="/" size="header" className="pb-logo" />
-          <nav className="pb-marketing-links">
-            <Link href="/#product">Product</Link>
-            <Link href="/pricing">Pricing</Link>
-            <Link href="/sign-in" className="pb-nav-sign-in">Sign in</Link>
-          </nav>
-        </div>
-      </header>
-      <main>
+    <MarketingSubpageChrome>
       <section className="pb-hero pb-reveal" style={{ paddingBottom: "2rem" }}>
         <h1 className="pb-hero-in">Pricing</h1>
         <p className="pb-hero-sub pb-hero-in">
@@ -67,13 +56,12 @@ export default function PricingPage() {
       <section className="pb-section pb-section-narrow pb-reveal" style={{ textAlign: "center", paddingBottom: "5rem" }}>
         <h2>{CORE.weekDrafted}</h2>
         <p style={{ marginTop: "1rem" }}>
-          <Link href="/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo" className="pb-btn-primary" style={{ display: "inline-flex" }}>
+          <Link href="/sign-in?mode=signup&next=%2Fonboarding&plan=solo" className="pb-btn-primary" style={{ display: "inline-flex" }}>
             Try posterboy
           </Link>
         </p>
       </section>
-      </main>
       <CheckoutQueryToast />
-    </div>
+    </MarketingSubpageChrome>
   );
 }
