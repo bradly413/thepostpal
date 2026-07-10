@@ -27,9 +27,14 @@ import {
   mapCalendarPostToCreateInput,
   mapRecordToCalendarPost,
 } from "@/lib/scheduled-post-mappers";
+import {
+  isCalendarPostQueued,
+  todayDateKeyLocal,
+} from "@/lib/dashboard-post-helpers";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
-import { NoLocationState } from "@/components/dashboard/StateViews";
+import { LocationGate } from "@/components/dashboard/StateViews";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 // Adapt a live calendar record into the local CalendarEvent view shape the
@@ -171,10 +176,12 @@ export default function CalendarPage() {
   const [eventTime, setEventTime] = useState("");
   const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
+  const [confirmDeletePost, setConfirmDeletePost] = useState(false);
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState(false);
 
   const { meta } = useMetaConnection();
   const features = usePlanFeatures();
-  const { locationId, loading: locationLoading } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
   useFocusTrap(modalMode !== null, modalRef, () => setModalMode(null));
   const loadPosts = useCallback(async () => {
@@ -228,10 +235,19 @@ export default function CalendarPage() {
     void loadEvents();
   }, [loadEvents]);
 
+  useEffect(() => {
+    const reload = () => {
+      void loadPosts();
+      void loadEvents();
+    };
+    window.addEventListener("dashboard-location-updated", reload);
+    return () => window.removeEventListener("dashboard-location-updated", reload);
+  }, [loadPosts, loadEvents]);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const today = new Date();
-  const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayKey = todayDateKeyLocal(today);
 
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -519,7 +535,8 @@ export default function CalendarPage() {
   }
 
   async function handleDeletePost() {
-    if (!editingPost || !window.confirm("Delete this post?")) return;
+    if (!editingPost) return;
+    setConfirmDeletePost(false);
     try {
       await deleteDashboardPost(editingPost.id);
       await loadPosts();
@@ -557,7 +574,7 @@ export default function CalendarPage() {
 
   async function handleDeleteEvent() {
     if (!editingEvent) return;
-    if (!window.confirm("Delete this event?")) return;
+    setConfirmDeleteEvent(false);
     const id = editingEvent.id;
     const prev = events;
     setEvents((cur) => cur.filter((e) => e.id !== id)); // optimistic
@@ -587,9 +604,11 @@ export default function CalendarPage() {
   const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
 
   const upcoming = posts
-    .filter((p) => p.date >= todayKey && p.status === "scheduled")
+    .filter((p) => p.date >= todayKey && isCalendarPostQueued(p))
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 5);
+
+  const queuedPostCount = posts.filter(isCalendarPostQueued).length;
 
   const upcomingEvents = events
     .filter((e) => e.date >= todayKey)
@@ -608,10 +627,14 @@ export default function CalendarPage() {
 
   return (
     <div className="pb-app">
-      {!locationLoading && !locationId ? (
-        <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
-      ) : (
-        <>
+      <LocationGate
+        loading={locationLoading}
+        error={locationError}
+        locationId={locationId}
+        onRetry={() => void refreshLocations()}
+        onCreate={() => router.push("/dashboard/organization")}
+      >
+      <>
       <div className="pb-app-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1>Calendar</h1>
@@ -919,8 +942,8 @@ export default function CalendarPage() {
             <h3 className="text-sm font-bold text-black mb-3">Schedule Stats</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "scheduled").length}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Scheduled</p>
+                <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
               </div>
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
                 <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "draft").length}</p>
@@ -1194,7 +1217,7 @@ export default function CalendarPage() {
             <div className="flex flex-wrap gap-3 mt-6">
               {editingPost && (
                 <button
-                  onClick={handleDeletePost}
+                  onClick={() => setConfirmDeletePost(true)}
                   className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
@@ -1314,7 +1337,7 @@ export default function CalendarPage() {
             <div className="flex gap-3 mt-6">
               {editingEvent && (
                 <button
-                  onClick={handleDeleteEvent}
+                  onClick={() => setConfirmDeleteEvent(true)}
                   className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
@@ -1335,7 +1358,26 @@ export default function CalendarPage() {
         </div>
       )}
         </>
-      )}
+      </LocationGate>
+
+      <DashboardConfirm
+        open={confirmDeletePost}
+        title="Delete this post?"
+        message="This removes the scheduled post from your calendar."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmDeletePost(false)}
+        onConfirm={() => void handleDeletePost()}
+      />
+      <DashboardConfirm
+        open={confirmDeleteEvent}
+        title="Delete this event?"
+        message="This removes the event from your calendar."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmDeleteEvent(false)}
+        onConfirm={() => void handleDeleteEvent()}
+      />
     </div>
   );
 }

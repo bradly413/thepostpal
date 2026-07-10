@@ -26,8 +26,8 @@ import { onStoredActiveLocationChange } from "@/lib/dashboard-browser-state";
 export default function AnalyticsPage() {
   const router = useRouter();
   const { features, loading: planLoading } = usePlan();
-  const { locationId, loading: locationLoading } = useActiveLocation();
-  const { meta, loading: metaLoading } = useMetaConnection();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
+  const { meta, loading: metaLoading, error: metaConnectionError } = useMetaConnection();
 
   const [insights, setInsights] = useState<DashboardMetaInsights | null>(null);
   const [loading, setLoading] = useState(true);
@@ -91,8 +91,12 @@ export default function AnalyticsPage() {
             <SkeletonText key={i} className="h-40 w-full rounded-xl" />
           ))}
         </div>
+      ) : locationError ? (
+        <ErrorState message={locationError} onRetry={() => void refreshLocations()} />
       ) : !locationId ? (
         <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
+      ) : metaConnectionError ? (
+        <ErrorState message={metaConnectionError} onRetry={() => window.location.reload()} />
       ) : metaLoading || busy ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {Array.from({ length: 6 }).map((_, i) => (
@@ -139,12 +143,7 @@ export default function AnalyticsPage() {
             ].map((m) => (
               <div key={m.label} className="pb-draft-card" style={{ gridTemplateColumns: "1fr" }}>
                 <p className="text-xs uppercase tracking-widest opacity-50">{m.label}</p>
-                <p
-                  className="text-xl mt-2"
-                  style={{ fontFamily: "var(--font-instrument-serif)" }}
-                >
-                  {m.value}
-                </p>
+                <p className="text-xl font-semibold mt-2">{m.value}</p>
               </div>
             ))}
           </div>

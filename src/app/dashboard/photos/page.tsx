@@ -14,7 +14,8 @@ import {
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
-import { SkeletonGrid, EmptyState, ErrorState, NoLocationState } from "@/components/dashboard/StateViews";
+import { SkeletonGrid, EmptyState, ErrorState, LocationGate } from "@/components/dashboard/StateViews";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 
 interface DisplayMedia {
   id: string;
@@ -53,7 +54,7 @@ function readAsDataUrl(file: File): Promise<string> {
 export default function PhotosPage() {
   const router = useRouter();
   const features = usePlanFeatures();
-  const { locationId, loading: locationLoading } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
   const [media, setMedia] = useState<DisplayMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +65,7 @@ export default function PhotosPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const lightboxRef = useRef<HTMLDivElement>(null);
 
@@ -284,9 +286,15 @@ export default function PhotosPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-4" style={{ scrollbarWidth: "none" }}>
-        {!locationLoading && !locationId ? (
-          <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
-        ) : busy ? (
+        <LocationGate
+          loading={locationLoading}
+          error={locationError}
+          locationId={locationId}
+          onRetry={() => void refreshLocations()}
+          onCreate={() => router.push("/dashboard/organization")}
+          skeleton={<SkeletonGrid count={10} />}
+        >
+        {busy && locationId ? (
           <SkeletonGrid count={10} />
         ) : error ? (
           <ErrorState message={error} onRetry={load} />
@@ -363,7 +371,7 @@ export default function PhotosPage() {
                       </button>
                     ) : null}
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRemove(item.id); }}
+                      onClick={(e) => { e.stopPropagation(); setPendingDeleteId(item.id); }}
                       title="Delete"
                       className="p-2 rounded-xl bg-white/90 text-black/80 hover:bg-[var(--pb-press)] hover:text-white transition-all"
                     >
@@ -377,6 +385,7 @@ export default function PhotosPage() {
             ))}
           </div>
         )}
+        </LocationGate>
       </div>
 
       {selected && (
@@ -425,6 +434,20 @@ export default function PhotosPage() {
       )}
 
       {toast ? <div className="pb-toast">{toast}</div> : null}
+
+      <DashboardConfirm
+        open={pendingDeleteId !== null}
+        title="Delete media?"
+        message="This removes the file from your library. Posts already using it won't be affected."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          const id = pendingDeleteId;
+          setPendingDeleteId(null);
+          if (id) void handleRemove(id);
+        }}
+      />
     </div>
   );
 }

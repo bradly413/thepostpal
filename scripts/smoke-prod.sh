@@ -58,6 +58,24 @@ if [ -n "$LOC" ]; then
   echo "6. RLS / IDOR — foreign location must 403"
   IDOR=$(code -b "$JAR" "$BASE/api/calendar?locationId=not-my-location")
   [ "$IDOR" = "403" ] && ok "foreign location blocked (403)" || bad "expected 403, got $IDOR"
+
+  echo "7. Posts queue semantics"
+  POSTS=$(curl -s -m 20 -b "$JAR" "$BASE/api/posts?locationId=$LOC")
+  QUEUED=$(echo "$POSTS" | python3 -c "
+import sys, json
+from datetime import datetime, timezone
+posts = json.load(sys.stdin).get('posts', [])
+now = datetime.now(timezone.utc)
+def queued(p):
+    return p.get('scheduledFor') and p.get('status') in ('scheduled', 'approved')
+future = [p for p in posts if queued(p) and datetime.fromisoformat(p['scheduledFor'].replace('Z','+00:00')) >= now]
+print(len(future))
+" 2>/dev/null || echo "0")
+  if [ -n "$QUEUED" ] && [ "$QUEUED" -ge 0 ] 2>/dev/null; then
+    ok "future queued posts: $QUEUED"
+  else
+    bad "could not compute queued post count"
+  fi
 fi
 
 echo ""

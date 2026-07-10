@@ -9,7 +9,7 @@ import LocationSwitcher from "@/components/LocationSwitcher";
 import {
   EmptyState,
   ErrorState,
-  NoLocationState,
+  LocationGate,
   SkeletonText,
 } from "@/components/dashboard/StateViews";
 import {
@@ -34,7 +34,7 @@ function formatSchedule(draft: DashboardPostRecord): string {
 export default function DraftsPage() {
   const router = useRouter();
   const features = usePlanFeatures();
-  const { locationId, loading: locationLoading, setLocationId } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, setLocationId, refresh: refreshLocations } = useActiveLocation();
   const [drafts, setDrafts] = useState<DashboardPostRecord[]>([]);
   const [toast, setToast] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -125,15 +125,23 @@ export default function DraftsPage() {
   }
 
   const count = drafts.length;
-  const headline =
-    count === 0
+  const headline = features.approvalPipeline
+    ? count === 0
       ? "Nothing awaiting review"
       : count === 1
         ? "One draft ready for review"
-        : `${count} drafts ready for review`;
+        : `${count} drafts ready for review`
+    : count === 0
+      ? "Nothing scheduled yet"
+      : count === 1
+        ? "One draft ready to schedule"
+        : `${count} drafts ready to schedule`;
+
+  const subcopy = features.approvalPipeline
+    ? `Posts and captions land here for your review. ${CORE.approveLeisure}`
+    : "Draft posts land here. Schedule them when you're ready to publish.";
 
   const needsAction = drafts.some((draft) => draft.status === "draft" || draft.status === "needs_revision");
-  const busy = locationLoading || loading;
 
   return (
     <div className="pb-app">
@@ -141,27 +149,37 @@ export default function DraftsPage() {
         <div className="flex-1">
           <h1>{headline}</h1>
           <p>{CORE.weekDrafted}</p>
-          <p className="text-sm opacity-70 mt-1">
-            Posts and captions land here for your review. {CORE.approveLeisure}
-          </p>
+          <p className="text-sm opacity-70 mt-1">{subcopy}</p>
         </div>
         {features.multiLocation && (
           <LocationSwitcher value={locationId ?? null} onChange={setLocationId} />
         )}
       </div>
 
-      {!locationLoading && !locationId ? (
-        <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
-      ) : busy ? (
-        <div className="space-y-3">
-          {Array.from({ length: 3 }).map((_, idx) => (
-            <SkeletonText key={idx} className="h-32 w-full rounded-[24px]" />
-          ))}
-        </div>
-      ) : error ? (
-        <ErrorState message={error} onRetry={() => void load()} />
-      ) : (
-        <>
+      <LocationGate
+        loading={locationLoading}
+        error={locationError}
+        locationId={locationId}
+        onRetry={() => void refreshLocations()}
+        onCreate={() => router.push("/dashboard/organization")}
+        skeleton={
+          <div className="space-y-3">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <SkeletonText key={idx} className="h-32 w-full rounded-[24px]" />
+            ))}
+          </div>
+        }
+      >
+        {loading ? (
+          <div className="space-y-3 opacity-60">
+            {Array.from({ length: 3 }).map((_, idx) => (
+              <SkeletonText key={idx} className="h-32 w-full rounded-[24px]" />
+            ))}
+          </div>
+        ) : error ? (
+          <ErrorState message={error} onRetry={() => void load()} />
+        ) : (
+          <>
           {count > 0 && needsAction && (
             <div className="flex flex-wrap gap-2 mb-6">
               <button type="button" className="pb-btn-primary text-sm py-2 px-4" onClick={handleApproveAll}>
@@ -175,7 +193,7 @@ export default function DraftsPage() {
 
           {count === 0 ? (
             <EmptyState
-              title="Nothing awaiting review"
+              title={features.approvalPipeline ? "Nothing awaiting review" : "Nothing scheduled yet"}
               sub={MICROCOPY.emptyDrafts}
               action={
                 <a href="/dashboard/studio" className="pb-btn-primary">
@@ -216,7 +234,8 @@ export default function DraftsPage() {
             </div>
           )}
         </>
-      )}
+        )}
+      </LocationGate>
 
       {toast && <div className="pb-toast" role="status">{toast}</div>}
     </div>

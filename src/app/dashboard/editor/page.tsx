@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
+import { useActiveLocation } from "@/lib/use-active-location";
 import {
   createDashboardPost,
   fetchDashboardPost,
@@ -11,10 +12,6 @@ import {
   submitDashboardPost,
   updateDashboardPost,
 } from "@/lib/dashboard-api";
-import {
-  getStoredActiveLocationId,
-  setStoredActiveLocationId,
-} from "@/lib/dashboard-browser-state";
 import type { SocialPlatform } from "@/lib/posterboy-types";
 import { MICROCOPY, PRODUCT } from "@/lib/posterboy-copy";
 
@@ -24,11 +21,11 @@ function EditorInner() {
   const router = useRouter();
   const params = useSearchParams();
   const draftId = params.get("draft");
+  const { locationId, setLocationId } = useActiveLocation();
 
   const [copy, setCopy] = useState("");
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(["instagram"]);
   const [saved, setSaved] = useState(false);
-  const [locationId, setLocationId] = useState<string | null>(getStoredActiveLocationId());
   const [loading, setLoading] = useState(Boolean(draftId));
   const [error, setError] = useState<string | null>(null);
 
@@ -46,7 +43,6 @@ function EditorInner() {
         setPlatforms(draft.platforms);
         if (draft.locationId) {
           setLocationId(draft.locationId);
-          setStoredActiveLocationId(draft.locationId);
         }
       } catch (err) {
         if (!cancelled) {
@@ -72,8 +68,7 @@ function EditorInner() {
   }
 
   async function persistDraft(sendForReview = false): Promise<string | null> {
-    const activeLocationId = locationId ?? getStoredActiveLocationId();
-    if (!activeLocationId) {
+    if (!locationId) {
       setError("Choose a location before drafting.");
       return null;
     }
@@ -90,7 +85,7 @@ function EditorInner() {
         });
       } else {
         const created = await createDashboardPost({
-          locationId: activeLocationId,
+          locationId,
           copy,
           platforms,
         });
@@ -163,13 +158,7 @@ function EditorInner() {
           <p>{MICROCOPY.rewrite}</p>
           <p className="text-sm opacity-70 mt-1">{MICROCOPY.twoSentences}</p>
         </div>
-        <LocationSwitcher
-          value={locationId}
-          onChange={(id) => {
-            setStoredActiveLocationId(id);
-            setLocationId(id);
-          }}
-        />
+        <LocationSwitcher value={locationId} onChange={setLocationId} />
       </div>
 
       <div className="space-y-6">

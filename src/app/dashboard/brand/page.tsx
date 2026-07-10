@@ -28,6 +28,9 @@ import { useBrandBook } from "@/lib/use-brand-book";
 import RegenerateBrandButton from "@/components/dashboard/brand/RegenerateBrandButton";
 import LearnVoiceFromDocs from "@/components/dashboard/brand/LearnVoiceFromDocs";
 import CollateralPromptsSection from "@/components/dashboard/brand/CollateralPromptsSection";
+import LocationSwitcher from "@/components/LocationSwitcher";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
+import { ErrorState, SkeletonText, EmptyState } from "@/components/dashboard/StateViews";
 
 /* eslint-disable @next/next/no-img-element */
 
@@ -110,7 +113,8 @@ function useTokens(palette: BrandPalette) {
 }
 
 export default function BrandPage() {
-  const { book, locationId, onboardingAnswers, loading, reload } = useBrandBook();
+  const features = usePlanFeatures();
+  const { book, locationId, onboardingAnswers, loading, error, reload } = useBrandBook();
   const [activeSec, setActiveSec] = useState("essence");
   const [userTier, setUserTier] = useState<BrandBookTier>("basic");
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -180,22 +184,33 @@ export default function BrandPage() {
 
   if (loading) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-        <p style={{ fontSize: "var(--text-body)", opacity: 0.7 }}>Loading brand book…</p>
+      <div className="pb-app p-6">
+        <SkeletonText className="mb-4 h-10 w-48" />
+        <SkeletonText className="h-64 w-full rounded-[24px]" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="pb-app p-6">
+        <ErrorState message={error} onRetry={() => void reload()} />
       </div>
     );
   }
 
   if (!book) {
     return (
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "60vh" }}>
-        <div style={{ textAlign: "center", maxWidth: 400 }}>
-          <h2 style={{ fontSize: "var(--text-title)", fontWeight: 700, marginBottom: 8 }}>No Brand Book Yet</h2>
-          <p style={{ fontSize: "var(--text-body)", opacity: 0.7, marginBottom: 20 }}>Complete the onboarding flow to generate your personalized brand guidelines.</p>
-          <Link href="/onboarding" style={{ display: "inline-flex", padding: "10px 24px", borderRadius: 999, background: "#ee2532", color: "#fff", fontSize: "var(--text-body)", fontWeight: 600, textDecoration: "none" }}>
-            Start Onboarding
-          </Link>
-        </div>
+      <div className="pb-app p-6">
+        <EmptyState
+          title="No brand book yet"
+          sub="Complete onboarding to generate your personalized brand guidelines."
+          action={
+            <Link href="/onboarding" className="pb-btn-primary text-sm px-5 py-2">
+              Start onboarding
+            </Link>
+          }
+        />
       </div>
     );
   }

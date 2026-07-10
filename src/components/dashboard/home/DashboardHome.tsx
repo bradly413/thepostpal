@@ -179,13 +179,13 @@ export default function DashboardHome() {
     try {
       setLoading(true);
       setError(null);
-      setData(await loadDashboardHomeSnapshot());
+      setData(await loadDashboardHomeSnapshot(locationId));
     } catch (err) {
       setError(formatDashboardApiMessage(err, "Could not load the dashboard right now."));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [locationId]);
 
   useEffect(() => {
     refresh();
@@ -341,12 +341,17 @@ export default function DashboardHome() {
     return (
       <div className="pb-home2">
         <DashboardHomeStyles />
-        <div className="home2" style={{ alignItems: "center", justifyContent: "center" }}>
-          <div className="mod" style={{ gridColumn: "1 / -1", maxWidth: 440, margin: "auto", textAlign: "center", minHeight: 0, height: "auto" }}>
-            <h2 style={{ fontFamily: "var(--font-playfair, serif)", fontSize: "var(--text-stat)" }}>Calm room, closed door.</h2>
-            <p style={{ marginTop: 10, color: "var(--ink-soft)", fontSize: "var(--text-body)" }}>{error || "This workspace is not ready yet."}</p>
-            <button onClick={() => void refresh()} className="ghostbtn" style={{ marginTop: 18 }}>Try again</button>
-          </div>
+        <div className="home2">
+          <AppSidebar />
+          <main className="main2 flex items-center justify-center">
+            <div className="mod w-full max-w-md text-center" style={{ minHeight: 0, height: "auto" }}>
+              <h2 className="text-xl font-semibold text-[var(--ink)]">Couldn&apos;t load your dashboard</h2>
+              <p className="mt-2 text-sm text-[var(--ink-soft)]">{error || "This workspace is not ready yet."}</p>
+              <button type="button" onClick={() => void refresh()} className="ghostbtn mt-4">
+                Try again
+              </button>
+            </div>
+          </main>
         </div>
       </div>
     );
