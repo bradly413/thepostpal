@@ -1159,8 +1159,11 @@ export default function BrandArchitect() {
             <h2 className="text-[32px] sm:text-[38px] font-bold tracking-tight text-[#1c1c1e] leading-tight mb-2">
               Pick your plan
             </h2>
-            <p className="text-[15px] text-[#76767e] mb-7">
+            <p className="text-[15px] text-[#76767e] mb-3">
               Start where you are. You can change it anytime.
+            </p>
+            <p className="inline-flex items-center gap-1.5 mb-7 rounded-full bg-[#1f9d4d]/10 px-3 py-1 text-[13px] font-semibold text-[#1f9d4d]">
+              14-day free trial — no credit card required
             </p>
             <div className="grid sm:grid-cols-3 gap-3 mb-8">
               {getPublicTiers().map((tier) => {
