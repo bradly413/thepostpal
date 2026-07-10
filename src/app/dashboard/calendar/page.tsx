@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
+import { inferMediaContentType, isVideoContentType } from "@/lib/upload-mime";
 import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
@@ -158,7 +159,8 @@ export default function CalendarPage() {
     if (!file) return;
     setMediaError(null);
     setUploadingMedia(true);
-    setMediaType(file.type.startsWith("video/") ? "video" : "image");
+    const inferred = inferMediaContentType(file.name, file.type);
+    setMediaType(inferred && isVideoContentType(inferred) ? "video" : "image");
     try {
       const publicUrl = await uploadMediaToS3(file);
       setMediaUrl(publicUrl);

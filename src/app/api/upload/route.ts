@@ -5,6 +5,7 @@ import { randomUUID } from "crypto";
 import { requireAuthContext } from "@/lib/api-auth";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { handleRouteError } from "@/lib/route-errors";
+import { inferMediaContentType } from "@/lib/upload-mime";
 import {
   isS3Configured,
   uploadToS3,
@@ -40,8 +41,9 @@ export async function POST(req: NextRequest) {
     }
 
     const ext = (file.name.split(".").pop() || "").toLowerCase();
-    const isImageMime = (file.type || "").startsWith("image/");
-    const isVideoMime = (file.type || "").startsWith("video/");
+    const inferredType = inferMediaContentType(file.name, file.type);
+    const isImageMime = (inferredType || file.type || "").startsWith("image/");
+    const isVideoMime = (inferredType || file.type || "").startsWith("video/");
     const isVideo = isVideoMime || VIDEO_EXTENSIONS.has(ext);
     const maxSize = isVideo ? MAX_VIDEO_SIZE : MAX_IMAGE_SIZE;
 
@@ -61,7 +63,7 @@ export async function POST(req: NextRequest) {
     // Storage extension: trust an allowlisted extension, else derive from MIME.
     const safeExt = ALLOWED_EXTENSIONS.has(ext)
       ? ext
-      : ((file.type.split("/")[1] || "").replace(/[^a-z0-9]/gi, "").toLowerCase() || "img");
+      : ((inferredType || file.type).split("/")[1] || "").replace(/[^a-z0-9]/gi, "").toLowerCase() || "img";
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const filename = `${randomUUID()}.${safeExt}`;
@@ -72,7 +74,7 @@ export async function POST(req: NextRequest) {
       const { url } = await uploadToS3({
         key: `tenants/${auth.tenantId}/uploads/${filename}`,
         body: buffer,
-        contentType: contentTypeForExtension(safeExt),
+        contentType: contentTypeForExtension(safeExt) || inferredType || file.type,
       });
       return NextResponse.json({ url, filename, storage: "s3" });
     }

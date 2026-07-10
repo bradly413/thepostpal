@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { uploadMediaToS3 } from "@/lib/dashboard-upload";
+import { isUploadableMediaFile, UPLOAD_ACCEPT_MEDIA } from "@/lib/upload-mime";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
   fetchDashboardPhotos,
@@ -121,15 +122,16 @@ export default function PhotosPage() {
     (files: FileList) => {
       if (!locationId) return;
       Array.from(files).forEach(async (file) => {
-        const isImage = file.type.startsWith("image/") || (!file.type && /\.(jpe?g|png|gif|webp|heic)$/i.test(file.name));
-        const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name);
-        if (!isImage && !isVideo) {
+        if (!isUploadableMediaFile(file)) {
           showToast(`${file.name} isn't a supported image or video.`);
           return;
         }
 
+        const isVideo =
+          file.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+
         const tempId = `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-        const previewSrc = isImage ? await readAsDataUrl(file) : URL.createObjectURL(file);
+        const previewSrc = isVideo ? URL.createObjectURL(file) : await readAsDataUrl(file);
         setMedia((prev) => [
           {
             id: tempId,
@@ -230,7 +232,7 @@ export default function PhotosPage() {
             <input
               type="file"
               multiple
-              accept="image/*,video/mp4,video/quicktime,.mp4,.mov"
+              accept={UPLOAD_ACCEPT_MEDIA}
               onChange={(e) => e.target.files && handleFiles(e.target.files)}
               className="hidden"
             />

@@ -127,7 +127,7 @@ export function contentTypeForExtension(ext: string): string {
 }
 
 /** Max bytes for image presigned uploads. */
-export const PRESIGNED_UPLOAD_MAX_BYTES = 10 * 1024 * 1024;
+export const PRESIGNED_UPLOAD_MAX_BYTES = 25 * 1024 * 1024;
 
 /** Max bytes for video presigned uploads (Reels / short clips). */
 export const PRESIGNED_VIDEO_MAX_BYTES = 100 * 1024 * 1024;

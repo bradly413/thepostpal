@@ -11,6 +11,7 @@ import {
   isAllowedPresignedContentType,
   presignedMaxBytesForContentType,
 } from "@/lib/storage";
+import { inferMediaContentType } from "@/lib/upload-mime";
 
 export const runtime = "nodejs";
 
@@ -45,10 +46,11 @@ export async function POST(request: NextRequest) {
     const body = (await request.json()) as Record<string, unknown>;
 
     const filename = typeof body.filename === "string" ? body.filename.trim() : "";
-    const contentType =
+    const rawContentType =
       typeof body.contentType === "string" && body.contentType.trim()
         ? body.contentType.trim()
         : "";
+    const contentType = inferMediaContentType(filename, rawContentType) || rawContentType;
 
     const fileSize =
       typeof body.fileSize === "number" && Number.isFinite(body.fileSize)
