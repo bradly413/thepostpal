@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireAuthContext } from "@/lib/api-auth";
+import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import {
   isAuthStoreUnavailableError,
   updateStoredUserPassword,
@@ -8,6 +9,23 @@ import {
 export async function POST(req: NextRequest) {
   try {
     const auth = await requireAuthContext();
+
+    // Throttle current-password verification so a hijacked/idle session can't
+    // brute-force the account's existing password via this endpoint.
+    try {
+      if (!(await rateLimit(buildRateLimitKey("account-password", req.headers, auth), 5, 60_000))) {
+        return NextResponse.json(
+          { error: "Too many attempts. Wait a moment and try again." },
+          { status: 429 },
+        );
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
+
     const body = (await req.json()) as {
       currentPassword?: string;
       newPassword?: string;

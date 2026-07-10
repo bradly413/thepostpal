@@ -62,7 +62,7 @@ export default function FeedbackWidget() {
                   </svg>
                 </div>
                 <p className="text-sm font-semibold text-white">Thanks for your feedback!</p>
-                <p className="text-xs text-white/40 mt-1">We'll review it shortly.</p>
+                <p className="text-xs text-white/40 mt-1">We&apos;ll review it shortly.</p>
               </div>
             ) : (
               <>

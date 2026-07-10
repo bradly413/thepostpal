@@ -11,6 +11,13 @@ import {
   generateBrandVoiceStructured,
 } from "@/lib/brand-book-voice-ai";
 import { brandVoiceAiSchema, type OnboardingAnswers } from "@/lib/brand-book-schema";
+import { pickLeadEmail, resolvePaidGenerationGate } from "@/lib/onboarding-lead";
+
+// Hard per-IP/day ceiling on PAID brand-book generations, layered on top of the
+// short-window burst limit below. Anonymous guests can't farm Claude calls even
+// if they cycle the guest cookie. Authenticated sessions key by tenant+user.
+const PAID_GEN_DAILY_CAP = 25;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─────────────────────────────────────────────────────────────
 //  POST /api/brand-book/generate
@@ -28,6 +35,8 @@ interface RequestBody {
   answers?: unknown;
   /** Zero-shot: voice already inferred from post history (+ user edits). */
   voice?: unknown;
+  /** Captured lead email — required for guests before the paid AI voice call. */
+  email?: unknown;
 }
 
 function isPlausibleAnswers(v: unknown): v is OnboardingAnswers {
@@ -104,6 +113,21 @@ export async function POST(req: NextRequest) {
   }
   const answers = normalizeAnswers(body.answers);
 
+  // Identity gate for the PAID AI voice call: authenticated sessions always pass;
+  // guests must supply a valid email (captured in onboarding). Email may arrive
+  // top-level or carried inside the answers payload. The gate maps spend to a
+  // captured contact and ends anonymous Claude farming.
+  const leadEmail = pickLeadEmail(body.email, (answers as { email?: unknown }).email);
+  const gate = resolvePaidGenerationGate({
+    isSession: brandAuth.mode === "session",
+    leadEmail,
+  });
+  // Key the daily cap by tenant+user for sessions, by IP for guests.
+  const dailyCapActor =
+    brandAuth.mode === "session"
+      ? { tenantId: brandAuth.auth.tenantId, userId: brandAuth.auth.userId }
+      : null;
+
   // Zero-shot path: onboarding already inferred (and the user reviewed) the
   // voice from their post history. Use it directly — no second AI voice call.
   const providedVoice = brandVoiceAiSchema.safeParse(body.voice);
@@ -126,6 +150,7 @@ export async function POST(req: NextRequest) {
   }
 
   const shouldAttemptAi =
+    gate.allowed &&
     Boolean(process.env.ANTHROPIC_API_KEY?.trim()) &&
     (Boolean(answers.dressCode && answers.greeting && answers.compliment) ||
       Boolean(answers.industry?.trim()) ||
@@ -135,6 +160,33 @@ export async function POST(req: NextRequest) {
   let voiceSource: "structured" | "fallback" = "fallback";
 
   if (shouldAttemptAi) {
+    // Hard per-IP/day cap, checked only when we're about to spend on the model.
+    try {
+      if (
+        !(await rateLimit(
+          buildRateLimitKey("brand-book-gen-day", req.headers, dailyCapActor),
+          PAID_GEN_DAILY_CAP,
+          ONE_DAY_MS,
+        ))
+      ) {
+        return NextResponse.json(
+          { error: "Daily brand-book generation limit reached. Try again tomorrow." },
+          { status: 429 },
+        );
+      }
+    } catch (error) {
+      if (error instanceof RateLimitUnavailableError) {
+        return NextResponse.json({ error: "Rate limit unavailable" }, { status: 503 });
+      }
+      throw error;
+    }
+
+    if (leadEmail && brandAuth.mode === "guest") {
+      // Best-effort lead trail so guest spend maps to a captured contact.
+      // (A durable Lead model + migration is a Brad-gated follow-up — see
+      // REMEDIATION-PLAN P2.)
+      console.info("[brand-book/generate] guest lead captured", { email: leadEmail });
+    }
     try {
       const structured = await generateBrandVoiceStructured(answers);
       const brandBook = generateBrandBook(userId, answers, {
@@ -169,6 +221,9 @@ export async function POST(req: NextRequest) {
     brandBook,
     voice: voiceSource,
     authMode: brandAuth.mode,
+    // Signal the client to capture an email and retry for the AI-grade voice.
+    // (Deterministic fallback is still returned so the user is never blocked.)
+    ...(gate.emailRequired ? { emailRequired: true } : {}),
   });
   if (brandAuth.mode === "guest" && brandAuth.setGuestCookie) {
     res.cookies.set(

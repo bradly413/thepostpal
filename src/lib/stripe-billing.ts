@@ -7,7 +7,6 @@ import {
   normalizeCheckoutTier,
   stripePriceIdForTier,
   planTierFromStripePriceId,
-  getStripePriceCatalog,
   commandLocationPriceId,
 } from "@/lib/stripe-catalog";
 import { pricingTierToOrganizationPlan, normalizePricingTierId } from "@/lib/pricing";

@@ -1,7 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
+import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { synthesizeVoice, toBrandVoice } from "@/lib/voice-synthesis";
 import type { BrandVoice } from "@/lib/brand-book-schema";
+
+// Hard per-tenant/day ceiling on this PAID voice synthesis (Claude), layered on
+// the short burst limit below. Mirrors the cap on /api/brand-book/generate so an
+// authenticated caller can't farm paid synthesis beyond the burst window.
+const REFRESH_VOICE_DAILY_CAP = 25;
+const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 
 // ─────────────────────────────────────────────────────────────
 //  POST /api/brand-book/refresh-voice
@@ -65,10 +72,32 @@ function asStringArray(v: unknown): string[] {
 }
 
 export async function POST(req: NextRequest) {
+  // In-route auth check (defense in depth — the proxy already gates this path).
+  // Also lets us key the rate limits per tenant/user instead of by IP.
+  let auth: AuthContext;
   try {
-    if (!(await rateLimit(buildRateLimitKey("brand-book-refresh-voice", req.headers), 6, 60_000))) {
+    auth = await requireAuthContext();
+  } catch {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    // Burst limit (per tenant/user) + a hard per-day cap on the paid Claude call.
+    if (!(await rateLimit(buildRateLimitKey("brand-book-refresh-voice", req.headers, auth), 6, 60_000))) {
       return NextResponse.json(
         { error: "Too many voice refreshes. Wait a moment and retry." },
+        { status: 429 },
+      );
+    }
+    if (
+      !(await rateLimit(
+        buildRateLimitKey("brand-book-refresh-voice-day", req.headers, auth),
+        REFRESH_VOICE_DAILY_CAP,
+        ONE_DAY_MS,
+      ))
+    ) {
+      return NextResponse.json(
+        { error: "Daily voice-refresh limit reached. Try again tomorrow." },
         { status: 429 },
       );
     }

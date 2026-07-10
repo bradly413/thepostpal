@@ -48,6 +48,9 @@ export async function POST(request: NextRequest) {
     if (!topic) {
       return NextResponse.json({ error: "topic is required" }, { status: 400 });
     }
+    if (topic.length > 1000) {
+      return NextResponse.json({ error: "topic must be 1000 characters or fewer" }, { status: 400 });
+    }
 
     const apiKey = process.env.ANTHROPIC_API_KEY;
     if (!apiKey) {
