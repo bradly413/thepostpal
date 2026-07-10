@@ -30,6 +30,7 @@ const PUBLIC_PREFIXES = [
   "/mockup-library/",
   "/brand/",
   "/videos/",
+  "/hero-ring/",
   "/api/auth",
   "/api/webhooks",
   "/api/cron",
@@ -114,6 +115,6 @@ export async function proxy(request: NextRequest) {
 
 export const config = {
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|images/|previews/|mockup-library/|brand/|videos/|logos/).*)",
+    "/((?!_next/static|_next/image|favicon.ico|hero-ring/|images/|previews/|mockup-library/|brand/|videos/|logos/).*)",
   ],
 };

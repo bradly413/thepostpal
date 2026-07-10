@@ -1,6 +1,15 @@
 import type { DraftStatus } from "@/lib/posterboy-types";
 import type { DashboardPostRecord } from "@/lib/dashboard-api";
 
+/** DB statuses that are waiting on the publish dispatcher. */
+export function isQueuedToPublishStatus(status: DraftStatus): boolean {
+  return status === "scheduled" || status === "approved";
+}
+
+export function isQueuedToPublishPost(post: Pick<DashboardPostRecord, "status" | "scheduledFor">): boolean {
+  return Boolean(post.scheduledFor) && isQueuedToPublishStatus(post.status);
+}
+
 const EMPTY_COUNTS: Record<DraftStatus, number> = {
   draft: 0,
   needs_review: 0,
@@ -56,10 +65,31 @@ export function filterPostsScheduled(
   posts: DashboardPostRecord[],
   locationId?: string | null,
 ): DashboardPostRecord[] {
-  return filterPostsForLocation(posts, locationId).filter(
-    (post) =>
-      (post.status === "scheduled" || post.status === "approved") && post.scheduledFor,
-  );
+  return filterPostsForLocation(posts, locationId).filter(isQueuedToPublishPost);
+}
+
+/** Queued posts with a schedule at or after the start of today (local). */
+export function filterFutureQueuedPosts(
+  posts: DashboardPostRecord[],
+  locationId?: string | null,
+  todayKey = todayDateKeyLocal(),
+): DashboardPostRecord[] {
+  return filterPostsScheduled(posts, locationId).filter((post) => {
+    const key = postDateKey(post.scheduledFor);
+    return key !== null && key >= todayKey;
+  });
+}
+
+export function todayDateKeyLocal(date = new Date()): string {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+}
+
+/** Calendar grid uses mapped local status; approved rows surface as "scheduled". */
+export function isCalendarPostQueued(post: {
+  status: string;
+  date: string;
+}): boolean {
+  return post.status === "scheduled" && Boolean(post.date);
 }
 
 export function countPostsByLocation(

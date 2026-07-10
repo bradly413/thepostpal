@@ -63,8 +63,9 @@ export function ErrorState({
       <p className="mt-2 max-w-sm text-sm text-[#6b6b6b]">{message}</p>
       {onRetry ? (
         <button
+          type="button"
           onClick={onRetry}
-          className="mt-6 rounded-full border border-[#ee2532]/40 bg-[#ee2532]/10 px-5 py-2 text-sm font-medium text-[#c81e2a] transition-colors hover:bg-[#ee2532]/20"
+          className="pb-btn-secondary mt-6 text-sm px-5 py-2"
         >
           Try again
         </button>
@@ -81,8 +82,9 @@ export function NoLocationState({ onCreate }: { onCreate?: () => void }) {
       action={
         onCreate ? (
           <button
+            type="button"
             onClick={onCreate}
-            className="rounded-full bg-[#1a1a1a] px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+            className="pb-btn-primary text-sm px-5 py-2"
           >
             Create a location
           </button>
@@ -90,4 +92,48 @@ export function NoLocationState({ onCreate }: { onCreate?: () => void }) {
       }
     />
   );
+}
+
+interface LocationGateProps {
+  loading: boolean;
+  error: string | null;
+  locationId: string | null;
+  onRetry?: () => void;
+  onCreate?: () => void;
+  skeleton?: ReactNode;
+  children: ReactNode;
+}
+
+/** Waits for active location context before rendering location-scoped content. */
+export function LocationGate({
+  loading,
+  error,
+  locationId,
+  onRetry,
+  onCreate,
+  skeleton,
+  children,
+}: LocationGateProps) {
+  if (loading) {
+    return (
+      <>
+        {skeleton ?? (
+          <div className="space-y-3">
+            <SkeletonText className="h-10 w-48" />
+            <SkeletonText className="h-32 w-full rounded-[24px]" />
+          </div>
+        )}
+      </>
+    );
+  }
+
+  if (error) {
+    return <ErrorState message={error} onRetry={onRetry} />;
+  }
+
+  if (!locationId) {
+    return <NoLocationState onCreate={onCreate} />;
+  }
+
+  return <>{children}</>;
 }

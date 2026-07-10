@@ -19,7 +19,6 @@ import {
   platformsFromCalendarPlatform,
   scheduledForIso,
 } from "@/lib/scheduled-post-mappers";
-import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
@@ -342,10 +341,9 @@ function EditorPageInner({
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Publish failed");
-      const locationId = getStoredActiveLocationId();
-      if (locationId) {
-        await createDashboardPost({
-          locationId,
+      if (!locationId) throw new Error("Choose a workspace location before publishing.");
+      await createDashboardPost({
+        locationId,
           copy: caption,
           platforms: platformsFromCalendarPlatform(publishPlatform),
           scheduledFor: new Date().toISOString(),
@@ -354,8 +352,7 @@ function EditorPageInner({
           pillar: template!.pillar,
           mediaUrl: imageUrl,
           mediaType: "image",
-        }).catch(() => {});
-      }
+      }).catch(() => {});
       setPublishResult({ type: "success", message: "Posted successfully!" });
       setShowPublish(false);
     } catch (err) {
@@ -409,20 +406,18 @@ function EditorPageInner({
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || "Scheduling failed");
 
-      const locationId = getStoredActiveLocationId();
-      if (locationId) {
-        await createDashboardPost({
-          locationId,
-          copy: caption,
-          platforms: platformsFromCalendarPlatform(schedulePlatform),
-          scheduledFor: scheduledForIso(scheduleDate, scheduleTime),
-          status: "scheduled",
-          templateId: template!.id,
-          pillar: template!.pillar,
-          mediaUrl: imageUrl,
-          mediaType: "image",
-        });
-      }
+      if (!locationId) throw new Error("Choose a workspace location before scheduling.");
+      await createDashboardPost({
+        locationId,
+        copy: caption,
+        platforms: platformsFromCalendarPlatform(schedulePlatform),
+        scheduledFor: scheduledForIso(scheduleDate, scheduleTime),
+        status: "scheduled",
+        templateId: template!.id,
+        pillar: template!.pillar,
+        mediaUrl: imageUrl,
+        mediaType: "image",
+      });
 
       setPublishResult({ type: "success", message: `Scheduled for ${scheduledAt.toLocaleDateString()} at ${scheduledAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}` });
       setShowSchedule(false);

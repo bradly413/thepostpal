@@ -30,6 +30,23 @@ export default function PricingPage() {
         <p className="pb-hero-sub pb-hero-in">
           Two self-serve tiers for premium operators and multi-location brands. BRC Custom when you want the system built with you.
         </p>
+        <p
+          className="pb-hero-in"
+          style={{
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 8,
+            marginTop: "1rem",
+            padding: "6px 14px",
+            borderRadius: 999,
+            background: "rgba(31,157,77,0.1)",
+            color: "#1f9d4d",
+            fontSize: 14,
+            fontWeight: 600,
+          }}
+        >
+          14-day free trial — no credit card required
+        </p>
       </section>
 
       <section className="pb-section pb-reveal">

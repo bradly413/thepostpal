@@ -3,6 +3,7 @@
 import { useState, useCallback, useEffect, useRef, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import { uploadMediaToS3 } from "@/lib/dashboard-upload";
+import { isUploadableMediaFile, UPLOAD_ACCEPT_MEDIA } from "@/lib/upload-mime";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
   fetchDashboardPhotos,
@@ -13,7 +14,9 @@ import {
 } from "@/lib/dashboard-api";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
-import { SkeletonGrid, EmptyState, ErrorState, NoLocationState } from "@/components/dashboard/StateViews";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
+import { SkeletonGrid, EmptyState, ErrorState, LocationGate } from "@/components/dashboard/StateViews";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 
 interface DisplayMedia {
   id: string;
@@ -52,7 +55,7 @@ function readAsDataUrl(file: File): Promise<string> {
 export default function PhotosPage() {
   const router = useRouter();
   const features = usePlanFeatures();
-  const { locationId, loading: locationLoading } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
   const [media, setMedia] = useState<DisplayMedia[]>([]);
   const [loading, setLoading] = useState(true);
@@ -63,7 +66,11 @@ export default function PhotosPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
+  const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
+  const lightboxRef = useRef<HTMLDivElement>(null);
+
+  useFocusTrap(Boolean(selected), lightboxRef, () => setSelected(null));
 
   const showToast = useCallback((msg: string) => {
     setToast(msg);
@@ -85,8 +92,16 @@ export default function PhotosPage() {
   }, [locationId]);
 
   useEffect(() => {
-    if (locationId) load();
-  }, [locationId, load]);
+    if (locationId) {
+      void load();
+      return;
+    }
+    if (!locationLoading) {
+      setLoading(false);
+      setMedia([]);
+      setError(null);
+    }
+  }, [locationId, locationLoading, load]);
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -107,15 +122,16 @@ export default function PhotosPage() {
     (files: FileList) => {
       if (!locationId) return;
       Array.from(files).forEach(async (file) => {
-        const isImage = file.type.startsWith("image/") || (!file.type && /\.(jpe?g|png|gif|webp|heic)$/i.test(file.name));
-        const isVideo = file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name);
-        if (!isImage && !isVideo) {
+        if (!isUploadableMediaFile(file)) {
           showToast(`${file.name} isn't a supported image or video.`);
           return;
         }
 
+        const isVideo =
+          file.type.startsWith("video/") || /\.(mp4|mov|webm|m4v)$/i.test(file.name);
+
         const tempId = `tmp-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
-        const previewSrc = isImage ? await readAsDataUrl(file) : URL.createObjectURL(file);
+        const previewSrc = isVideo ? URL.createObjectURL(file) : await readAsDataUrl(file);
         setMedia((prev) => [
           {
             id: tempId,
@@ -191,7 +207,7 @@ export default function PhotosPage() {
   const busy = locationLoading || loading;
 
   return (
-    <div className="px-4 py-6 md:px-6 h-full flex flex-col overflow-hidden">
+    <div className="pb-app flex h-full flex-col overflow-hidden">
       <style>{`
         @keyframes cardFlyIn {
           from { opacity: 0; transform: translateY(1.5em); }
@@ -200,23 +216,23 @@ export default function PhotosPage() {
         .photo-card { animation: cardFlyIn 0.3s ease-out both; }
       `}</style>
 
-      <div className="mb-5 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between shrink-0">
+      <div className="pb-app-header mb-0 flex shrink-0 flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-bold font-heading">Media</h1>
-          <p className="text-sm opacity-60 mt-1">
+          <h1>Media</h1>
+          <p>
             {busy
               ? "Loading your library…"
               : `${filtered.length} item${filtered.length !== 1 ? "s" : ""}${search || filter !== "all" ? " (filtered)" : ""}`}
           </p>
         </div>
-        <div className="flex items-center gap-3 self-start flex-wrap">
+        <div className="flex flex-wrap items-center gap-3 self-start">
           {features.multiLocation && <LocationSwitcher />}
-          <label className="pb-btn-primary flex items-center gap-1.5 px-4 py-2 text-xs font-medium cursor-pointer">
+          <label className="pb-btn-primary flex cursor-pointer items-center gap-1.5 px-4 py-2 text-xs font-medium">
             Upload
             <input
               type="file"
               multiple
-              accept="image/*,video/mp4,video/quicktime,.mp4,.mov"
+              accept={UPLOAD_ACCEPT_MEDIA}
               onChange={(e) => e.target.files && handleFiles(e.target.files)}
               className="hidden"
             />
@@ -224,7 +240,7 @@ export default function PhotosPage() {
         </div>
       </div>
 
-      <div className="flex flex-wrap items-center gap-3 mb-4 shrink-0">
+      <div className="pb-panel mb-4 flex shrink-0 flex-wrap items-center gap-3 p-3">
         <input
           type="search"
           placeholder="Search by name…"
@@ -258,7 +274,7 @@ export default function PhotosPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-4 mb-4 shrink-0">
+      <div className="mb-4 flex shrink-0 items-center gap-4">
         <div
           onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
           onDragLeave={() => setDragOver(false)}
@@ -272,9 +288,15 @@ export default function PhotosPage() {
       </div>
 
       <div className="flex-1 overflow-y-auto pb-4" style={{ scrollbarWidth: "none" }}>
-        {!locationLoading && !locationId ? (
-          <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
-        ) : busy ? (
+        <LocationGate
+          loading={locationLoading}
+          error={locationError}
+          locationId={locationId}
+          onRetry={() => void refreshLocations()}
+          onCreate={() => router.push("/dashboard/organization")}
+          skeleton={<SkeletonGrid count={10} />}
+        >
+        {busy && locationId ? (
           <SkeletonGrid count={10} />
         ) : error ? (
           <ErrorState message={error} onRetry={load} />
@@ -351,7 +373,7 @@ export default function PhotosPage() {
                       </button>
                     ) : null}
                     <button
-                      onClick={(e) => { e.stopPropagation(); handleRemove(item.id); }}
+                      onClick={(e) => { e.stopPropagation(); setPendingDeleteId(item.id); }}
                       title="Delete"
                       className="p-2 rounded-xl bg-white/90 text-black/80 hover:bg-[var(--pb-press)] hover:text-white transition-all"
                     >
@@ -365,22 +387,39 @@ export default function PhotosPage() {
             ))}
           </div>
         )}
+        </LocationGate>
       </div>
 
       {selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm" onClick={() => setSelected(null)}>
-          <div className="max-w-3xl max-h-[85vh] rounded-2xl bg-white border border-black/10 overflow-hidden shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-4 py-3 border-b border-black/10">
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm"
+          onClick={() => setSelected(null)}
+        >
+          <div
+            ref={lightboxRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label={`Preview: ${selected.name}`}
+            tabIndex={-1}
+            className="max-h-[85vh] max-w-3xl overflow-hidden rounded-2xl border border-black/10 bg-white shadow-xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
               <p className="text-sm font-semibold">{selected.name}</p>
               <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => openInStudio(selected)}
-                  className="pb-btn-secondary text-xs px-3 py-1.5"
+                  className="pb-btn-secondary px-3 py-1.5 text-xs"
                 >
                   Use in composer
                 </button>
-                <button onClick={() => setSelected(null)} className="p-1 rounded-lg opacity-60 hover:opacity-100 hover:bg-black/5 transition-colors">
+                <button
+                  type="button"
+                  aria-label="Close preview"
+                  onClick={() => setSelected(null)}
+                  className="rounded-lg p-1 opacity-60 transition-colors hover:bg-black/5 hover:opacity-100"
+                >
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -388,19 +427,29 @@ export default function PhotosPage() {
               </div>
             </div>
             {selected.kind === "video" ? (
-              <video src={selected.src} controls className="max-h-[70vh] w-full object-contain bg-black" />
+              <video src={selected.src} controls className="max-h-[70vh] w-full bg-black object-contain" />
             ) : (
-              <img src={selected.src} alt={selected.name} className="max-h-[70vh] w-full object-contain bg-black" />
+              <img src={selected.src} alt={selected.name} className="max-h-[70vh] w-full bg-black object-contain" />
             )}
           </div>
         </div>
       )}
 
-      {toast && (
-        <div className="fixed bottom-6 left-1/2 z-[60] -translate-x-1/2 rounded-full bg-[#1a1a1a] px-4 py-2 text-xs text-white shadow-lg">
-          {toast}
-        </div>
-      )}
+      {toast ? <div className="pb-toast">{toast}</div> : null}
+
+      <DashboardConfirm
+        open={pendingDeleteId !== null}
+        title="Delete media?"
+        message="This removes the file from your library. Posts already using it won't be affected."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setPendingDeleteId(null)}
+        onConfirm={() => {
+          const id = pendingDeleteId;
+          setPendingDeleteId(null);
+          if (id) void handleRemove(id);
+        }}
+      />
     </div>
   );
 }

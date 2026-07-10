@@ -8,6 +8,7 @@ import VerticalCompliancePanel from "@/components/compliance/VerticalComplianceP
 import BillingSettingsPanel from "@/components/dashboard/settings/BillingSettingsPanel";
 import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
 import Link from "next/link";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { setStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
@@ -30,6 +31,8 @@ function SettingsContent() {
   const { meta, reload: reloadMeta, disconnect: disconnectMeta } = useMetaConnection();
   const { locationId, locations, loading: locationLoading } = useActiveLocation();
   const [metaError, setMetaError] = useState<string | null>(null);
+  const [confirmMetaDisconnect, setConfirmMetaDisconnect] = useState(false);
+  const [disconnectingMeta, setDisconnectingMeta] = useState(false);
 
   const [profile, setProfile] = useState({
     name: "",
@@ -39,6 +42,7 @@ function SettingsContent() {
     company: "",
     website: "",
   });
+  const [profileLoadError, setProfileLoadError] = useState(false);
 
 
   useEffect(() => {
@@ -65,8 +69,12 @@ function SettingsContent() {
     let cancelled = false;
     (async () => {
       try {
+        setProfileLoadError(false);
         const res = await fetch("/api/account/settings", { credentials: "same-origin" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (!cancelled) setProfileLoadError(true);
+          return;
+        }
         const data = (await res.json()) as {
           settings?: {
             profile?: Partial<typeof profile>;
@@ -76,7 +84,7 @@ function SettingsContent() {
         if (cancelled || !s) return;
         if (s.profile) setProfile((p) => ({ ...p, ...s.profile }));
       } catch {
-        /* keep defaults */
+        if (!cancelled) setProfileLoadError(true);
       }
     })();
     return () => {
@@ -133,11 +141,18 @@ function SettingsContent() {
   }
 
   async function handleDisconnectMeta() {
-    if (!window.confirm("Disconnect Meta account?")) return;
+    setConfirmMetaDisconnect(true);
+  }
+
+  async function confirmDisconnectMeta() {
+    setDisconnectingMeta(true);
     try {
       await disconnectMeta();
+      setConfirmMetaDisconnect(false);
     } catch (err) {
       setMetaError(err instanceof Error ? err.message : "Could not disconnect Meta.");
+    } finally {
+      setDisconnectingMeta(false);
     }
   }
 
@@ -183,6 +198,11 @@ function SettingsContent() {
 
         {/* Content */}
         <div className="flex-1 max-w-2xl">
+          {activeTab === "profile" && profileLoadError && (
+            <div className="mb-4 rounded-xl border border-[rgba(238,37,50,0.2)] bg-[rgba(238,37,50,0.08)] px-4 py-3 text-sm text-[#c81e2a]">
+              Couldn&apos;t load your profile. Save still works — refresh the page to retry loading existing values.
+            </div>
+          )}
           {activeTab === "profile" && (
             <div className="pb-panel">
               <h2 className="pb-panel-h">Profile information</h2>
@@ -307,6 +327,17 @@ function SettingsContent() {
           )}
         </div>
       </div>
+
+      <DashboardConfirm
+        open={confirmMetaDisconnect}
+        title="Disconnect Meta account?"
+        message="Scheduled posts and analytics will stop syncing until you connect again."
+        confirmLabel="Disconnect"
+        destructive
+        busy={disconnectingMeta}
+        onConfirm={() => void confirmDisconnectMeta()}
+        onCancel={() => setConfirmMetaDisconnect(false)}
+      />
     </div>
   );
 }

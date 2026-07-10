@@ -9,6 +9,12 @@ import {
   type DashboardPostRecord,
 } from "@/lib/dashboard-api";
 import { getStoredActiveLocationId } from "@/lib/dashboard-browser-state";
+import {
+  filterFutureQueuedPosts,
+  filterPostsForLocation,
+  filterPostsNeedingReview,
+  isQueuedToPublishPost,
+} from "@/lib/dashboard-post-helpers";
 import type { DraftStatus } from "@/lib/posterboy-types";
 
 const HERO_IMAGES = [
@@ -166,30 +172,38 @@ function readStoredUser(): { firstName?: string; lastName?: string; accountName?
   }
 }
 
-export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot> {
+export async function loadDashboardHomeSnapshot(
+  preferredLocationId?: string | null,
+): Promise<DashboardHomeSnapshot> {
   const [locations, posts] = await Promise.all([
     fetchDashboardLocations(),
     fetchDashboardPosts(),
   ]);
 
-  const currentLocation = pickCurrentLocation(locations);
-  const scopedPosts = currentLocation
-    ? posts.filter((post) => post.locationId === currentLocation.id)
-    : posts;
+  const currentLocation =
+    (preferredLocationId
+      ? locations.find((location) => location.id === preferredLocationId)
+      : null) ?? pickCurrentLocation(locations);
+  const scopedPosts = filterPostsForLocation(posts, currentLocation?.id);
   const counts = countByStatus(scopedPosts);
-  const pending = scopedPosts.filter((post) => post.status === "needs_review" || post.status === "needs_revision");
-  const scheduled = scopedPosts.filter(
-    (post) => (post.status === "scheduled" || post.status === "approved") && post.scheduledFor,
-  );
+  const pending = filterPostsNeedingReview(scopedPosts);
+  const queued = scopedPosts.filter(isQueuedToPublishPost);
+  const futureQueued = filterFutureQueuedPosts(scopedPosts);
   const approved = scopedPosts.filter((post) => post.status === "approved");
   const published = scopedPosts.filter((post) => post.status === "published");
 
-  const nextUp = scheduled[0] ?? approved[0] ?? pending[0] ?? null;
+  const nextUp =
+    futureQueued.sort((a, b) =>
+      (a.scheduledFor ?? "").localeCompare(b.scheduledFor ?? ""),
+    )[0] ??
+    approved[0] ??
+    pending[0] ??
+    null;
 
   const recentPosts =
     published.length > 0
       ? published.slice(0, 3)
-      : [...approved, ...scheduled]
+      : [...approved, ...queued]
           .sort((a, b) => (b.updatedAt ?? "").localeCompare(a.updatedAt ?? ""))
           .slice(0, 3);
 
@@ -229,7 +243,7 @@ export async function loadDashboardHomeSnapshot(): Promise<DashboardHomeSnapshot
     nextUpImage: nextUp?.mediaUrl ?? nextUp?.mediaUrls?.[0] ?? null,
     recentPosts,
     pendingCount: pending.length,
-    scheduledCount: scheduled.length,
+    scheduledCount: futureQueued.length,
     hoursSaved,
     everythingInSync: pending.length === 0,
     weeklyOverview: buildWeeklyOverview(scopedPosts),

@@ -1,9 +1,11 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import { useRouter } from "next/navigation";
 import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
+import { inferMediaContentType, isVideoContentType } from "@/lib/upload-mime";
 import { type CalendarEvent } from "@/lib/events-store";
 import { getHolidayMap } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
@@ -26,8 +28,15 @@ import {
   mapCalendarPostToCreateInput,
   mapRecordToCalendarPost,
 } from "@/lib/scheduled-post-mappers";
+import {
+  isCalendarPostQueued,
+  todayDateKeyLocal,
+} from "@/lib/dashboard-post-helpers";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
+import { LocationGate } from "@/components/dashboard/StateViews";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 // Adapt a live calendar record into the local CalendarEvent view shape the
 // grid + modals already render.
@@ -81,6 +90,28 @@ function formatDateKey(year: number, month: number, day: number): string {
   return `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
 }
 
+function calendarCellOverflow(
+  holiday: boolean,
+  eventCount: number,
+  postCount: number,
+): number {
+  const holidaySlots = holiday ? 1 : 0;
+  const visible = holidaySlots + Math.min(2, eventCount) + Math.min(2, postCount);
+  const total = holidaySlots + eventCount + postCount;
+  return total > visible ? total - visible : 0;
+}
+
+function openDayFromKeyboard(
+  e: React.KeyboardEvent,
+  dateKey: string,
+  onOpen: (dateKey: string) => void,
+) {
+  if (e.key === "Enter" || e.key === " ") {
+    e.preventDefault();
+    onOpen(dateKey);
+  }
+}
+
 type ModalMode = "post" | "event" | "day-detail" | null;
 
 type CalendarScheduledPost = ScheduledPost & {
@@ -90,6 +121,8 @@ type CalendarScheduledPost = ScheduledPost & {
 
 export default function CalendarPage() {
   useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
+  const router = useRouter();
+  const modalRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week">("month");
   const [posts, setPosts] = useState<CalendarScheduledPost[]>([]);
@@ -102,7 +135,9 @@ export default function CalendarPage() {
   // D2: surface a genuine initial-load failure (was silently swallowed → blank
   // grid). Transient errors after a good load still keep the grid stable.
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [eventsLoadError, setEventsLoadError] = useState<string | null>(null);
   const loadedOkRef = useRef(false);
+  const eventsLoadedOkRef = useRef(false);
 
   const [formTemplate, setFormTemplate] = useState(templates[0]?.id || "");
   const [formPlatform, setFormPlatform] = useState<"facebook" | "instagram" | "both">("both");
@@ -124,7 +159,8 @@ export default function CalendarPage() {
     if (!file) return;
     setMediaError(null);
     setUploadingMedia(true);
-    setMediaType(file.type.startsWith("video/") ? "video" : "image");
+    const inferred = inferMediaContentType(file.name, file.type);
+    setMediaType(inferred && isVideoContentType(inferred) ? "video" : "image");
     try {
       const publicUrl = await uploadMediaToS3(file);
       setMediaUrl(publicUrl);
@@ -142,10 +178,14 @@ export default function CalendarPage() {
   const [eventTime, setEventTime] = useState("");
   const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
+  const [confirmDeletePost, setConfirmDeletePost] = useState(false);
+  const [confirmDeleteEvent, setConfirmDeleteEvent] = useState(false);
 
   const { meta } = useMetaConnection();
   const features = usePlanFeatures();
-  const { locationId } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
+
+  useFocusTrap(modalMode !== null, modalRef, () => setModalMode(null));
   const loadPosts = useCallback(async () => {
     if (!locationId) {
       setPosts([]);
@@ -184,9 +224,12 @@ export default function CalendarPage() {
     try {
       const recs = await fetchDashboardCalendar(locationId);
       setEvents(recs.map(recordToEvent));
+      eventsLoadedOkRef.current = true;
+      setEventsLoadError(null);
     } catch {
-      // Keep whatever is already on screen; a transient fetch error shouldn't
-      // wipe the grid. The next mutation / reload reconciles.
+      if (!eventsLoadedOkRef.current) {
+        setEventsLoadError("We couldn't load calendar events. Check your connection and try again.");
+      }
     }
   }, [locationId]);
 
@@ -194,10 +237,19 @@ export default function CalendarPage() {
     void loadEvents();
   }, [loadEvents]);
 
+  useEffect(() => {
+    const reload = () => {
+      void loadPosts();
+      void loadEvents();
+    };
+    window.addEventListener("dashboard-location-updated", reload);
+    return () => window.removeEventListener("dashboard-location-updated", reload);
+  }, [loadPosts, loadEvents]);
+
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
   const today = new Date();
-  const todayKey = formatDateKey(today.getFullYear(), today.getMonth(), today.getDate());
+  const todayKey = todayDateKeyLocal(today);
 
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -485,7 +537,8 @@ export default function CalendarPage() {
   }
 
   async function handleDeletePost() {
-    if (!editingPost || !window.confirm("Delete this post?")) return;
+    if (!editingPost) return;
+    setConfirmDeletePost(false);
     try {
       await deleteDashboardPost(editingPost.id);
       await loadPosts();
@@ -508,7 +561,6 @@ export default function CalendarPage() {
       startsAt,
     };
 
-    setModalMode(null);
     try {
       if (editingEvent) {
         await updateDashboardCalendarEvent(editingEvent.id, fields);
@@ -516,6 +568,7 @@ export default function CalendarPage() {
         await createDashboardCalendarEvent({ locationId, ...fields });
       }
       await loadEvents();
+      setModalMode(null);
     } catch {
       setPublishResult({ type: "error", message: "Could not save that event. Try again." });
     }
@@ -523,7 +576,7 @@ export default function CalendarPage() {
 
   async function handleDeleteEvent() {
     if (!editingEvent) return;
-    if (!window.confirm("Delete this event?")) return;
+    setConfirmDeleteEvent(false);
     const id = editingEvent.id;
     const prev = events;
     setEvents((cur) => cur.filter((e) => e.id !== id)); // optimistic
@@ -553,9 +606,11 @@ export default function CalendarPage() {
   const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
 
   const upcoming = posts
-    .filter((p) => p.date >= todayKey && p.status === "scheduled")
+    .filter((p) => p.date >= todayKey && isCalendarPostQueued(p))
     .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
     .slice(0, 5);
+
+  const queuedPostCount = posts.filter(isCalendarPostQueued).length;
 
   const upcomingEvents = events
     .filter((e) => e.date >= todayKey)
@@ -574,6 +629,14 @@ export default function CalendarPage() {
 
   return (
     <div className="pb-app">
+      <LocationGate
+        loading={locationLoading}
+        error={locationError}
+        locationId={locationId}
+        onRetry={() => void refreshLocations()}
+        onCreate={() => router.push("/dashboard/organization")}
+      >
+      <>
       <div className="pb-app-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1>Calendar</h1>
@@ -627,6 +690,19 @@ export default function CalendarPage() {
         </div>
       )}
 
+      {eventsLoadError && (
+        <div className="mb-4 flex items-center justify-between gap-3 rounded-xl border border-[rgba(217,119,6,0.25)] bg-[rgba(217,119,6,0.08)] px-4 py-3 text-sm text-[#b45309]">
+          <span>{eventsLoadError}</span>
+          <button
+            type="button"
+            onClick={() => void loadEvents()}
+            className="pb-btn-secondary shrink-0 px-3 py-1.5 text-xs"
+          >
+            Retry
+          </button>
+        </div>
+      )}
+
       {publishResult && (
         <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between ${
           publishResult.type === "success" ? "bg-[rgba(31,157,77,0.1)] text-[#1f9d4d]" : "bg-[rgba(238,37,50,0.1)] text-[#ee2532]"
@@ -643,7 +719,7 @@ export default function CalendarPage() {
           {/* Calendar controls */}
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-3">
-              <h2 className="text-lg font-bold text-black font-heading">{monthName}</h2>
+              <h2 className="text-lg font-semibold text-black">{monthName}</h2>
               <div className="flex gap-1">
                 <button onClick={prevPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
                   <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
@@ -674,7 +750,7 @@ export default function CalendarPage() {
 
           {/* Month view */}
           {view === "month" && (
-            <div className="rounded-2xl bg-white border border-black/10 overflow-hidden">
+            <div className="pb-panel overflow-hidden p-0">
               <div className="grid grid-cols-7">
                 {DAYS.map((d) => (
                   <div key={d} className="px-2 py-2.5 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
@@ -686,11 +762,14 @@ export default function CalendarPage() {
                   const cellEvents = eventsMap.get(cell.dateKey) || [];
                   const holiday = showHolidays ? holidayMap.get(cell.dateKey) : undefined;
                   const isToday = cell.dateKey === todayKey;
-                  const totalItems = cellPosts.length + cellEvents.length + (holiday ? 1 : 0);
+                  const overflow = calendarCellOverflow(Boolean(holiday), cellEvents.length, cellPosts.length);
                   return (
-                    <button
+                    <div
                       key={i}
+                      role="button"
+                      tabIndex={0}
                       onClick={() => openDayDetail(cell.dateKey)}
+                      onKeyDown={(e) => openDayFromKeyboard(e, cell.dateKey, openDayDetail)}
                       className={`h-[110px] overflow-hidden border-b border-r border-black/10 p-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
@@ -726,11 +805,11 @@ export default function CalendarPage() {
                             {p.time.slice(0, 5)} {p.templateName}
                           </button>
                         ))}
-                        {totalItems > (holiday ? 3 : 4) && (
-                          <p className="text-[9px] text-black/55 px-1">+{totalItems - (holiday ? 3 : 4)} more</p>
+                        {overflow > 0 && (
+                          <p className="text-[9px] text-black/55 px-1">+{overflow} more</p>
                         )}
                       </div>
-                    </button>
+                    </div>
                   );
                 })}
               </div>
@@ -739,7 +818,7 @@ export default function CalendarPage() {
 
           {/* Week view */}
           {view === "week" && (
-            <div className="rounded-2xl bg-white border border-black/10 overflow-hidden">
+            <div className="pb-panel overflow-hidden p-0">
               <div className="grid grid-cols-7">
                 {getWeekDates().map((wd) => {
                   const isToday = wd.dateKey === todayKey;
@@ -752,9 +831,12 @@ export default function CalendarPage() {
                         <p className="text-[10px] text-black/55 font-bold uppercase">{wd.dayName}</p>
                         <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-[#ee2532]" : "text-black"}`}>{wd.day}</p>
                       </div>
-                      <button
-                        className="min-h-[400px] p-2 space-y-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors w-full text-left"
+                      <div
+                        role="button"
+                        tabIndex={0}
+                        className="min-h-[400px] w-full cursor-pointer space-y-1.5 p-2 text-left transition-colors hover:bg-black/[0.04]"
                         onClick={() => openDayDetail(wd.dateKey)}
+                        onKeyDown={(e) => openDayFromKeyboard(e, wd.dateKey, openDayDetail)}
                       >
                         {holiday && (
                           <div className="rounded-lg p-2 bg-[rgba(217,119,6,0.1)] text-[#b45309]">
@@ -785,7 +867,7 @@ export default function CalendarPage() {
                             <p className="text-[10px] opacity-70 capitalize">{p.platform}</p>
                           </button>
                         ))}
-                      </button>
+                      </div>
                     </div>
                   );
                 })}
@@ -796,7 +878,7 @@ export default function CalendarPage() {
 
         {/* Sidebar */}
         <div className="space-y-4">
-          <div className="rounded-2xl bg-white border border-black/10 p-4">
+          <div className="pb-panel p-4">
             <h3 className="text-sm font-bold text-black mb-3">Upcoming Posts</h3>
             {upcoming.length === 0 ? (
               <p className="text-xs text-black/55 py-4 text-center">No upcoming posts scheduled</p>
@@ -820,7 +902,7 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="rounded-2xl bg-white border border-black/10 p-4">
+          <div className="pb-panel p-4">
             <h3 className="text-sm font-bold text-black mb-3">Upcoming Events</h3>
             {upcomingEvents.length === 0 ? (
               <p className="text-xs text-black/55 py-4 text-center">No upcoming events</p>
@@ -845,7 +927,7 @@ export default function CalendarPage() {
           </div>
 
           {showHolidays && upcomingHolidays.length > 0 && (
-            <div className="rounded-2xl bg-white border border-black/10 p-4">
+            <div className="pb-panel p-4">
               <h3 className="text-sm font-bold text-black mb-3">Upcoming Holidays</h3>
               <div className="space-y-2">
                 {upcomingHolidays.map(([date, name]) => (
@@ -858,23 +940,23 @@ export default function CalendarPage() {
             </div>
           )}
 
-          <div className="rounded-2xl bg-white border border-black/10 p-4">
+          <div className="pb-panel p-4">
             <h3 className="text-sm font-bold text-black mb-3">Schedule Stats</h3>
             <div className="grid grid-cols-2 gap-3">
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "scheduled").length}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Scheduled</p>
+                <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
+                <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
               </div>
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "draft").length}</p>
+                <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "draft").length}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Drafts</p>
               </div>
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-bold text-black font-heading">{posts.filter((p) => p.status === "published").length}</p>
+                <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "published").length}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Published</p>
               </div>
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-bold text-black font-heading">{events.length}</p>
+                <p className="text-xl font-semibold text-black">{events.length}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Events</p>
               </div>
             </div>
@@ -885,10 +967,10 @@ export default function CalendarPage() {
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Event details" className="w-full max-w-md max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Day details" tabIndex={-1} className="w-full max-w-md max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 shrink-0">
               <div>
-                <h3 className="text-lg font-bold text-black font-heading">{formatDisplayDate(selectedDate)}</h3>
+                <h3 className="text-lg font-semibold text-black">{formatDisplayDate(selectedDate)}</h3>
                 {holidayMap.get(selectedDate) && (
                   <p className="text-xs font-semibold text-[#b45309] mt-0.5">{holidayMap.get(selectedDate)}</p>
                 )}
@@ -973,9 +1055,9 @@ export default function CalendarPage() {
       {/* Schedule Post Modal */}
       {modalMode === "post" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Schedule post" className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Schedule post" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-black font-heading">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
+              <h3 className="text-lg font-semibold text-black">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
               <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -1137,7 +1219,7 @@ export default function CalendarPage() {
             <div className="flex flex-wrap gap-3 mt-6">
               {editingPost && (
                 <button
-                  onClick={handleDeletePost}
+                  onClick={() => setConfirmDeletePost(true)}
                   className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
@@ -1178,9 +1260,9 @@ export default function CalendarPage() {
       {/* Event Modal */}
       {modalMode === "event" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div role="dialog" aria-modal="true" aria-label="Add event" className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Add event" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-bold text-black font-heading">{editingEvent ? "Edit Event" : "Add Event"}</h3>
+              <h3 className="text-lg font-semibold text-black">{editingEvent ? "Edit Event" : "Add Event"}</h3>
               <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
@@ -1257,7 +1339,7 @@ export default function CalendarPage() {
             <div className="flex gap-3 mt-6">
               {editingEvent && (
                 <button
-                  onClick={handleDeleteEvent}
+                  onClick={() => setConfirmDeleteEvent(true)}
                   className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
                 >
                   Delete
@@ -1277,6 +1359,27 @@ export default function CalendarPage() {
           </div>
         </div>
       )}
+        </>
+      </LocationGate>
+
+      <DashboardConfirm
+        open={confirmDeletePost}
+        title="Delete this post?"
+        message="This removes the scheduled post from your calendar."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmDeletePost(false)}
+        onConfirm={() => void handleDeletePost()}
+      />
+      <DashboardConfirm
+        open={confirmDeleteEvent}
+        title="Delete this event?"
+        message="This removes the event from your calendar."
+        confirmLabel="Delete"
+        destructive
+        onCancel={() => setConfirmDeleteEvent(false)}
+        onConfirm={() => void handleDeleteEvent()}
+      />
     </div>
   );
 }

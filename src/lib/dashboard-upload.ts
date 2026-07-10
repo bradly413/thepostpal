@@ -1,7 +1,12 @@
 "use client";
 
+import {
+  inferMediaContentType,
+  isVideoContentType,
+} from "@/lib/upload-mime";
+
 const PRESIGN_PATH = "/api/upload/presigned";
-const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
+const MAX_IMAGE_BYTES = 25 * 1024 * 1024;
 const MAX_VIDEO_BYTES = 100 * 1024 * 1024;
 
 export interface PresignedUploadResponse {
@@ -35,9 +40,10 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
  * Bypasses the Next.js request body limit entirely.
  */
 function maxBytesForFile(file: File): number {
-  const isVideo =
-    file.type.startsWith("video/") || /\.(mp4|mov|webm)$/i.test(file.name);
-  return isVideo ? MAX_VIDEO_BYTES : MAX_IMAGE_BYTES;
+  const contentType = inferMediaContentType(file.name, file.type);
+  return contentType && isVideoContentType(contentType)
+    ? MAX_VIDEO_BYTES
+    : MAX_IMAGE_BYTES;
 }
 
 export async function uploadMediaToS3(file: File): Promise<string> {
@@ -45,14 +51,20 @@ export async function uploadMediaToS3(file: File): Promise<string> {
     throw new DashboardUploadError("Choose a file to upload.");
   }
 
-  const maxBytes = maxBytesForFile(file);
-  if (file.size > maxBytes) {
+  const contentType = inferMediaContentType(file.name, file.type);
+  if (!contentType) {
     throw new DashboardUploadError(
-      `File is too large (${maxBytes / (1024 * 1024)}MB max).`,
+      `${file.name} isn't a supported image or video. Use JPG, PNG, WebP, HEIC, MP4, or MOV.`,
     );
   }
 
-  const contentType = file.type || "application/octet-stream";
+  const maxBytes = maxBytesForFile(file);
+  if (file.size > maxBytes) {
+    const kind = isVideoContentType(contentType) ? "Video" : "Image";
+    throw new DashboardUploadError(
+      `${kind} is too large (${maxBytes / (1024 * 1024)}MB max).`,
+    );
+  }
 
   const presignRes = await fetch(PRESIGN_PATH, {
     method: "POST",
