@@ -3,6 +3,9 @@ import { cookies } from "next/headers";
 import { timingSafeEqual } from "crypto";
 import { authenticateStoredUser } from "@/lib/auth-store";
 import { getAuthSecretBytes } from "@/lib/auth-secret";
+import { resolveSessionSuperadmin } from "@/lib/superadmin-allowlist";
+
+export { isSuperadminEmail, resolveSessionSuperadmin } from "@/lib/superadmin-allowlist";
 
 export interface SessionPayload extends JWTPayload {
   role: string;
@@ -23,15 +26,6 @@ function getCredentials() {
   const username = process.env.PORTAL_USERNAME || "demo";
   const pw = process.env.PORTAL_PASSWORD || "demo123";
   return { username, password: pw };
-}
-
-function isSuperadminEmail(email?: string): boolean {
-  if (!email) return false;
-  const allowList = (process.env.POSTERBOY_SUPERADMIN_EMAILS || "")
-    .split(",")
-    .map((entry) => entry.trim().toLowerCase())
-    .filter(Boolean);
-  return allowList.includes(email.trim().toLowerCase());
 }
 
 async function verifyLegacyCredentials(identifier: string, password: string): Promise<boolean> {
@@ -56,7 +50,7 @@ export async function authenticateUser(identifier: string, password: string): Pr
       email: persistedUser.email,
       firstName: persistedUser.firstName,
       lastName: persistedUser.lastName,
-      isSuperadmin: isSuperadminEmail(persistedUser.email),
+      isSuperadmin: resolveSessionSuperadmin({ email: persistedUser.email }),
     };
   }
 

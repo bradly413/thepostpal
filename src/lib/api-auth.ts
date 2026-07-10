@@ -1,4 +1,5 @@
 import { getSessionData } from "@/lib/auth";
+import { resolveSessionSuperadmin } from "@/lib/superadmin-allowlist";
 import { ensureTenantReadyFromSession } from "@/lib/session-provision";
 
 export interface AuthContext {
@@ -23,7 +24,7 @@ export async function requireAuthContext(): Promise<AuthContext> {
     tenantId,
     organizationId: tenantId,
     role: session.role,
-    isSuperadmin: !!session.isSuperadmin,
+    isSuperadmin: resolveSessionSuperadmin(session),
   };
 }
 

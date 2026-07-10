@@ -80,7 +80,9 @@ Note: `/api/webhooks/stripe` is already exempted from auth (commit `492452e`).
 ## 🟢 SHOULD ALREADY BE SET (verify, don't assume)
 `ANTHROPIC_API_KEY` · `GEMINI_API_KEY` · `AUTH_SECRET` · `PORTAL_USERNAME` · `PORTAL_PASSWORD` · `META_APP_SECRET` · `NEXT_PUBLIC_META_APP_ID` · `META_PAGE_ACCESS_TOKEN` · `META_REDIRECT_URI` · `VIMEO_ACCESS_TOKEN` · `KV_REST_API_URL` · `KV_REST_API_TOKEN`
 
-Optional / niche: `AUTH_STORE_DIR`, `POSTERBOY_SUPERADMIN_EMAILS`, `JWT_SECRET`/`NEXTAUTH_SECRET` (fallbacks for `AUTH_SECRET`).
+Optional / niche: `AUTH_STORE_DIR`, `JWT_SECRET`/`NEXTAUTH_SECRET` (fallbacks for `AUTH_SECRET`).
+
+**Superadmin ops:** `POSTERBOY_SUPERADMIN_EMAILS` — comma-separated login emails that receive cross-tenant admin (RLS bypass). See `docs/ADMIN-PROVISIONING.md`. Set before the admin signs up (or have them re-login after you add their email). Redeploy required.
 
 ---
 

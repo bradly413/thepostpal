@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createSession } from "@/lib/auth";
+import { resolveSessionSuperadmin } from "@/lib/superadmin-allowlist";
 import {
   AuthEmailExistsError,
   isAuthStoreUnavailableError,
@@ -69,6 +70,7 @@ export async function POST(request: NextRequest) {
       email: sessionUser.email,
       firstName: sessionUser.firstName,
       lastName: sessionUser.lastName,
+      isSuperadmin: resolveSessionSuperadmin({ email: sessionUser.email }),
     });
 
     const response = NextResponse.json({
