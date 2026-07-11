@@ -86,3 +86,36 @@ export function getHolidayMap(year: number): Map<string, string> {
   }
   return map;
 }
+
+function dateKeyFromDate(d: Date): string {
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+export interface UpcomingHolidayOptions {
+  /** Inclusive start (defaults to now). */
+  from?: Date;
+  /** Max holidays to return. */
+  limit?: number;
+  /** Only holidays within this many days ahead (default 120). */
+  horizonDays?: number;
+}
+
+/** Holidays from today through the horizon — sorted, excludes past dates. */
+export function getUpcomingHolidays(opts: UpcomingHolidayOptions = {}): Holiday[] {
+  const from = opts.from ?? new Date();
+  const todayKey = dateKeyFromDate(from);
+  const limit = opts.limit ?? 6;
+  const horizonDays = opts.horizonDays ?? 120;
+
+  const end = new Date(from);
+  end.setDate(end.getDate() + horizonDays);
+  const endKey = dateKeyFromDate(end);
+
+  const years = new Set([from.getFullYear(), end.getFullYear()]);
+  const all = [...years].flatMap((y) => getHolidaysForYear(y));
+
+  return all
+    .filter((h) => h.date >= todayKey && h.date <= endKey)
+    .sort((a, b) => a.date.localeCompare(b.date))
+    .slice(0, limit);
+}

@@ -7,7 +7,7 @@ import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
 import { inferMediaContentType, isVideoContentType } from "@/lib/upload-mime";
 import { type CalendarEvent } from "@/lib/events-store";
-import { getHolidayMap } from "@/lib/holidays";
+import { getHolidayMap, getUpcomingHolidays } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { buildMetaPublishPayload } from "@/lib/meta-publish-payload";
 import { SITE_NAME } from "@/lib/site";
@@ -617,10 +617,7 @@ export default function CalendarPage() {
     .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
     .slice(0, 5);
 
-  const upcomingHolidays = Array.from(holidayMap.entries())
-    .filter(([date]) => date >= todayKey)
-    .sort(([a], [b]) => a.localeCompare(b))
-    .slice(0, 3);
+  const upcomingHolidays = getUpcomingHolidays({ from: today, limit: 3 });
 
   function formatDisplayDate(dateKey: string) {
     const d = new Date(dateKey + "T12:00:00");
@@ -637,17 +634,18 @@ export default function CalendarPage() {
         onCreate={() => router.push("/dashboard/organization")}
       >
       <>
-      <div className="pb-app-header flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1>Calendar</h1>
-          <p>Schedule posts, track events, and plan your content</p>
-        </div>
-        <div className="flex items-center gap-2 self-start">
-          {features.multiLocation && <LocationSwitcher />}
-          <button
-            onClick={() => openNewEvent(todayKey)}
-            className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2 px-4"
-          >
+      <div className="pb-app-header">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+          <div className="min-w-0">
+            <h1>Calendar</h1>
+            <p>Schedule posts, track events, and plan your content</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5 self-start xl:self-auto">
+            {features.multiLocation && <LocationSwitcher />}
+            <button
+              onClick={() => openNewEvent(todayKey)}
+              className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2.5 px-4"
+            >
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
             </svg>
@@ -655,7 +653,7 @@ export default function CalendarPage() {
           </button>
           <button
             onClick={() => openNewPost(todayKey)}
-            className="pb-btn-primary flex items-center gap-1.5 text-xs py-2 px-4"
+            className="pb-btn-primary flex items-center gap-1.5 text-xs py-2.5 px-4"
           >
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
@@ -664,13 +662,14 @@ export default function CalendarPage() {
           </button>
           <a
             href="/dashboard/calendar/bulk"
-            className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2 px-4"
+            className="pb-btn-secondary inline-flex items-center gap-1.5 text-xs py-2.5 px-4"
           >
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6h16.5M3.75 12h16.5M3.75 18h16.5" />
             </svg>
-            Bulk
+            Bulk schedule
           </a>
+          </div>
         </div>
       </div>
 
@@ -714,10 +713,10 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[1fr_280px]">
-        <div>
+      <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_272px] 2xl:gap-10">
+        <div className="min-w-0">
           {/* Calendar controls */}
-          <div className="flex items-center justify-between mb-4">
+          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-black">{monthName}</h2>
               <div className="flex gap-1">
@@ -753,7 +752,7 @@ export default function CalendarPage() {
             <div className="pb-panel overflow-hidden p-0">
               <div className="grid grid-cols-7">
                 {DAYS.map((d) => (
-                  <div key={d} className="px-2 py-2.5 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
+                  <div key={d} className="px-2 py-3 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
                 ))}
               </div>
               <div className="grid grid-cols-7 grid-rows-6">
@@ -770,7 +769,7 @@ export default function CalendarPage() {
                       tabIndex={0}
                       onClick={() => openDayDetail(cell.dateKey)}
                       onKeyDown={(e) => openDayFromKeyboard(e, cell.dateKey, openDayDetail)}
-                      className={`h-[110px] overflow-hidden border-b border-r border-black/10 p-1.5 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
+                      className={`min-h-[124px] overflow-hidden border-b border-r border-black/10 p-2 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
                     >
@@ -779,9 +778,9 @@ export default function CalendarPage() {
                       }`}>
                         {cell.day}
                       </div>
-                      <div className="space-y-0.5">
+                      <div className="space-y-1">
                         {holiday && (
-                          <div className="rounded px-1 py-0.5 text-[9px] font-semibold truncate bg-[rgba(217,119,6,0.1)] text-[#b45309]">
+                          <div className="rounded px-1.5 py-0.5 text-[10px] font-semibold truncate bg-[rgba(217,119,6,0.1)] text-[#b45309]">
                             {holiday}
                           </div>
                         )}
@@ -789,7 +788,7 @@ export default function CalendarPage() {
                           <button
                             key={ev.id}
                             onClick={(e) => { e.stopPropagation(); openEditEvent(ev); }}
-                            className={`w-full text-left rounded px-1 py-0.5 text-[9px] font-medium truncate transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
+                            className={`w-full text-left rounded px-1.5 py-0.5 text-[10px] font-medium truncate transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
                           >
                             {ev.time ? `${ev.time.slice(0,5)} ` : ""}{ev.title}
                           </button>
@@ -798,7 +797,7 @@ export default function CalendarPage() {
                           <button
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
-                            className={`w-full text-left rounded px-1 py-0.5 text-[9px] font-medium truncate transition-colors hover:opacity-80 ${
+                            className={`w-full text-left rounded px-1.5 py-0.5 text-[10px] font-medium truncate transition-colors hover:opacity-80 ${
                               p.status === "draft" ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
@@ -806,7 +805,7 @@ export default function CalendarPage() {
                           </button>
                         ))}
                         {overflow > 0 && (
-                          <p className="text-[9px] text-black/55 px-1">+{overflow} more</p>
+                          <p className="text-[10px] text-black/55 px-1.5">+{overflow} more</p>
                         )}
                       </div>
                     </div>
@@ -876,10 +875,10 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* Sidebar */}
-        <div className="space-y-4">
-          <div className="pb-panel p-4">
-            <h3 className="text-sm font-bold text-black mb-3">Upcoming Posts</h3>
+        {/* Sidebar — full width below calendar until 2xl; then a calm right rail */}
+        <aside className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-1 2xl:gap-5">
+          <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
+            <h3 className="text-sm font-bold text-black mb-4">Upcoming Posts</h3>
             {upcoming.length === 0 ? (
               <p className="text-xs text-black/55 py-4 text-center">No upcoming posts scheduled</p>
             ) : (
@@ -902,8 +901,8 @@ export default function CalendarPage() {
             )}
           </div>
 
-          <div className="pb-panel p-4">
-            <h3 className="text-sm font-bold text-black mb-3">Upcoming Events</h3>
+          <div className="pb-panel p-5">
+            <h3 className="text-sm font-bold text-black mb-4">Upcoming Events</h3>
             {upcomingEvents.length === 0 ? (
               <p className="text-xs text-black/55 py-4 text-center">No upcoming events</p>
             ) : (
@@ -927,22 +926,22 @@ export default function CalendarPage() {
           </div>
 
           {showHolidays && upcomingHolidays.length > 0 && (
-            <div className="pb-panel p-4">
-              <h3 className="text-sm font-bold text-black mb-3">Upcoming Holidays</h3>
-              <div className="space-y-2">
-                {upcomingHolidays.map(([date, name]) => (
-                  <div key={date} className="rounded-xl bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] p-3">
-                    <p className="text-[10px] font-bold text-black/55">{new Date(date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
-                    <p className="text-xs font-semibold text-[#b45309]">{name}</p>
+            <div className="pb-panel p-5">
+              <h3 className="text-sm font-bold text-black mb-4">Upcoming Holidays</h3>
+              <div className="space-y-3">
+                {upcomingHolidays.map((h) => (
+                  <div key={h.date} className="rounded-xl bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] p-3">
+                    <p className="text-[10px] font-bold text-black/55">{new Date(h.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
+                    <p className="text-xs font-semibold text-[#b45309]">{h.name}</p>
                   </div>
                 ))}
               </div>
             </div>
           )}
 
-          <div className="pb-panel p-4">
-            <h3 className="text-sm font-bold text-black mb-3">Schedule Stats</h3>
-            <div className="grid grid-cols-2 gap-3">
+          <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
+            <h3 className="text-sm font-bold text-black mb-4">Schedule Stats</h3>
+            <div className="grid grid-cols-2 gap-4">
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
                 <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
@@ -961,7 +960,7 @@ export default function CalendarPage() {
               </div>
             </div>
           </div>
-        </div>
+        </aside>
       </div>
 
       {/* Day Detail Modal */}

@@ -103,6 +103,7 @@ export async function POST(req: Request) {
     platform?: unknown;
     count?: unknown;
     context?: unknown;
+    locationId?: unknown;
   };
   try {
     body = await req.json();
@@ -126,18 +127,27 @@ export async function POST(req: Request) {
     typeof body.platform === "string" && PLATFORM_GUIDE[body.platform] ? body.platform : "instagram";
   const count = Math.min(Math.max(Number(body.count) || 3, 2), 5);
   const context = typeof body.context === "string" ? body.context.trim().slice(0, 500) : "";
+  const locationId = typeof body.locationId === "string" ? body.locationId.trim() || null : null;
 
   const imageB64 = await loadVisionJpegBase64(source);
   if (!imageB64) {
     return Response.json({ error: "Could not process the image" }, { status: 400 });
   }
 
-  const brand = await buildTenantBrandContext(auth, { platform });
+  const brand = await buildTenantBrandContext(auth, { platform, locationId });
+
+  const creatorIntent = `Interpret the creator's notes intelligently:
+- If they pasted a finished caption, lightly polish it to match the image and platform — preserve their voice, do not replace it.
+- If they wrote an idea, theme, or scattered thoughts, synthesize those into real captions grounded in what you see.
+- If notes are empty, write from the image and brand voice only.
+Notes are guidance — never claim things not visible in the image.`;
 
   const system = `You write social captions the way a real small-business owner would — like a person, not a brand and not an AI.
 Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
 
-Look at the image and write EXACTLY ${count} captions for this post. Each must describe what is actually in the image — not a generic guess from a text brief alone.
+${creatorIntent}
+
+Look at the image and write EXACTLY ${count} captions for this post. Each must describe what is actually in the image — not a generic guess from text alone.
 
 ${CAPTION_SOUND_HUMAN.replace(
     "Vary length and rhythm — one line or two or three sentences is fine.",
@@ -152,7 +162,7 @@ Respond with ONLY a JSON array (no prose, no code fences):
 [{"angle":"short label","caption":"the caption text","hashtags":["#tag1","#tag2"]}]`;
 
   const userText = context
-    ? `Optional context from the creator (use only if it matches the image): ${context}`
+    ? `Creator notes:\n${context}`
     : "Write caption options for this post image.";
 
   try {

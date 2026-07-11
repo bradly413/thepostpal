@@ -3,6 +3,10 @@ import { randomUUID } from "crypto";
 import { requireAuthContext } from "@/lib/api-auth";
 import { getAuthLoginUrl } from "@/lib/meta";
 import { resolveMetaConnectLocationId } from "@/lib/session-provision";
+import {
+  META_OAUTH_RETURN_TO_COOKIE,
+  parseMetaOAuthReturnTo,
+} from "@/lib/meta-oauth-pending";
 
 function cookieOpts(maxAge: number) {
   const secure = process.env.NODE_ENV === "production";
@@ -47,6 +51,7 @@ export async function GET(req: NextRequest) {
   }
 
   const requestedLocationId = req.nextUrl.searchParams.get("locationId");
+  const returnTo = parseMetaOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
   const locationId = await resolveMetaConnectLocationId(
     auth.tenantId,
     auth.userId,
@@ -66,6 +71,7 @@ export async function GET(req: NextRequest) {
   const response = NextResponse.redirect(redirectUrl);
   response.cookies.set("meta_oauth_state", state, cookieOpts(600));
   response.cookies.set("meta_oauth_location_id", locationId, cookieOpts(600));
+  response.cookies.set(META_OAUTH_RETURN_TO_COOKIE, returnTo, cookieOpts(600));
   return response;
 }
 

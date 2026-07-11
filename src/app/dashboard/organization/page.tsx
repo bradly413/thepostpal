@@ -1,7 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, Suspense } from "react";
 import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import UpgradeToCommandButton from "@/components/billing/UpgradeToCommandButton";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlan } from "@/components/dashboard/PlanProvider";
@@ -15,13 +16,26 @@ import {
   createDashboardLocation,
   fetchDashboardMe,
   fetchDashboardPosts,
+  fetchLocationMetaSummary,
   formatDashboardApiMessage,
+  type LocationMetaSummaryRow,
 } from "@/lib/dashboard-api";
+import { BrandMetaConnectionRow } from "@/components/dashboard/BrandMetaConnectionRow";
 import { countPostsByLocation } from "@/lib/dashboard-post-helpers";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { GROWTH, HOUSE_ACCOUNT } from "@/lib/posterboy-copy";
 
 export default function OrganizationPage() {
+  return (
+    <Suspense>
+      <OrganizationContent />
+    </Suspense>
+  );
+}
+
+function OrganizationContent() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const { features, loading: planLoading } = usePlan();
   const {
     locations,
@@ -37,6 +51,32 @@ export default function OrganizationPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [adding, setAdding] = useState(false);
+  const [metaSummary, setMetaSummary] = useState<LocationMetaSummaryRow[]>([]);
+  const [metaNotice, setMetaNotice] = useState<string | null>(null);
+  const [metaError, setMetaError] = useState<string | null>(null);
+
+  const loadMetaSummary = useCallback(async () => {
+    try {
+      const rows = await fetchLocationMetaSummary();
+      setMetaSummary(rows);
+    } catch {
+      setMetaSummary([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    const connected = searchParams.get("meta_connected");
+    const error = searchParams.get("meta_error");
+    if (connected) {
+      setMetaNotice("Facebook and Instagram connected for this brand.");
+      void loadMetaSummary();
+      router.replace("/dashboard/organization");
+    }
+    if (error) {
+      setMetaError(decodeURIComponent(error.replace(/\+/g, " ")));
+      router.replace("/dashboard/organization");
+    }
+  }, [searchParams, router, loadMetaSummary]);
 
   const load = useCallback(async () => {
     try {
@@ -48,13 +88,14 @@ export default function OrganizationPage() {
       ]);
       setMe(profile);
       setDraftCounts(countPostsByLocation(posts));
+      await loadMetaSummary();
     } catch (err) {
       setError(formatDashboardApiMessage(err, "Could not load organization details."));
       setMe(null);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [loadMetaSummary]);
 
   useEffect(() => {
     if (!planLoading && features.locationRollup) void load();
@@ -144,13 +185,46 @@ export default function OrganizationPage() {
               {org.website ? <p className="text-sm opacity-50 mt-1">{org.website}</p> : null}
             </div>
 
-            <h2 className="text-sm uppercase tracking-widest opacity-50 mb-3">Locations</h2>
+            <h2 className="text-sm uppercase tracking-widest opacity-50 mb-3">Brands &amp; channels</h2>
+            <p className="text-sm text-black/55 mb-4 max-w-2xl">
+              Connect each brand to its own Facebook Page. Switch brands in the sidebar — not a
+              channel grid.
+            </p>
+
+            {metaNotice ? (
+              <div className="mb-4 rounded-xl border border-[#1f9d4d]/25 bg-[#1f9d4d]/10 px-4 py-3 text-sm text-[#1f9d4d]">
+                {metaNotice}
+              </div>
+            ) : null}
+            {metaError ? (
+              <div className="mb-4 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/10 px-4 py-3 text-sm text-[#ee2532]">
+                {metaError}
+              </div>
+            ) : null}
+
             {locations.length === 0 ? (
               <EmptyState
                 title="No locations yet"
                 sub="Add your first location to start scheduling content."
               />
             ) : (
+              <div className="pb-draft-list mb-8">
+                {(metaSummary.length ? metaSummary : locations.map((loc) => ({
+                  locationId: loc.id,
+                  locationName: loc.name,
+                  connection: null,
+                }))).map((row) => (
+                  <BrandMetaConnectionRow
+                    key={row.locationId}
+                    row={row}
+                    onChanged={() => void loadMetaSummary()}
+                  />
+                ))}
+              </div>
+            )}
+
+            <h2 className="text-sm uppercase tracking-widest opacity-50 mb-3 mt-2">Queue snapshot</h2>
+            {locations.length === 0 ? null : (
               <div className="pb-draft-list mb-8">
                 {locations.map((loc) => (
                   <article key={loc.id} className="pb-draft-card">

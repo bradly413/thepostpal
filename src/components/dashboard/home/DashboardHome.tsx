@@ -35,25 +35,13 @@ import {
 import { formatDashboardApiMessage } from "@/lib/dashboard-api";
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
-import { getHolidaysForYear } from "@/lib/holidays";
+import { getUpcomingHolidays } from "@/lib/holidays";
+import { buildHeroHolidaySlides } from "@/lib/hero-holiday-slides";
+import { todayDateKeyLocal } from "@/lib/dashboard-post-helpers";
 
 // ── Hero coverflow (seasonal hooks) ──────────────────────────
-// Local seasonal slides only — stock imagery looked like another tenant's
-// photos to beta users, so remote Unsplash slides were removed. Photo
-// slides only (typographic holiday cards retired 2026-06-12).
-interface HeroSlide {
-  title: string;
-  date: string;
-  img?: string;
-  grad: number; // palette index for typographic cards
-}
-
-const SLIDES: HeroSlide[] = [
-  { title: "Juneteenth", date: "June 19th", img: "/hero/juneteenth.jpg", grad: 2 },
-  { title: "Father's Day", date: "June 21st", img: "/hero/fathers-day.jpg", grad: 0 },
-  { title: "Fourth of July", date: "America 250", img: "/hero/fourth-of-july.jpg", grad: 1 },
-  { title: "Labor Day", date: "September 7th", img: "/hero/labor-day.jpg", grad: 3 },
-];
+// Slides are built from the shared holiday calendar — no hardcoded dates.
+import type { HeroHolidaySlide } from "@/lib/hero-holiday-slides";
 
 const POST_PLATFORMS = ["instagram", "facebook", "x"] as const;
 
@@ -125,9 +113,8 @@ export default function DashboardHome() {
   const [data, setData] = useState<DashboardHomeSnapshot | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
-  // Photo slides only — typographic holiday cards retired by Brad's call;
-  // the week rail's holiday suggestion covers "what's coming" instead.
-  const heroSlides = SLIDES;
+  const todayKey = useMemo(() => todayDateKeyLocal(), []);
+  const heroSlides = useMemo(() => buildHeroHolidaySlides(new Date()), [todayKey]);
   const swiperRef = useRef<SwiperInstance | null>(null);
   const [heroPaused, setHeroPaused] = useState(false);
   const [reduceMotion, setReduceMotion] = useState(false);
@@ -303,11 +290,7 @@ export default function DashboardHome() {
 
   // Posterboy suggests: the next real holiday within 14 days, pre-briefed.
   const holidaySuggestion = useMemo(() => {
-    const now = new Date();
-    const todayKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const next = [...getHolidaysForYear(now.getFullYear()), ...getHolidaysForYear(now.getFullYear() + 1)]
-      .filter((h) => h.date >= todayKey)
-      .sort((a, b) => a.date.localeCompare(b.date))[0];
+    const next = getUpcomingHolidays({ limit: 1, horizonDays: 14 })[0];
     if (!next) return null;
     const days = Math.round(
       (new Date(`${next.date}T12:00:00`).getTime() - new Date(`${todayKey}T12:00:00`).getTime()) / 86400000,
@@ -318,7 +301,7 @@ export default function DashboardHome() {
       label: `${next.name} is ${when} — draft a post?`,
       brief: `a post about ${next.name.toLowerCase()}`,
     };
-  }, []);
+  }, [todayKey]);
 
   if (loading && !data) {
     return (
@@ -472,8 +455,8 @@ export default function DashboardHome() {
               keyboard={{ enabled: true }}
               onSwiper={(s) => { swiperRef.current = s; }}
             >
-              {heroSlides.map((s) => (
-                <SwiperSlide key={`${s.title}-${s.date}`}>
+              {heroSlides.map((s: HeroHolidaySlide) => (
+                <SwiperSlide key={s.dateKey || `${s.title}-${s.date}`}>
                   <div className={`cf-card${s.img ? "" : ` cf-grad-${s.grad}`}`}>
                     {s.img ? (
                       <>
@@ -484,7 +467,12 @@ export default function DashboardHome() {
                     <div className="cf-body">
                       <div className="cf-title">{s.title}</div>
                       <div className="cf-date">{s.date}</div>
-                      <Link href="/dashboard/studio" className="cf-btn">Create Post</Link>
+                      <Link
+                        href={`/dashboard/studio?brief=${encodeURIComponent(s.brief)}`}
+                        className="cf-btn"
+                      >
+                        Create Post
+                      </Link>
                     </div>
                   </div>
                 </SwiperSlide>

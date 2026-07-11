@@ -1,83 +1,152 @@
 import { NextRequest, NextResponse } from "next/server";
-import { exchangeCode, getLongLivedToken, getPages, getInstagramAccount } from "@/lib/meta";
+import {
+  exchangeCode,
+  getLongLivedToken,
+  getPages,
+} from "@/lib/meta";
 import { getSession } from "@/lib/auth";
 import { requireAuthContext } from "@/lib/api-auth";
-import { withTenantDb } from "@/lib/db";
-import { persistMetaBundle } from "@/lib/meta-social-db";
 import { SOLO_MAX_CONNECTED_PROFILES } from "@/lib/social-profile-limits";
+import { resolveMetaConnectLocationId } from "@/lib/session-provision";
+import { completeMetaPageConnection } from "@/lib/meta-connect-complete";
+import {
+  META_OAUTH_PENDING_COOKIE,
+  META_OAUTH_PENDING_MAX_AGE,
+  metaConnectErrorPath,
+  metaConnectSuccessPath,
+  sealMetaOAuthPending,
+} from "@/lib/meta-oauth-pending";
 
+const LEGACY_RETURN_TO = "settings" as const;
+
+function cookieOpts(maxAge: number) {
+  const secure = process.env.NODE_ENV === "production";
+  return {
+    path: "/",
+    maxAge,
+    sameSite: "lax" as const,
+    httpOnly: true,
+    secure,
+  };
+}
+
+/**
+ * GET /api/meta/callback
+ * Legacy Meta OAuth redirect URI — mirrors /api/auth/meta/callback for older app configs.
+ */
 export async function GET(req: NextRequest) {
+  const redirectError = (message: string) =>
+    NextResponse.redirect(new URL(metaConnectErrorPath(LEGACY_RETURN_TO, message), req.url));
+
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
 
   if (error || !code) {
-    const msg = req.nextUrl.searchParams.get("error_description") || "Authorization denied";
-    return NextResponse.redirect(new URL(`/dashboard/settings?meta_error=${encodeURIComponent(msg)}`, req.url));
+    const msg =
+      req.nextUrl.searchParams.get("error_description") || "Authorization denied";
+    return redirectError(msg);
   }
 
   const state = req.nextUrl.searchParams.get("state");
   const storedState = req.cookies.get("meta_oauth_state")?.value;
   if (!state || !storedState || state !== storedState) {
-    return NextResponse.redirect(
-      new URL("/dashboard/settings?meta_error=Invalid+OAuth+state.+Please+try+connecting+again.", req.url),
-    );
+    return redirectError("Invalid OAuth state. Please try connecting again.");
   }
 
   const session = await getSession();
   if (!session) {
     return NextResponse.redirect(
-      new URL("/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+Meta", req.url),
+      new URL(
+        "/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+Meta",
+        req.url,
+      ),
     );
   }
 
-  const locationId = req.cookies.get("meta_oauth_location_id")?.value;
-  if (!locationId) {
-    return NextResponse.redirect(
-      new URL("/dashboard/settings?meta_error=Choose+a+location+before+connecting+Meta", req.url),
-    );
-  }
+  const cookieLocationId = req.cookies.get("meta_oauth_location_id")?.value;
 
   try {
-    const { access_token: shortToken } = await exchangeCode(code);
-    const { access_token: longToken } = await getLongLivedToken(shortToken);
-    const pages = await getPages(longToken);
+    const auth = await requireAuthContext();
+    const locationId = await resolveMetaConnectLocationId(
+      auth.tenantId,
+      auth.userId,
+      cookieLocationId,
+    );
 
-    if (!pages.length) {
-      return NextResponse.redirect(new URL("/dashboard/settings?meta_error=No+Facebook+Pages+found", req.url));
+    if (!locationId) {
+      return redirectError("Finish setting up your workspace before connecting Meta.");
     }
 
-    const page = pages[0];
-    const igId = await getInstagramAccount(page.id, page.access_token);
+    const { access_token: shortToken } = await exchangeCode(code);
+    const long = await getLongLivedToken(shortToken);
+    const pages = await getPages(long.access_token);
 
-    const auth = await requireAuthContext();
-    await withTenantDb(auth, async (tx) => {
-      await persistMetaBundle(auth, tx, {
-        locationId,
-        pageId: page.id,
-        pageName: page.name,
-        pageToken: page.access_token,
-        igAccountId: igId || null,
-      });
-    });
+    if (!pages.length) {
+      return redirectError("No Facebook Pages found");
+    }
+
+    const tokenExpiresAt = long.expires_in
+      ? new Date(Date.now() + long.expires_in * 1000)
+      : null;
+
+    const clearOAuthCookies = (response: NextResponse) => {
+      response.cookies.delete("meta_oauth_state");
+      response.cookies.delete("meta_oauth_location_id");
+      response.cookies.delete("meta_connection");
+    };
+
+    if (pages.length === 1) {
+      await completeMetaPageConnection(auth, locationId, pages[0], tokenExpiresAt);
+      const response = NextResponse.redirect(
+        new URL(metaConnectSuccessPath(LEGACY_RETURN_TO), req.url),
+      );
+      clearOAuthCookies(response);
+      return response;
+    }
 
     const response = NextResponse.redirect(
-      new URL("/dashboard/settings?meta_connected=1", req.url),
+      new URL("/dashboard/connect/meta", req.url),
     );
-    response.cookies.delete("meta_oauth_state");
-    response.cookies.delete("meta_oauth_location_id");
-    response.cookies.delete("meta_connection");
+    response.cookies.set(
+      META_OAUTH_PENDING_COOKIE,
+      sealMetaOAuthPending({
+        locationId,
+        userToken: long.access_token,
+        tokenExpiresAt: tokenExpiresAt?.toISOString() ?? null,
+        returnTo: LEGACY_RETURN_TO,
+      }),
+      cookieOpts(META_OAUTH_PENDING_MAX_AGE),
+    );
+    clearOAuthCookies(response);
     return response;
   } catch (err) {
-    if (err instanceof Error && err.message === "SOLO_PROFILE_LIMIT") {
+    if (err instanceof Error && err.message === "UNAUTHORIZED") {
       return NextResponse.redirect(
         new URL(
-          `/dashboard/settings?meta_error=${encodeURIComponent(`Solo includes up to ${SOLO_MAX_CONNECTED_PROFILES} connected social profiles.`)}`,
+          "/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+Meta",
           req.url,
         ),
       );
     }
 
-    const msg = err instanceof Error ? err.message : "Connection failed";
-    return NextResponse.redirect(new URL(`/dashboard/settings?meta_error=${encodeURIComponent(msg)}`, req.url));
+    if (err instanceof Error && err.message === "SOLO_PROFILE_LIMIT") {
+      return redirectError(
+        `Solo includes up to ${SOLO_MAX_CONNECTED_PROFILES} connected social profiles.`,
+      );
+    }
+
+    if (err instanceof Error && err.message === "FORBIDDEN") {
+      return redirectError(
+        "You don't have access to this location. Switch locations and try again.",
+      );
+    }
+
+    console.error(
+      "[api/meta/callback] connection failed:",
+      err instanceof Error ? err.message : err,
+    );
+    return redirectError("Couldn't connect to Meta — please try again.");
   }
 }
+
+export const dynamic = "force-dynamic";

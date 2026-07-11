@@ -75,7 +75,14 @@ export async function POST(req: Request) {
     return Response.json({ error: "AI service not configured" }, { status: 500 });
   }
 
-  let body: { imageUrl?: unknown; platform?: unknown };
+  let body: {
+    imageUrl?: unknown;
+    platform?: unknown;
+    locationId?: unknown;
+    batchIndex?: unknown;
+    batchTotal?: unknown;
+    priorCaptions?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
@@ -87,6 +94,15 @@ export async function POST(req: Request) {
     return Response.json({ error: "A valid https imageUrl is required" }, { status: 400 });
   }
   const platform = typeof body.platform === "string" && PLATFORM_GUIDE[body.platform] ? body.platform : "instagram";
+  const locationId = typeof body.locationId === "string" ? body.locationId.trim() || null : null;
+  const batchIndex = typeof body.batchIndex === "number" && body.batchIndex >= 0 ? body.batchIndex : null;
+  const batchTotal = typeof body.batchTotal === "number" && body.batchTotal > 0 ? body.batchTotal : null;
+  const priorCaptions = Array.isArray(body.priorCaptions)
+    ? body.priorCaptions
+        .map((c) => (typeof c === "string" ? c.trim() : ""))
+        .filter(Boolean)
+        .slice(-4)
+    : [];
 
   let b64: string;
   try {
@@ -102,10 +118,19 @@ export async function POST(req: Request) {
     return Response.json({ error: "Could not process the image" }, { status: 400 });
   }
 
-  const brand = await buildTenantBrandContext(auth, { platform });
+  const brand = await buildTenantBrandContext(auth, { platform, locationId });
+
+  const batchBlock =
+    batchIndex !== null && batchTotal !== null && batchTotal > 1
+      ? `\n\nThis caption is post ${batchIndex + 1} of ${batchTotal} in a bulk scheduling batch. Vary the angle, opening, and rhythm from the other posts — do not repeat hooks or phrasing.${
+          priorCaptions.length
+            ? `\nCaptions already written in this batch (do NOT echo these):\n${priorCaptions.map((c) => `- ${c.slice(0, 160)}`).join("\n")}`
+            : ""
+        }`
+      : "";
 
   const system = `You write social captions the way a real small-business owner would — like a person, not a brand and not an AI.
-Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
+Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}${batchBlock}
 
 Look at the image and write ONE caption for it, in the brand's voice. If the image has text on it, treat it as a cue — riff on it, don't just repeat it verbatim. ${CAPTION_SOUND_HUMAN}
 

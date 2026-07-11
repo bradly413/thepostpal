@@ -27,18 +27,18 @@ export function DashboardHomeStyles() {
     .pb-home2 * { box-sizing: border-box; }
 
     .home2 {
-      display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px;
-      max-width: 1520px; margin: 0 auto; padding: 22px; min-height: 100%;
+      display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 24px;
+      max-width: 1560px; margin: 0 auto; padding: 24px; min-height: 100%;
     }
     @media (max-width: 980px) {
-      .home2 { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
+      .home2 { grid-template-columns: 72px minmax(0, 1fr); gap: 16px; padding: 16px; }
     }
     @media (max-width: 600px) {
-      .home2 { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 8px; }
+      .home2 { grid-template-columns: 56px minmax(0, 1fr); gap: 12px; padding: 12px; }
     }
 
     /* ---------- Main ---------- */
-    .main2 { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+    .main2 { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
     /* Utility bar */
     .topbar2 { position: relative; z-index: 60; display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 6px; margin-bottom: 6px; }

@@ -10,6 +10,7 @@ import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurit
 import Link from "next/link";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useActiveLocation } from "@/lib/use-active-location";
+import { buildMetaLoginUrl } from "@/lib/meta-connect-client";
 import { setStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 
 export default function SettingsPage() {
@@ -137,7 +138,7 @@ function SettingsContent() {
 
     setStoredActiveLocationId(validLocation);
     setMetaError(null);
-    window.location.href = `/api/auth/meta/login?locationId=${encodeURIComponent(validLocation)}`;
+    window.location.href = buildMetaLoginUrl(validLocation, "settings");
   }
 
   async function handleDisconnectMeta() {
@@ -270,6 +271,7 @@ function SettingsContent() {
             <AccountSecurityPanel
               meta={meta}
               metaError={metaError}
+              locationName={locations.find((l) => l.id === locationId)?.name ?? null}
               onConnectMeta={handleConnectMeta}
               onDisconnectMeta={() => void handleDisconnectMeta()}
             />

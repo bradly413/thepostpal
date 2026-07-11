@@ -9,11 +9,13 @@ import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 export default function AccountSecurityPanel({
   meta,
   metaError,
+  locationName,
   onConnectMeta,
   onDisconnectMeta,
 }: {
   meta: MetaConnectionPublic | null;
   metaError: string | null;
+  locationName?: string | null;
   onConnectMeta: () => void;
   onDisconnectMeta: () => void;
 }) {
@@ -159,7 +161,11 @@ export default function AccountSecurityPanel({
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-sm font-medium">Connected Accounts</p>
-                <p className="text-xs opacity-55 mt-0.5">Facebook and Instagram connections</p>
+                <p className="text-xs opacity-55 mt-0.5">
+                  {locationName
+                    ? `Facebook and Instagram for ${locationName}`
+                    : "Facebook and Instagram for the active brand"}
+                </p>
               </div>
             </div>
             {metaError && (
@@ -195,13 +201,21 @@ export default function AccountSecurityPanel({
                 </button>
               </div>
             ) : (
-              <button
-                type="button"
-                onClick={onConnectMeta}
-                className="pb-btn-primary w-full flex items-center justify-center gap-2 text-xs py-2.5 mt-3"
-              >
-                Connect with Facebook
-              </button>
+              <div className="mt-3 space-y-2">
+                <button
+                  type="button"
+                  onClick={onConnectMeta}
+                  className="pb-btn-primary w-full flex items-center justify-center gap-2 text-xs py-2.5"
+                >
+                  Connect with Facebook
+                </button>
+                <p className="text-[11px] text-black/45 text-center">
+                  Manage all brands on{" "}
+                  <Link href="/dashboard/organization" className="text-[#ee2532] hover:underline">
+                    Organization
+                  </Link>
+                </p>
+              </div>
             )}
           </div>
         </div>

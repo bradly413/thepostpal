@@ -326,6 +326,49 @@ export async function disconnectDashboardMetaConnection(
   );
 }
 
+export interface MetaPageOption {
+  id: string;
+  name: string;
+}
+
+export interface MetaPendingConnection {
+  locationId: string;
+  locationName: string;
+  returnTo: "organization" | "settings";
+  pages: MetaPageOption[];
+}
+
+export async function fetchMetaPendingConnection(): Promise<MetaPendingConnection> {
+  return apiRequest<MetaPendingConnection>("/api/auth/meta/pending");
+}
+
+export async function completeMetaPageSelection(
+  pageId: string,
+): Promise<MetaConnectionPublic> {
+  const data = await apiRequest<{ connection: MetaConnectionPublic }>(
+    "/api/auth/meta/complete",
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ pageId }),
+    },
+  );
+  return data.connection;
+}
+
+export interface LocationMetaSummaryRow {
+  locationId: string;
+  locationName: string;
+  connection: MetaConnectionPublic | null;
+}
+
+export async function fetchLocationMetaSummary(): Promise<LocationMetaSummaryRow[]> {
+  const data = await apiRequest<{ locations: LocationMetaSummaryRow[] }>(
+    "/api/social-connections/meta/summary",
+  );
+  return data.locations;
+}
+
 export async function fetchDashboardMetaInsights(
   locationId: string,
 ): Promise<import("@/lib/meta-insights-types").DashboardMetaInsights> {
