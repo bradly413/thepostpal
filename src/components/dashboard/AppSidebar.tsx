@@ -16,20 +16,8 @@ import {
   Hexagon,
   Settings,
   Globe,
-  ChevronDown,
 } from "lucide-react";
 import { usePlan } from "@/components/dashboard/PlanProvider";
-
-// ────────────────────────────────────────────────────────────────
-//  Shared dashboard sidebar — the single source of truth for the
-//  dashboard chrome. Built around the home page's design (frosted
-//  glass, serif "posterboy" logo, uppercase nav, red active). The ONLY
-//  serif in the dashboard is this logo.
-//
-//  Fully self-contained (own scoped styles under .pb-side) so it drops
-//  into ANY context identically — the home frame, content pages, and
-//  the Studio canvas app.
-// ────────────────────────────────────────────────────────────────
 
 interface NavLink {
   label: string;
@@ -80,7 +68,6 @@ const SIDEBAR_CSS = `
   border: 1px solid rgba(255,255,255,0.65);
   box-shadow: 0 24px 60px -38px rgba(20,20,40,0.4), inset 0 1px 0 rgba(255,255,255,0.7);
 }
-@media (max-width: 980px) { .pb-side { height: auto; position: relative; top: 0; } }
 .pb-side .logo {
   font-family: var(--font-playfair, var(--font-instrument-serif, Georgia, serif));
   font-size: 30px; font-weight: 500; letter-spacing: -0.5px; color: var(--ink);
@@ -95,14 +82,14 @@ const SIDEBAR_CSS = `
   color: var(--ink-soft); text-decoration: none; font-size: var(--text-body); font-weight: 600;
   letter-spacing: 0.6px; text-transform: uppercase; transition: var(--transition-color);
 }
-.pb-side nav a svg { width: 18px; height: 18px; opacity: .85; }
+.pb-side nav a svg { width: 18px; height: 18px; opacity: .85; flex-shrink: 0; }
 .pb-side nav a:hover { color: var(--ink); background: rgba(20,20,40,0.04); }
 .pb-side nav a.active { color: #fff; background: #c81e2a; box-shadow: 0 12px 26px -14px rgba(200,30,42,0.55); }
 .pb-side nav a.active svg { color: #fff; opacity: 1; }
 .pb-side .spacer { flex: 1; }
 .pb-side .foot {
   display: flex; align-items: center; gap: 11px; margin-top: 16px; padding-top: 16px;
-  border-top: 1px solid var(--line); background: none; border: 0; border-top: 1px solid var(--line);
+  border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0;
   cursor: pointer; width: 100%; text-align: left; text-decoration: none;
 }
 .pb-side .foot .av {
@@ -111,7 +98,54 @@ const SIDEBAR_CSS = `
 }
 .pb-side .foot .nm { font-size: var(--text-body-sm); font-weight: 600; color: var(--ink); }
 .pb-side .foot .rl { font-size: var(--text-label); color: var(--ink-soft); }
+
+/* Tablet + mobile: slim icon rail — never stack full nav above content */
+@media (max-width: 980px) {
+  .pb-side {
+    top: 12px; height: calc(100dvh - 24px); padding: 20px 10px; align-items: center; width: 72px;
+  }
+  .pb-side .logo { display: none; }
+  .pb-side nav { width: 100%; }
+  .pb-side nav a {
+    justify-content: center; gap: 0; padding: 11px 0; letter-spacing: 0;
+  }
+  .pb-side nav a .nav-label {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  .pb-side nav .grp-gap { margin: 8px 8px; width: calc(100% - 16px); }
+  .pb-side .foot { justify-content: center; gap: 0; margin-top: 12px; padding-top: 12px; }
+  .pb-side .foot .foot-text, .pb-side .foot .foot-chevron { display: none; }
+}
+
+@media (max-width: 600px) {
+  .pb-side {
+    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 16px 6px; border-radius: 22px;
+  }
+  .pb-side nav a { padding: 10px 0; border-radius: 12px; }
+  .pb-side nav a svg { width: 17px; height: 17px; }
+  .pb-side .foot .av { width: 30px; height: 30px; border-radius: 10px; font-size: 10px; }
+}
 `;
+
+function NavItem({
+  label,
+  href,
+  Icon,
+  active,
+}: {
+  label: string;
+  href: string;
+  Icon: typeof Home;
+  active: boolean;
+}) {
+  return (
+    <Link href={href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+      <Icon aria-hidden />
+      <span className="nav-label">{label}</span>
+    </Link>
+  );
+}
 
 export default function AppSidebar() {
   const pathname = usePathname();
@@ -145,8 +179,6 @@ export default function AppSidebar() {
   }, []);
 
   const isActive = (href: string) =>
-    // Exact match for roots ("/dashboard", "/") — startsWith("/") matches every
-    // path, so the marketing "View site" link must compare exactly.
     href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
 
   const showItem = (item: NavLink) => {
@@ -158,33 +190,32 @@ export default function AppSidebar() {
   return (
     <aside className="pb-side">
       <style>{SIDEBAR_CSS}</style>
-      <Link href="/dashboard" className="logo" aria-label="Posterboy">
+      <Link href="/dashboard" className="logo" aria-label="Posterboy home">
         poster<em>boy</em>
         <span className="tm">®</span>
       </Link>
-      <nav>
+      <nav aria-label="Dashboard">
         {NAV_TOP.filter(showItem).map(({ label, href, Icon }) => (
-          <Link key={label} href={href} className={isActive(href) ? "active" : ""}>
-            <Icon />
-            <span>{label}</span>
-          </Link>
+          <NavItem key={label} label={label} href={href} Icon={Icon} active={isActive(href)} />
         ))}
-        <div className="grp-gap" />
+        <div className="grp-gap" role="presentation" />
         {NAV_BOTTOM.map(({ label, href, Icon }) => (
-          <Link key={label} href={href} className={isActive(href) ? "active" : ""}>
-            <Icon />
-            <span>{label}</span>
-          </Link>
+          <NavItem key={label} label={label} href={href} Icon={Icon} active={isActive(href)} />
         ))}
       </nav>
       <div className="spacer" />
-      <Link href="/dashboard/settings" className="foot" aria-label="Account">
-        <span className="av">{me.initials}</span>
-        <span>
+      <Link
+        href="/dashboard/settings"
+        className="foot"
+        aria-label={`Account settings for ${me.name}`}
+      >
+        <span className="av" aria-hidden>
+          {me.initials}
+        </span>
+        <span className="foot-text">
           <div className="nm">{me.name}</div>
           <div className="rl">{me.role}</div>
         </span>
-        <ChevronDown size={15} style={{ marginLeft: "auto", color: "var(--ink-soft)" }} />
       </Link>
     </aside>
   );

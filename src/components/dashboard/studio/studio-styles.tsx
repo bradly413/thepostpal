@@ -22,7 +22,7 @@ export function StudioStyles() {
     --radius: 20px;
     --radius-sm: 12px;
     --serif: "Fraunces", "Times New Roman", serif;
-    --sans: "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+    --sans: var(--font-instrument-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
   }.pb-studio * { box-sizing: border-box; margin: 0; padding: 0; }.pb-studio {
     font-family: var(--sans);
     background: var(--bg);
@@ -454,12 +454,13 @@ export function StudioStyles() {
   .pb-studio .frame { transition: filter 0.85s cubic-bezier(0.2,0.7,0.2,1); }
   .pb-studio .frame:not(.generating):not(.done) { filter: brightness(0.88) saturate(0.92); }
   @media (prefers-reduced-motion: no-preference) {
-    .pb-studio .frame.done { animation: pbsIlluminate 1.15s ease; }
+    .pb-studio .frame.done { animation: pbsIlluminate 1.15s ease forwards; }
   }
+  .pb-studio .frame.done { filter: brightness(1.02) saturate(1.04); }
   @keyframes pbsIlluminate {
     0% { filter: brightness(0.88) saturate(0.92); }
-    42% { filter: brightness(1.13) saturate(1.05) drop-shadow(0 0 26px rgba(238,37,50,0.26)); }
-    100% { filter: brightness(1); }
+    42% { filter: brightness(1.06) saturate(1.05) drop-shadow(0 0 26px rgba(238,37,50,0.26)); }
+    100% { filter: brightness(1.02) saturate(1.04); }
   }
   .pb-studio .studio-intent-stage {
     position: absolute; inset: 0; z-index: 5; display: flex; flex-direction: column;
@@ -553,66 +554,62 @@ export function StudioStyles() {
     box-shadow: none;
     animation: none;
     background: #161616;
-  }.pb-studio .frame-wrap.as-post .frame .preview { transition: none; }.pb-studio /* Prompt bar — glass morphism */
+  }.pb-studio /* Prompt bar — ElevenLabs-style writing surface */
   .prompt-bar {
     position: absolute;
     bottom: 40px;
     left: 50%;
     transform: translateX(-50%);
-    width: min(680px, 78%);
-    background: rgba(255, 255, 255, 0.22);
-    backdrop-filter: blur(24px) saturate(180%);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    border: 1.5px solid rgba(255, 255, 255, 0.42);
+    width: min(720px, 86%);
+    background: #ffffff;
+    border: none;
     border-radius: 18px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
-    padding: 14px 14px 12px 18px;
-    gap: 10px;
+    padding: 0;
+    gap: 0;
     box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.5),
-      0 10px 40px rgba(0,0,0,0.18);
+      0 4px 24px rgba(0, 0, 0, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.04);
     z-index: 15;
-    transition: border-color var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), background-color var(--duration-moderate) var(--ease-standard);
+    overflow: hidden;
+    transition: box-shadow var(--duration-moderate) var(--ease-standard);
   }
-  @property --pb-bar-angle { syntax: '<angle>'; initial-value: 0deg; inherits: false; }
-  /* animated brand-red glow that travels around the composer border; the
-     conic is masked to a 1.6px ring (no interior bleed) and drop-shadowed
-     for the halo. Brighter on focus. */
-  .pb-studio .prompt-bar::before {
-    content: ""; position: absolute; inset: 0; border-radius: inherit; padding: 1.6px;
-    background: conic-gradient(from var(--pb-bar-angle),
-      rgba(238,37,50,0.18) 0deg, rgba(238,37,50,0.24) 130deg,
-      rgba(238,37,50,0.62) 250deg, #ff5560 312deg, rgba(238,37,50,0.62) 350deg,
-      rgba(238,37,50,0.18) 360deg);
-    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
-    mask-composite: exclude;
-    pointer-events: none;
-    opacity: 0.8;
-    filter: drop-shadow(0 0 8px rgba(238,37,50,0.45)) drop-shadow(0 0 18px rgba(238,37,50,0.28));
-    animation: pbBarGlow 9s linear infinite;
-    transition: opacity var(--duration-moderate) var(--ease-standard), filter var(--duration-moderate) var(--ease-standard);
+  .pb-studio .prompt-bar::before { display: none; }
+  .pb-studio .prompt-bar:focus-within {
+    box-shadow:
+      0 6px 28px rgba(0, 0, 0, 0.1),
+      0 0 0 3px rgba(0, 0, 0, 0.04);
   }
-  .pb-studio .prompt-bar:focus-within::before {
-    opacity: 1;
-    filter: drop-shadow(0 0 11px rgba(238,37,50,0.6)) drop-shadow(0 0 24px rgba(238,37,50,0.42));
-  }
-  .pb-studio .prompt-bar.is-generating::before {
-    animation-duration: 3s;
-    opacity: 1;
-  }
-  @keyframes pbBarGlow { to { --pb-bar-angle: 360deg; } }
 
-  .pb-studio .pb-bar-input { display: flex; align-items: center; min-height: 30px; }
+  .pb-studio .pb-bar-input {
+    display: flex;
+    align-items: stretch;
+    min-height: 72px;
+    padding: 20px 22px 10px;
+  }
   /* "image ready" review gate — shown after generation, before captioning */
   .pb-studio .pb-ready { display: flex; flex-direction: column; gap: 1px; min-height: 30px; justify-content: center; }
   .pb-studio .pb-ready-title { font-size: var(--text-body-sm, 14px); font-weight: 600; color: var(--ink, #1c1c1e); line-height: 1.25; }
   .pb-studio .pb-ready-sub { font-size: var(--text-caption, 12.5px); color: var(--muted, #8a8884); line-height: 1.3; }
-  .pb-studio .pb-bar-controls { display: flex; align-items: center; gap: 8px; min-width: 0; }
+  .pb-studio .pb-bar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 10px 14px 14px;
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
+    background: #fff;
+  }
   .pb-studio .pb-bar-spacer { flex: 1; }
+  .pb-studio .pb-bar-extras {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+  }
+  .pb-studio .prompt-bar.is-minimal .pb-bar-extras { display: none; }
   .pb-studio .pb-ref-chip {
     flex: none; display: inline-flex; align-items: center; gap: 7px;
     height: 34px; padding: 0 12px; border-radius: 10px;
@@ -677,30 +674,37 @@ export function StudioStyles() {
   .pb-studio .pb-size-toggle:hover { text-decoration: underline; }
   .pb-studio .pb-generate {
     flex: none; display: inline-flex; align-items: center; gap: 8px;
-    height: 40px; padding: 0 22px; border-radius: 12px;
-    background: var(--red-press, #c81e2a); border: 1px solid var(--red-press, #c81e2a); color: #fff;
-    font-size: var(--text-body); font-weight: 600; white-space: nowrap;
-    box-shadow: 0 12px 26px -12px rgba(238,37,50,0.7);
-    transition: var(--transition-color), opacity var(--duration-fast) var(--ease-standard);
+    height: 36px; padding: 0 18px; border-radius: 10px;
+    background: var(--red-press, #c81e2a); border: none; color: #fff;
+    font-size: 14px; font-weight: 600; white-space: nowrap;
+    box-shadow: none;
+    transition: background var(--duration-fast) var(--ease-standard), opacity var(--duration-fast) var(--ease-standard);
   }
+  .pb-studio .pb-generate.pb-generate-primary {
+    background: #111111;
+    margin-left: auto;
+    border-radius: 9px;
+    height: 38px;
+    padding: 0 20px;
+    font-weight: 600;
+    letter-spacing: -0.01em;
+  }
+  .pb-studio .pb-generate.pb-generate-primary:hover:not(:disabled) { background: #2a2a2a; }
   .pb-studio .pb-generate:hover:not(:disabled) { background: #d61f2b; }
-  .pb-studio .pb-generate:disabled { opacity: 0.4; cursor: default; box-shadow: none; }.pb-studio .prompt-bar:focus-within {
-    background: rgba(255, 255, 255, 0.35);
-    border-color: rgba(255, 255, 255, 0.7);
-    /* transform is GSAP-owned (hero glide) — no transform here */
-  }.pb-studio .prompt-bar.is-generating {
-    border-color: rgba(217,119,87,0.55);
+  .pb-studio .pb-generate:disabled { opacity: 0.4; cursor: default; }
+  .pb-studio .pb-generate svg { width: 15px; height: 15px; }
+  .pb-studio .prompt-bar.is-generating {
     animation: pbsAgentPulse 2s ease-in-out infinite;
-  }@keyframes pbsAgentPulse {
+  }
+  @keyframes pbsAgentPulse {
     0%, 100% {
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.32), 0 0 18px 2px rgba(217,119,87,0.22), 0 10px 40px rgba(0,0,0,0.18);
+      box-shadow: 0 4px 24px rgba(0, 0, 0, 0.08), 0 0 0 1px rgba(217,119,87,0.2);
     }
     50% {
-      box-shadow: inset 0 1px 0 rgba(255,255,255,0.5), 0 0 0 1px rgba(217,119,87,0.6), 0 0 30px 7px rgba(217,119,87,0.4), 0 10px 40px rgba(0,0,0,0.2);
+      box-shadow: 0 6px 28px rgba(0, 0, 0, 0.1), 0 0 0 2px rgba(217,119,87,0.35);
     }
   }
-    50% { opacity: 1; }
-  }.pb-studio .prompt-bar .pb-reprompt {
+  .pb-studio .prompt-bar .pb-reprompt {
     flex: none;
     display: inline-flex;
     align-items: center;
@@ -716,7 +720,8 @@ export function StudioStyles() {
     letter-spacing: 0.01em;
     white-space: nowrap;
     transition: var(--transition-color);
-  }.pb-studio .prompt-bar .pb-reprompt:hover {
+  }
+  .pb-studio .prompt-bar .pb-reprompt:hover {
     background: rgba(238, 37, 50, 0.14);
     border-color: rgba(238, 37, 50, 0.42);
   }.pb-studio .prompt-bar .pb-reprompt svg {
@@ -768,17 +773,76 @@ export function StudioStyles() {
     border: 1px solid var(--line-2);
     border-radius: 5px;
     padding: 1px 5px;
-  }.pb-studio .prompt-bar input {
+  }.pb-studio .prompt-bar input,
+  .pb-studio .prompt-bar textarea.pb-bar-textarea {
     flex: 1;
+    width: 100%;
+    min-height: 28px;
+    max-height: 168px;
+    resize: none;
     background: transparent;
     border: none;
     outline: none;
-    font-size: var(--text-ui);
+    font-size: 15px;
+    line-height: 1.55;
     font-weight: 400;
-    color: rgba(20, 20, 25, 0.85);
-  }.pb-studio .prompt-bar input::placeholder {
-    color: rgba(20, 20, 25, 0.62);
-  }.pb-studio .studio-schedule-row {
+    color: #111111;
+    padding: 0;
+    overflow-y: auto;
+    font-family: inherit;
+  }
+  .pb-studio .prompt-bar textarea.pb-bar-textarea::placeholder,
+  .pb-studio .prompt-bar input::placeholder {
+    color: rgba(0, 0, 0, 0.38);
+    transition: opacity 0.35s ease;
+  }
+  .pb-studio .prompt-bar textarea.pb-bar-textarea.is-placeholder-fading::placeholder {
+    opacity: 0;
+  }
+  .pb-studio .pb-attach {
+    flex: none;
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border: none;
+    background: transparent;
+    color: #8a8a8e;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background var(--duration-fast) var(--ease-standard), color var(--duration-fast) var(--ease-standard);
+  }
+  .pb-studio .pb-attach:hover {
+    background: rgba(0, 0, 0, 0.05);
+    color: #111111;
+  }
+  .pb-studio .pb-ref-thumb {
+    position: relative;
+    flex: none;
+    width: 34px;
+    height: 34px;
+    border-radius: 8px;
+    overflow: hidden;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+  }
+  .pb-studio .pb-ref-thumb img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+  }
+  .pb-studio .pb-ref-thumb-clear {
+    position: absolute;
+    inset: 0;
+    display: grid;
+    place-items: center;
+    background: rgba(0, 0, 0, 0.45);
+    color: #fff;
+    opacity: 0;
+    transition: opacity var(--duration-fast) var(--ease-standard);
+  }
+  .pb-studio .pb-ref-thumb:hover .pb-ref-thumb-clear { opacity: 1; }
+  .pb-studio .studio-schedule-row {
     position: absolute; bottom: 216px; left: 50%; transform: translateX(-50%);
     display: flex; align-items: center; gap: 8px; padding: 8px 12px;
     border-radius: 12px; background: rgba(255,255,255,0.88);
@@ -827,31 +891,23 @@ export function StudioStyles() {
     -webkit-mask-image: radial-gradient(ellipse at center, #000 55%, transparent 92%);
     mask-image: radial-gradient(ellipse at center, #000 55%, transparent 92%);
   }.pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
-  @media (max-width: 1379px) {.pb-studio .app {
-      grid-template-columns: 232px minmax(0, 1fr);
-      grid-template-areas: "sidebar canvas";
-    }.pb-studio .canvas { min-height: 620px; }}@media (max-width: 860px) {.pb-studio .canvas { min-height: 540px; }
-    /* The composer is 78%-width in this band, so the full control row no
-       longer fits on one line. Collapse the wordy chips to icons and let the
-       row wrap (Generate drops below) rather than overflow the bar. */
+  @media (max-width: 1379px) {
+    .pb-studio .app { grid-template-columns: 232px minmax(0, 1fr); }
+    .pb-studio .canvas { min-height: 620px; }
+  }
+  @media (max-width: 980px) {
+    .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
+    .pb-studio .canvas { min-height: 620px; }
+  }
+  @media (max-width: 860px) {
+    .pb-studio .canvas { min-height: 540px; }
     .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
     .pb-studio .pb-ref-chip span, .pb-studio .pb-plat-cue span { display: none; }
     .pb-studio .pb-ref-chip { padding: 0 9px; }
   }
-  @media (min-width: 601px) and (max-width: 860px) {
-    /* Slim icon rail — keep the canvas + composer beside the nav instead of
-       stacking a full-width nav card on top of them. Stacks only <=600. */
-    .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); grid-template-areas: "sidebar canvas"; }
-    .pb-studio .pb-side { padding: 20px 10px; align-items: center; }
-    .pb-studio .pb-side .logo { display: none; }
-    .pb-studio .pb-side nav { width: 100%; }
-    .pb-studio .pb-side nav a { justify-content: center; gap: 0; padding: 11px 0; letter-spacing: 0; }
-    /* keep labels in the a11y tree (nav links have no aria-label) — hide visually only */
-    .pb-studio .pb-side nav a span { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
-    .pb-studio .pb-side nav .grp-gap { margin: 8px 8px; }
-    .pb-studio .pb-side .foot { justify-content: center; gap: 0; }
-    .pb-studio .pb-side .foot > span:not(.av), .pb-studio .pb-side .foot > svg { display: none; }
-  }@media (max-width: 600px) {.pb-studio .app { padding: 10px; gap: 12px; grid-template-columns: minmax(0, 1fr); grid-template-areas: "sidebar" "canvas"; }.pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar input { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
+  @media (max-width: 600px) {
+    .pb-studio .app { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 8px; }
+    .pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar textarea.pb-bar-textarea { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
 
   /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
      Enter: clean white. Composer floats in. Generate: frame materializes.
@@ -901,15 +957,14 @@ export function StudioStyles() {
 
   /* composer floats in on entry; lifted to make room for the intent strip below */
   .pb-studio .prompt-bar {
-    /* room below for the intent strip AND its pop-up labels; transform is
-       GSAP-owned (hero-center <-> home), so transition only paint props */
     bottom: 96px;
-    transition: border-color var(--duration-moderate) var(--ease-standard), box-shadow var(--duration-moderate) var(--ease-standard), background-color var(--duration-moderate) var(--ease-standard);
+    background: #ffffff;
+    border: none;
+    transition: box-shadow var(--duration-moderate) var(--ease-standard);
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
-    border-color: rgba(0, 0, 0, 0.07);
     box-shadow:
-      inset 0 1px 0 rgba(255,255,255,0.7),
-      0 12px 44px rgba(0,0,0,0.12);
+      0 4px 24px rgba(0, 0, 0, 0.08),
+      0 1px 3px rgba(0, 0, 0, 0.04);
   }
   @keyframes pbsBarIn {
     from { opacity: 0; filter: blur(10px); }
@@ -918,40 +973,6 @@ export function StudioStyles() {
 
   .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
 
-  /* animated placeholder: make a [flip-word] post about… */
-  .pb-studio .pb-anim-ph {
-    position: absolute; inset: 0;
-    display: flex; align-items: center;
-    pointer-events: none; white-space: pre; overflow: hidden;
-    font-size: var(--text-ui); font-weight: 400;
-    color: rgba(20, 20, 25, 0.55);
-  }
-  @media (max-width: 600px) { .pb-studio .pb-anim-ph { font-size: var(--text-body); } }
-
-  /* ghost-text autofill in the free-form brief */
-  .pb-studio .pb-ghost-wrap { position: relative; flex: 1; display: flex; align-items: center; min-width: 0; }
-  .pb-studio .pb-prefix {
-    display: inline-flex; align-items: center; flex: none;
-    white-space: pre; color: rgba(20, 20, 25, 0.55);
-    font-size: var(--text-ui); font-weight: 400;
-  }
-  .pb-studio .pb-input-shell { position: relative; flex: 1; display: flex; min-width: 0; }
-  .pb-studio .pb-input-shell input { width: 100%; }
-  .pb-studio .pb-ghost {
-    position: absolute; inset: 0;
-    display: flex; align-items: center;
-    pointer-events: none; white-space: pre; overflow: hidden;
-    font-size: var(--text-ui); font-weight: 400;
-  }
-  .pb-studio .pb-ghost-typed { color: transparent; }
-  .pb-studio .pb-ghost-rest { color: rgba(20, 20, 25, 0.32); }
-  .pb-studio .pb-ghost-key {
-    margin-left: 10px; padding: 2px 7px; border-radius: 5px; flex: none;
-    font-size: 9.5px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
-    color: rgba(20,20,25,0.66); border: 1px solid rgba(20,20,25,0.3);
-    background: rgba(255,255,255,0.6);
-  }
-  @media (max-width: 600px) { .pb-studio .pb-ghost { font-size: var(--text-body); } }
   .pb-studio .post-soon {
     font-style: normal; font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: 0.04em;
     text-transform: uppercase; color: #c81e2a; margin-left: 6px;

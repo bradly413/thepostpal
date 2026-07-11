@@ -9,6 +9,10 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
+    "test:studio": "vitest run src/lib/studio src/app/api/studio src/app/api/generate-image/route.test.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:studio": "playwright test e2e/studio.spec.ts",
+    "test:e2e:home": "playwright test e2e/home.spec.ts",
     "db:studio": "export $(grep -h '^DATABASE_URL=' .env.local | sed 's/\"//g') && prisma studio --port 5555 --browser none",
     "tokens:migrate:social": "export $(grep -h -E '^(DATABASE_URL|TOKEN_ENC_KEY)=' .env.local | sed 's/\"//g') && tsx scripts/migrate-social-account-tokens.ts",
     "seed:verticals": "tsx scripts/seed-verticals.ts",
@@ -50,6 +54,7 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",

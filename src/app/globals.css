@@ -105,13 +105,20 @@
   --color-background: #0F1117;
   --color-foreground: #F0F2F5;
   --font-serif: var(--font-playfair);
-  --font-sans: var(--font-inter);
-  --font-heading: var(--font-jakarta);
+  --font-sans: var(--font-instrument-sans);
+  --font-heading: var(--font-instrument-sans);
 }
 
 body {
   background: var(--color-bg);
   color: var(--color-text);
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
+}
+
+/* Dashboard workspace: warm-light frosted shell (overrides marketing dark default) */
+body:has([data-pb-dashboard]) {
+  background: linear-gradient(165deg, #eef0f2 0%, #e9ebee 55%, #edeff1 100%);
+  color: #1c1c1e;
 }
 
 html[data-theme] *,
@@ -224,17 +231,17 @@ html[data-theme] body {
     inset 0 1px 0 rgba(255,255,255,0.8);
 }
 
-/* AI Assistant light aurora background */
+/* Legacy marketing AI assistant — scoped under .pb-marketing-ai (not used on dashboard) */
 @keyframes ai-aurora-drift {
   from { background-position: 50% 50%, 50% 50%; }
   to   { background-position: 350% 50%, 350% 50%; }
 }
 
-.ai-light-aurora {
+.pb-marketing-ai .ai-light-aurora {
   display: none;
 }
 
-[data-theme="light"] .ai-light-aurora {
+[data-theme="light"] .pb-marketing-ai .ai-light-aurora {
   display: block;
   position: absolute;
   inset: 0;
@@ -242,7 +249,7 @@ html[data-theme] body {
   overflow: hidden;
 }
 
-[data-theme="light"] .ai-light-aurora-bg {
+[data-theme="light"] .pb-marketing-ai .ai-light-aurora-bg {
   position: absolute;
   inset: 0;
   --stripe-color: #fff;
@@ -270,7 +277,7 @@ html[data-theme] body {
   -webkit-mask-image: radial-gradient(ellipse at 100% 0%, black 40%, transparent 70%);
 }
 
-[data-theme="light"] .ai-light-aurora-bg::after {
+[data-theme="light"] .pb-marketing-ai .ai-light-aurora-bg::after {
   content: "";
   position: absolute;
   inset: 0;
@@ -297,14 +304,14 @@ html[data-theme] body {
   mix-blend-mode: difference;
 }
 
-[data-theme="light"] .ai-light-aurora-fade {
+[data-theme="light"] .pb-marketing-ai .ai-light-aurora-fade {
   position: absolute;
   inset: 0;
   background: linear-gradient(135deg, rgba(255,255,255,0.3) 0%, rgba(255,255,255,0.1) 100%);
 }
 
 /* Hide video bg in light mode, hide light aurora in dark mode */
-[data-theme="light"] .ai-video-bg {
+[data-theme="light"] .pb-marketing-ai .ai-video-bg {
   display: none;
 }
 
@@ -313,64 +320,64 @@ html[data-theme] body {
   0%   { background-position: 0% 50%; }
   100% { background-position: 200% 50%; }
 }
-.ai-gen-border {
+.pb-marketing-ai .ai-gen-border {
   background-image: linear-gradient(90deg,
     #fb0094, #0000ff, #00ff00, #ffff00, #ff0000,
     #fb0094, #0000ff, #00ff00, #ffff00, #ff0000);
   background-size: 200%;
   animation: ai-gen-border 3s linear infinite;
 }
-.ai-gen-glow {
+.pb-marketing-ai .ai-gen-glow {
   filter: blur(40px);
   opacity: 0.45;
 }
 
-/* AI Assistant prompt input — dark mode (default) */
-.ai-prompt-input {
+/* AI Assistant prompt input — dark mode (marketing shell only) */
+.pb-marketing-ai .ai-prompt-input {
   background: rgba(0,0,0,0.25);
   backdrop-filter: blur(8px);
   border: 1px solid rgba(255,255,255,0.12);
 }
-.ai-prompt-input:focus-within {
+.pb-marketing-ai .ai-prompt-input:focus-within {
   border-color: rgba(96,165,250,0.35);
 }
-.ai-prompt-text {
+.pb-marketing-ai .ai-prompt-text {
   color: rgba(255,255,255,0.55);
 }
-.ai-prompt-suggestion {
+.pb-marketing-ai .ai-prompt-suggestion {
   line-height: 1.4em;
   font-size: 15px;
   color: rgba(255,255,255,0.45);
   pointer-events: none;
 }
-.ai-prompt-btn {
+.pb-marketing-ai .ai-prompt-btn {
   background: rgba(96,165,250,0.2);
 }
-.ai-prompt-btn:hover {
+.pb-marketing-ai .ai-prompt-btn:hover {
   background: rgba(96,165,250,0.3);
 }
 
 /* AI Assistant prompt input — light mode */
-[data-theme="light"] .ai-prompt-input {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-input {
   background: rgba(255,255,255,0.85);
   backdrop-filter: blur(12px);
   border: 1px solid rgba(0,0,0,0.12);
   box-shadow: 0 2px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.9);
 }
-[data-theme="light"] .ai-prompt-input:focus-within {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-input:focus-within {
   border-color: rgba(96,165,250,0.5);
   box-shadow: 0 2px 12px rgba(96,165,250,0.1), inset 0 1px 0 rgba(255,255,255,0.9);
 }
-[data-theme="light"] .ai-prompt-text {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-text {
   color: rgba(0,0,0,0.45);
 }
-[data-theme="light"] .ai-prompt-suggestion {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-suggestion {
   color: rgba(0,0,0,0.6);
 }
-[data-theme="light"] .ai-prompt-btn {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-btn {
   background: rgba(96,165,250,0.15);
 }
-[data-theme="light"] .ai-prompt-btn:hover {
+[data-theme="light"] .pb-marketing-ai .ai-prompt-btn:hover {
   background: rgba(96,165,250,0.25);
 }
 
@@ -691,7 +698,7 @@ html[data-theme] body {
   --pb-paper: #FAF7F1;
   background: var(--pb-paper);
   color: var(--pb-ink);
-  font-family: var(--font-geist), system-ui, sans-serif;
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
   min-height: calc(var(--svh, 1vh) * 100);
 }
 
@@ -1172,7 +1179,7 @@ html[data-theme] body {
   --pb-card: rgba(255, 255, 255, 0.72);
   min-height: 100%;
   color: var(--pb-ink);
-  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+  font-family: var(--font-instrument-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -1380,6 +1387,7 @@ html[data-theme] body {
 .pb-tab:hover { color: var(--pb-ink, #111); background: rgba(17, 17, 17, 0.04); }
 .pb-tab-active,
 .pb-tab-active:hover { background: var(--pb-press, #ee2532); color: #fff; }
+/* Toggle kit — pair with role="switch" aria-checked on the button element */
 .pb-toggle {
   position: relative;
   height: 1.5rem;
@@ -1468,7 +1476,7 @@ body.pb-xp-active {
   --xp-accent: #D97757;
   background: var(--xp-paper);
   color: var(--xp-ink);
-  font-family: var(--font-geist), system-ui, sans-serif;
+  font-family: var(--font-instrument-sans), system-ui, sans-serif;
 }
 
 .pb-xp-spine { position: relative; width: 100%; }
@@ -1529,7 +1537,7 @@ body.pb-xp-active {
   font-size: 0.65rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
-  font-family: var(--font-geist), monospace;
+  font-family: var(--font-instrument-sans), monospace;
 }
 .pb-xp-chapter-nav--dark { color: var(--xp-paper); }
 .pb-xp-chapter-nav--dark .pb-xp-chapter-step { color: rgba(250,247,241,0.45); }

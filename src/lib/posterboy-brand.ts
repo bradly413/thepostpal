@@ -9,5 +9,5 @@ export const COLORS = {
 
 export const FONTS = {
   display: "var(--font-instrument-serif)",
-  body: "var(--font-geist)",
+  body: "var(--font-instrument-sans)",
 } as const;

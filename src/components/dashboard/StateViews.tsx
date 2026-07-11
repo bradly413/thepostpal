@@ -24,6 +24,23 @@ export function SkeletonGrid({ count = 8 }: { count?: number }) {
   );
 }
 
+export function PageLoadingState({ label = "Loading" }: { label?: string }) {
+  return (
+    <div
+      role="status"
+      aria-live="polite"
+      aria-busy="true"
+      aria-label={label}
+      className="flex min-h-[240px] w-full flex-col gap-4 p-6"
+    >
+      <SkeletonText className="h-8 w-48" />
+      <Skeleton className="h-40 w-full rounded-[24px]" />
+      <Skeleton className="h-28 w-full rounded-[20px]" />
+      <span className="sr-only">{label}</span>
+    </div>
+  );
+}
+
 function Frame({ children }: { children: ReactNode }) {
   return (
     <div className="flex min-h-[240px] w-full flex-col items-center justify-center rounded-2xl border border-white/60 bg-white/70 backdrop-blur-xl px-6 py-12 text-center shadow-[0_22px_54px_-38px_rgba(20,20,40,0.45)]">

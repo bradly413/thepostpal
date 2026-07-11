@@ -29,6 +29,7 @@ import {
   X,
   Sparkles,
   Lock,
+  Paperclip,
   History,
 } from "lucide-react";
 import AppSidebar from "@/components/dashboard/AppSidebar";
@@ -50,7 +51,6 @@ import { createTextLayer, compositionStorageKey } from "@/lib/composition-layers
 import { useCompositionLayers } from "@/hooks/use-composition-layers";
 import { createDashboardPost } from "@/lib/dashboard-api";
 import StudioHistoryGallery from "@/components/dashboard/studio/StudioHistoryGallery";
-import FlipWords from "@/lib/ui-snippets/text/FlipWords";
 import { usePlanFeatures, usePlan } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
@@ -59,6 +59,7 @@ import { StudioStyles } from "./studio-styles";
 import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
+import { isListingBrief } from "@/lib/studio/scene-intent";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -95,66 +96,6 @@ const PLATFORMS = [
   { id: "tiktok", label: "TikTok", w: 1080, h: 1920, genAspect: "9:16", publishable: false },
 ] as const;
 
-// Ghost-text autofill for the free-form brief (Tab to accept). Curated,
-// instant, no API calls — and BRAND-AWARE: topics follow the tenant's
-// business type so a salon sees salon things, not menu items.
-const AUTOFILL_FORMS = [
-  "an instagram post about ",
-  "a facebook post about ",
-  "a post about ",
-  "a tiktok about ",
-  "a linkedin post about ",
-];
-const AUTOFILL_TOPICS: { match: RegExp; topics: string[] }[] = [
-  {
-    match: /food|cafe|café|coffee|restaurant|bak|brew|bar|pizz|deli|kitchen|hospitality/i,
-    topics: ["today's special", "something new on the menu", "our weekend brunch", "a customer favorite", "behind the counter this morning"],
-  },
-  {
-    match: /salon|beauty|spa|barber|hair|nail|lash|aesthet/i,
-    topics: ["a fresh color transformation", "this week's openings", "a client's new look", "our self-care sunday", "booking for the weekend"],
-  },
-  {
-    match: /real ?estate|realtor|property|brokerage|homes/i,
-    topics: ["our newest listing", "a just-sold home", "an open house this weekend", "a neighborhood we love", "tips for first-time buyers"],
-  },
-  {
-    match: /fitness|gym|yoga|pilates|train|crossfit|studio/i,
-    topics: ["this week's class schedule", "a member milestone", "a quick form tip", "our morning crew", "new member specials"],
-  },
-  {
-    match: /retail|boutique|shop|store|clothing|gift/i,
-    topics: ["new arrivals this week", "a staff pick", "our weekend sale", "a customer favorite", "a restock everyone asked for"],
-  },
-];
-const PLATFORM_INK: Record<string, string> = {
-  instagram: "#C13584",
-  facebook: "#1877F2",
-  linkedin: "#0A66C2",
-  tiktok: "#3a3a3e",
-  x: "#3a3a3e",
-};
-
-const AUTOFILL_GENERIC = [
-  "something new this week",
-  "our latest five-star review",
-  "a behind-the-scenes moment",
-  "an upcoming event",
-];
-
-function buildAutofillPrompts(businessType: string | null): string[] {
-  const vertical = businessType
-    ? AUTOFILL_TOPICS.find((v) => v.match.test(businessType))?.topics ?? []
-    : [];
-  const topics = [...vertical, ...AUTOFILL_GENERIC];
-  const out: string[] = [];
-  for (const form of AUTOFILL_FORMS) {
-    for (const t of topics) out.push(form + t);
-  }
-  out.push("a post that we're hiring");
-  return out;
-}
-
 type PostType = "photo" | "update" | "offer";
 type WhenOption = "now" | "schedule";
 type GenState = "idle" | "generating" | "done";
@@ -172,6 +113,13 @@ function buildPostCaption(body: string, tags: string, fallback: string): string 
   return combined || fallback.trim();
 }
 
+
+const STUDIO_PROMPT_PLACEHOLDERS = [
+  "Make an Instagram post about…",
+  "Create a launch post for…",
+  "Post a weekend promo for…",
+  "Share a customer story about…",
+];
 
 export default function PosterboyStudio() {
   const [platformIdx, setPlatformIdx] = useState(0);
@@ -202,11 +150,10 @@ export default function PosterboyStudio() {
   const [captionVariantIdx, setCaptionVariantIdx] = useState(0);
   const [captionSourceBrief, setCaptionSourceBrief] = useState("");
   const [capFading, setCapFading] = useState(false);
-  // When an image is done the bar lands on a "review" gate (image ready) — the
-  // user explicitly steps into caption writing, rather than being dropped into
-  // it. From review they can also re-prompt a new image.
-  const [promptMode, setPromptMode] = useState<"image" | "review" | "caption">("image");
-  // Reset the caption step whenever we're not on a finished image.
+  // After generation the bar stays on the image prompt so the user can edit or
+  // re-prompt; caption writing is an explicit secondary step.
+  const [promptMode, setPromptMode] = useState<"image" | "caption">("image");
+  // Reset caption state whenever we're not on a finished image.
   useEffect(() => {
     if (genState !== "done") {
       setCaptionBrief("");
@@ -216,18 +163,45 @@ export default function PosterboyStudio() {
       setCaptionSourceBrief("");
       setPromptMode("image");
     } else {
-      setPromptMode("review");
+      setPromptMode("image");
     }
   }, [genState]);
   // The AI's caption as generated — compared to the final at publish to learn edits.
   const aiCaptionRef = useRef("");
-  const submitCaption = () => {
-    const b = captionBrief.trim();
-    if (!b) return;
-    setCaptionSourceBrief(b); // keep the brief; the field becomes the caption
+  const startCaptionGeneration = () => {
+    const b = captionBrief.trim() || composerBrief.trim();
+    if (!b && !generatedUrl) return;
+    setCaptionSourceBrief(b);
     setCaptionVariants([]);
     setCaptionVariantIdx(0);
     setCaptionRun((n) => n + 1);
+  };
+  const enterCaptionMode = () => {
+    setPromptMode("caption");
+    if (captionVariants.length === 0) startCaptionGeneration();
+    window.setTimeout(() => inputRef.current?.focus(), 0);
+  };
+  const resetToNewImage = () => {
+    setGenState("idle");
+    setGeneratedUrl(null);
+    setShowTemplate(false);
+    setPrompt("");
+    setSelectedIntentId(null);
+    setIntentDetail("");
+    setPromptMode("image");
+    setCaptionBrief("");
+    setCaptionRun(0);
+    setCaptionVariants([]);
+    setCaptionVariantIdx(0);
+    setCaptionSourceBrief("");
+    setCaptionText("");
+    setCaptionTags("");
+    setCaptionState("idle");
+    setCaptionError("");
+    setError("");
+    resetEdit();
+    setActiveEdit(null);
+    window.setTimeout(() => inputRef.current?.focus(), 0);
   };
   // Apply a generated variant into the editable caption field (and the post).
   const applyCaptionVariant = (v: CaptionVariant) => {
@@ -265,31 +239,71 @@ export default function PosterboyStudio() {
   // in their real product/place) + plan-gated model quality (Nano Banana Pro).
   const [refImage, setRefImage] = useState<string | null>(null);
   const [refName, setRefName] = useState("");
+  const [refImageLoading, setRefImageLoading] = useState(false);
   const refFileRef = useRef<HTMLInputElement>(null);
   const [imageQuality, setImageQuality] = useState<"standard" | "pro">("standard");
   const [imageSize, setImageSize] = useState<"1K" | "2K">("1K");
   const [qualityOpen, setQualityOpen] = useState(false);
   const [toolsOpen, setToolsOpen] = useState(false);
+  const [placeholderIdx, setPlaceholderIdx] = useState(0);
+  const [placeholderFading, setPlaceholderFading] = useState(false);
 
-  const onRefFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+  useEffect(() => {
+    if (prompt.trim() || genState !== "idle" || selectedIntentId || promptMode === "caption") return;
+    const id = window.setInterval(() => {
+      setPlaceholderFading(true);
+      window.setTimeout(() => {
+        setPlaceholderIdx((i) => (i + 1) % STUDIO_PROMPT_PLACEHOLDERS.length);
+        setPlaceholderFading(false);
+      }, 280);
+    }, 4200);
+    return () => window.clearInterval(id);
+  }, [prompt, genState, selectedIntentId, promptMode]);
+
+  const onRefFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file || !file.type.startsWith("image/")) return;
+    setRefImageLoading(true);
+    setError("");
+    try {
+      const form = new FormData();
+      form.append("file", file);
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        credentials: "same-origin",
+        body: form,
+      });
+      const data = (await res.json()) as { url?: string; error?: string };
+      if (res.ok && data.url) {
+        setRefImage(data.url);
+        setRefName(file.name);
+        setRefImageLoading(false);
+        return;
+      }
+    } catch {
+      // Fall back to an inline data URL when upload storage is unavailable.
+    }
+
     const url = URL.createObjectURL(file);
     const img = new window.Image();
     img.onload = () => {
-      // Downscale to keep the data URL well under request limits.
-      const max = 1536;
+      const max = 1280;
       const scale = Math.min(1, max / Math.max(img.width, img.height));
       const c = document.createElement("canvas");
       c.width = Math.max(1, Math.round(img.width * scale));
       c.height = Math.max(1, Math.round(img.height * scale));
       c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height);
-      setRefImage(c.toDataURL("image/jpeg", 0.85));
+      setRefImage(c.toDataURL("image/jpeg", 0.82));
       setRefName(file.name);
+      setRefImageLoading(false);
       URL.revokeObjectURL(url);
     };
-    img.onerror = () => URL.revokeObjectURL(url);
+    img.onerror = () => {
+      setRefImageLoading(false);
+      setError("Could not read that image. Try a JPG or PNG.");
+      URL.revokeObjectURL(url);
+    };
     img.src = url;
   };
   const [composerMode, setComposerMode] = useState<ComposerMode>("image");
@@ -329,12 +343,12 @@ export default function PosterboyStudio() {
   // A brief about a SPECIFIC property (listing / sold / street address) can't be
   // imagined by the model — without their photo it invents a house that isn't
   // theirs. Detect it and steer to the reference-photo flow.
-  const listingBrief = useMemo(() => {
-    const text = `${prompt} ${intentDetail}`;
-    return /\b(listing|just\s+sold|sold\s+at|open\s+house|under\s+contract|new\s+on\s+the\s+market|\d{2,6}\s+[a-z][a-z'.\s]{2,40}(dr|drive|st|street|rd|road|ln|lane|ave|avenue|ct|court|blvd|boulevard|cir|circle|way|pl|place|ter|terrace))\b/i.test(
-      text,
-    );
-  }, [prompt, intentDetail]);
+  const listingBrief = useMemo(
+    () => isListingBrief(`${prompt} ${intentDetail}`),
+    [prompt, intentDetail],
+  );
+  const needsListingPhoto =
+    listingBrief && !refImage && !refImageLoading && genState === "idle" && composerMode === "image";
   const selectedIntent = STRATEGIC_INTENTS.find((i) => i.id === selectedIntentId) ?? null;
   const previewHandle =
     activeLocation?.name?.toLowerCase().replace(/[^a-z0-9]+/g, "").slice(0, 24) || "yourbrand";
@@ -354,36 +368,26 @@ export default function PosterboyStudio() {
 
 
   const [activeEdit, setActiveEdit] = useState<null | "scale" | "move" | "rotate" | "adjust">(null);
-  const inputRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const syncPromptHeight = () => {
+    const el = inputRef.current;
+    if (!el) return;
+    el.style.height = "auto";
+    el.style.height = `${Math.min(el.scrollHeight, 168)}px`;
+  };
+  useEffect(() => {
+    syncPromptHeight();
+  }, [prompt, intentDetail, captionBrief, genState, promptMode, selectedIntentId]);
+  useEffect(() => {
+    if (genState === "done" && promptMode === "image") {
+      window.setTimeout(() => inputRef.current?.focus(), 0);
+    }
+  }, [genState, promptMode]);
   const [platformMenuOpen, setPlatformMenuOpen] = useState(false);
   const platformMenuRef = useRef<HTMLDivElement>(null);
   // true after the user explicitly picks a platform from the chip menu
   const platformPinRef = useRef(false);
 
-  // Ghost completion for the free-form brief: first curated prompt that
-  // extends what's typed (case-insensitive). Tab accepts it.
-  const autofillPrompts = useMemo(() => buildAutofillPrompts(businessType), [businessType]);
-  const ghostRest = useMemo(() => {
-    if (genState === "generating") return "";
-    const typed = prompt.toLowerCase();
-    if (typed !== typed.trimStart()) return "";
-    if (prefixActive) {
-      // prefix mode: the user is typing the SUBJECT — complete it from the
-      // "post about …" tails of the curated prompts.
-      if (typed.trim().length < 2) return "";
-      const needle = ` post about ${typed}`;
-      const hit = autofillPrompts.find((a) => {
-        const i = a.indexOf(needle);
-        return i >= 0 && a.length > i + needle.length;
-      });
-      if (!hit) return "";
-      const i = hit.indexOf(needle);
-      return hit.slice(i + needle.length);
-    }
-    if (typed.trim().length < 4) return "";
-    const hit = autofillPrompts.find((a) => a.startsWith(typed) && a.length > typed.length);
-    return hit ? hit.slice(typed.length) : "";
-  }, [prompt, genState, autofillPrompts, prefixActive]);
   const editRailRef = useRef<HTMLDivElement>(null);
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const modelMenuRef = useRef<HTMLDivElement>(null);
@@ -438,7 +442,7 @@ export default function PosterboyStudio() {
     setError,
   });
 
-  const { generate, composeFromIntent } = useStudioGeneration({
+  const { generate, composeFromIntent, setLastGenPrompt } = useStudioGeneration({
     prompt,
     composerBrief,
     genState,
@@ -1064,7 +1068,10 @@ export default function PosterboyStudio() {
                     key={`${e.at}-${e.url.slice(0, 32)}`}
                     type="button"
                     className={`gs-card gs-${i}`}
-                    onClick={() => adoptImage(e.url)}
+                    onClick={() => {
+                      adoptImage(e.url);
+                      setLastGenPrompt(e.prompt);
+                    }}
                     aria-label={`Bring back: ${e.prompt || "earlier generation"}`}
                     title={e.prompt}
                   >
@@ -1347,121 +1354,95 @@ export default function PosterboyStudio() {
               onClose={() => setHistoryOpen(false)}
               onPick={(e) => {
                 adoptImage(e.url);
+                setLastGenPrompt(e.prompt);
                 setHistoryOpen(false);
               }}
             />
           ) : null}
 
-          <div className={`prompt-bar${genState === "generating" ? " is-generating" : ""}`}>
+          <div
+            className={`prompt-bar${genState === "generating" ? " is-generating" : ""}${
+              genState === "idle" && composerMode === "image" && !selectedIntentId ? " is-minimal" : ""
+            }`}
+          >
             {/* row 1 — the brief / caption input */}
             <div className="pb-bar-input">
-              {genState === "done" && promptMode === "review" ? (
-                <div className="pb-ready" role="status" aria-live="polite">
-                  <span className="pb-ready-title">Your image is ready</span>
-                  <span className="pb-ready-sub">Write a caption next, or make another image.</span>
-                </div>
-              ) : genState === "done" && promptMode === "caption" ? (
-                <input
+              {genState === "done" && promptMode === "caption" ? (
+                <textarea
                   ref={inputRef}
-                  className={`pb-caption-field${capFading ? " is-fading" : ""}`}
+                  rows={1}
+                  className={`pb-bar-textarea pb-caption-field${capFading ? " is-fading" : ""}`}
                   value={captionBrief}
                   onChange={(e) => {
                     setCaptionBrief(e.target.value);
-                    // once the field holds a caption, edits ARE the caption
+                    syncPromptHeight();
                     if (captionVariants.length > 0) setCaptionText(e.target.value);
                   }}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" && captionVariants.length === 0 && submitCaption()
-                  }
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (captionVariants.length === 0) startCaptionGeneration();
+                    }
+                  }}
                   placeholder={
                     captionVariants.length > 0
                       ? "Your caption — edit it however you like"
-                      : "What should the caption be about?"
+                      : "Writing caption options…"
                   }
                   aria-label={
-                    captionVariants.length > 0 ? "Caption — editable" : "What should the caption be about?"
+                    captionVariants.length > 0 ? "Caption — editable" : "Caption"
                   }
                 />
               ) : selectedIntent ? (
-                <input
+                <textarea
                   ref={inputRef}
+                  rows={1}
+                  className="pb-bar-textarea"
                   value={intentDetail}
-                  onChange={(e) => setIntentDetail(e.target.value)}
-                  onKeyDown={(e) =>
-                    e.key === "Enter" &&
-                    genState !== "generating" &&
-                    composerMode === "image" &&
-                    void composeFromIntent()
-                  }
+                  onChange={(e) => {
+                    setIntentDetail(e.target.value);
+                    syncPromptHeight();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (genState !== "generating" && composerMode === "image") void composeFromIntent();
+                    }
+                  }}
                   placeholder={selectedIntent.detailPlaceholder}
                   disabled={genState === "generating"}
                   aria-label={`Details for ${selectedIntent.label}`}
                 />
               ) : (
-                <div className="pb-ghost-wrap">
-                  {/* The lead-in is REAL: the user types only the subject and
-                      the full "make a [platform] post about …" is composed at
-                      submit. Empty = flipping platforms; typing freezes it to
-                      the selected platform. */}
-                  {/* Lead-in is a teaser only: it shows while the field is
-                      empty (flipping platforms) and clears the instant the
-                      user types, so they see just their own words. The full
-                      "make a [platform] post about …" is still composed at
-                      submit via composerBrief. */}
-                  {prefixActive && !prompt ? (
-                    <span className="pb-prefix" aria-hidden>
-                      <span>make a&nbsp;</span>
-                      <FlipWords
-                        words={["instagram", "facebook", "linkedin", "tiktok", "x"]}
-                        colors={PLATFORM_INK}
-                      />
-                      <span>&nbsp;post about&nbsp;</span>
-                    </span>
-                  ) : null}
-                  <span className="pb-input-shell">
-                    <input
-                      ref={inputRef}
-                      value={prompt}
-                      onChange={(e) => setPrompt(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Tab" && ghostRest) {
-                          e.preventDefault();
-                          setPrompt(prompt + ghostRest);
-                          return;
-                        }
-                        // R5: Enter must not fire the image pipeline while the
-                        // video composer is open (it would unmount it mid-config).
-                        if (e.key === "Enter" && genState !== "generating" && composerMode === "image")
-                          void composeFromIntent();
-                      }}
-                      placeholder={
-                        genState === "done" && promptMode === "image"
-                          ? "Describe the new image you want…"
-                          : prefixActive
-                            ? "…"
-                            : ""
-                      }
-                      disabled={genState === "generating"}
-                      aria-label={
-                        genState === "done"
-                          ? "Describe a new image"
-                          : prefixActive
-                            ? `What should the ${platform.id} post be about?`
-                            : "Describe your post"
-                      }
-                    />
-                    <span className="sr-only" aria-live="polite">
-                      {ghostRest ? `Suggestion: ${prompt}${ghostRest} — press Tab to accept.` : ""}
-                    </span>
-                    {ghostRest ? (
-                      <div className="pb-ghost" aria-hidden>
-                        <span className="pb-ghost-typed">{prompt}</span>
-                        <span className="pb-ghost-rest">{ghostRest}</span>
-                        <span className="pb-ghost-key">tab</span>
-                      </div>
-                    ) : null}
-                  </span>
-                </div>
+                <textarea
+                  ref={inputRef}
+                  rows={1}
+                  className={`pb-bar-textarea${placeholderFading ? " is-placeholder-fading" : ""}`}
+                  value={prompt}
+                  onChange={(e) => {
+                    setPrompt(e.target.value);
+                    syncPromptHeight();
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      if (genState !== "generating" && composerMode === "image") void composeFromIntent();
+                    }
+                  }}
+                  placeholder={
+                    genState === "done"
+                      ? "Describe changes to this image…"
+                      : STUDIO_PROMPT_PLACEHOLDERS[placeholderIdx]
+                  }
+                  disabled={genState === "generating"}
+                  aria-label={
+                    genState === "done"
+                      ? "Describe changes or a new image"
+                      : prefixActive
+                        ? `What should the ${platform.id} post be about?`
+                        : "Describe your post"
+                  }
+                />
               )}
             </div>
 
@@ -1481,8 +1462,88 @@ export default function PosterboyStudio() {
               </button>
             ) : null}
 
-            {/* row 2 — controls left, Generate right */}
+            {/* footer — attach left, action right (ElevenLabs-style) */}
             <div className="pb-bar-controls">
+              <input
+                ref={refFileRef}
+                type="file"
+                accept="image/*"
+                className="sr-only"
+                onChange={onRefFile}
+                aria-hidden
+                tabIndex={-1}
+              />
+              {composerMode === "image" && promptMode !== "caption" ? (
+                <>
+                  <button
+                    type="button"
+                    className="pb-attach"
+                    onClick={() => refFileRef.current?.click()}
+                    title="Attach a reference photo"
+                    aria-label="Attach a reference photo"
+                  >
+                    <Paperclip size={18} strokeWidth={1.75} />
+                  </button>
+                  {refImage ? (
+                    <span className="pb-ref-thumb" title={refName}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={refImage} alt="" />
+                      <button
+                        type="button"
+                        className="pb-ref-thumb-clear"
+                        onClick={() => {
+                          setRefImage(null);
+                          setRefName("");
+                        }}
+                        aria-label="Remove reference image"
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ) : null}
+                </>
+              ) : null}
+
+              {genState === "done" && promptMode === "caption" ? (
+                <button
+                  type="button"
+                  className="pb-reprompt"
+                  onClick={() => {
+                    setPromptMode("image");
+                    window.setTimeout(() => inputRef.current?.focus(), 0);
+                  }}
+                  title="Back to image prompt"
+                  aria-label="Back to image prompt"
+                >
+                  <RotateCw size={15} />
+                  <span>Image prompt</span>
+                </button>
+              ) : genState === "done" && promptMode === "image" ? (
+                <>
+                  <button
+                    type="button"
+                    className="pb-reprompt"
+                    onClick={() => resetToNewImage()}
+                    title="Start a new image"
+                    aria-label="New image"
+                  >
+                    <ImagePlus size={15} />
+                    <span>New image</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="pb-reprompt"
+                    onClick={() => enterCaptionMode()}
+                    title="Write a caption for this image"
+                    aria-label="Write a caption"
+                  >
+                    <ArrowRight size={15} />
+                    <span>Write caption</span>
+                  </button>
+                </>
+              ) : null}
+
+              <div className="pb-bar-extras">
               <button
                 type="button"
                 className={`pb-util${composerMode === "video" ? " active" : ""}`}
@@ -1522,24 +1583,10 @@ export default function PosterboyStudio() {
                 </span>
               ) : null}
 
-              {genState === "done" && (promptMode === "review" || promptMode === "caption") ? (
-                <button
-                  type="button"
-                  className="pb-reprompt"
-                  onClick={() => {
-                    setPromptMode("image");
-                    window.setTimeout(() => inputRef.current?.focus(), 0);
-                  }}
-                  title="Generate a different image"
-                  aria-label="New image — re-prompt"
-                >
-                  <RotateCw size={15} />
-                  <span>New image</span>
-                </button>
-              ) : composerMode === "image" ? (
+              {composerMode === "image" ? (
                 <>
                   {/* Tools — post-angle shortcuts, written out, in a menu */}
-                  {genState === "idle" ? (
+                  {genState === "idle" || (genState === "done" && promptMode === "image") ? (
                     <div className="pb-tool" ref={toolsMenuRef}>
                       <button
                         type="button"
@@ -1576,40 +1623,6 @@ export default function PosterboyStudio() {
                       ) : null}
                     </div>
                   ) : null}
-
-                  {/* reference photo — grounds the generation in their real stuff */}
-                  <input
-                    ref={refFileRef}
-                    type="file"
-                    accept="image/*"
-                    style={{ display: "none" }}
-                    onChange={onRefFile}
-                    aria-hidden
-                  />
-                  {refImage ? (
-                    <span className="pb-ref-chip has-image" title={refName}>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={refImage} alt="" />
-                      <span className="pb-ref-label">Reference</span>
-                      <button
-                        type="button"
-                        onClick={() => { setRefImage(null); setRefName(""); }}
-                        aria-label="Remove reference image"
-                      >
-                        <X size={13} />
-                      </button>
-                    </span>
-                  ) : (
-                    <button
-                      type="button"
-                      className="pb-ref-chip"
-                      onClick={() => refFileRef.current?.click()}
-                      title="Use one of your real photos as the starting point"
-                    >
-                      <ImagePlus size={15} />
-                      <span>Image reference</span>
-                    </button>
-                  )}
 
                   {/* model quality — Standard / Pro (plan-gated) */}
                   <div className="pb-tool" ref={modelMenuRef}>
@@ -1675,62 +1688,72 @@ export default function PosterboyStudio() {
                   </span>
                 </>
               ) : null}
+              </div>
 
               <span className="pb-bar-spacer" />
 
               {(() => {
-                const inReview = genState === "done" && promptMode === "review";
                 const inCaption = genState === "done" && promptMode === "caption";
                 const hasVariants = inCaption && captionVariants.length > 0;
+                const listingBlocked = needsListingPhoto && !inCaption;
                 return (
                   <button
                     type="button"
-                    className="pb-generate"
+                    className="pb-generate pb-generate-primary"
                     onClick={() => {
-                      if (inReview) {
-                        setPromptMode("caption");
-                        window.setTimeout(() => inputRef.current?.focus(), 0);
-                      } else if (inCaption) {
+                      if (listingBlocked) {
+                        refFileRef.current?.click();
+                        return;
+                      }
+                      if (inCaption) {
                         if (hasVariants) rotateCaption();
-                        else submitCaption();
+                        else startCaptionGeneration();
                       } else {
                         void composeFromIntent();
                       }
                     }}
                     disabled={
-                      inReview
-                        ? false
-                        : inCaption
+                      refImageLoading
+                        ? true
+                        : listingBlocked
+                          ? false
+                          : inCaption
                           ? hasVariants
                             ? captionVariants.length < 2
-                            : !captionBrief.trim()
+                            : !(captionBrief.trim() || composerBrief.trim() || generatedUrl)
                           : genState === "generating" || composerMode === "video" || !composerBrief
                     }
                     aria-label={
-                      inReview
-                        ? "Write a caption"
+                      listingBlocked
+                        ? "Add your listing photo"
                         : hasVariants
                           ? "Try another caption"
                           : inCaption
                             ? "Write caption options"
-                            : "Make a post"
+                            : genState === "done"
+                              ? "Generate image from your prompt"
+                              : "Make a post"
                     }
                   >
-                    {inReview ? (
-                      <ArrowRight size={16} />
-                    ) : hasVariants ? (
+                    {hasVariants ? (
                       <RotateCw size={16} />
-                    ) : (
+                    ) : inCaption ? (
                       <Wand2 size={16} />
-                    )}
+                    ) : listingBlocked ? (
+                      <ImagePlus size={16} />
+                    ) : null}
                     <span>
-                      {inReview
-                        ? "Write caption"
-                        : hasVariants
+                      {refImageLoading
+                        ? "Uploading…"
+                        : listingBlocked
+                          ? "Add listing photo"
+                          : hasVariants
                           ? `Another ${captionVariantIdx + 1}/${captionVariants.length}`
                           : inCaption
                             ? "Captions"
-                            : "Generate"}
+                            : genState === "done"
+                              ? "Regenerate"
+                              : "Create post"}
                     </span>
                   </button>
                 );
@@ -1746,6 +1769,7 @@ export default function PosterboyStudio() {
                 <CaptionVariantPicker
                   headless
                   brief={captionSourceBrief || composerBrief}
+                  sourceImage={generatedUrl}
                   platform={platform.id}
                   runSignal={captionRun}
                   hideTrigger

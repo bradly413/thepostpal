@@ -30,6 +30,8 @@ interface Props {
   platform: string;
   onSelect: (variant: CaptionVariant) => void;
   disabled?: boolean;
+  /** When set, captions are written from the actual image (vision), not brief alone. */
+  sourceImage?: string | null;
   /** Command-tier approval pipeline — enables "Send for review" on block. */
   approvalPipeline?: boolean;
   locationId?: string | null;
@@ -50,6 +52,7 @@ export default function CaptionVariantPicker({
   platform,
   onSelect,
   disabled,
+  sourceImage,
   approvalPipeline,
   locationId,
   platforms,
@@ -69,8 +72,9 @@ export default function CaptionVariantPicker({
 
   async function generate() {
     const trimmed = brief.trim();
-    if (!trimmed) {
-      setError("Add a brief or prompt first.");
+    const image = sourceImage?.trim() || "";
+    if (!image && !trimmed) {
+      setError("Add a brief or generate an image first.");
       return;
     }
     setLoading(true);
@@ -80,11 +84,21 @@ export default function CaptionVariantPicker({
     setVariants([]);
     setCompliance(null);
     try {
-      const res = await fetch("/api/ai/captions", {
+      const useVision = !!image;
+      const res = await fetch(useVision ? "/api/ai/captions-from-image" : "/api/ai/captions", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ brief: trimmed, platform, count: 3 }),
+        body: JSON.stringify(
+          useVision
+            ? {
+                ...(image.startsWith("data:") ? { inlineImage: image } : { imageUrl: image }),
+                platform,
+                count: 3,
+                ...(trimmed ? { context: trimmed } : {}),
+              }
+            : { brief: trimmed, platform, count: 3 },
+        ),
       });
       const data = (await res.json()) as {
         variants?: CaptionVariant[];

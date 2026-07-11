@@ -27,6 +27,7 @@ import "swiper/css/effect-coverflow";
 import "swiper/css/pagination";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
 import AppSidebar from "@/components/dashboard/AppSidebar";
+import { ErrorState, PageLoadingState } from "@/components/dashboard/StateViews";
 import {
   loadDashboardHomeSnapshot,
   type DashboardHomeSnapshot,
@@ -68,7 +69,7 @@ function wxIcon(code: number) {
   if (code === 45 || code === 48) return { Icon: CloudFog, label: "Foggy", color: "#94a3b8" };
   if ((code >= 51 && code <= 67) || (code >= 80 && code <= 82)) return { Icon: CloudRain, label: "Rain", color: "#60a5fa" };
   if ((code >= 71 && code <= 77) || code === 85 || code === 86) return { Icon: CloudSnow, label: "Snow", color: "#93c5fd" };
-  if (code >= 95) return { Icon: CloudLightning, label: "Storms", color: "#a78bfa" };
+  if (code >= 95) return { Icon: CloudLightning, label: "Storms", color: "#ee2532" };
   return { Icon: CloudSun, label: "Partly Cloudy", color: "#f5a524" };
 }
 interface Weather { temp: number; high: number; low: number; code: number; }
@@ -326,11 +327,7 @@ export default function DashboardHome() {
         <div className="home2">
           <AppSidebar />
           <main className="main2">
-            <div className="anim" style={{ borderRadius: 28, background: "rgba(255,255,255,0.6)", minHeight: 400 }} />
-            <div style={{ display: "flex", flexDirection: "column", gap: 22 }}>
-              <div style={{ height: 320, borderRadius: 26, background: "rgba(255,255,255,0.5)" }} />
-              <div style={{ height: 220, borderRadius: 24, background: "rgba(255,255,255,0.5)" }} />
-            </div>
+            <PageLoadingState label="Loading dashboard" />
           </main>
         </div>
       </div>
@@ -344,13 +341,10 @@ export default function DashboardHome() {
         <div className="home2">
           <AppSidebar />
           <main className="main2 flex items-center justify-center">
-            <div className="mod w-full max-w-md text-center" style={{ minHeight: 0, height: "auto" }}>
-              <h2 className="text-xl font-semibold text-[var(--ink)]">Couldn&apos;t load your dashboard</h2>
-              <p className="mt-2 text-sm text-[var(--ink-soft)]">{error || "This workspace is not ready yet."}</p>
-              <button type="button" onClick={() => void refresh()} className="ghostbtn mt-4">
-                Try again
-              </button>
-            </div>
+            <ErrorState
+              message={error || "This workspace is not ready yet."}
+              onRetry={() => void refresh()}
+            />
           </main>
         </div>
       </div>
@@ -390,7 +384,12 @@ export default function DashboardHome() {
                 <Bell size={18} />
                 {notifs.length > 0 ? <span className="dot count">{notifs.length}</span> : null}
               </button>
-              <div className="notif-panel" role="menu" aria-hidden={!notifOpen}>
+              <div
+                className="notif-panel"
+                role="region"
+                aria-label="Notifications"
+                aria-hidden={!notifOpen}
+              >
                 <div className="notif-head">Activity</div>
                 {notifs.length === 0 ? (
                   <p className="notif-empty">You&rsquo;re all caught up.</p>
@@ -399,7 +398,6 @@ export default function DashboardHome() {
                     {notifs.map((n, i) => (
                       <li
                         className="notif-item"
-                        role="menuitem"
                         key={n.body}
                         style={{ "--i": i } as CSSProperties}
                       >

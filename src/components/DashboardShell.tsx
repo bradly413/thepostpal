@@ -25,7 +25,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
 
   if (selfFramed) {
     return (
-      <div className="flex h-dvh max-h-dvh min-h-0 overflow-hidden bg-[#eceef2]">
+      <div data-pb-dashboard className="flex h-dvh max-h-dvh min-h-0 overflow-hidden bg-[#eceef2]">
         <a
           href="#main-content"
           className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"
@@ -52,7 +52,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
   }
 
   return (
-    <div className="flex h-dvh max-h-dvh min-h-0 overflow-hidden">
+    <div data-pb-dashboard className="flex h-dvh max-h-dvh min-h-0 overflow-hidden">
       <a
         href="#main-content"
         className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:p-4 focus:bg-white focus:text-black"

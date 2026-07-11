@@ -1,6 +1,9 @@
 "use client";
 
 import { useRef, useEffect, useCallback, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
+import { buildFallbackEditPrompt, shouldEditFromReference } from "@/lib/studio/reprompt-delta";
+import { inferPlatformIdFromIntent, isListingBrief } from "@/lib/studio/scene-intent";
+import { resolveStudioImageRoute } from "@/lib/studio/studio-image-routing";
 
 type GenState = "idle" | "generating" | "done";
 type CaptionState = "idle" | "loading" | "done" | "error";
@@ -56,7 +59,7 @@ export type UseStudioGenerationParams = {
   /** Active location — lets the server pull the brand book for art direction. */
   locationId?: string | null;
   platformPinRef: MutableRefObject<boolean>;
-  inputRef: RefObject<HTMLInputElement | null>;
+  inputRef: RefObject<HTMLTextAreaElement | null>;
   setGenState: Dispatch<SetStateAction<GenState>>;
   setGeneratedUrl: Dispatch<SetStateAction<string | null>>;
   setError: Dispatch<SetStateAction<string>>;
@@ -100,6 +103,7 @@ export function useStudioGeneration({
   pushHistory,
 }: UseStudioGenerationParams) {
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const lastGenPromptRef = useRef("");
 
   useEffect(
     () => () => {
@@ -132,6 +136,42 @@ export function useStudioGeneration({
     if (elapsed < 1600) await new Promise((r) => setTimeout(r, 1600 - elapsed));
   }, []);
 
+  const requestGenerateImage = useCallback(
+    async (
+      promptText: string,
+      opts: {
+        aspect: string;
+        referenceImage?: string | null;
+        sourceIntent?: string;
+        listingMode?: boolean;
+        signal: AbortSignal;
+      },
+    ) => {
+      const res = await fetch("/api/generate-image", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          prompt: promptText,
+          aspectRatio: opts.aspect,
+          ...(opts.referenceImage ? { referenceImage: opts.referenceImage } : {}),
+          ...(opts.sourceIntent ? { sourceIntent: opts.sourceIntent } : {}),
+          ...(opts.listingMode ? { listingMode: true } : {}),
+          quality: imageQuality,
+          ...(imageQuality === "pro" ? { imageSize } : {}),
+          ...(businessType ? { businessType } : {}),
+          ...(locationId ? { locationId } : {}),
+        }),
+        signal: opts.signal,
+      });
+      return res.json() as Promise<{
+        image?: string;
+        error?: string;
+        retriedForQuality?: boolean;
+      }>;
+    },
+    [imageQuality, imageSize, businessType, locationId],
+  );
+
   const generate = useCallback(
     async (overridePrompt?: string, recoverGenState: GenState = "idle") => {
       const savedPrompt = (overridePrompt ?? prompt.trim()).trim();
@@ -163,22 +203,18 @@ export function useStudioGeneration({
       const ctrl = new AbortController();
       const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
       try {
-        const res = await fetch("/api/generate-image", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            prompt: savedPrompt,
-            aspectRatio: platform.genAspect,
-            ...(refImage ? { referenceImage: refImage } : {}),
-            quality: imageQuality,
-            ...(imageQuality === "pro" ? { imageSize } : {}),
-            ...(businessType ? { businessType } : {}),
-            ...(locationId ? { locationId } : {}),
-          }),
+        const editingFromCanvas =
+          recoverGenState === "done" &&
+          !!generatedUrl &&
+          shouldEditFromReference(savedPrompt, lastGenPromptRef.current, true);
+        const refForGen = editingFromCanvas ? generatedUrl : refImage;
+
+        const data = await requestGenerateImage(savedPrompt, {
+          aspect: platform.genAspect,
+          referenceImage: refForGen,
           signal: ctrl.signal,
         });
-        const data = await res.json();
-        if (!res.ok || data.error) {
+        if (data.error || !data.image) {
           await holdFloor(startedAt);
           stopProgressTimer();
           setProgress(0);
@@ -196,6 +232,7 @@ export function useStudioGeneration({
         setProgress(100);
         setGeneratedUrl(data.image);
         pushHistory(data.image, savedPrompt);
+        lastGenPromptRef.current = savedPrompt;
         setGenState("done");
       } catch (err) {
         await holdFloor(startedAt);
@@ -216,6 +253,8 @@ export function useStudioGeneration({
       genState,
       platform.genAspect,
       refImage,
+      generatedUrl,
+      requestGenerateImage,
       imageQuality,
       imageSize,
       businessType,
@@ -244,6 +283,17 @@ export function useStudioGeneration({
       inputRef.current?.focus();
       return;
     }
+    if (resolveStudioImageRoute({
+      intent,
+      refImage,
+      generatedUrl,
+      genState,
+      lastGenPrompt: lastGenPromptRef.current,
+    }) === "blocked_listing_no_photo") {
+      setError("Add your listing photo first — we can't show your property from an address alone.");
+      inputRef.current?.focus();
+      return;
+    }
     const isReprompt = genState === "done" && !!generatedUrl;
     setGenState("generating");
     setError("");
@@ -262,10 +312,71 @@ export function useStudioGeneration({
     const ctrl = new AbortController();
     const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
     try {
+      let imagePrompt: string | null = null;
+      let aspect = platform.genAspect;
+      const historyLabel = intent;
+
+      const editingFromCanvas =
+        isReprompt && !!generatedUrl && shouldEditFromReference(intent, lastGenPromptRef.current, true);
+      const refForGen = editingFromCanvas ? generatedUrl : refImage;
+      const imageRoute = resolveStudioImageRoute({
+        intent,
+        refImage: refForGen,
+        generatedUrl,
+        genState,
+        lastGenPrompt: lastGenPromptRef.current,
+      });
+
+      if (imageRoute === "listing_passthrough" && refForGen) {
+        const inferred = inferPlatformIdFromIntent(intent);
+        const idx = inferred ? platforms.findIndex((p) => p.id === inferred) : -1;
+        const pIdx = idx >= 0 ? idx : platformIdx;
+        if (idx >= 0) setPlatformIdx(pIdx);
+        const plat = platforms[pIdx];
+        const startedAt = Date.now();
+        const fitted = await resizeToExact(refForGen!, plat.w, plat.h);
+        const elapsed = Date.now() - startedAt;
+        if (elapsed < 900) await new Promise((r) => setTimeout(r, 900 - elapsed));
+        stopProgressTimer();
+        setProgress(100);
+        setGeneratedUrl(fitted);
+        pushHistory(fitted, intent);
+        lastGenPromptRef.current = intent;
+        setCaptionText("");
+        setCaptionTags("");
+        setCaptionState("idle");
+        setGenState("done");
+        clearTimeout(timeoutId);
+        return;
+      }
+
+      if (imageRoute === "reprompt_edit") {
+        const rRes = await fetch("/api/studio/reprompt", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            delta: intent,
+            previousPrompt: lastGenPromptRef.current || intent,
+            referenceImage: generatedUrl,
+            ...(locationId ? { locationId } : {}),
+          }),
+          signal: ctrl.signal,
+        });
+        const rData = (await rRes.json()) as { imagePrompt?: string; error?: string };
+        if (rRes.ok && rData.imagePrompt) {
+          imagePrompt = rData.imagePrompt;
+        } else {
+          imagePrompt = buildFallbackEditPrompt(intent);
+        }
+      } else {
       const cRes = await fetch("/api/studio/compose", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ intent, ...(locationId ? { locationId } : {}) }),
+        body: JSON.stringify({
+          intent,
+          hasReferenceImage: !!refForGen,
+          ...(locationId ? { locationId } : {}),
+        }),
         signal: ctrl.signal,
       });
       const brief = await cRes.json();
@@ -273,6 +384,11 @@ export function useStudioGeneration({
         stopProgressTimer();
         setCaptionState("idle");
         clearTimeout(timeoutId);
+        if (brief.code === "listing_photo_required") {
+          setError(brief.error || "Add your listing photo first.");
+          setGenState(isReprompt ? "done" : "idle");
+          return;
+        }
         await generate(intent, isReprompt ? "done" : "idle");
         return;
       }
@@ -282,24 +398,18 @@ export function useStudioGeneration({
       const pIdx = idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
       if (textNamesPlatform) platformPinRef.current = false;
       setPlatformIdx(pIdx);
-      const aspect = platforms[pIdx].genAspect;
+      aspect = platforms[pIdx].genAspect;
+      imagePrompt = brief.imagePrompt;
+      }
 
-      const iRes = await fetch("/api/generate-image", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: brief.imagePrompt,
-          aspectRatio: aspect,
-          ...(refImage ? { referenceImage: refImage } : {}),
-          quality: imageQuality,
-          ...(imageQuality === "pro" ? { imageSize } : {}),
-          ...(businessType ? { businessType } : {}),
-          ...(locationId ? { locationId } : {}),
-        }),
+      const iData = await requestGenerateImage(imagePrompt || intent, {
+        aspect,
+        referenceImage: refForGen,
+        sourceIntent: intent,
+        listingMode: isListingBrief(intent) && !!refForGen,
         signal: ctrl.signal,
       });
-      const iData = await iRes.json();
-      if (!iRes.ok || iData.error) {
+      if (iData.error || !iData.image) {
         stopProgressTimer();
         setProgress(0);
         setCaptionState("idle");
@@ -316,7 +426,8 @@ export function useStudioGeneration({
       stopProgressTimer();
       setProgress(100);
       setGeneratedUrl(iData.image);
-      pushHistory(iData.image, intent);
+      pushHistory(iData.image, historyLabel);
+      lastGenPromptRef.current = historyLabel;
       setCaptionText("");
       setCaptionTags("");
       setCaptionState("idle");
@@ -361,8 +472,13 @@ export function useStudioGeneration({
     setPlatformIdx,
     setGeneratedUrl,
     pushHistory,
+    requestGenerateImage,
     generate,
   ]);
 
-  return { generate, composeFromIntent, resizeToExact };
+  const setLastGenPrompt = useCallback((promptText: string) => {
+    lastGenPromptRef.current = promptText.trim();
+  }, []);
+
+  return { generate, composeFromIntent, resizeToExact, setLastGenPrompt };
 }

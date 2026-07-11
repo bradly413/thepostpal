@@ -96,8 +96,8 @@ export default function RingHero() {
       // Each card's phase = i - t: phase 0 = focal (front, bright); phase > 0 =
       // still queued (receding up-right, dim); phase < 0 = bumped out of line,
       // trailing down-left. The card at the focal point is the "current" one.
-      const FX = -50,
-        FY = -70,
+      const FX = 72,
+        FY = -118,
         FZ = 210,
         FS = 1.22;
       const conveyorPos = (i: number, t: number) => {
@@ -472,10 +472,23 @@ export default function RingHero() {
           transition: opacity 0.12s ease-out;
         }
 
-        .rh-casc-copy { position: absolute; left: clamp(24px, 5vw, 72px); bottom: 12%; z-index: 14; text-align: left; max-width: 32ch; }
-        .rh-casc-titles { position: relative; height: 1.5em; }
+        .rh-casc-copy {
+          position: absolute;
+          left: clamp(24px, 5vw, 72px);
+          bottom: clamp(28px, 5vh, 52px);
+          z-index: 14;
+          text-align: left;
+          max-width: 32ch;
+          padding-top: clamp(72px, 12vh, 140px);
+        }
+        .rh-casc-titles {
+          position: relative;
+          height: clamp(34px, 5vw, 62px);
+          overflow: hidden;
+        }
         .rh-casc-title {
-          position: absolute; left: 0; top: 0; margin: 0; display: block; white-space: nowrap; overflow: hidden;
+          position: absolute; left: 0; bottom: 0; top: auto; margin: 0; display: block; white-space: nowrap;
+          overflow: hidden;
           padding-bottom: 0.12em; perspective: 600px;
           font-size: clamp(28px, 4vw, 52px); font-weight: 400; color: #1E272D; line-height: 1.2;
         }
@@ -489,6 +502,7 @@ export default function RingHero() {
           .rh-rail { padding: 18px 20px; }
           .rh-rail-nav { display: none; }
           .rh-card { width: clamp(120px, 40vw, 180px); }
+          .rh-casc-copy { padding-top: clamp(56px, 10vh, 96px); max-width: 28ch; }
         }
       `}</style>
     </section>

@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname } from "next/navigation";
+import { MessageSquare } from "lucide-react";
 
 const TYPES = [
-  { value: "bug" as const, label: "Bug", icon: "M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126z" },
-  { value: "feature" as const, label: "Feature", icon: "M12 18v-5.25m0 0a6.01 6.01 0 001.5-.189m-1.5.189a6.01 6.01 0 01-1.5-.189m3.75 7.478a12.06 12.06 0 01-4.5 0m3.75 2.383a14.406 14.406 0 01-3 0M14.25 18v-.192c0-.983.658-1.823 1.508-2.316a7.5 7.5 0 10-7.517 0c.85.493 1.509 1.333 1.509 2.316V18" },
-  { value: "other" as const, label: "Other", icon: "M8.625 12a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H8.25m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0H12m4.125 0a.375.375 0 11-.75 0 .375.375 0 01.75 0zm0 0h-.375M21 12c0 4.556-4.03 8.25-9 8.25a9.764 9.764 0 01-2.555-.337A5.972 5.972 0 015.41 20.97a5.969 5.969 0 01-.474-.065 4.48 4.48 0 00.978-2.025c.09-.457-.133-.901-.467-1.226C3.93 16.178 3 14.189 3 12c0-4.556 4.03-8.25 9-8.25s9 3.694 9 8.25z" },
-];
+  { value: "bug" as const, label: "Bug" },
+  { value: "feature" as const, label: "Feature" },
+  { value: "other" as const, label: "Other" },
+] as const;
 
 export default function FeedbackWidget() {
   const pathname = usePathname();
@@ -15,6 +16,47 @@ export default function FeedbackWidget() {
   const [type, setType] = useState<"bug" | "feature" | "other">("bug");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+
+  const close = useCallback(() => {
+    if (sent) return;
+    setOpen(false);
+  }, [sent]);
+
+  useEffect(() => {
+    if (!open) return;
+
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusables = dialog.querySelectorAll<HTMLElement>(
+      'button, textarea, [href], input, select, [tabindex]:not([tabindex="-1"])',
+    );
+    const first = focusables[0];
+    const last = focusables[focusables.length - 1];
+    first?.focus();
+
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        close();
+        triggerRef.current?.focus();
+        return;
+      }
+      if (e.key !== "Tab" || focusables.length === 0) return;
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last?.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first?.focus();
+      }
+    }
+
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [open, close, sent]);
 
   async function handleSubmit() {
     if (!message.trim()) return;
@@ -24,101 +66,123 @@ export default function FeedbackWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ type, message: message.trim(), page: pathname }),
       });
-    } catch {}
+    } catch {
+      /* still acknowledge — feedback is best-effort */
+    }
     setMessage("");
     setSent(true);
     setTimeout(() => {
       setSent(false);
       setOpen(false);
       setType("bug");
+      triggerRef.current?.focus();
     }, 1800);
   }
 
   return (
     <>
       <button
+        ref={triggerRef}
+        type="button"
         onClick={() => setOpen(true)}
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full bg-accent/90 px-4 py-2.5 text-xs font-semibold text-black shadow-lg shadow-accent/20 hover:bg-accent hover:shadow-accent/30 hover:scale-105 transition-all backdrop-blur-sm"
-        title="Send feedback"
+        aria-label="Send beta feedback"
+        aria-haspopup="dialog"
+        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2.5 text-xs font-semibold text-[#1c1c1e] shadow-[0_18px_48px_-24px_rgba(20,20,40,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:shadow-[0_22px_52px_-22px_rgba(20,20,40,0.5)] active:scale-[0.98]"
       >
-        <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-          <path strokeLinecap="round" strokeLinejoin="round" d="M7.5 8.25h9m-9 3H12m-9.75 1.51c0 1.6 1.123 2.994 2.707 3.227 1.129.166 2.27.293 3.423.379.35.026.67.21.865.501L12 21l2.755-4.133a1.14 1.14 0 01.865-.501 48.172 48.172 0 003.423-.379c1.584-.233 2.707-1.626 2.707-3.228V6.741c0-1.602-1.123-2.995-2.707-3.228A48.394 48.394 0 0012 3c-2.392 0-4.744.175-7.043.513C3.373 3.746 2.25 5.14 2.25 6.741v6.018z" />
-        </svg>
-        Beta Feedback
+        <MessageSquare size={14} strokeWidth={2} aria-hidden />
+        Beta feedback
       </button>
 
-      {open && (
-        <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center" onClick={() => !sent && setOpen(false)}>
-          <div className="absolute inset-0 bg-black/50 backdrop-blur-sm" />
+      {open ? (
+        <div className="fixed inset-0 z-[70] flex items-end justify-center sm:items-center">
+          <button
+            type="button"
+            className="absolute inset-0 bg-[#1c1c1e]/25 backdrop-blur-sm"
+            aria-label="Close feedback dialog"
+            onClick={close}
+          />
           <div
-            className="relative w-full max-w-md mx-4 mb-4 sm:mb-0 rounded-2xl border border-white/10 bg-[#1a1a1f] shadow-2xl overflow-hidden"
+            ref={dialogRef}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="feedback-title"
+            className="relative mx-4 mb-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,20,40,0.45)] backdrop-blur-xl sm:mb-0"
             onClick={(e) => e.stopPropagation()}
           >
             {sent ? (
-              <div className="flex flex-col items-center justify-center py-12 px-6">
-                <div className="w-12 h-12 rounded-full bg-green-500/15 flex items-center justify-center mb-3">
-                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#22c55e" strokeWidth={2}>
+              <div className="flex flex-col items-center justify-center px-6 py-12" role="status">
+                <div className="mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-[#1f9d4d]/12">
+                  <svg width="24" height="24" fill="none" viewBox="0 0 24 24" stroke="#1f9d4d" strokeWidth={2} aria-hidden>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
                   </svg>
                 </div>
-                <p className="text-sm font-semibold text-white">Thanks for your feedback!</p>
-                <p className="text-xs text-white/40 mt-1">We'll review it shortly.</p>
+                <p className="text-sm font-semibold text-[#1c1c1e]">Thanks for your feedback</p>
+                <p className="mt-1 text-xs text-[#76767e]">We will review it shortly.</p>
               </div>
             ) : (
               <>
-                <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+                <div className="flex items-center justify-between border-b border-[rgba(20,20,30,0.07)] px-5 py-4">
                   <div>
-                    <h3 className="text-sm font-semibold text-white">Send Feedback</h3>
-                    <p className="text-[11px] text-white/35 mt-0.5">Help us improve posterboy</p>
+                    <h3 id="feedback-title" className="text-sm font-semibold text-[#1c1c1e]">
+                      Send feedback
+                    </h3>
+                    <p className="mt-0.5 text-[11px] text-[#76767e]">Help us improve Posterboy</p>
                   </div>
-                  <button onClick={() => setOpen(false)} className="p-1 text-white/30 hover:text-white transition-colors">
-                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <button
+                    type="button"
+                    onClick={close}
+                    aria-label="Close"
+                    className="rounded-lg p-1 text-[#76767e] transition-colors hover:bg-black/[0.04] hover:text-[#1c1c1e]"
+                  >
+                    <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
                       <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
                     </svg>
                   </button>
                 </div>
 
-                <div className="px-5 py-4 space-y-4">
-                  <div className="flex gap-2">
+                <div className="space-y-4 px-5 py-4">
+                  <div className="flex gap-2" role="group" aria-label="Feedback type">
                     {TYPES.map((t) => (
                       <button
                         key={t.value}
+                        type="button"
                         onClick={() => setType(t.value)}
-                        className={`flex-1 flex items-center justify-center gap-1.5 rounded-xl py-2.5 text-xs font-medium transition-all ${
+                        aria-pressed={type === t.value}
+                        className={`flex-1 rounded-xl border py-2.5 text-xs font-medium transition-all ${
                           type === t.value
-                            ? "bg-accent/15 text-accent border border-accent/30"
-                            : "bg-white/[0.04] text-white/50 border border-white/[0.06] hover:text-white/70 hover:border-white/10"
+                            ? "border-[rgba(238,37,50,0.35)] bg-[rgba(238,37,50,0.1)] text-[#c81e2a]"
+                            : "border-[rgba(20,20,30,0.08)] bg-black/[0.02] text-[#76767e] hover:border-[rgba(20,20,30,0.14)] hover:text-[#1c1c1e]"
                         }`}
                       >
-                        <svg width="13" height="13" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                          <path strokeLinecap="round" strokeLinejoin="round" d={t.icon} />
-                        </svg>
                         {t.label}
                       </button>
                     ))}
                   </div>
 
-                  <textarea
-                    value={message}
-                    onChange={(e) => setMessage(e.target.value)}
-                    placeholder={
-                      type === "bug" ? "What went wrong? What did you expect to happen?"
-                        : type === "feature" ? "What would you like to see added or changed?"
-                        : "Tell us anything..."
-                    }
-                    rows={4}
-                    autoFocus
-                    className="w-full rounded-xl border border-white/[0.08] bg-white/[0.03] px-4 py-3 text-sm text-white placeholder:text-white/25 focus:border-accent/40 focus:outline-none focus:ring-2 focus:ring-accent/10 resize-none"
-                  />
+                  <label className="block">
+                    <span className="sr-only">Your message</span>
+                    <textarea
+                      value={message}
+                      onChange={(e) => setMessage(e.target.value)}
+                      placeholder={
+                        type === "bug"
+                          ? "What went wrong? What did you expect to happen?"
+                          : type === "feature"
+                            ? "What would you like to see added or changed?"
+                            : "Tell us anything..."
+                      }
+                      rows={4}
+                      className="w-full resize-none rounded-xl border border-[rgba(20,20,30,0.1)] bg-white px-4 py-3 text-sm text-[#1c1c1e] placeholder:text-[#9a9aa3] focus:border-[rgba(238,37,50,0.4)] focus:outline-none focus:ring-2 focus:ring-[rgba(238,37,50,0.12)]"
+                    />
+                  </label>
 
-                  <div className="flex items-center justify-between">
-                    <p className="text-[10px] text-white/20">
-                      Page: {pathname}
-                    </p>
+                  <div className="flex items-center justify-between gap-3">
+                    <p className="truncate text-[10px] text-[#9a9aa3]">Page: {pathname}</p>
                     <button
-                      onClick={handleSubmit}
+                      type="button"
+                      onClick={() => void handleSubmit()}
                       disabled={!message.trim()}
-                      className="rounded-full bg-accent px-5 py-2 text-xs font-semibold text-black hover:bg-accent/90 transition-all disabled:opacity-30 disabled:cursor-not-allowed"
+                      className="rounded-full bg-[#1c1c1e] px-5 py-2 text-xs font-semibold text-white transition-all hover:bg-[#2a2a2e] active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-35"
                     >
                       Submit
                     </button>
@@ -128,7 +192,7 @@ export default function FeedbackWidget() {
             )}
           </div>
         </div>
-      )}
+      ) : null}
     </>
   );
 }

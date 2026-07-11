@@ -18,7 +18,7 @@ export function DashboardHomeStyles() {
       --red: #ee2532;
       height: 100%; min-height: 0; overflow-y: auto;
       color: var(--ink);
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Inter", system-ui, sans-serif;
+      font-family: var(--font-instrument-sans), -apple-system, BlinkMacSystemFont, "SF Pro Display", system-ui, sans-serif;
       -webkit-font-smoothing: antialiased;
       background:
         radial-gradient(1100px 520px at 88% -8%, rgba(238,37,50,0.06), transparent 60%),
@@ -30,49 +30,12 @@ export function DashboardHomeStyles() {
       display: grid; grid-template-columns: 250px minmax(0, 1fr); gap: 22px;
       max-width: 1520px; margin: 0 auto; padding: 22px; min-height: 100%;
     }
-    @media (max-width: 980px) { .home2 { grid-template-columns: 1fr; } }
-
-    /* ---------- Sidebar ---------- */
-    .side2 {
-      position: sticky; top: 22px; align-self: start; height: calc(100vh - 44px);
-      display: flex; flex-direction: column; padding: 26px 20px;
-      border-radius: 28px; background: rgba(255,255,255,0.78);
-      backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
-      border: 1px solid rgba(255,255,255,0.65);
-      box-shadow: 0 24px 60px -38px rgba(20,20,40,0.4), inset 0 1px 0 rgba(255,255,255,0.7);
+    @media (max-width: 980px) {
+      .home2 { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
     }
-    @media (max-width: 980px) { .side2 { height: auto; position: relative; top: 0; } }
-    .side2 .logo {
-      font-family: var(--font-playfair, var(--font-instrument-serif, Georgia, serif));
-      font-size: 30px; font-weight: 500; letter-spacing: -0.5px; color: var(--ink);
-      text-decoration: none; margin-bottom: 34px; display: inline-flex; align-items: baseline; line-height: var(--leading-tight);
+    @media (max-width: 600px) {
+      .home2 { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 8px; }
     }
-    .side2 .logo em { font-style: italic; font-weight: 500; }
-    .side2 .logo .tm { font-style: normal; font-size: 0.3em; font-weight: 500; transform: translateY(-0.9em); margin-left: 2px; }
-    .side2 nav { display: flex; flex-direction: column; gap: 3px; }
-    .side2 nav .grp-gap { height: 22px; margin: 8px 0; border-top: 1px solid var(--line); }
-    .side2 nav a {
-      display: flex; align-items: center; gap: 13px; padding: 11px 13px; border-radius: 14px;
-      color: var(--ink-soft); text-decoration: none; font-size: var(--text-body); font-weight: 600;
-      letter-spacing: 0.6px; text-transform: uppercase;
-      transition: var(--transition-color);
-    }
-    .side2 nav a svg { width: 18px; height: 18px; opacity: .85; }
-    .side2 nav a:hover { color: var(--ink); background: rgba(20,20,40,0.04); }
-    .side2 nav a.active { color: #fff; background: var(--red); box-shadow: 0 12px 26px -14px rgba(238,37,50,0.55); }
-    .side2 nav a.active svg { color: #fff; opacity: 1; }
-    .side2 .spacer { flex: 1; }
-    .side2 .foot {
-      display: flex; align-items: center; gap: 11px; margin-top: 16px; padding-top: 16px;
-      border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0;
-      cursor: pointer; width: 100%; text-align: left;
-    }
-    .side2 .foot .av {
-      width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, var(--green), #c81e2a);
-      color: #fff; font-size: var(--text-caption); font-weight: 700; display: flex; align-items: center; justify-content: center;
-    }
-    .side2 .foot .nm { font-size: var(--text-body-sm); font-weight: 600; color: var(--ink); }
-    .side2 .foot .rl { font-size: var(--text-label); color: var(--ink-soft); }
 
     /* ---------- Main ---------- */
     .main2 { display: flex; flex-direction: column; gap: 20px; min-width: 0; }

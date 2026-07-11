@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Instrument_Sans, Instrument_Serif, Inter, Playfair_Display } from "next/font/google";
+import { Instrument_Sans, Instrument_Serif, Playfair_Display } from "next/font/google";
 import { SITE_URL, SITE_NAME } from "@/lib/site";
 import "./globals.css";
 
@@ -25,29 +25,12 @@ const instrumentSans = Instrument_Sans({
   display: "swap",
 });
 
-const geist = Inter({
-  variable: "--font-geist",
-  subsets: ["latin"],
-  display: "swap",
-});
-
+/** Logo / marketing display — alias kept for existing CSS references */
 const playfair = Instrument_Serif({
   variable: "--font-playfair",
   subsets: ["latin"],
   weight: "400",
   style: ["normal", "italic"],
-  display: "swap",
-});
-
-const inter = Inter({
-  variable: "--font-inter",
-  subsets: ["latin"],
-  display: "swap",
-});
-
-const jakarta = Inter({
-  variable: "--font-jakarta",
-  subsets: ["latin"],
   display: "swap",
 });
 
@@ -80,7 +63,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${instrumentSerif.variable} ${playfairDisplay.variable} ${instrumentSans.variable} ${geist.variable} ${playfair.variable} ${inter.variable} ${jakarta.variable} h-full antialiased`}
+      className={`${instrumentSerif.variable} ${playfairDisplay.variable} ${instrumentSans.variable} ${playfair.variable} h-full antialiased`}
     >
       <body className="min-h-full flex flex-col font-sans">
         <script
