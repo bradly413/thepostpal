@@ -117,6 +117,7 @@ type ModalMode = "post" | "event" | "day-detail" | null;
 type CalendarScheduledPost = ScheduledPost & {
   mediaUrl?: string | null;
   mediaType?: "image" | "video" | null;
+  errorLog?: string | null;
 };
 
 export default function CalendarPage() {
@@ -198,6 +199,7 @@ export default function CalendarPage() {
           ...mapRecordToCalendarPost(record),
           mediaUrl: record.mediaUrl ?? record.mediaUrls?.[0] ?? null,
           mediaType: record.mediaType ?? null,
+          errorLog: record.errorLog ?? null,
         })),
       );
       loadedOkRef.current = true;
@@ -340,7 +342,11 @@ export default function CalendarPage() {
     setFormPlatform(post.platform);
     setFormTime(post.time);
     setFormCaption(post.caption);
-    setFormStatus(post.status === "published" ? "scheduled" : post.status as "scheduled" | "draft");
+    setFormStatus(
+      post.status === "published" || post.status === "failed"
+        ? "scheduled"
+        : (post.status as "scheduled" | "draft"),
+    );
     setMediaUrl(post.mediaUrl ?? "");
     setMediaType(post.mediaType ?? "image");
     setMediaError(null);
@@ -446,47 +452,17 @@ export default function CalendarPage() {
       pillar: tmpl?.pillar || "",
     };
 
-    const useMetaSchedule =
-      formStatus === "scheduled" && meta?.connected && !editingPost && !approve && mediaUrl;
-
-    if (useMetaSchedule) {
-      setPublishing(true);
-      setPublishResult(null);
-      try {
-        const scheduledAt = new Date(`${selectedDate}T${formTime}`);
-        const unixTime = Math.floor(scheduledAt.getTime() / 1000);
-        const payload = await buildMetaPublishPayload({
-          platform: formPlatform,
-          caption: formCaption,
-          imageUrl: mediaUrl,
-          scheduledTime: unixTime,
-        });
-        const res = await fetch("/api/meta/publish", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || "Scheduling failed");
-      } catch (err) {
-        setPublishResult({
-          type: "error",
-          message: err instanceof Error ? err.message : "Scheduling failed",
-        });
-        setPublishing(false);
-        return;
-      }
-      setPublishing(false);
-    }
+    // Scheduling always goes through "approved" — the internal cron queue.
+    // Meta-native scheduling (`scheduledTime` on /api/meta/publish) is not
+    // used here: Instagram's API has no native scheduling, so it would post
+    // immediately, and the DB row would sit in "scheduled" forever.
+    const queuedSchedule = formStatus === "scheduled" && !editingPost && !approve;
 
     try {
       const base = mapCalendarPostToCreateInput(postData, locationId);
-      // "scheduled" may only persist when Meta is natively scheduling the post
-      // (useMetaSchedule above). Otherwise route through "approved" — the
-      // internal cron queue — or the post would sit in the DB forever.
       const status = approve
         ? ("approved" as const)
-        : base.status === "scheduled" && !useMetaSchedule
+        : base.status === "scheduled"
           ? ("approved" as const)
           : base.status;
       if (editingPost) {
@@ -518,7 +494,7 @@ export default function CalendarPage() {
         });
       }
       await loadPosts();
-      if (useMetaSchedule) {
+      if (queuedSchedule) {
         const scheduledAt = new Date(`${selectedDate}T${formTime}`);
         setPublishResult({
           type: "success",
@@ -798,7 +774,7 @@ export default function CalendarPage() {
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
                             className={`w-full text-left rounded px-1.5 py-0.5 text-[10px] font-medium truncate transition-colors hover:opacity-80 ${
-                              p.status === "draft" ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10" : platformColors[p.platform]
+                              p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
                             {p.time.slice(0, 5)} {p.templateName}
@@ -858,7 +834,7 @@ export default function CalendarPage() {
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
                             className={`w-full text-left rounded-lg p-2 transition-colors hover:opacity-80 ${
-                              p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
+                              p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
                             <p className="text-[10px] font-bold">{p.time.slice(0, 5)}</p>
@@ -958,6 +934,12 @@ export default function CalendarPage() {
                 <p className="text-xl font-semibold text-black">{events.length}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Events</p>
               </div>
+              {posts.some((p) => p.status === "failed") && (
+                <div className="rounded-xl bg-[#ee2532]/[0.06] p-3 text-center col-span-2">
+                  <p className="text-xl font-semibold text-[#c81e2a]">{posts.filter((p) => p.status === "failed").length}</p>
+                  <p className="text-[10px] text-[#c81e2a]/70 mt-0.5">Failed — tap the post to retry</p>
+                </div>
+              )}
             </div>
           </div>
         </aside>
@@ -1012,7 +994,7 @@ export default function CalendarPage() {
                         key={p.id}
                         onClick={() => openEditPost(p)}
                         className={`w-full text-left rounded-xl p-3 transition-colors hover:opacity-80 ${
-                          p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
+                          p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                         }`}
                       >
                         <div className="flex items-center justify-between mb-0.5">
@@ -1063,6 +1045,15 @@ export default function CalendarPage() {
             </div>
 
             <div className="space-y-4">
+              {editingPost?.status === "failed" && (
+                <div className="rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
+                  <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
+                  {editingPost.errorLog && (
+                    <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
+                  )}
+                  <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
+                </div>
+              )}
               {features.multiLocation && (
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>

@@ -63,10 +63,11 @@ const LOCAL_STATUS_MAP: Record<DraftStatus, LocalScheduledPost["status"]> = {
   scheduled: "scheduled",
   published: "published",
   approved: "scheduled",
+  publishing: "scheduled",
   needs_review: "draft",
   needs_revision: "draft",
   skipped: "draft",
-  failed: "draft",
+  failed: "failed",
 };
 
 export function mapRecordToCalendarPost(

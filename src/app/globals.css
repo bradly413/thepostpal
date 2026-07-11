@@ -1287,6 +1287,7 @@ html[data-theme] body {
 .pb-status-needs-review { border-color: var(--pb-press); color: var(--pb-press); }
 .pb-status-approved { color: rgba(17, 17, 17, 0.55); }
 .pb-status-scheduled { color: rgba(17, 17, 17, 0.55); }
+.pb-status-failed { border-color: var(--pb-press); color: var(--pb-press); }
 
 .pb-empty {
   padding: 3rem 2rem;

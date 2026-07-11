@@ -94,6 +94,16 @@ export default function BulkScheduler() {
     [items, startDate, time, intervalDays, skipWeekends],
   );
 
+  // Past-dated slots publish on the next cron tick (~5 min), not "later" —
+  // warn instead of letting "Schedule" quietly post them now.
+  const pastDueCount = timeline.filter(
+    (slot, i) =>
+      !slot.posted &&
+      slot.hasCaption &&
+      Boolean(items[i]?.mediaUrl) &&
+      new Date(slot.iso) <= new Date(),
+  ).length;
+
   function toggleTone(id: string) {
     setSelectedTones((prev) =>
       prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id],
@@ -696,7 +706,11 @@ export default function BulkScheduler() {
                       {slot.posted ? (
                         <span className="text-[10px] font-medium">done</span>
                       ) : slot.hasCaption ? (
-                        <span className="text-[10px] font-medium text-black/45">ready</span>
+                        new Date(slot.iso) <= new Date() ? (
+                          <span className="text-[10px] font-medium text-[#c81e2a]">posts now</span>
+                        ) : (
+                          <span className="text-[10px] font-medium text-black/45">ready</span>
+                        )
                       ) : null}
                     </li>
                   ))}
@@ -716,6 +730,12 @@ export default function BulkScheduler() {
               {items.length > 0 && schedulableCount < items.length - items.filter((i) => i.posted).length && (
                 <p className="text-[11px] text-black/45 mb-3">
                   Create captions before scheduling — or write your own in each post.
+                </p>
+              )}
+              {pastDueCount > 0 && !done && (
+                <p className="text-[11px] text-[#c81e2a] mb-3">
+                  {pastDueCount === 1 ? "1 slot is" : `${pastDueCount} slots are`} in the past and will
+                  publish within minutes of scheduling. Move the start date or time to post later.
                 </p>
               )}
               <button

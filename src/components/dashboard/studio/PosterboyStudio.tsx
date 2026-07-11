@@ -811,6 +811,17 @@ export default function PosterboyStudio() {
       }).catch(() => {});
     }
 
+    // R3: never silently re-route a preview-only platform (TikTok used to
+    // quietly publish to Instagram). Applies to BOTH immediate publish and
+    // schedule — the schedule branch writes `platforms` for the cron, which
+    // would ship the re-routed platform later.
+    if (!platform.publishable) {
+      setError(
+        `${platform.label} publishing isn't connected yet. Use the platform menu (top left) to switch to Instagram or Facebook, or download the image instead.`,
+      );
+      return;
+    }
+
     if (when === "schedule") {
       if (!scheduleDate || !scheduleTime) {
         setError("Pick a date and time for scheduling.");
@@ -858,14 +869,6 @@ export default function PosterboyStudio() {
       return;
     }
 
-    // R3: never silently re-route a preview-only platform (TikTok used to
-    // quietly publish to Instagram). Block with a way forward instead.
-    if (!platform.publishable) {
-      setError(
-        `${platform.label} publishing isn't connected yet. Use the platform menu (top left) to switch to Instagram or Facebook, or download the image instead.`,
-      );
-      return;
-    }
     const metaTarget = platform.id === "facebook" ? "facebook" : "instagram";
 
     setPublishing(true);

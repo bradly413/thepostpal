@@ -45,6 +45,10 @@ next-env.d.ts
 .cursor/
 .claude/launch.json
 
+# test artifacts
+/test-results/
+/playwright-report/
+
 # scratch / temp work
 tmp-*/
 docs/CLAUDE-SESSION-HANDOFF-LIVE.md

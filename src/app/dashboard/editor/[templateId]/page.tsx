@@ -378,8 +378,6 @@ function EditorPageInner({
       if (scheduledAt.getTime() <= now.getTime() + 10 * 60 * 1000) {
         throw new Error("Schedule time must be at least 10 minutes in the future");
       }
-      const unixTime = Math.floor(scheduledAt.getTime() / 1000);
-
       const dataUrl = await toPng(exportRef.current, {
         width: template!.width,
         height: template!.height,
@@ -391,28 +389,17 @@ function EditorPageInner({
       // Presigned S3 upload returns a durable public URL Meta can fetch.
       const imageUrl = await uploadDashboardImage(file);
 
-      const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
-      const payload = await buildMetaPublishPayload({
-        platform: schedulePlatform,
-        caption,
-        imageUrl,
-        scheduledTime: unixTime,
-      });
-      const res = await fetch("/api/meta/publish", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "Scheduling failed");
-
       if (!locationId) throw new Error("Choose a workspace location before scheduling.");
+      // "approved" = the internal cron queue, which dispatches at the
+      // scheduled time. Instagram has no native scheduling, so this must not
+      // go through /api/meta/publish with a scheduledTime — IG would post it
+      // immediately.
       await createDashboardPost({
         locationId,
         copy: caption,
         platforms: platformsFromCalendarPlatform(schedulePlatform),
         scheduledFor: scheduledForIso(scheduleDate, scheduleTime),
-        status: "scheduled",
+        status: "approved",
         templateId: template!.id,
         pillar: template!.pillar,
         mediaUrl: imageUrl,

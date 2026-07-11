@@ -30,6 +30,7 @@ import AppSidebar from "@/components/dashboard/AppSidebar";
 import { ErrorState, PageLoadingState } from "@/components/dashboard/StateViews";
 import {
   loadDashboardHomeSnapshot,
+  formatScheduleLabel,
   type DashboardHomeSnapshot,
 } from "@/lib/dashboard-home-data";
 import { formatDashboardApiMessage } from "@/lib/dashboard-api";
@@ -261,11 +262,11 @@ export default function DashboardHome() {
     { scope: root, dependencies: [!!data] },
   );
 
-  // Total Reach sparkline
+  // Total Reach sparkline — hidden when nothing is scheduled this week.
   const reachPath = useMemo(() => {
-    // Real weekly activity only — no invented trend line when there's no data.
+    if ((data?.weeklyOverview?.postsCount ?? 0) === 0) return { line: "", area: "" };
     const series = data?.weeklyOverview?.barHeights ?? [];
-    if (series.length < 2) return { line: "", area: "" };
+    if (series.length < 2 || series.every((v) => v === 0)) return { line: "", area: "" };
     const w = 100, h = 100, n = series.length, max = Math.max(...series, 1);
     const pts = series.map((v, i) => [(i / (n - 1)) * w, h - (v / max) * (h - 10) - 5]);
     const line = pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p[0].toFixed(1)} ${p[1].toFixed(1)}`).join(" ");
@@ -554,7 +555,17 @@ export default function DashboardHome() {
             <div className="mod reach2 anim">
               <div className="mhead"><h2 className="mtitle2">Posts This Week</h2><span className="period">{data?.weeklyOverview?.rangeLabel ?? "This week"}</span></div>
               <div className="bignum">{data?.weeklyOverview?.postsCount ?? 0}</div>
-              <div className={`delta ${data?.weeklyOverview?.engagementPositive === false ? "down" : "up"}`}>{data?.weeklyOverview?.engagementLabel ?? "On track"} <span>vs last week</span></div>
+              <div className={`delta ${
+                (data?.weeklyOverview?.postsCount ?? 0) === 0
+                  ? ""
+                  : data?.weeklyOverview?.engagementPositive === false
+                    ? "down"
+                    : "up"
+              }`}>
+                {data?.weeklyOverview?.engagementLabel ?? "On track"}
+                {(data?.weeklyOverview?.postsCount ?? 0) > 0 ? <span> vs last week</span> : null}
+              </div>
+              {reachPath.line ? (
               <div className="spark">
                 <svg viewBox="0 0 100 100" preserveAspectRatio="none">
                   <defs>
@@ -567,10 +578,11 @@ export default function DashboardHome() {
                   <path d={reachPath.line} fill="none" stroke="#157a38" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                 </svg>
               </div>
+              ) : null}
             </div>
 
-            {/* Weather — per-tenant, hidden when the active location has no geo */}
-            {showWeather && wx && wxI && wxPlace && (
+            {/* Weather when the active location has geo; otherwise Next Up */}
+            {showWeather && wx && wxI && wxPlace ? (
               <div className="mod wx2 anim">
                 <div className="wtop">
                   <div>
@@ -585,6 +597,47 @@ export default function DashboardHome() {
                   <span>L <b>{wx.low}°</b></span>
                   <Link href="/dashboard/calendar" className="wlink">Clear skies to post</Link>
                 </div>
+              </div>
+            ) : (
+              <div className="mod next2 anim">
+                <div className="mhead">
+                  <h2 className="mtitle2">Next Up</h2>
+                  <Link href="/dashboard/calendar" className="viewall">View all</Link>
+                </div>
+                {data.nextUp ? (
+                  <Link href="/dashboard/calendar" className="nextcard">
+                    {data.nextUpImage ? (
+                      <span
+                        className="nextthumb"
+                        style={{ backgroundImage: `url('${data.nextUpImage}')` }}
+                        aria-hidden
+                      />
+                    ) : (
+                      <span className="nextthumb nextthumb-empty" aria-hidden />
+                    )}
+                    <span className="nextbody">
+                      <span className="nextcopy">
+                        {data.nextUp.copy.trim() || "Scheduled post"}
+                      </span>
+                      <span className="nextmeta">{formatScheduleLabel(data.nextUp)}</span>
+                    </span>
+                    <span className="nextplat" aria-hidden>
+                      {(data.nextUp.platforms.length ? data.nextUp.platforms : POST_PLATFORMS.slice(0, 1)).map((p) => (
+                        <PlatformIcon key={p} p={p} />
+                      ))}
+                    </span>
+                  </Link>
+                ) : (
+                  <div className="nextempty">
+                    <p>Nothing queued yet.</p>
+                    <Link href="/dashboard/calendar" className="viewall">Schedule a post</Link>
+                  </div>
+                )}
+                {(data.scheduledCount ?? 0) > 0 ? (
+                  <p className="nextfoot">
+                    <b>{data.scheduledCount}</b> in queue
+                  </p>
+                ) : null}
               </div>
             )}
           </div>

@@ -78,6 +78,18 @@ print(len(future))
   fi
 fi
 
+echo "8. Homepage"
+HOME_CODE=$(code "$BASE/")
+[ "$HOME_CODE" = "200" ] && ok "homepage 200" || bad "homepage returned $HOME_CODE"
+
+echo "9. Cron auth"
+CRON_CODE=$(code "$BASE/api/cron/publish")
+if [ "$CRON_CODE" = "401" ]; then
+  ok "cron publish requires secret (401)"
+else
+  bad "cron publish returned $CRON_CODE unauthenticated — check CRON_SECRET (empty value = nothing publishes)"
+fi
+
 echo ""
 echo "─────────────────────────────"
 echo "  PASS: $PASS   FAIL: $FAIL"

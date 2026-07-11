@@ -78,7 +78,9 @@ Note: `/api/webhooks/stripe` is already exempted from auth (commit `492452e`).
 ---
 
 ## 🟢 SHOULD ALREADY BE SET (verify, don't assume)
-`ANTHROPIC_API_KEY` · `GEMINI_API_KEY` · `AUTH_SECRET` · `PORTAL_USERNAME` · `PORTAL_PASSWORD` · `META_APP_SECRET` · `NEXT_PUBLIC_META_APP_ID` · `META_PAGE_ACCESS_TOKEN` · `META_REDIRECT_URI` · `VIMEO_ACCESS_TOKEN` · `KV_REST_API_URL` · `KV_REST_API_TOKEN`
+`ANTHROPIC_API_KEY` · `GEMINI_API_KEY` · `AUTH_SECRET` · `PORTAL_USERNAME` · `PORTAL_PASSWORD` · `META_APP_SECRET` · `NEXT_PUBLIC_META_APP_ID` · `META_PAGE_ACCESS_TOKEN` · `META_REDIRECT_URI` · `VIMEO_ACCESS_TOKEN` · `KV_REST_API_URL` · `KV_REST_API_TOKEN` · `CRON_SECRET` · `TOKEN_ENC_KEY`
+
+**`CRON_SECRET` is load-bearing:** `/api/cron/publish` 401s without it and NOTHING publishes — silently (the 401 happens before error reporting). An env var that exists with an EMPTY value fails the same way (2026-06-26 incident). Verify with `./scripts/smoke-prod.sh` (cron-auth check) after any rotation, and redeploy — env changes only apply on a fresh deploy.
 
 Optional / niche: `AUTH_STORE_DIR`, `JWT_SECRET`/`NEXTAUTH_SECRET` (fallbacks for `AUTH_SECRET`).
 

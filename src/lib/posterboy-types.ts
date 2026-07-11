@@ -4,6 +4,7 @@ export type DraftStatus =
   | "approved"
   | "scheduled"
   | "published"
+  | "publishing"
   | "skipped"
   | "needs_revision"
   | "failed";

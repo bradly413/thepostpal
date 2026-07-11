@@ -273,6 +273,35 @@ export function DashboardHomeStyles() {
     .wx2 .wfoot b { color: var(--ink); font-weight: 600; }
     .wx2 .wlink { margin-left: auto; color: var(--green-deep); font-weight: 600; text-decoration: none; font-size: var(--text-caption); }
 
+    /* Next up (third module when weather is unavailable) */
+    .next2 { display: flex; flex-direction: column; }
+    .nextcard {
+      display: flex; align-items: center; gap: 12px; padding: 10px 0 4px;
+      text-decoration: none; color: inherit; border-radius: 14px;
+      transition: var(--transition-interactive);
+    }
+    .nextcard:hover { background: rgba(255,255,255,0.55); }
+    .nextthumb {
+      width: 52px; height: 52px; border-radius: 12px; flex-shrink: 0;
+      background-size: cover; background-position: center; background-color: #e5e7eb;
+    }
+    .nextthumb-empty { background: linear-gradient(135deg, #eef0f2, #e3e6ea); }
+    .nextbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+    .nextcopy {
+      font-size: var(--text-body); font-weight: 600; color: var(--ink);
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .nextmeta { font-size: var(--text-label); color: var(--ink-soft); }
+    .nextplat { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .nextempty {
+      flex: 1; display: flex; flex-direction: column; justify-content: center; gap: 8px;
+      font-size: var(--text-body-sm); color: var(--ink-soft); padding: 8px 0;
+    }
+    .nextfoot {
+      margin-top: auto; padding-top: 12px; font-size: var(--text-caption); color: var(--ink-soft);
+    }
+    .nextfoot b { font-size: var(--text-stat, 26px); font-weight: 300; color: var(--ink); margin-right: 6px; }
+
     /* ---------- Bottom row ---------- */
     .row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
     @media (max-width: 880px) { .row2 { grid-template-columns: 1fr; } }

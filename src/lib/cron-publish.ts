@@ -11,11 +11,18 @@ export interface CronPublishResult {
   published: number;
   failed: number;
   skipped: number;
+  staleClaims: number;
   errors: Array<{ postId: string; message: string }>;
 }
 
 /** Internal queue only — native Meta-scheduled posts stay `scheduled` and are not re-dispatched. */
 const READY_STATUSES: DraftStatus[] = ["approved"];
+
+/**
+ * A `publishing` claim older than this is orphaned (the run that claimed it
+ * died mid-publish). Must comfortably exceed the route's maxDuration.
+ */
+const STALE_CLAIM_MS = 15 * 60 * 1000;
 
 /** Short cron transaction (superadmin RLS bypass) used only for fast DB writes. */
 async function markStatus(postId: string, status: DraftStatus, errorLog: string | null): Promise<void> {
@@ -25,6 +32,21 @@ async function markStatus(postId: string, status: DraftStatus, errorLog: string 
       data: { status, errorLog, updatedAt: new Date() },
     }),
   );
+}
+
+/**
+ * Atomically claim a post for publishing. Only a row still in `approved` can
+ * be claimed, so an overlapping cron run (or a re-read of a row whose result
+ * write was lost) skips it instead of publishing a duplicate.
+ */
+async function claimPost(postId: string): Promise<boolean> {
+  const claimed = await withCronDb((tx) =>
+    tx.scheduledPost.updateMany({
+      where: { id: postId, status: "approved" },
+      data: { status: "publishing", updatedAt: new Date() },
+    }),
+  );
+  return claimed.count === 1;
 }
 
 /**
@@ -39,6 +61,24 @@ async function markStatus(postId: string, status: DraftStatus, errorLog: string 
  */
 export async function processDueScheduledPosts(): Promise<CronPublishResult> {
   const now = new Date();
+
+  // Orphaned claims from a run that died mid-publish are marked failed, NOT
+  // re-queued: the Meta call may have succeeded before the result write was
+  // lost, so re-publishing risks a duplicate on the client's page.
+  const stale = await withCronDb((tx) =>
+    tx.scheduledPost.updateMany({
+      where: {
+        status: "publishing",
+        updatedAt: { lt: new Date(now.getTime() - STALE_CLAIM_MS) },
+      },
+      data: {
+        status: "failed",
+        errorLog:
+          "Publish was interrupted mid-run. Check the connected page before retrying — the post may already be live.",
+        updatedAt: now,
+      },
+    }),
+  );
 
   const pending = await withCronDb((tx) =>
     tx.scheduledPost.findMany({
@@ -57,11 +97,26 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
     published: 0,
     failed: 0,
     skipped: 0,
+    staleClaims: stale.count,
     errors: [],
   };
 
+  if (stale.count > 0) {
+    console.error(`[CRON] Marked ${stale.count} orphaned publishing claim(s) as failed`);
+    Sentry.captureMessage("Orphaned publishing claims marked failed", {
+      level: "warning",
+      tags: { job: "cron_publish", phase: "stale_claims" },
+      extra: { count: stale.count },
+    });
+  }
+
   for (const post of pending) {
     const locationId = post.locationId!;
+
+    if (!(await claimPost(post.id))) {
+      result.skipped += 1;
+      continue;
+    }
 
     try {
       const secrets = await withCronDb((tx) =>
@@ -82,7 +137,26 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
         igAccountId: secrets.igAccountId,
       });
 
-      await markStatus(post.id, "published", null);
+      try {
+        await markStatus(post.id, "published", null);
+      } catch (writeError) {
+        // The post IS live but recording that failed. Leave it in
+        // "publishing" — never back to "approved" (would re-publish) and not
+        // "failed" here (a retry would duplicate it). The stale-claim sweep
+        // surfaces it for review if the write keeps failing.
+        console.error(`[CRON] Post ${post.id} published but status write failed:`, writeError);
+        Sentry.captureException(writeError, {
+          tags: { job: "cron_publish", phase: "record_publish" },
+          extra: { postId: post.id, organizationId: post.organizationId, locationId },
+        });
+        result.published += 1;
+        result.errors.push({
+          postId: post.id,
+          message: "Published to Meta but the status write failed; left in 'publishing'",
+        });
+        continue;
+      }
+
       result.published += 1;
     } catch (error) {
       const message =

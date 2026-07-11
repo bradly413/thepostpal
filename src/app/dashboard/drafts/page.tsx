@@ -57,7 +57,8 @@ export default function DraftsPage() {
           (post) =>
             post.status === "draft" ||
             post.status === "needs_revision" ||
-            post.status === "needs_review",
+            post.status === "needs_review" ||
+            post.status === "failed",
         ),
       );
     } catch (err) {
@@ -109,6 +110,17 @@ export default function DraftsPage() {
         await Promise.all(eligible.map((draft) => updateDashboardPost(draft.id, { status: "approved" })));
         showToast(`Scheduled ${eligible.length} ${eligible.length === 1 ? "post" : "posts"}.`);
       }
+      await load();
+    } catch (err) {
+      showToast(formatDashboardApiMessage(err, MICROCOPY.error));
+    }
+  }
+
+  async function handleRetry(id: string) {
+    try {
+      // Straight back to the cron queue — the post was already approved once.
+      await updateDashboardPost(id, { status: "approved" });
+      showToast("Back in the queue.");
       await load();
     } catch (err) {
       showToast(formatDashboardApiMessage(err, MICROCOPY.error));
@@ -208,6 +220,9 @@ export default function DraftsPage() {
                   <div className="pb-draft-meta">{formatSchedule(draft)}</div>
                   <div>
                     <p className="pb-draft-copy">{draft.copy}</p>
+                    {draft.status === "failed" && draft.errorLog && (
+                      <p className="text-xs text-[#c81e2a] mt-1 break-words">{draft.errorLog}</p>
+                    )}
                     <div className="mt-2 flex gap-2 items-center flex-wrap">
                       <StatusBadge status={draft.status} />
                       <HumanityBadge text={draft.copy} />
@@ -217,7 +232,11 @@ export default function DraftsPage() {
                     </div>
                   </div>
                   <div className="pb-draft-actions">
-                    {(draft.status === "draft" || draft.status === "needs_revision") ? (
+                    {draft.status === "failed" ? (
+                      <button type="button" className="pb-press-btn" onClick={() => void handleRetry(draft.id)}>
+                        Retry
+                      </button>
+                    ) : (draft.status === "draft" || draft.status === "needs_revision") ? (
                       <button type="button" className="pb-press-btn" onClick={() => void handlePress(draft.id)}>
                         {features.approvalPipeline ? "Press" : "Schedule"}
                       </button>

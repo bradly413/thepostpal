@@ -14,25 +14,18 @@ import {
   filterPostsForLocation,
   filterPostsNeedingReview,
   isQueuedToPublishPost,
+  buildWeeklyOverview,
+  type DashboardWeeklyOverview,
 } from "@/lib/dashboard-post-helpers";
 import type { DraftStatus } from "@/lib/posterboy-types";
+
+export type { DashboardWeeklyOverview } from "@/lib/dashboard-post-helpers";
 
 const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1600566753190-17f0baa2a6a3?auto=format&fit=crop&w=900&q=80",
 ];
-
-export interface DashboardWeeklyOverview {
-  rangeLabel: string;
-  barHeights: number[];
-  /** raw posts-per-day (Monday-start) — barHeights has a visual floor */
-  dayCounts: number[];
-  activeBarIndex: number;
-  postsCount: number;
-  engagementLabel: string;
-  engagementPositive: boolean;
-}
 
 export interface DashboardHomeSnapshot {
   userName: string;
@@ -48,76 +41,6 @@ export interface DashboardHomeSnapshot {
   hoursSaved: number;
   everythingInSync: boolean;
   weeklyOverview: DashboardWeeklyOverview;
-}
-
-const OVERVIEW_STATUSES: DraftStatus[] = ["scheduled", "approved", "published"];
-
-function getWeekDateStrings(): string[] {
-  const d = new Date();
-  const day = d.getDay();
-  const diffToMon = day === 0 ? -6 : 1 - day;
-  const mon = new Date(d);
-  mon.setDate(d.getDate() + diffToMon);
-  return Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(mon);
-    date.setDate(mon.getDate() + i);
-    return date.toISOString().slice(0, 10);
-  });
-}
-
-function formatWeekRange(weekDates: string[]): string {
-  const start = new Date(`${weekDates[0]}T12:00:00`);
-  const end = new Date(`${weekDates[6]}T12:00:00`);
-  const fmt = (x: Date) => x.toLocaleDateString("en-US", { month: "short", day: "numeric" });
-  return `${fmt(start)} – ${fmt(end)}`;
-}
-
-function countPostsOnDate(posts: DashboardPostRecord[], date: string): number {
-  return posts.filter(
-    (d) => d.scheduledFor?.slice(0, 10) === date && OVERVIEW_STATUSES.includes(d.status),
-  ).length;
-}
-
-function buildWeeklyOverview(posts: DashboardPostRecord[]): DashboardWeeklyOverview {
-  const weekDates = getWeekDateStrings();
-  const countsPerDay = weekDates.map((date) => countPostsOnDate(posts, date));
-  const max = Math.max(1, ...countsPerDay);
-  const barHeights = countsPerDay.map((c) =>
-    c === 0 ? 26 : Math.max(30, Math.round((c / max) * 100)),
-  );
-  const peak = Math.max(...countsPerDay);
-  const activeBarIndex = peak > 0 ? countsPerDay.indexOf(peak) : new Date().getDay() === 0 ? 6 : new Date().getDay() - 1;
-  const postsCount = countsPerDay.reduce((sum, c) => sum + c, 0);
-
-  const prevMon = new Date(`${weekDates[0]}T12:00:00`);
-  prevMon.setDate(prevMon.getDate() - 7);
-  const prevWeekDates = Array.from({ length: 7 }, (_, i) => {
-    const date = new Date(prevMon);
-    date.setDate(prevMon.getDate() + i);
-    return date.toISOString().slice(0, 10);
-  });
-  const prevCount = prevWeekDates.reduce((sum, date) => sum + countPostsOnDate(posts, date), 0);
-
-  let engagementLabel = "—";
-  let engagementPositive = false;
-  if (prevCount > 0 && postsCount !== prevCount) {
-    const pct = Math.round(((postsCount - prevCount) / prevCount) * 100);
-    engagementLabel = `${pct > 0 ? "+" : ""}${pct}%`;
-    engagementPositive = pct > 0;
-  } else if (postsCount > 0 && prevCount === 0) {
-    engagementLabel = "New";
-    engagementPositive = true;
-  }
-
-  return {
-    rangeLabel: formatWeekRange(weekDates),
-    barHeights,
-    dayCounts: countsPerDay,
-    activeBarIndex,
-    postsCount,
-    engagementLabel,
-    engagementPositive,
-  };
 }
 
 function formatScheduleLabel(draft: DashboardPostRecord): string {
@@ -146,6 +69,7 @@ function countByStatus(posts: DashboardPostRecord[]): Record<DraftStatus, number
       approved: 0,
       scheduled: 0,
       published: 0,
+      publishing: 0,
       skipped: 0,
       needs_revision: 0,
       failed: 0,

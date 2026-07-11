@@ -59,6 +59,7 @@ export interface DashboardPostRecord {
   mediaUrl?: string | null;
   mediaUrls?: string[] | null;
   mediaType?: "image" | "video" | null;
+  errorLog?: string | null;
   createdAt: string;
   updatedAt: string;
 }

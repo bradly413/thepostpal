@@ -33,9 +33,11 @@ export async function POST(_: NextRequest, { params }: Params) {
 
       const requiresApproval = post.location.approvalRule?.requiresApproval ?? false;
       if (!requiresApproval) {
+        // "approved" = the internal cron publish queue (same status the
+        // approval flow sets). "scheduled" is never dispatched by the cron.
         const scheduled = await tx.scheduledPost.update({
           where: { id: post.id },
-          data: { status: "scheduled" },
+          data: { status: "approved" },
         });
         return NextResponse.json({ post: scheduled, status: "SCHEDULED" });
       }

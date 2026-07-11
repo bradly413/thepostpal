@@ -51,6 +51,16 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "platform must be facebook, instagram, or both" }, { status: 400 });
   }
 
+  // Instagram's Content Publishing API has no native scheduling — it would
+  // ignore scheduledTime and post immediately. Scheduled IG posts must go
+  // through the internal cron queue (status "approved") instead.
+  if (scheduledTime !== undefined && platform !== "facebook") {
+    return NextResponse.json(
+      { error: "Native scheduling is Facebook-only. Schedule Instagram posts through the queue instead." },
+      { status: 400 },
+    );
+  }
+
   try {
     return await withTenantDb(auth, async (tx) => {
       let secrets;

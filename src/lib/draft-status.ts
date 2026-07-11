@@ -6,6 +6,8 @@ const VALID_TRANSITIONS: Record<DraftStatus, DraftStatus[]> = {
   approved: ["scheduled", "published"],
   scheduled: ["published", "needs_revision"],
   published: [],
+  // Server-only mid-flight claim; the cron sweeps stuck rows to "failed".
+  publishing: [],
   skipped: ["needs_review"],
   needs_revision: ["needs_review", "draft"],
   failed: ["needs_review", "draft"],

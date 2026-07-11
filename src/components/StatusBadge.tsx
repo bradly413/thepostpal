@@ -6,6 +6,7 @@ const LABELS: Record<DraftStatus, string> = {
   approved: "Approved",
   scheduled: "Scheduled",
   published: "Published",
+  publishing: "Publishing",
   skipped: "Skipped",
   needs_revision: "Needs revision",
   failed: "Publish failed",
