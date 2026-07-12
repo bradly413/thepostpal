@@ -16,7 +16,12 @@ import {
 import { BULK_CAPTION_TONE_CHIPS } from "@/lib/bulk-caption-tones";
 import { BULK_DIRECTION_PLACEHOLDERS } from "@/lib/bulk-direction-placeholders";
 import { useRotatingPlaceholder } from "@/lib/use-rotating-placeholder";
-import { buildBulkCaptionContext, formatCaptionVariant, fileToInlineImage } from "@/lib/bulk-caption-context";
+import {
+  buildBulkCaptionContext,
+  formatCaptionVariant,
+  fileToInlineImage,
+  isUsableCaptionImageUrl,
+} from "@/lib/bulk-caption-context";
 import { useActiveLocation } from "@/lib/use-active-location";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
@@ -71,6 +76,8 @@ export default function BulkScheduler() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionQueueRef = useRef<Set<string>>(new Set());
   const autoCaptionChainRef = useRef<Promise<void>>(Promise.resolve());
+  const itemsRef = useRef(items);
+  itemsRef.current = items;
 
   const locationName = locations.find((l) => l.id === locationId)?.name ?? "brand";
 
@@ -136,62 +143,89 @@ export default function BulkScheduler() {
       }
       if (captionQueueRef.current.has(itemId)) return null;
 
-      let mediaUrl = opts?.mediaUrl ?? null;
-      let batchIndex = opts?.batchIndex ?? -1;
-      let note = photoNote ?? "";
-      const inlineImage = opts?.inlineImage ?? null;
+      const snapshot = itemsRef.current;
+      const snapIdx = snapshot.findIndex((i) => i.id === itemId);
+      const snapItem = snapIdx >= 0 ? snapshot[snapIdx] : null;
+      if (!snapItem) {
+        patchItem(itemId, { captioning: false, error: "Photo was removed — add it again." });
+        return null;
+      }
 
-      setItems((prev) => {
-        const item = prev.find((i) => i.id === itemId);
-        if (!item) return prev;
-        if (!mediaUrl) mediaUrl = item.mediaUrl;
-        if (batchIndex < 0) batchIndex = prev.findIndex((i) => i.id === itemId);
-        note = photoNote ?? item.photoNote;
-        return prev.map((p) =>
-          p.id === itemId ? { ...p, captioning: true, error: null, showVariants: false } : p,
-        );
-      });
-
+      const mediaUrl = opts?.mediaUrl ?? snapItem.mediaUrl;
+      const batchIndex =
+        typeof opts?.batchIndex === "number" && opts.batchIndex >= 0
+          ? opts.batchIndex
+          : snapIdx;
+      const note = photoNote ?? snapItem.photoNote;
+      // Prefer hosted URL — avoid multi‑MB data URLs (Vercel body limit).
+      let inlineImage = opts?.inlineImage ?? null;
+      const hasHostedUrl = isUsableCaptionImageUrl(mediaUrl);
+      if (hasHostedUrl) inlineImage = null;
       const hasInline = Boolean(inlineImage?.startsWith("data:image"));
-      const hasHttps = Boolean(mediaUrl?.startsWith("https://"));
-      if ((!hasInline && !hasHttps) || batchIndex < 0) {
+
+      if (!hasHostedUrl && !hasInline) {
         patchItem(itemId, {
           captioning: false,
-          error: hasHttps || hasInline ? "Photo not found — remove and re-add it." : "Still uploading — wait a moment, then try Create captions.",
+          error: "Still uploading — wait a moment, then try Create captions.",
         });
         return null;
       }
 
+      patchItem(itemId, { captioning: true, error: null, showVariants: false });
       captionQueueRef.current.add(itemId);
       const plat = captionPlatformFor(platform);
       const context = buildBulkCaptionContext({
         batchDirection,
         selectedToneIds: selectedTones,
         photoNote: note,
-        batchIndex,
+        batchIndex: batchIndex >= 0 ? batchIndex : undefined,
         batchTotal,
         priorCaptions,
       });
 
       try {
-        const res = await fetch("/api/ai/captions-from-image", {
-          method: "POST",
-          credentials: "same-origin",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            imageUrl: hasHttps ? mediaUrl : undefined,
-            inlineImage: hasInline ? inlineImage : undefined,
-            platform: plat,
-            locationId,
-            count: 3,
-            context: context || undefined,
-          }),
-        });
-        const data = (await res.json()) as {
-          variants?: CaptionVariant[];
-          error?: string;
-          compliance?: { blocked?: boolean; message?: string };
+        const postCaption = async (body: {
+          imageUrl?: string;
+          inlineImage?: string;
+        }) => {
+          const res = await fetch("/api/ai/captions-from-image", {
+            method: "POST",
+            credentials: "same-origin",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              ...body,
+              platform: plat,
+              locationId,
+              count: 3,
+              context: context || undefined,
+            }),
+          });
+          const data = (await res.json()) as {
+            variants?: CaptionVariant[];
+            error?: string;
+            compliance?: { blocked?: boolean; message?: string };
+          };
+          return { res, data };
         };
+
+        let { res, data } = await postCaption({
+          imageUrl: hasHostedUrl ? mediaUrl! : undefined,
+          inlineImage: hasInline ? inlineImage! : undefined,
+        });
+
+        // S3/CloudFront may block server fetch — retry once with a compact inline JPEG.
+        if (
+          !res.ok &&
+          hasHostedUrl &&
+          !hasInline &&
+          typeof data.error === "string" &&
+          /process the image|valid inlineImage|https imageUrl/i.test(data.error)
+        ) {
+          const retryInline = await fileToInlineImage(snapItem.file);
+          if (retryInline) {
+            ({ res, data } = await postCaption({ inlineImage: retryInline }));
+          }
+        }
 
         if (data.compliance?.blocked) {
           patchItem(itemId, {
@@ -236,23 +270,15 @@ export default function BulkScheduler() {
   );
 
   const enqueueAutoCaption = useCallback(
-    (itemId: string, file: File, knownMediaUrl: string) => {
+    (itemId: string, _file: File, knownMediaUrl: string) => {
       autoCaptionChainRef.current = autoCaptionChainRef.current
         .then(async () => {
-          const inlineImage = await fileToInlineImage(file);
-          let prior: string[] = [];
-          let total = 0;
-          let batchIndex = -1;
-          setItems((prev) => {
-            total = prev.length;
-            batchIndex = prev.findIndex((p) => p.id === itemId);
-            prior = prev
-              .filter((p) => p.id !== itemId && p.caption.trim())
-              .map((p) => p.caption.split("\n\n")[0].trim());
-            return prev;
-          });
-          await generateCaptionsForItem(itemId, prior, total, undefined, {
-            inlineImage,
+          const snapshot = itemsRef.current;
+          const batchIndex = Math.max(0, snapshot.findIndex((p) => p.id === itemId));
+          const prior = snapshot
+            .filter((p) => p.id !== itemId && p.caption.trim())
+            .map((p) => p.caption.split("\n\n")[0].trim());
+          await generateCaptionsForItem(itemId, prior, snapshot.length || 1, undefined, {
             mediaUrl: knownMediaUrl,
             batchIndex,
           });
@@ -344,37 +370,48 @@ export default function BulkScheduler() {
     }
     setGeneratingCaptions(true);
     setCaptionBatchError(null);
-    const prior: string[] = [];
-    const targets = items.filter((i) => i.mediaUrl && !i.captioning);
-    let wrote = 0;
+    try {
+      // Let in-flight auto captions finish so we don't collide.
+      await autoCaptionChainRef.current.catch(() => undefined);
 
-    for (let i = 0; i < targets.length; i++) {
-      const it = targets[i]!;
-      const inlineImage = await fileToInlineImage(it.file);
-      const caption = await generateCaptionsForItem(
-        it.id,
-        [...prior],
-        items.length,
-        undefined,
-        {
-          inlineImage,
-          mediaUrl: it.mediaUrl,
-          batchIndex: items.findIndex((p) => p.id === it.id),
-        },
+      const snapshot = itemsRef.current;
+      const prior: string[] = snapshot
+        .filter((p) => p.caption.trim())
+        .map((p) => p.caption.split("\n\n")[0].trim());
+      const targets = snapshot.filter(
+        (i) => i.mediaUrl && !i.captioning && !i.caption.trim() && !i.posted,
       );
-      if (caption) {
-        wrote += 1;
-        prior.push(caption.split("\n\n")[0]);
+      let wrote = 0;
+
+      for (const it of targets) {
+        const inlineImage = isUsableCaptionImageUrl(it.mediaUrl)
+          ? null
+          : await fileToInlineImage(it.file);
+        const caption = await generateCaptionsForItem(
+          it.id,
+          [...prior],
+          snapshot.length,
+          undefined,
+          {
+            inlineImage,
+            mediaUrl: it.mediaUrl,
+            batchIndex: snapshot.findIndex((p) => p.id === it.id),
+          },
+        );
+        if (caption) {
+          wrote += 1;
+          prior.push(caption.split("\n\n")[0]);
+        }
       }
-    }
 
-    if (targets.length > 0 && wrote === 0) {
-      setCaptionBatchError(
-        "Couldn't write captions — see the error on each photo, or check that AI is configured.",
-      );
+      if (targets.length > 0 && wrote === 0) {
+        setCaptionBatchError(
+          "Couldn't write captions — see the error on each photo, or check that AI is configured.",
+        );
+      }
+    } finally {
+      setGeneratingCaptions(false);
     }
-
-    setGeneratingCaptions(false);
   }
 
   async function scheduleAll() {
@@ -704,20 +741,16 @@ export default function BulkScheduler() {
                                   const prior = items
                                     .filter((p) => p.caption.trim() && p.id !== it.id)
                                     .map((p) => p.caption.split("\n\n")[0].trim());
-                                  void (async () => {
-                                    const inlineImage = await fileToInlineImage(it.file);
-                                    await generateCaptionsForItem(
-                                      it.id,
-                                      prior,
-                                      items.length,
-                                      undefined,
-                                      {
-                                        inlineImage,
-                                        mediaUrl: it.mediaUrl,
-                                        batchIndex: i,
-                                      },
-                                    );
-                                  })();
+                                  void generateCaptionsForItem(
+                                    it.id,
+                                    prior,
+                                    items.length,
+                                    undefined,
+                                    {
+                                      mediaUrl: it.mediaUrl,
+                                      batchIndex: i,
+                                    },
+                                  );
                                 }}
                                 className="text-[11px] font-medium text-[#ee2532] hover:underline"
                               >

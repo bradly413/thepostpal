@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { buildBulkCaptionContext, formatCaptionVariant } from "@/lib/bulk-caption-context";
+import {
+  buildBulkCaptionContext,
+  formatCaptionVariant,
+  isUsableCaptionImageUrl,
+} from "@/lib/bulk-caption-context";
 
 describe("bulk-caption-context", () => {
   it("merges direction, goals, and photo note", () => {
@@ -27,5 +31,13 @@ describe("bulk-caption-context", () => {
         hashtags: ["#test", "#demo"],
       }),
     ).toBe("hello world\n\n#test #demo");
+  });
+
+  it("accepts http(s) and /uploads image urls", () => {
+    expect(isUsableCaptionImageUrl("https://cdn.example.com/a.jpg")).toBe(true);
+    expect(isUsableCaptionImageUrl("http://localhost:8240/x.png")).toBe(true);
+    expect(isUsableCaptionImageUrl("/uploads/tenant/a.jpg")).toBe(true);
+    expect(isUsableCaptionImageUrl(null)).toBe(false);
+    expect(isUsableCaptionImageUrl("ftp://nope")).toBe(false);
   });
 });

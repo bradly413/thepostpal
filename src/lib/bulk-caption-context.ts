@@ -62,18 +62,75 @@ export function formatCaptionVariant(v: CaptionVariantShape): string {
 }
 
 const INLINE_CAPTION_MAX_BYTES = 12 * 1024 * 1024;
+const INLINE_CAPTION_MAX_EDGE = 1024;
+const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|heic|heif|avif|bmp)$/i;
 
-/** Inline JPEG/PNG/etc. for vision APIs — avoids server-side fetch of fresh S3 URLs. */
+function looksLikeImageFile(file: File): boolean {
+  if (file.type.startsWith("image/")) return true;
+  // iPhone / drag-drop often leave type empty — fall back to extension.
+  return IMAGE_EXT_RE.test(file.name);
+}
+
+/**
+ * Compact JPEG data URL for vision APIs.
+ * Prefer S3 https URLs when available — only use this as a fallback so we
+ * do not blow the Vercel request body limit with multi‑MB phone photos.
+ */
 export async function fileToInlineImage(file: File): Promise<string | null> {
-  if (!file.type.startsWith("image/") || file.size <= 0 || file.size > INLINE_CAPTION_MAX_BYTES) {
+  if (!looksLikeImageFile(file) || file.size <= 0 || file.size > INLINE_CAPTION_MAX_BYTES) {
     return null;
   }
+
+  // HEIC often cannot decode in-browser — leave null and let the server use imageUrl.
+  if (/heic|heif/i.test(file.type) || /\.heic$/i.test(file.name) || /\.heif$/i.test(file.name)) {
+    return null;
+  }
+
   return new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      resolve(typeof reader.result === "string" ? reader.result : null);
+    const objectUrl = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const scale = Math.min(1, INLINE_CAPTION_MAX_EDGE / Math.max(img.width, img.height));
+        const w = Math.max(1, Math.round(img.width * scale));
+        const h = Math.max(1, Math.round(img.height * scale));
+        const canvas = document.createElement("canvas");
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext("2d");
+        if (!ctx) {
+          resolve(null);
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL("image/jpeg", 0.82));
+      } catch {
+        resolve(null);
+      } finally {
+        URL.revokeObjectURL(objectUrl);
+      }
     };
-    reader.onerror = () => resolve(null);
-    reader.readAsDataURL(file);
+    img.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      // Fallback: raw FileReader (may be large — caller should prefer https URL).
+      const reader = new FileReader();
+      reader.onload = () => {
+        resolve(typeof reader.result === "string" ? reader.result : null);
+      };
+      reader.onerror = () => resolve(null);
+      reader.readAsDataURL(file);
+    };
+    img.src = objectUrl;
   });
+}
+
+export function isUsableCaptionImageUrl(url: string | null | undefined): boolean {
+  if (!url) return false;
+  if (url.startsWith("/uploads/")) return true;
+  try {
+    const u = new URL(url);
+    return u.protocol === "https:" || u.protocol === "http:";
+  } catch {
+    return false;
+  }
 }
