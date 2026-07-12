@@ -66,6 +66,7 @@ export default function BulkScheduler() {
   const [scheduling, setScheduling] = useState(false);
   const [done, setDone] = useState(false);
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
+  const [captionBatchError, setCaptionBatchError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionQueueRef = useRef<Set<string>>(new Set());
@@ -115,32 +116,51 @@ export default function BulkScheduler() {
     setItems((prev) => prev.map((p) => (p.id === id ? { ...p, ...patch } : p)));
   }
 
+  interface CaptionGenerateOpts {
+    inlineImage?: string | null;
+    mediaUrl?: string | null;
+    batchIndex?: number;
+  }
+
   const generateCaptionsForItem = useCallback(
     async (
       itemId: string,
       priorCaptions: string[],
       batchTotal: number,
       photoNote?: string,
-      inlineImage?: string | null,
+      opts?: CaptionGenerateOpts,
     ): Promise<string | null> => {
-      if (!locationId || captionQueueRef.current.has(itemId)) return null;
+      if (!locationId) {
+        patchItem(itemId, { error: "Workspace location not ready — refresh and try again." });
+        return null;
+      }
+      if (captionQueueRef.current.has(itemId)) return null;
 
-      let mediaUrl: string | null = null;
-      let batchIndex = -1;
+      let mediaUrl = opts?.mediaUrl ?? null;
+      let batchIndex = opts?.batchIndex ?? -1;
       let note = photoNote ?? "";
+      const inlineImage = opts?.inlineImage ?? null;
 
       setItems((prev) => {
         const item = prev.find((i) => i.id === itemId);
-        if (!item?.mediaUrl) return prev;
-        mediaUrl = item.mediaUrl;
-        batchIndex = prev.findIndex((i) => i.id === itemId);
+        if (!item) return prev;
+        if (!mediaUrl) mediaUrl = item.mediaUrl;
+        if (batchIndex < 0) batchIndex = prev.findIndex((i) => i.id === itemId);
         note = photoNote ?? item.photoNote;
         return prev.map((p) =>
           p.id === itemId ? { ...p, captioning: true, error: null, showVariants: false } : p,
         );
       });
 
-      if (!mediaUrl || batchIndex < 0) return null;
+      const hasInline = Boolean(inlineImage?.startsWith("data:image"));
+      const hasHttps = Boolean(mediaUrl?.startsWith("https://"));
+      if ((!hasInline && !hasHttps) || batchIndex < 0) {
+        patchItem(itemId, {
+          captioning: false,
+          error: hasHttps || hasInline ? "Photo not found — remove and re-add it." : "Still uploading — wait a moment, then try Create captions.",
+        });
+        return null;
+      }
 
       captionQueueRef.current.add(itemId);
       const plat = captionPlatformFor(platform);
@@ -159,8 +179,8 @@ export default function BulkScheduler() {
           credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            imageUrl: mediaUrl,
-            inlineImage: inlineImage || undefined,
+            imageUrl: hasHttps ? mediaUrl : undefined,
+            inlineImage: hasInline ? inlineImage : undefined,
             platform: plat,
             locationId,
             count: 3,
@@ -216,20 +236,26 @@ export default function BulkScheduler() {
   );
 
   const enqueueAutoCaption = useCallback(
-    (itemId: string, file: File) => {
+    (itemId: string, file: File, knownMediaUrl: string) => {
       autoCaptionChainRef.current = autoCaptionChainRef.current
         .then(async () => {
           const inlineImage = await fileToInlineImage(file);
           let prior: string[] = [];
           let total = 0;
+          let batchIndex = -1;
           setItems((prev) => {
             total = prev.length;
+            batchIndex = prev.findIndex((p) => p.id === itemId);
             prior = prev
               .filter((p) => p.id !== itemId && p.caption.trim())
               .map((p) => p.caption.split("\n\n")[0].trim());
             return prev;
           });
-          await generateCaptionsForItem(itemId, prior, total, undefined, inlineImage);
+          await generateCaptionsForItem(itemId, prior, total, undefined, {
+            inlineImage,
+            mediaUrl: knownMediaUrl,
+            batchIndex,
+          });
         })
         .catch(() => undefined);
     },
@@ -263,7 +289,7 @@ export default function BulkScheduler() {
           setItems((prev) =>
             prev.map((p) => (p.id === it.id ? { ...p, mediaUrl: url, uploading: false } : p)),
           );
-          enqueueAutoCaption(it.id, it.file);
+          enqueueAutoCaption(it.id, it.file, url);
         })
         .catch((e) =>
           setItems((prev) =>
@@ -312,21 +338,40 @@ export default function BulkScheduler() {
   }
 
   async function createAllCaptions() {
-    if (generatingCaptions || !locationId) return;
+    if (generatingCaptions || !locationId) {
+      if (!locationId) setCaptionBatchError("Workspace location not ready — refresh and try again.");
+      return;
+    }
     setGeneratingCaptions(true);
+    setCaptionBatchError(null);
     const prior: string[] = [];
     const targets = items.filter((i) => i.mediaUrl && !i.captioning);
+    let wrote = 0;
 
-    for (const it of targets) {
+    for (let i = 0; i < targets.length; i++) {
+      const it = targets[i]!;
       const inlineImage = await fileToInlineImage(it.file);
       const caption = await generateCaptionsForItem(
         it.id,
         [...prior],
         items.length,
         undefined,
-        inlineImage,
+        {
+          inlineImage,
+          mediaUrl: it.mediaUrl,
+          batchIndex: items.findIndex((p) => p.id === it.id),
+        },
       );
-      if (caption) prior.push(caption.split("\n\n")[0]);
+      if (caption) {
+        wrote += 1;
+        prior.push(caption.split("\n\n")[0]);
+      }
+    }
+
+    if (targets.length > 0 && wrote === 0) {
+      setCaptionBatchError(
+        "Couldn't write captions — see the error on each photo, or check that AI is configured.",
+      );
     }
 
     setGeneratingCaptions(false);
@@ -564,7 +609,7 @@ export default function BulkScheduler() {
                   </p>
                   <button
                     type="button"
-                    onClick={createAllCaptions}
+                    onClick={() => void createAllCaptions()}
                     disabled={generatingCaptions || uploading || readyCount === 0 || !locationId}
                     className="pb-btn-secondary text-xs py-2 px-3.5 inline-flex items-center gap-1.5 disabled:opacity-50"
                   >
@@ -572,6 +617,10 @@ export default function BulkScheduler() {
                     {generatingCaptions ? "Creating captions…" : "Create captions"}
                   </button>
                 </div>
+
+                {captionBatchError ? (
+                  <p className="text-sm text-[#ee2532] px-1">{captionBatchError}</p>
+                ) : null}
 
                 {items.map((it, i) => {
                   const iso = timeline[i]?.iso ?? scheduledForISO(startDate, time, i, intervalDays, skipWeekends);
@@ -662,7 +711,11 @@ export default function BulkScheduler() {
                                       prior,
                                       items.length,
                                       undefined,
-                                      inlineImage,
+                                      {
+                                        inlineImage,
+                                        mediaUrl: it.mediaUrl,
+                                        batchIndex: i,
+                                      },
                                     );
                                   })();
                                 }}
@@ -690,7 +743,7 @@ export default function BulkScheduler() {
                           {it.posted ? (
                             <span className="text-xs font-medium text-[#1f9d4d]">Scheduled</span>
                           ) : it.error ? (
-                            <span className="text-[11px] text-[#ee2532] text-right max-w-[120px]">{it.error}</span>
+                            <span className="text-[11px] text-[#ee2532] text-right max-w-[200px] leading-snug">{it.error}</span>
                           ) : it.uploading ? (
                             <span className="text-xs text-black/45">Uploading…</span>
                           ) : (
