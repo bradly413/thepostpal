@@ -16,7 +16,7 @@ import {
 import { BULK_CAPTION_TONE_CHIPS } from "@/lib/bulk-caption-tones";
 import { BULK_DIRECTION_PLACEHOLDERS } from "@/lib/bulk-direction-placeholders";
 import { useRotatingPlaceholder } from "@/lib/use-rotating-placeholder";
-import { buildBulkCaptionContext, formatCaptionVariant } from "@/lib/bulk-caption-context";
+import { buildBulkCaptionContext, formatCaptionVariant, fileToInlineImage } from "@/lib/bulk-caption-context";
 import { useActiveLocation } from "@/lib/use-active-location";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
@@ -69,6 +69,7 @@ export default function BulkScheduler() {
   const [dragOver, setDragOver] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionQueueRef = useRef<Set<string>>(new Set());
+  const autoCaptionChainRef = useRef<Promise<void>>(Promise.resolve());
 
   const locationName = locations.find((l) => l.id === locationId)?.name ?? "brand";
 
@@ -120,6 +121,7 @@ export default function BulkScheduler() {
       priorCaptions: string[],
       batchTotal: number,
       photoNote?: string,
+      inlineImage?: string | null,
     ): Promise<string | null> => {
       if (!locationId || captionQueueRef.current.has(itemId)) return null;
 
@@ -158,6 +160,7 @@ export default function BulkScheduler() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             imageUrl: mediaUrl,
+            inlineImage: inlineImage || undefined,
             platform: plat,
             locationId,
             count: 3,
@@ -212,6 +215,27 @@ export default function BulkScheduler() {
     [locationId, platform, batchDirection, selectedTones],
   );
 
+  const enqueueAutoCaption = useCallback(
+    (itemId: string, file: File) => {
+      autoCaptionChainRef.current = autoCaptionChainRef.current
+        .then(async () => {
+          const inlineImage = await fileToInlineImage(file);
+          let prior: string[] = [];
+          let total = 0;
+          setItems((prev) => {
+            total = prev.length;
+            prior = prev
+              .filter((p) => p.id !== itemId && p.caption.trim())
+              .map((p) => p.caption.split("\n\n")[0].trim());
+            return prev;
+          });
+          await generateCaptionsForItem(itemId, prior, total, undefined, inlineImage);
+        })
+        .catch(() => undefined);
+    },
+    [generateCaptionsForItem],
+  );
+
   function addFiles(fileList: FileList | null) {
     if (!fileList || !fileList.length) return;
     setDone(false);
@@ -239,6 +263,7 @@ export default function BulkScheduler() {
           setItems((prev) =>
             prev.map((p) => (p.id === it.id ? { ...p, mediaUrl: url, uploading: false } : p)),
           );
+          enqueueAutoCaption(it.id, it.file);
         })
         .catch((e) =>
           setItems((prev) =>
@@ -293,7 +318,14 @@ export default function BulkScheduler() {
     const targets = items.filter((i) => i.mediaUrl && !i.captioning);
 
     for (const it of targets) {
-      const caption = await generateCaptionsForItem(it.id, [...prior], items.length);
+      const inlineImage = await fileToInlineImage(it.file);
+      const caption = await generateCaptionsForItem(
+        it.id,
+        [...prior],
+        items.length,
+        undefined,
+        inlineImage,
+      );
       if (caption) prior.push(caption.split("\n\n")[0]);
     }
 
@@ -515,7 +547,7 @@ export default function BulkScheduler() {
               </div>
               <p className="text-sm font-semibold text-black">Drop or choose photos</p>
               <p className="mt-1 text-xs text-black/50">
-                Select your whole batch at once — uploads to your secure bucket
+                Select your whole batch at once — uploads run, then captions write automatically
               </p>
             </div>
 
@@ -623,7 +655,16 @@ export default function BulkScheduler() {
                                   const prior = items
                                     .filter((p) => p.caption.trim() && p.id !== it.id)
                                     .map((p) => p.caption.split("\n\n")[0].trim());
-                                  void generateCaptionsForItem(it.id, prior, items.length);
+                                  void (async () => {
+                                    const inlineImage = await fileToInlineImage(it.file);
+                                    await generateCaptionsForItem(
+                                      it.id,
+                                      prior,
+                                      items.length,
+                                      undefined,
+                                      inlineImage,
+                                    );
+                                  })();
                                 }}
                                 className="text-[11px] font-medium text-[#ee2532] hover:underline"
                               >

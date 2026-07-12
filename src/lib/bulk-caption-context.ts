@@ -60,3 +60,20 @@ export function formatCaptionVariant(v: CaptionVariantShape): string {
   const tags = v.hashtags.length ? "\n\n" + v.hashtags.join(" ") : "";
   return v.caption + tags;
 }
+
+const INLINE_CAPTION_MAX_BYTES = 12 * 1024 * 1024;
+
+/** Inline JPEG/PNG/etc. for vision APIs — avoids server-side fetch of fresh S3 URLs. */
+export async function fileToInlineImage(file: File): Promise<string | null> {
+  if (!file.type.startsWith("image/") || file.size <= 0 || file.size > INLINE_CAPTION_MAX_BYTES) {
+    return null;
+  }
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      resolve(typeof reader.result === "string" ? reader.result : null);
+    };
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
+}
