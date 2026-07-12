@@ -256,8 +256,18 @@ export default function DashboardHome() {
     () => {
       if (!data) return;
       if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
-      // tiny scale entrance — frozen mid-tween (bg tab) stays fully visible
-      gsap.from(".anim", { scale: 0.985, duration: 0.45, ease: "power2.out", stagger: 0.05, transformOrigin: "50% 50%", clearProps: "transform,willChange" });
+      // Opacity/y only — scale transforms break CSS grid and stack cards on top
+      // of each other when a tween is interrupted (tab switch / remount).
+      const els = gsap.utils.toArray<HTMLElement>(".anim");
+      gsap.set(els, { clearProps: "transform,transformOrigin,willChange" });
+      gsap.from(els, {
+        opacity: 0,
+        y: 10,
+        duration: 0.4,
+        ease: "power2.out",
+        stagger: 0.04,
+        clearProps: "all",
+      });
     },
     { scope: root, dependencies: [!!data] },
   );

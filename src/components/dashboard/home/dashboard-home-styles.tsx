@@ -234,13 +234,29 @@ export function DashboardHomeStyles() {
     .period { font-size: var(--text-caption); color: var(--ink-soft); display: inline-flex; align-items: center; gap: 3px; white-space: nowrap; flex-shrink: 0; }
     .ghostbtn { border-radius: 99px; border: 1px solid var(--green); background: var(--accent-soft); color: var(--green-deep); padding: 9px 20px; font-size: var(--text-body); font-weight: 600; cursor: pointer; }
 
-    /* Middle row */
-    .modules2 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; }
-    @media (max-width: 1080px) { .modules2 { grid-template-columns: repeat(2, 1fr); } }
-    @media (max-width: 720px) { .modules2 { grid-template-columns: 1fr; } }
-    /* min-height (not fixed height) so cards grow to fit content and the grid
-       stretches them all equal — never clips/collapses at any width */
-    .modules2 .mod { min-height: 230px; }
+    /* Middle row — minmax(0,1fr) keeps cards in lane; never let transforms
+       escape the grid track (GSAP scale used to overlap Next Up onto Posts). */
+    .modules2 {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 20px;
+      align-items: stretch;
+    }
+    @media (max-width: 1080px) {
+      .modules2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 720px) {
+      .modules2 { grid-template-columns: minmax(0, 1fr); }
+    }
+    .modules2 .mod {
+      min-height: 230px;
+      min-width: 0;
+      width: 100%;
+      max-width: 100%;
+      position: relative;
+      z-index: 0;
+      box-sizing: border-box;
+    }
 
     /* Upcoming posts */
     .uplist { display: flex; flex-direction: column; gap: 4px; }
@@ -251,8 +267,10 @@ export function DashboardHomeStyles() {
     .upd { font-size: var(--text-label); color: var(--ink-soft); }
     .upplat { flex-shrink: 0; display: flex; align-items: center; }
 
-    /* Total reach */
-    .reach2 { position: relative; overflow: hidden; }
+    /* Next up (third module when weather is unavailable) */
+    .next2 { display: flex; flex-direction: column; min-width: 0; overflow: hidden; }
+    .reach2 { position: relative; overflow: hidden; min-width: 0; }
+    .up2 { min-width: 0; overflow: hidden; }
     .bignum { font-size: clamp(40px, 4.4vw, 56px); font-weight: 300; letter-spacing: var(--tracking-display, -0.04em); color: var(--ink); line-height: var(--leading-tight); margin: 6px 0 2px; }
     .delta { margin-top: 8px; font-size: var(--text-caption); font-weight: 600; }
     /* positive-metric green (convention: up = green), independent of brand-red accent */
@@ -273,8 +291,6 @@ export function DashboardHomeStyles() {
     .wx2 .wfoot b { color: var(--ink); font-weight: 600; }
     .wx2 .wlink { margin-left: auto; color: var(--green-deep); font-weight: 600; text-decoration: none; font-size: var(--text-caption); }
 
-    /* Next up (third module when weather is unavailable) */
-    .next2 { display: flex; flex-direction: column; }
     .nextcard {
       display: flex; align-items: center; gap: 12px; padding: 10px 0 4px;
       text-decoration: none; color: inherit; border-radius: 14px;
