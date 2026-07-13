@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   Home,
   Plus,
@@ -43,17 +42,6 @@ const NAV_BOTTOM: NavLink[] = [
   { label: "Settings", href: "/dashboard/settings", Icon: Settings },
   { label: "View site", href: "/", Icon: Globe },
 ];
-
-interface MeInfo {
-  name: string;
-  initials: string;
-  role: string;
-}
-
-function deriveInitials(name: string): string {
-  const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase()).join("") || "PB";
-}
 
 const SIDEBAR_CSS = `
 .pb-side {
@@ -149,34 +137,7 @@ function NavItem({
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { features } = usePlan();
-  const [me, setMe] = useState<MeInfo>({ name: "Your workspace", initials: "PB", role: "Owner" });
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/me", { credentials: "same-origin" });
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          role?: string;
-          organization?: { name?: string };
-        };
-        if (cancelled) return;
-        const name = data.organization?.name?.trim() || "Your workspace";
-        setMe({
-          name,
-          initials: deriveInitials(name),
-          role: data.role === "admin" ? "Owner" : data.role || "Member",
-        });
-      } catch {
-        /* keep fallback */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { features, workspaceName, workspaceInitials, roleLabel } = usePlan();
 
   const isActive = (href: string) =>
     href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
@@ -207,14 +168,14 @@ export default function AppSidebar() {
       <Link
         href="/dashboard/settings"
         className="foot"
-        aria-label={`Account settings for ${me.name}`}
+        aria-label={`Account settings for ${workspaceName}`}
       >
         <span className="av" aria-hidden>
-          {me.initials}
+          {workspaceInitials}
         </span>
         <span className="foot-text">
-          <div className="nm">{me.name}</div>
-          <div className="rl">{me.role}</div>
+          <div className="nm">{workspaceName}</div>
+          <div className="rl">{roleLabel}</div>
         </span>
       </Link>
     </aside>

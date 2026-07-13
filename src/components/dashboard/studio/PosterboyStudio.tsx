@@ -884,6 +884,7 @@ export default function PosterboyStudio() {
         const payload = await buildMetaPublishPayload({
           platform: metaTarget,
           caption: fullCaption,
+          locationId,
           ...(isVideo
             ? { videoUrl: generatedUrl, mediaType: "video" as const }
             : { imageUrl: exactPublish, mediaType: "image" as const }),

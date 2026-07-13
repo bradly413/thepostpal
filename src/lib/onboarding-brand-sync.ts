@@ -4,6 +4,38 @@ const BRAND_BOOK_KEY = "postpal-brand-book";
 const ONBOARDING_ANSWERS_KEY = "postpal-onboarding-answers";
 const ONBOARDING_DONE_KEY = "posterboy-onboarding-complete";
 const PENDING_VERTICAL_KEY = "postpal-pending-vertical-slug";
+const HISTORY_SIGNALS_KEY = "posterboy-history-signals";
+
+export type CachedHistorySignals = {
+  hashtags: string[];
+  postingCadence: string;
+  mediaMix: string;
+  visualStyle: string[];
+  updatedAt: string;
+};
+
+export function cacheHistorySignals(signals: Omit<CachedHistorySignals, "updatedAt">): void {
+  if (typeof window === "undefined") return;
+  try {
+    const payload: CachedHistorySignals = {
+      ...signals,
+      updatedAt: new Date().toISOString(),
+    };
+    localStorage.setItem(HISTORY_SIGNALS_KEY, JSON.stringify(payload));
+  } catch {
+    /* quota */
+  }
+}
+
+export function getCachedHistorySignals(): CachedHistorySignals | null {
+  if (typeof window === "undefined") return null;
+  try {
+    const raw = localStorage.getItem(HISTORY_SIGNALS_KEY);
+    return raw ? (JSON.parse(raw) as CachedHistorySignals) : null;
+  } catch {
+    return null;
+  }
+}
 
 export function cacheStoredBrandBook(book: BrandBook): void {
   if (typeof window === "undefined") return;

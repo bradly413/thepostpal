@@ -7,19 +7,17 @@ import {
   fetchDashboardMetaConnection,
   formatDashboardApiMessage,
 } from "@/lib/dashboard-api";
-import {
-  getStoredActiveLocationId,
-  onStoredActiveLocationChange,
-} from "@/lib/dashboard-browser-state";
+import { useActiveLocation } from "@/lib/use-active-location";
 
 export function useMetaConnection() {
+  const { locationId, loading: locationLoading } = useActiveLocation();
   const [meta, setMeta] = useState<MetaConnectionPublic | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async (locationId?: string | null) => {
+  const load = useCallback(async (overrideLocationId?: string | null) => {
     const activeLocationId =
-      locationId === undefined ? getStoredActiveLocationId() : locationId;
+      overrideLocationId === undefined ? locationId : overrideLocationId;
 
     if (!activeLocationId) {
       setMeta(null);
@@ -38,21 +36,24 @@ export function useMetaConnection() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [locationId]);
 
   const disconnect = useCallback(async () => {
-    const activeLocationId = getStoredActiveLocationId();
-    if (!activeLocationId) return;
-    await disconnectDashboardMetaConnection(activeLocationId);
+    if (!locationId) return;
+    await disconnectDashboardMetaConnection(locationId);
     setMeta(null);
-  }, []);
+  }, [locationId]);
 
   useEffect(() => {
-    void load();
-    return onStoredActiveLocationChange(() => {
-      void load();
-    });
-  }, [load]);
+    if (locationLoading) return;
+    void load(locationId);
+  }, [load, locationId, locationLoading]);
 
-  return { meta, loading, error, reload: load, disconnect };
+  return {
+    meta,
+    loading: locationLoading || loading,
+    error,
+    reload: load,
+    disconnect,
+  };
 }

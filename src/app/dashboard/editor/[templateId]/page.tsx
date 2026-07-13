@@ -333,6 +333,7 @@ function EditorPageInner({
         platform: publishPlatform,
         caption,
         imageUrl,
+        locationId,
       });
       const res = await fetch("/api/meta/publish", {
         method: "POST",

@@ -33,6 +33,7 @@ import {
   cacheStoredOnboardingAnswers,
   markOnboardingComplete,
   syncPendingVerticalSlug,
+  cacheHistorySignals,
 } from "@/lib/onboarding-brand-sync";
 import { buildMetaLoginUrl } from "@/lib/meta-connect-client";
 import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
@@ -678,7 +679,7 @@ function BrandArchitectInner() {
         };
         if (!cancelled && data?.analyzed && data.voice) {
           const v = data.voice;
-          setPrefilledVoice({
+          const nextVoice = {
             tone: v.tone,
             pillars: v.pillars,
             weSay: v.weSay,
@@ -687,6 +688,13 @@ function BrandArchitectInner() {
             hashtags: v.hashtags ?? [],
             postingCadence: v.postingCadence ?? "",
             mediaMix: v.mediaMix ?? "",
+          };
+          setPrefilledVoice(nextVoice);
+          cacheHistorySignals({
+            hashtags: nextVoice.hashtags,
+            postingCadence: nextVoice.postingCadence,
+            mediaMix: nextVoice.mediaMix,
+            visualStyle: nextVoice.visualStyle,
           });
         }
       } catch {

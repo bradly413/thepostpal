@@ -396,6 +396,7 @@ export default function CalendarPage() {
         platform: formPlatform,
         caption: formCaption,
         imageUrl: mediaUrl,
+        locationId,
       });
       const res = await fetch("/api/meta/publish", {
         method: "POST",
