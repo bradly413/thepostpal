@@ -57,7 +57,7 @@ function useCanvasScale(template: { width: number; height: number } | undefined)
     const update = () => {
       if (!containerRef.current) return;
       const w = containerRef.current.clientWidth;
-      const availH = window.innerHeight * 0.62;
+      const availH = window.innerHeight * (window.matchMedia("(max-width: 1023px)").matches ? 0.4 : 0.62);
       const scaleByW = w / template.width;
       const scaleByH = availH / template.height;
       setScale(Math.min(scaleByW, scaleByH, 0.75));
@@ -434,25 +434,25 @@ function EditorPageInner({
   }
 
   return (
-    <div className="h-full flex flex-col overflow-hidden">
-      <div className="flex items-center justify-between px-4 py-2 border-b border-black/10 shrink-0">
-        <Link href="/dashboard/templates" className="flex items-center gap-2 text-black/55 hover:text-black transition-colors">
-          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+    <div className="flex h-full min-h-0 flex-col lg:overflow-hidden">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2 sm:px-4">
+        <Link href="/dashboard/templates" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-black/55 hover:text-black transition-colors">
+          <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden>
             <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" />
           </svg>
           <span className="text-xs font-medium">Templates</span>
         </Link>
-        <h2 className="font-heading text-sm text-black">{template.name}</h2>
-        <div className="w-20" />
+        <h2 className="min-w-0 truncate text-center font-heading text-sm text-black">{template.name}</h2>
+        <div className="w-16 shrink-0 sm:w-20" aria-hidden />
       </div>
 
-      <div className="flex-1 overflow-hidden px-4 py-1">
-        <div className="flex gap-4 flex-col lg:flex-row h-full">
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 pb-[max(1.25rem,env(safe-area-inset-bottom,0px))] sm:px-4 lg:overflow-hidden lg:pb-2">
+        <div className="flex flex-col gap-4 lg:h-full lg:flex-row">
           {/* Canvas preview + AI generator */}
-          <div className="flex-1 flex flex-col gap-2 overflow-hidden">
-            <div ref={containerRef} className="flex justify-center">
+          <div className="flex min-w-0 flex-1 flex-col gap-3 lg:min-h-0 lg:overflow-y-auto">
+            <div ref={containerRef} className="flex w-full justify-center">
               <div
-                className="overflow-hidden rounded-xl shadow-sm ring-1 ring-black/10"
+                className="max-w-full overflow-hidden rounded-xl shadow-sm ring-1 ring-black/10"
                 style={{
                   width: template.width * scale,
                   height: template.height * scale,
@@ -486,10 +486,10 @@ function EditorPageInner({
             </div>
 
             {/* Gemini Creator Studio */}
-            <div className="flex flex-1 justify-center">
-            <div className="flex flex-col rounded-xl border border-black/10 bg-white p-3" style={{ width: template.width * scale }}>
+            <div className="flex justify-center">
+            <div className="flex w-full max-w-full flex-col rounded-xl border border-black/10 bg-white p-3" style={{ width: Math.max(template.width * scale, 280) }}>
               <div className="flex items-center gap-2 mb-2">
-                <svg className="h-4 w-4 text-[#ee2532]" viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor">
+                <svg className="h-4 w-4 text-[#ee2532]" viewBox="0 0 24 24" fill="none" strokeWidth={1.5} stroke="currentColor" aria-hidden>
                   <path strokeLinecap="round" strokeLinejoin="round" d="M9.813 15.904L9 18.75l-.813-2.846a4.5 4.5 0 00-3.09-3.09L2.25 12l2.846-.813a4.5 4.5 0 003.09-3.09L9 5.25l.813 2.846a4.5 4.5 0 003.09 3.09L15.75 12l-2.846.813a4.5 4.5 0 00-3.09 3.09zM18.259 8.715L18 9.75l-.259-1.035a3.375 3.375 0 00-2.455-2.456L14.25 6l1.036-.259a3.375 3.375 0 002.455-2.456L18 2.25l.259 1.035a3.375 3.375 0 002.455 2.456L21.75 6l-1.036.259a3.375 3.375 0 00-2.455 2.456z" />
                 </svg>
                 <span className="text-xs font-semibold text-black tracking-wide">Gemini Creator Studio</span>
@@ -499,14 +499,14 @@ function EditorPageInner({
                 onChange={(e) => setAiPrompt(e.target.value)}
                 onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey && !aiGenerating) { e.preventDefault(); handleAiGenerate(); } }}
                 placeholder="Describe an image to generate…"
-                className="pb-field flex-1 resize-none"
+                className="pb-field min-h-[88px] flex-1 resize-none"
               />
-              <div className="flex items-center justify-between mt-2">
+              <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                 <p className="text-[10px] text-black/35">Powered by Gemini — generated images are placed directly into your template</p>
                 <button
                   onClick={handleAiGenerate}
                   disabled={aiGenerating || !aiPrompt.trim()}
-                  className="pb-btn-primary px-4 py-2 text-xs disabled:opacity-50 whitespace-nowrap shrink-0 ml-3"
+                  className="pb-btn-primary min-h-11 shrink-0 px-4 py-2.5 text-xs disabled:opacity-50 whitespace-nowrap"
                 >
                   {aiGenerating ? (
                     <span className="flex items-center gap-1.5">
@@ -524,8 +524,8 @@ function EditorPageInner({
 
           </div>
 
-          {/* Editor sidebar */}
-          <div className="w-full lg:w-72 shrink-0 space-y-3 overflow-y-auto" style={{ scrollbarWidth: "none" }}>
+          {/* Editor sidebar — page-scroll on phones; rail scroll on desktop */}
+          <div className="w-full shrink-0 space-y-3 lg:h-full lg:w-72 lg:overflow-y-auto" style={{ scrollbarWidth: "none" }}>
             {/* Photo upload */}
             {template.hasPhotoSlot && (
               <div>
@@ -849,29 +849,27 @@ function EditorPageInner({
       </div>
 
       {showPhotoPicker && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" role="presentation" onClick={() => setShowPhotoPicker(false)}>
-          <div className="w-full max-w-lg max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-xl flex flex-col" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between px-5 py-4 border-b border-black/10">
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" role="presentation" onClick={() => setShowPhotoPicker(false)}>
+          <div className="pb-safe-sheet flex w-full max-w-lg max-h-[85dvh] flex-col rounded-t-2xl border border-black/10 bg-white shadow-xl sm:rounded-2xl" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between border-b border-black/10 px-5 py-4">
               <h3 className="text-base font-heading text-black">Choose a Photo</h3>
-              <button onClick={() => setShowPhotoPicker(false)} aria-label="Close" className="text-black/55 hover:text-black transition-colors">
-                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
+              <button onClick={() => setShowPhotoPicker(false)} aria-label="Close" className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black transition-colors">
+                <svg className="h-5 w-5" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor" aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-5 space-y-5">
               {workspacePhotos.length > 0 ? (
                 <div>
                   <p className="text-xs font-medium text-black/55 uppercase tracking-wider mb-3">Media library</p>
-                  <div className="grid grid-cols-4 gap-2">
+                  <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
                     {workspacePhotos.map((p) => (
                       <button
                         key={p.id}
                         onClick={() => { setPhoto(p.src); setPhotoPos({ x: 50, y: 50 }); setPhotoZoom(100); setPhotoRotate(0); setShowPhotoPicker(false); }}
-                        className="group relative aspect-square rounded-lg overflow-hidden border border-black/10 hover:border-[#ee2532] transition-colors"
+                        className="group relative aspect-square overflow-hidden rounded-lg border border-black/10 transition-colors hover:border-[#ee2532]"
                       >
                         <img src={p.src} alt={p.name} width={80} height={80} className="h-full w-full object-cover" />
-                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors flex items-end">
-                          <span className="w-full px-1 py-0.5 text-[9px] text-white opacity-0 group-hover:opacity-100 transition-opacity truncate bg-black/50">{p.name}</span>
-                        </div>
+                        <span className="absolute inset-x-0 bottom-0 truncate bg-black/55 px-1 py-1 text-[9px] text-white">{p.name}</span>
                       </button>
                     ))}
                   </div>

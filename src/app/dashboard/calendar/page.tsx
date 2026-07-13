@@ -711,14 +711,14 @@ export default function CalendarPage() {
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-black">{monthName}</h2>
               <div className="flex gap-1">
-                <button onClick={prevPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                <button onClick={prevPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Previous">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
-                <button onClick={nextPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                <button onClick={nextPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Next">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
               </div>
-              <button onClick={goToday} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
+              <button onClick={goToday} className="min-h-11 rounded-lg border border-black/10 px-3 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Today
               </button>
             </div>
@@ -1025,7 +1025,7 @@ export default function CalendarPage() {
 
           <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
             <h3 className="text-sm font-bold text-black mb-4">Schedule Stats</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
                 <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
@@ -1064,7 +1064,7 @@ export default function CalendarPage() {
                   <p className="text-xs font-semibold text-[#b45309] mt-0.5">{holidayMap.get(selectedDate)}</p>
                 )}
               </div>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1147,7 +1147,7 @@ export default function CalendarPage() {
           <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Schedule post" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-black">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1181,7 +1181,7 @@ export default function CalendarPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input
@@ -1361,7 +1361,7 @@ export default function CalendarPage() {
           <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Add event" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-black">{editingEvent ? "Edit Event" : "Add Event"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1397,7 +1397,7 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input

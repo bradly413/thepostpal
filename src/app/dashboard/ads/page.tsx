@@ -285,7 +285,7 @@ export default function MetaAdsBuilderPage() {
 
           <section className="pb-panel">
             <h2 className="pb-panel-h">Budget and schedule</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="pb-label">Daily budget (USD)</label>
                 <input
@@ -329,7 +329,7 @@ export default function MetaAdsBuilderPage() {
 
           <section className="pb-panel">
             <h2 className="pb-panel-h">Audience</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="pb-label">Age min</label>
                 <input
