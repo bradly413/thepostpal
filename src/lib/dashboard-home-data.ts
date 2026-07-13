@@ -77,7 +77,14 @@ function countByStatus(posts: DashboardPostRecord[]): Record<DraftStatus, number
   );
 }
 
-function pickCurrentLocation(locations: DashboardLocationRecord[]): DashboardLocationRecord | null {
+function pickCurrentLocation(
+  locations: DashboardLocationRecord[],
+  preferredLocationId?: string | null,
+): DashboardLocationRecord | null {
+  if (preferredLocationId) {
+    const preferred = locations.find((location) => location.id === preferredLocationId);
+    if (preferred) return preferred;
+  }
   const stored = getStoredActiveLocationId();
   if (stored) {
     const match = locations.find((location) => location.id === stored);
@@ -104,10 +111,7 @@ export async function loadDashboardHomeSnapshot(
     fetchDashboardPosts(),
   ]);
 
-  const currentLocation =
-    (preferredLocationId
-      ? locations.find((location) => location.id === preferredLocationId)
-      : null) ?? pickCurrentLocation(locations);
+  const currentLocation = pickCurrentLocation(locations, preferredLocationId);
   const scopedPosts = filterPostsForLocation(posts, currentLocation?.id);
   const counts = countByStatus(scopedPosts);
   const pending = filterPostsNeedingReview(scopedPosts);
