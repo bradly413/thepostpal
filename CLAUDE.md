@@ -15,7 +15,7 @@ Social content platform for real estate and local businesses. Brand: **Posterboy
 
 **Stack:** Next.js 16.2.6 (App Router, Turbopack), React 19, TypeScript, Tailwind CSS v4, GSAP 3.15, **Neon Postgres + Prisma + app-managed RLS**.
 
-**Repo (canonical):** `~/Desktop/ventures/thepostpal/` — NOT `~/Code/thepostpal-readable-v2/`
+**Repo:** `~/Desktop/ventures/thepostpal/` is a SYMLINK to `~/Code/thepostpal-readable-v2/` — same checkout, either path works. ⚠️ Cursor and Claude often share this working tree: check `git branch --show-current` before committing, commit early (uncommitted WIP can be stashed/clobbered by the other tool), and never leave a migration-dependent commit unpushed without applying the prod migration first.
 
 **Production:** Vercel project `angie-social-portal` (`bradly413s-projects`). `main` auto-deploys prod. Multi-tenant dashboard is **DB-backed** (not localStorage).
 
@@ -32,6 +32,14 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 **Build:** `prisma generate && next build` — always run `npx prisma generate` after `schema.prisma` changes.
 
 ## Architecture (tenancy + plans)
+
+### Publish pipeline status convention (do not violate)
+
+- `approved` = the INTERNAL cron publish queue (`/api/cron/publish`, every 5 min).
+- `publishing` = cron's in-flight claim (server-only; stale claims sweep to `failed`).
+- `scheduled` = legacy Meta-NATIVE scheduling only — the cron never dispatches it; do not write it for new posts.
+- `failed` = surfaced on drafts/calendar with `errorLog` + Retry; `publishedPlatforms[]` records partial success so retries never double-post.
+- Schema changes here need the prod migration applied (`scripts/deploy-prod-db.sh`) BEFORE the code reaches `main` — `main` auto-deploys.
 
 ### Auth + tenancy
 
@@ -80,7 +88,7 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 | `/dashboard/brand` | Brand book API + cache |
 | `/onboarding` | Brand Architect wizard |
 | `/dashboard/studio` | Gemini + Leonardo |
-| `/dashboard/dispatch`, `/dashboard/analytics`, `/dashboard/reports`, `/dashboard/facebook`, `/dashboard/instagram`, parts of editor | **Still partly localStorage** — migrate remaining `*-store.ts` |
+| `/dashboard/analytics`, `/dashboard/editor`, `/dashboard/ads`, `/dashboard/organization`, `/dashboard/settings`, `/dashboard/templates`, `/dashboard/connect/meta` | API (per 2026-07-11 audit: the old localStorage routes `/dispatch`, `/reports`, `/facebook`, `/instagram` NO LONGER EXIST; `schedule-store.ts`/`events-store.ts` are type-only leftovers) |
 
 ## Agent / workflow gotchas
 
@@ -92,7 +100,7 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 
 ## Environment (production)
 
-See `docs/PROD-ENV-CHECKLIST.md`. Set: `DATABASE_URL`, `AUTH_SECRET`, AI/Meta/Vimeo keys. Missing (graceful degrade): Upstash, S3, Stripe, Leonardo, `NEXT_PUBLIC_APP_URL`.
+See `docs/PROD-ENV-CHECKLIST.md`. As of 2026-07-13 prod has ALL core env set: `DATABASE_URL`, `AUTH_SECRET`, `CRON_SECRET`, `TOKEN_ENC_KEY`, KV/Redis, S3 + CloudFront (`S3_PUBLIC_BASE_URL`), Sentry DSNs, `NEXT_PUBLIC_APP_URL`, AI/Meta/Vimeo/Leonardo keys. Vercel marks most values Sensitive (cannot be pulled back); the prod Neon direct URL comes from `neonctl connection-string` (CLI authed on Brad's Mac).
 
 ## Design System — WARM-LIGHT (canonical)
 

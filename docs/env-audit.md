@@ -1,5 +1,7 @@
 # Production env audit — angie-social-portal
 
+> ⚠️ **STALE (2026-05-23 snapshot).** Superseded by `docs/PROD-ENV-CHECKLIST.md`; per the 2026-07-11 audit this file predates Stripe/S3/Sentry/token-crypto/`CRON_SECRET`. Do not trust it for current prod state.
+
 **Generated:** 2026-05-23 (overnight Day-2 prep, Task D)
 **Method:** `vercel env ls production` + `grep -r "process.env\." src/` + `.env.example`
 **Verdict:** 1 P1 (Leonardo broken), 1 architectural mismatch (Upstash naming), several harmless gaps.
