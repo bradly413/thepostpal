@@ -280,7 +280,18 @@ export default function BrandPage() {
             </button>
           </div>
         )}
+          {/* Move brand layout CSS to top so cover + sections share rules */}
         <style>{`
+          .bb-split { display: grid; align-items: start; }
+          .bb-cols-4 { display: grid; gap: clamp(14px, 1.6vw, 20px); grid-template-columns: 1.4fr 1fr 1fr 1fr; }
+          .bb-cols-photo { display: grid; gap: clamp(24px, 2.5vw, 40px); grid-template-columns: repeat(4, 1fr); }
+          .bb-cols-3 { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); }
+          @media (max-width: 768px) {
+            .bb-split { grid-template-columns: 1fr !important; }
+            .bb-cols-4 { grid-template-columns: 1fr 1fr; }
+            .bb-cols-photo { grid-template-columns: 1fr 1fr; }
+            .bb-cols-3 { grid-template-columns: 1fr; }
+          }
           @media print {
             nav[aria-label="Sections"], .brand-print-hide { display: none !important; }
             * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
@@ -291,7 +302,7 @@ export default function BrandPage() {
         {/* 01 · ESSENCE */}
         <Section id="essence">
           <SecHead no="01" eyebrow="The Essence" title={essenceHeadline(identity.industry)} lede={glance.howWeSound} palette={palette} />
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(32px, 5vw, 80px)", alignItems: "start" }}>
+          <div className="bb-split" style={{ gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(32px, 5vw, 80px)" }}>
             <div style={{ fontSize: 15, lineHeight: 1.72, color: "var(--ink)", maxWidth: "60ch" }}>
               <p style={{ margin: "0 0 1.1em" }}>{glance.story}</p>
               <p style={{ margin: "0 0 1.1em" }}>{glance.whatItIs}</p>
@@ -378,11 +389,11 @@ export default function BrandPage() {
         {mark.variants.length > 0 && (
           <Section id="logo">
             <SecHead no="03" eyebrow="The Logo" title={<>Your mark, treated with <em style={{ fontStyle: "italic", color: "var(--accent)" }}>confidence</em>.</>} lede="Treat the logo with generous clear space, consistent sizing, and respect for the approved variants." palette={palette} />
-            <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr", gap: "clamp(20px, 2.5vw, 32px)", marginBottom: "clamp(40px, 5vw, 72px)" }}>
+            <div className="bb-split" style={{ gridTemplateColumns: "1.4fr 1fr", gap: "clamp(20px, 2.5vw, 32px)", marginBottom: "clamp(40px, 5vw, 72px)" }}>
               <LockupCard variant="primary" title="Primary — on dark" usage={`Reverse on ${palette.ink.name.toLowerCase()}. Use for covers, hero blocks, dark applications.`} palette={palette} mark={mark} />
               <LockupCard variant="canvas" title="Primary — on light" usage={`Default on light. Pair with generous negative space.`} palette={palette} mark={mark} />
             </div>
-            <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(40px, 6vw, 96px)", alignItems: "start" }}>
+            <div className="bb-split" style={{ gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(40px, 6vw, 96px)" }}>
               <ClearSpaceBlock palette={palette} mark={mark} />
               <DontGrid mark={mark} />
             </div>
@@ -394,7 +405,7 @@ export default function BrandPage() {
         {/* 04 · COLOR */}
         <Section id="color">
           <SecHead no="04" eyebrow="The Palette" title={<>Classic <em style={{ fontStyle: "italic", color: "var(--accent)" }}>trust</em>, warm neutrals.</>} lede={`Four colors, used with discipline. ${palette.ink.name} anchors. ${palette.bone.name} carries. ${palette.muted.name} and ${palette.signal.name} accent.`} palette={palette} />
-          <div style={{ display: "grid", gridTemplateColumns: "1.4fr 1fr 1fr 1fr", gap: "clamp(14px, 1.6vw, 20px)" }}>
+          <div className="bb-cols-4">
             {[
               { ...palette.ink, roleLabel: "Primary" },
               { ...palette.bone, roleLabel: "Foundation" },
@@ -402,7 +413,7 @@ export default function BrandPage() {
               { ...palette.signal, roleLabel: "Accent" },
             ].map((c, i) => <Swatch key={i} c={c} hero={i === 0} />)}
           </div>
-          <div style={{ marginTop: "clamp(56px, 7vw, 96px)", display: "grid", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(40px, 5vw, 72px)", alignItems: "start" }}>
+          <div className="bb-split" style={{ marginTop: "clamp(56px, 7vw, 96px)", gridTemplateColumns: "minmax(0, 1.05fr) minmax(0, 1fr)", gap: "clamp(40px, 5vw, 72px)" }}>
             <Proportion palette={palette} />
             <Pairings palette={palette} />
           </div>
@@ -423,7 +434,7 @@ export default function BrandPage() {
         {/* 06 · PHOTOGRAPHY */}
         <Section id="photography">
           <SecHead no="06" eyebrow="Photography" title={photographyHeadline(identity.industry)} lede={photography.description} palette={palette} />
-          <div style={{ marginTop: "clamp(48px, 6vw, 84px)", display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: "clamp(24px, 2.5vw, 40px)", borderTop: ".5px solid var(--rule)", paddingTop: 36 }}>
+          <div className="bb-cols-photo" style={{ marginTop: "clamp(48px, 6vw, 84px)", borderTop: ".5px solid var(--rule)", paddingTop: 36 }}>
             {photography.principles.map((p, i) => (
               <div key={i} style={{ display: "grid", gap: 10 }}>
                 <span style={{ fontFamily: "var(--font-serif)", fontStyle: "italic", color: "var(--neutral)", fontSize: 14 }}>{String(i + 1).padStart(2, "0")}</span>
@@ -439,11 +450,11 @@ export default function BrandPage() {
         {/* 07 · IN USE */}
         <Section id="applications">
           <SecHead no="07" eyebrow="In Use" title={<>The brand <em style={{ fontStyle: "italic", color: "var(--accent)" }}>at work</em>.</>} lede="Business card, email signature, yard sign, and post templates — keeping everything consistent." palette={palette} />
-          <div style={{ display: "grid", gridTemplateColumns: "1.2fr 1fr", gap: "clamp(20px, 2.5vw, 32px)" }}>
+          <div className="bb-split" style={{ gridTemplateColumns: "1.2fr 1fr", gap: "clamp(20px, 2.5vw, 32px)" }}>
             <BusinessCard identity={identity} palette={palette} typography={typography} />
             <EmailSig identity={identity} palette={palette} typography={typography} voice={voice} />
           </div>
-          <div style={{ marginTop: "clamp(20px, 2.5vw, 32px)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: "clamp(20px, 2.5vw, 32px)" }}>
+          <div className="bb-split" style={{ marginTop: "clamp(20px, 2.5vw, 32px)", gridTemplateColumns: "1fr 1fr", gap: "clamp(20px, 2.5vw, 32px)" }}>
             <ForSaleSign identity={identity} palette={palette} typography={typography} />
             {applications?.postTemplates?.[0] && (
               <div>
@@ -455,7 +466,7 @@ export default function BrandPage() {
           {/* Content pillars */}
           <div style={{ marginTop: "clamp(48px, 6vw, 80px)" }}>
             <LabelSm>Content Pillars</LabelSm>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 14, marginTop: 20 }}>
+            <div className="bb-cols-3" style={{ marginTop: 20 }}>
               {pillars.map((p, i) => (
                 <div key={i} style={{ background: "var(--paper)", border: ".5px solid var(--rule)", padding: 20 }}>
                   <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 8 }}>
@@ -632,21 +643,31 @@ function CoverEditorial({ identity, palette, typography, createdAt, voice }: { i
   const tagline = voice.taglines?.[0];
 
   return (
-    <section style={{ minHeight: "100vh", position: "relative", overflow: "hidden", background: palette.ink.hex, color: palette.bone.hex }}>
-      <div style={{ display: "grid", gridTemplateColumns: "1.05fr 1fr", minHeight: "100vh", gap: 0 }}>
+    <section className="bb-cover" style={{ background: palette.ink.hex, color: palette.bone.hex }}>
+      <style>{`
+        .bb-cover { min-height: 100dvh; position: relative; overflow: hidden; }
+        .bb-cover-grid { display: grid; grid-template-columns: 1.05fr 1fr; min-height: 100dvh; gap: 0; }
+        .bb-cover-visual { position: relative; overflow: hidden; min-height: 0; }
+        @media (max-width: 768px) {
+          .bb-cover { min-height: auto; }
+          .bb-cover-grid { grid-template-columns: 1fr; min-height: auto; }
+          .bb-cover-visual { min-height: min(42vw, 220px); }
+        }
+      `}</style>
+      <div className="bb-cover-grid">
         {/* Left — type */}
-        <div style={{ padding: "clamp(48px, 6vw, 96px) clamp(36px, 5vw, 88px)", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 32 }}>
-          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
+        <div style={{ padding: "clamp(36px, 6vw, 96px) clamp(24px, 5vw, 88px)", display: "flex", flexDirection: "column", justifyContent: "space-between", gap: 32 }}>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}99` }}>{identity.name} &middot; {identity.title || "Owner"}</span>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}66` }}>{identity.location}</span>
           </div>
 
           <div>
-            <div style={{ display: "flex", alignItems: "center", gap: 18, color: `${palette.bone.hex}88`, marginBottom: 28 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 18, color: `${palette.bone.hex}88`, marginBottom: 28, flexWrap: "wrap" }}>
               <span style={{ display: "inline-block", width: 28, height: 0.5, background: "currentColor" }} />
               <span style={{ fontSize: 11, fontWeight: 500, letterSpacing: ".32em", textTransform: "uppercase" as const }}>Brand Guidelines &middot; Volume One &middot; {year}</span>
             </div>
-            <h1 style={{ fontFamily: `'${typography.display.family}', serif`, fontWeight: 400, fontSize: "clamp(56px, 8vw, 132px)", lineHeight: 0.94, letterSpacing: "-.02em", margin: 0 }}>
+            <h1 style={{ fontFamily: `'${typography.display.family}', serif`, fontWeight: 400, fontSize: "clamp(42px, 8vw, 132px)", lineHeight: 0.94, letterSpacing: "-.02em", margin: 0 }}>
               {tagline ? (
                 <>{tagline.quiet}<br /><em style={{ fontStyle: "italic" }}>{tagline.loud}</em></>
               ) : (
@@ -658,14 +679,14 @@ function CoverEditorial({ identity, palette, typography, createdAt, voice }: { i
             </div>
           </div>
 
-          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16 }}>
+          <div style={{ display: "flex", alignItems: "flex-end", justifyContent: "space-between", gap: 16, flexWrap: "wrap" }}>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}80` }}>Prepared by Posterboy</span>
             <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: ".32em", textTransform: "uppercase" as const, color: `${palette.bone.hex}66` }}>v1.0 &middot; {year}</span>
           </div>
         </div>
 
         {/* Right — ambient visual */}
-        <div style={{ position: "relative", overflow: "hidden" }}>
+        <div className="bb-cover-visual">
           <div style={{ position: "absolute", inset: 0, background: `linear-gradient(135deg, ${palette.signal.hex}22 0%, ${palette.ink.hex}88 50%, ${palette.signal.hex}11 100%)` }} />
           <div style={{ position: "absolute", inset: 0, opacity: 0.04, backgroundImage: `radial-gradient(circle at 30% 70%, ${palette.signal.hex} 0%, transparent 50%)` }} />
           {identity.headshot && <img src={identity.headshot} alt="" style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", opacity: 0.2, mixBlendMode: "luminosity" }} />}

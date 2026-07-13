@@ -87,7 +87,7 @@ export default function FeedbackWidget() {
         onClick={() => setOpen(true)}
         aria-label="Send beta feedback"
         aria-haspopup="dialog"
-        className="fixed bottom-5 right-5 z-[60] flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2.5 text-xs font-semibold text-[#1c1c1e] shadow-[0_18px_48px_-24px_rgba(20,20,40,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:shadow-[0_22px_52px_-22px_rgba(20,20,40,0.5)] active:scale-[0.98]"
+        className="pb-safe-fab fixed z-[60] flex items-center gap-2 rounded-full border border-white/70 bg-white/90 px-4 py-2.5 text-xs font-semibold text-[#1c1c1e] shadow-[0_18px_48px_-24px_rgba(20,20,40,0.45)] backdrop-blur-md transition-all hover:-translate-y-px hover:shadow-[0_22px_52px_-22px_rgba(20,20,40,0.5)] active:scale-[0.98]"
       >
         <MessageSquare size={14} strokeWidth={2} aria-hidden />
         Beta feedback
@@ -106,7 +106,7 @@ export default function FeedbackWidget() {
             role="dialog"
             aria-modal="true"
             aria-labelledby="feedback-title"
-            className="relative mx-4 mb-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,20,40,0.45)] backdrop-blur-xl sm:mb-0"
+            className="pb-safe-sheet relative mx-4 mb-4 w-full max-w-md overflow-hidden rounded-2xl border border-white/70 bg-white/95 shadow-[0_30px_70px_-28px_rgba(20,20,40,0.45)] backdrop-blur-xl sm:mb-0"
             onClick={(e) => e.stopPropagation()}
           >
             {sent ? (

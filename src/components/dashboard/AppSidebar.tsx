@@ -49,7 +49,7 @@ const SIDEBAR_CSS = `
   --ink-soft: #76767e;
   --red: #ee2532;
   --line: rgba(20,20,30,0.07);
-  position: sticky; top: 22px; align-self: start; height: calc(100vh - 44px);
+  position: sticky; top: 22px; align-self: start; height: calc(100dvh - 44px);
   display: flex; flex-direction: column; padding: 26px 20px;
   border-radius: 28px; background: rgba(255,255,255,0.78);
   backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
@@ -108,10 +108,12 @@ const SIDEBAR_CSS = `
 
 @media (max-width: 600px) {
   .pb-side {
-    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 16px 6px; border-radius: 22px;
+    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 12px 6px; border-radius: 22px;
   }
-  .pb-side nav a { padding: 10px 0; border-radius: 12px; }
-  .pb-side nav a svg { width: 17px; height: 17px; }
+  .pb-side nav a {
+    justify-content: center; min-height: 44px; padding: 12px 0; border-radius: 12px;
+  }
+  .pb-side nav a svg { width: 18px; height: 18px; }
   .pb-side .foot .av { width: 30px; height: 30px; border-radius: 10px; font-size: 10px; }
 }
 `;

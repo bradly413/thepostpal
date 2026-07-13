@@ -325,6 +325,9 @@ export function DashboardHomeStyles() {
 
     /* Recent media */
     .mediastrip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; flex: 1; }
+    @media (max-width: 720px) {
+      .mediastrip { grid-template-columns: repeat(2, 1fr); }
+    }
     .mediathumb { border-radius: 14px; background-size: cover; background-position: center; background-color: #e5e7eb; transition: transform var(--duration-standard) var(--ease-spring); }
     .mediathumb:hover { transform: scale(1.04); }
 

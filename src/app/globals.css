@@ -1254,12 +1254,15 @@ html[data-theme] body {
 .pb-draft-actions button,
 .pb-draft-actions a {
   font-size: 0.75rem;
-  padding: 0.4rem 0.75rem;
+  min-height: 44px;
+  padding: 0.65rem 0.9rem;
   border: 1px solid rgba(17, 17, 17, 0.15);
   background: transparent;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  display: inline-flex;
+  align-items: center;
 }
 
 .pb-draft-actions .pb-press-btn {
@@ -1924,4 +1927,13 @@ body.pb-xp-active {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Safe-area helpers — phones with home indicator / notches */
+.pb-safe-fab {
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+}
+.pb-safe-sheet {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }
