@@ -95,7 +95,7 @@ const SIDEBAR_CSS = `
   .pb-side .logo { display: none; }
   .pb-side nav { width: 100%; }
   .pb-side nav a {
-    justify-content: center; gap: 0; padding: 11px 0; letter-spacing: 0;
+    justify-content: center; gap: 0; min-height: 44px; padding: 12px 0; letter-spacing: 0;
   }
   .pb-side nav a .nav-label {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;

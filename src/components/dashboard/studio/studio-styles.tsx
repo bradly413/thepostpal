@@ -897,17 +897,17 @@ export function StudioStyles() {
   }
   @media (max-width: 980px) {
     .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
-    .pb-studio .canvas { min-height: 620px; }
+    .pb-studio .canvas { min-height: min(620px, calc(100dvh - 120px)); }
   }
   @media (max-width: 860px) {
-    .pb-studio .canvas { min-height: 540px; }
+    .pb-studio .canvas { min-height: min(540px, calc(100dvh - 120px)); }
     .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
     .pb-studio .pb-ref-chip span, .pb-studio .pb-plat-cue span { display: none; }
     .pb-studio .pb-ref-chip { padding: 0 9px; }
   }
   @media (max-width: 600px) {
     .pb-studio .app { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 8px; }
-    .pb-studio .canvas { min-height: 460px; }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar textarea.pb-bar-textarea { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
+    .pb-studio .canvas { min-height: min(420px, calc(100dvh - 160px)); }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar textarea.pb-bar-textarea { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
 
   /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
      Enter: clean white. Composer floats in. Generate: frame materializes.
@@ -1135,6 +1135,15 @@ export function StudioStyles() {
     .pb-studio .top-toggles button {
       min-width: 44px;
       min-height: 44px;
+    }
+    .pb-studio .pb-ref-chip,
+    .pb-studio .pb-model-chip,
+    .pb-studio .pb-dim-chip,
+    .pb-studio .pb-generate {
+      min-height: 44px;
+    }
+    .pb-studio .canvas {
+      min-height: min(380px, calc(100dvh - 200px));
     }
   }
     `}</style>

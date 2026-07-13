@@ -1302,13 +1302,14 @@ html[data-theme] body {
 
 .pb-toast {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.5rem + env(safe-area-inset-right, 0px));
   padding: 0.75rem 1.25rem;
   background: var(--pb-ink);
   color: var(--pb-paper);
   font-size: 0.8125rem;
   z-index: 100;
+  max-width: min(22rem, calc(100vw - 2rem));
 }
 
 .pb-location-switcher { margin-left: auto; }
