@@ -1,11 +1,27 @@
 import { NextRequest, NextResponse } from "next/server";
+import { buildRateLimitKey, rateLimit, RateLimitUnavailableError } from "@/lib/rate-limit";
 
 /**
  * GET /api/geocode/reverse?lat=&lon=
  * Server-side Nominatim reverse geocode so the client stays within CSP
  * (connect-src 'self' only — no browser call to openstreetmap.org).
+ * Public for guest onboarding — IP rate limited.
  */
 export async function GET(req: NextRequest) {
+  try {
+    if (
+      !(await rateLimit(
+        buildRateLimitKey("geocode-reverse", req.headers),
+        30,
+        60_000,
+      ))
+    ) {
+      return NextResponse.json({ error: "Too many location lookups" }, { status: 429 });
+    }
+  } catch (error) {
+    if (!(error instanceof RateLimitUnavailableError)) throw error;
+  }
+
   const lat = Number(req.nextUrl.searchParams.get("lat"));
   const lon = Number(req.nextUrl.searchParams.get("lon"));
 
@@ -25,7 +41,6 @@ export async function GET(req: NextRequest) {
         // Nominatim usage policy requires a valid identifying UA.
         "User-Agent": "PosterboySocial/1.0 (onboarding; https://www.posterboysocial.com)",
       },
-      // Avoid caching a rejected/partial response forever in the edge.
       next: { revalidate: 86400 },
     });
 
