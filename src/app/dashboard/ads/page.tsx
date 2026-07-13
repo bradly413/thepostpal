@@ -43,7 +43,8 @@ export default function MetaAdsBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { features, loading: planLoading } = usePlan();
-  const { locationId, loading: locationLoading } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } =
+    useActiveLocation();
 
   const [accounts, setAccounts] = useState<DashboardMetaAdAccountRecord[]>([]);
   const [photos, setPhotos] = useState<DashboardPhotoRecord[]>([]);
@@ -176,6 +177,14 @@ export default function MetaAdsBuilderPage() {
           </p>
           <UpgradeToCommandButton />
         </div>
+      </div>
+    );
+  }
+
+  if (locationError) {
+    return (
+      <div className="pb-app">
+        <ErrorState message={locationError} onRetry={() => void refreshLocations()} />
       </div>
     );
   }
