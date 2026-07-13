@@ -5,6 +5,7 @@ import { useEffect, useState, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { useActiveLocation } from "@/lib/use-active-location";
+import { LocationGate } from "@/components/dashboard/StateViews";
 import {
   createDashboardPost,
   fetchDashboardPost,
@@ -21,7 +22,13 @@ function EditorInner() {
   const router = useRouter();
   const params = useSearchParams();
   const draftId = params.get("draft");
-  const { locationId, setLocationId } = useActiveLocation();
+  const {
+    locationId,
+    setLocationId,
+    loading: locationLoading,
+    error: locationError,
+    refresh: refreshLocations,
+  } = useActiveLocation();
 
   const [copy, setCopy] = useState("");
   const [platforms, setPlatforms] = useState<SocialPlatform[]>(["instagram"]);
@@ -161,6 +168,13 @@ function EditorInner() {
         <LocationSwitcher value={locationId} onChange={setLocationId} />
       </div>
 
+      <LocationGate
+        loading={locationLoading}
+        error={locationError}
+        locationId={locationId}
+        onRetry={() => void refreshLocations()}
+        onCreate={() => router.push("/dashboard/organization")}
+      >
       <div className="space-y-6">
         <label className="block">
           <span className="text-xs uppercase tracking-widest opacity-50">Post copy</span>
@@ -205,6 +219,7 @@ function EditorInner() {
 
         <p className="text-sm opacity-60">{MICROCOPY.voiceLearn}</p>
       </div>
+      </LocationGate>
 
       {saved && <div className="pb-toast" role="status">{MICROCOPY.saved}</div>}
     </div>

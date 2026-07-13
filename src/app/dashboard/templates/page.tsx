@@ -85,6 +85,7 @@ function TemplatesContent() {
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
   const [templateCatalog, setTemplateCatalog] = useState<Template[]>(staticTemplates);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -95,12 +96,20 @@ function TemplatesContent() {
     async function loadCatalog() {
       try {
         const res = await fetch("/api/templates/catalog", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (isActive) {
+            setCatalogNotice("Live catalog unavailable — showing built-in templates.");
+          }
+          return;
+        }
         const data = await res.json() as { templates?: Template[] };
         if (!isActive || !Array.isArray(data.templates)) return;
         setTemplateCatalog(data.templates);
+        setCatalogNotice(null);
       } catch {
-        // Keep static fallback if catalog endpoint is unavailable.
+        if (isActive) {
+          setCatalogNotice("Live catalog unavailable — showing built-in templates.");
+        }
       }
     }
     void loadCatalog();
@@ -145,6 +154,12 @@ function TemplatesContent() {
           New Post
         </Link>
       </div>
+
+      {catalogNotice ? (
+        <p className="mb-4 text-sm text-[#6b6b6b]" role="status">
+          {catalogNotice}
+        </p>
+      ) : null}
 
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2 rounded-xl bg-white border border-black/10 px-3 py-2 flex-1 max-w-md">
