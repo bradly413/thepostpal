@@ -1934,6 +1934,12 @@ body.pb-xp-active {
   bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
   right: calc(1.25rem + env(safe-area-inset-right, 0px));
 }
+/* Studio: keep FAB clear of prompt bar + edit tray on phones */
+.pb-safe-fab-studio {
+  top: calc(0.85rem + env(safe-area-inset-top, 0px));
+  right: calc(0.85rem + env(safe-area-inset-right, 0px));
+  bottom: auto;
+}
 .pb-safe-sheet {
   padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }

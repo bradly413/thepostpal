@@ -1070,7 +1070,72 @@ export function StudioStyles() {
   /* R4: the white-room overrides above out-cascade the ≤600px rules that
      live earlier in this sheet — re-assert mobile layout here, last. */
   @media (max-width: 600px) {
-    .pb-studio .prompt-bar { bottom: 70px; width: 92%; }
+    .pb-studio .prompt-bar {
+      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      width: min(94%, calc(100% - 20px));
+      z-index: 25;
+    }
+    /* Edit tools → horizontal tray above the prompt (clears home indicator). */
+    .pb-studio .tool-rail,
+    .pb-studio .tool-rail.edit-rail {
+      left: 50%;
+      right: auto;
+      top: auto;
+      bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+      transform: translateX(-50%);
+      flex-direction: row;
+      flex-wrap: nowrap;
+      align-items: center;
+      max-width: calc(100% - 16px);
+      overflow-x: auto;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+      gap: 2px;
+      padding: 5px 7px;
+      border-radius: 22px;
+      background: rgba(255, 255, 255, 0.92);
+      backdrop-filter: blur(18px) saturate(1.4);
+      -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border: 1px solid rgba(255, 255, 255, 0.75);
+      box-shadow: 0 14px 36px -18px rgba(20, 20, 40, 0.5);
+      z-index: 24;
+    }
+    .pb-studio .tool-rail::-webkit-scrollbar { display: none; }
+    .pb-studio .tool-rail .rail-ico {
+      width: 44px;
+      height: 44px;
+      flex-shrink: 0;
+    }
+    .pb-studio .tool-rail .rail-div {
+      width: 1px;
+      height: 22px;
+      margin: 0 4px;
+    }
+    .pb-studio .tool-rail .rail-pop,
+    .pb-studio .tool-rail.edit-rail .rail-pop {
+      left: 50%;
+      right: auto;
+      top: auto;
+      bottom: calc(100% + 10px);
+      transform: translateX(-50%);
+      min-width: 168px;
+    }
+    .pb-studio .frame-wrap {
+      transform: translate(-50%, -62%);
+      max-width: min(78%, 300px);
+    }
+    .pb-studio .canvas:has(.edit-rail) .frame-wrap {
+      transform: translate(-50%, -68%);
+    }
+    .pb-studio .canvas-top {
+      top: max(10px, env(safe-area-inset-top, 0px));
+      left: 10px;
+      right: 10px;
+    }
+    .pb-studio .top-toggles button {
+      min-width: 44px;
+      min-height: 44px;
+    }
   }
     `}</style>
   );
