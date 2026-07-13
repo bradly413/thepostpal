@@ -737,7 +737,7 @@ function BrandArchitectInner() {
   };
 
   return (
-    <div className="architect-stage relative min-h-screen w-full flex items-center justify-center overflow-hidden px-6 py-20">
+    <div className="architect-stage relative min-h-dvh w-full flex items-center justify-center overflow-x-hidden overflow-y-auto px-6 py-20 pb-[max(5rem,env(safe-area-inset-bottom,0px))]">
       <style>{`
         .architect-stage {
           /* Exact dashboard shell void — cool off-white + faint posterboy-red glow
@@ -1310,7 +1310,7 @@ function BrandArchitectInner() {
             <div className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
               Birthday
             </div>
-            <div className="grid grid-cols-3 gap-3 mb-8">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-8">
               <select className={FIELD} value={birthMonth} onChange={(e) => setBirthMonth(e.target.value)} aria-label="Birth month">
                 <option value="">Month</option>
                 {MONTHS.map((m) => (
