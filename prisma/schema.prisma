@@ -342,6 +342,10 @@ model ScheduledPost {
   mediaUrls      Json?
   mediaType      ScheduledPostMediaType?
   errorLog       String?
+  /** Platforms already live for this post — a retry after partial failure skips these. */
+  publishedPlatforms SocialPlatform[] @default([])
+  /** Graph publish results keyed by platform (post/media ids). */
+  publishResults Json?
   createdAt      DateTime         @default(now())
   updatedAt      DateTime         @updatedAt
 

@@ -2,7 +2,8 @@ import "server-only";
 
 import * as Sentry from "@sentry/nextjs";
 import type { DraftStatus } from "@prisma/client";
-import { MetaApiError, publishToMeta } from "@/lib/meta-api";
+import { MetaApiError, publishToMetaPerPlatform } from "@/lib/meta-api";
+import type { SocialPlatform } from "@prisma/client";
 import { loadMetaBundleSecretsForCron } from "@/lib/meta-social-db";
 import { withCronDb } from "@/lib/db";
 
@@ -47,6 +48,45 @@ async function claimPost(postId: string): Promise<boolean> {
     }),
   );
   return claimed.count === 1;
+}
+
+/** A platform went live but persisting that fact failed — must not mark failed. */
+class PlatformRecordWriteError extends Error {
+  constructor(readonly platform: SocialPlatform, readonly cause2: unknown) {
+    super(`Could not record ${platform} publish`);
+  }
+}
+
+/**
+ * Records one platform going live the moment it happens, so a crash or a
+ * later platform's failure can never lose the fact — retries skip platforms
+ * listed in `publishedPlatforms`.
+ */
+async function recordPlatformPublish(
+  postId: string,
+  platform: SocialPlatform,
+  graphResult: unknown,
+): Promise<void> {
+  await withCronDb(async (tx) => {
+    const current = await tx.scheduledPost.findUnique({
+      where: { id: postId },
+      select: { publishedPlatforms: true, publishResults: true },
+    });
+    const platforms = new Set<SocialPlatform>(current?.publishedPlatforms ?? []);
+    platforms.add(platform);
+    const results = {
+      ...((current?.publishResults as Record<string, unknown> | null) ?? {}),
+      [platform]: graphResult ?? true,
+    };
+    await tx.scheduledPost.update({
+      where: { id: postId },
+      data: {
+        publishedPlatforms: Array.from(platforms),
+        publishResults: results as object,
+        updatedAt: new Date(),
+      },
+    });
+  });
 }
 
 /**
@@ -132,10 +172,39 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
       }
 
       // External Meta API work — deliberately OUTSIDE any DB transaction.
-      await publishToMeta(post, secrets.pageToken, {
-        pageId: secrets.pageId,
-        igAccountId: secrets.igAccountId,
-      });
+      // Platforms already live from a previous partial attempt are skipped;
+      // each new success is persisted immediately via recordPlatformPublish.
+      const alreadyLive = post.publishedPlatforms ?? [];
+      const outcome = await publishToMetaPerPlatform(
+        post,
+        secrets.pageToken,
+        { pageId: secrets.pageId, igAccountId: secrets.igAccountId },
+        alreadyLive,
+        (platform, graphResult) =>
+          recordPlatformPublish(post.id, platform, graphResult).catch((cause) => {
+            throw new PlatformRecordWriteError(platform, cause);
+          }),
+      );
+
+      if (outcome.failure) {
+        const live = [
+          ...alreadyLive,
+          ...outcome.succeeded.map((s) => s.platform),
+        ];
+        const liveNote = live.length
+          ? ` Already live: ${live.join(", ")} — a retry publishes only the rest.`
+          : "";
+        const message = `${outcome.failure.platform} failed: ${outcome.failure.error.toLogString()}.${liveNote}`;
+        console.error(`[CRON] Failed to publish post ${post.id}:`, outcome.failure.error);
+        Sentry.captureException(outcome.failure.error, {
+          tags: { job: "cron_publish" },
+          extra: { postId: post.id, organizationId: post.organizationId, locationId },
+        });
+        await markStatus(post.id, "failed", message.slice(0, 4000));
+        result.failed += 1;
+        result.errors.push({ postId: post.id, message });
+        continue;
+      }
 
       try {
         await markStatus(post.id, "published", null);
@@ -159,6 +228,22 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
 
       result.published += 1;
     } catch (error) {
+      if (error instanceof PlatformRecordWriteError) {
+        // The platform IS live but the record write failed. Leave the post in
+        // "publishing" (not approved — would re-publish; not failed — a retry
+        // would duplicate). The stale-claim sweep surfaces it for review.
+        console.error(`[CRON] Post ${post.id}: ${error.platform} live but record write failed:`, error.cause2);
+        Sentry.captureException(error.cause2, {
+          tags: { job: "cron_publish", phase: "record_platform" },
+          extra: { postId: post.id, platform: error.platform, organizationId: post.organizationId },
+        });
+        result.errors.push({
+          postId: post.id,
+          message: `${error.platform} published but the record write failed; left in 'publishing'`,
+        });
+        continue;
+      }
+
       const message =
         error instanceof MetaApiError
           ? error.toLogString()

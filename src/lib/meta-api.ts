@@ -315,4 +315,92 @@ export async function publishToMeta(
   }
 }
 
+export interface MetaPlatformPublishOutcome {
+  /** Platforms published by THIS call, in order, with their Graph results. */
+  succeeded: Array<{ platform: "facebook" | "instagram"; result: unknown }>;
+  /** First platform that failed; platforms after it were not attempted. */
+  failure?: { platform: "facebook" | "instagram"; error: MetaApiError };
+}
+
+/**
+ * Publishes platform-by-platform and never throws on a per-platform Graph
+ * failure — the failure is returned in the outcome instead. `skipPlatforms`
+ * are platforms already live from a previous attempt (a retry must not
+ * re-post them). `onPublished` runs after each platform succeeds so the
+ * caller can persist partial progress immediately; its errors propagate.
+ */
+export async function publishToMetaPerPlatform(
+  post: Pick<ScheduledPost, "copy" | "platforms" | "mediaUrl" | "mediaType">,
+  accessToken: string,
+  target: MetaPublishTarget,
+  skipPlatforms: SocialPlatform[] = [],
+  onPublished?: (platform: "facebook" | "instagram", result: unknown) => Promise<void>,
+): Promise<MetaPlatformPublishOutcome> {
+  if (!accessToken.trim()) {
+    throw new MetaApiError("Missing Meta access token", "VALIDATION", 400);
+  }
+
+  const message = post.copy?.trim() || "";
+  const mediaUrl = post.mediaUrl?.trim() || null;
+  const mediaType = inferMediaType(mediaUrl, post.mediaType);
+  const platforms = post.platforms ?? [];
+
+  if (!wantsFacebook(platforms) && !wantsInstagram(platforms)) {
+    throw new MetaApiError(
+      "Scheduled post has no Facebook or Instagram platform",
+      "VALIDATION",
+      400,
+    );
+  }
+
+  const pending: Array<"facebook" | "instagram"> = [];
+  if (wantsFacebook(platforms) && !skipPlatforms.includes("facebook")) pending.push("facebook");
+  if (wantsInstagram(platforms) && !skipPlatforms.includes("instagram")) pending.push("instagram");
+
+  const outcome: MetaPlatformPublishOutcome = { succeeded: [] };
+
+  for (const platform of pending) {
+    let result: unknown;
+    try {
+      if (platform === "facebook") {
+        result = await publishFacebookPost(target.pageId, accessToken, {
+          message,
+          mediaUrl,
+          mediaType,
+        });
+      } else {
+        if (!target.igAccountId) {
+          throw new MetaApiError(
+            "No Instagram business account linked for this location",
+            "VALIDATION",
+            400,
+          );
+        }
+        result = await publishInstagramPost(target.igAccountId, accessToken, {
+          caption: message,
+          mediaUrl,
+          mediaType,
+        });
+      }
+    } catch (error) {
+      const metaError =
+        error instanceof MetaApiError
+          ? error
+          : new MetaApiError(
+              error instanceof Error ? error.message : "Unknown Meta publish error",
+              "GRAPH_API",
+              0,
+            );
+      outcome.failure = { platform, error: metaError };
+      break;
+    }
+    outcome.succeeded.push({ platform, result });
+    // Outside the catch above: persistence errors from the caller's callback
+    // must propagate, not be recorded as a Graph publish failure.
+    if (onPublished) await onPublished(platform, result);
+  }
+
+  return outcome;
+}
+
 export { GRAPH_API_VERSION, GRAPH_BASE };
