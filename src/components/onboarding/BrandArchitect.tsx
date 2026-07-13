@@ -285,6 +285,7 @@ function BrandArchitectInner() {
   const [birthYear, setBirthYear] = useState("");
   const [plan, setPlan] = useState("");
   const [locating, setLocating] = useState(false);
+  const [locationHint, setLocationHint] = useState<string | null>(null);
   // Direction of the last navigation, for the slide transition.
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
   // Zero-shot: brand voice inferred from the user's past posts (null until the
@@ -373,30 +374,40 @@ function BrandArchitectInner() {
   );
 
   const detectLocation = () => {
-    if (typeof navigator === "undefined" || !navigator.geolocation) return;
+    setLocationHint(null);
+    if (typeof navigator === "undefined" || !navigator.geolocation) {
+      setLocationHint("Location isn’t available in this browser — type your city below.");
+      return;
+    }
     setLocating(true);
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
           const r = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?lat=${latitude}&lon=${longitude}&format=json`,
-            { headers: { "Accept-Language": "en" } },
+            `/api/geocode/reverse?lat=${encodeURIComponent(String(latitude))}&lon=${encodeURIComponent(String(longitude))}`,
           );
-          const d = await r.json();
-          const a = d.address ?? {};
-          const city = a.city || a.town || a.village || a.hamlet || a.county || "";
-          const region = a.state || "";
-          const place = [city, region].filter(Boolean).join(", ");
-          if (place) setLocation(place);
+          const d = (await r.json()) as { place?: string; error?: string };
+          if (!r.ok || !d.place?.trim()) {
+            setLocationHint("Couldn’t place you on the map — type your city below.");
+            return;
+          }
+          setLocation(d.place.trim());
         } catch {
-          /* leave the field for manual entry */
+          setLocationHint("Couldn’t place you on the map — type your city below.");
         } finally {
           setLocating(false);
         }
       },
-      () => setLocating(false),
-      { timeout: 8000 },
+      (err) => {
+        setLocating(false);
+        if (err.code === err.PERMISSION_DENIED) {
+          setLocationHint("Location permission blocked — allow it, or type your city below.");
+        } else {
+          setLocationHint("Couldn’t get your location — type your city below.");
+        }
+      },
+      { enableHighAccuracy: false, timeout: 12000, maximumAge: 60_000 },
     );
   };
 
@@ -1349,6 +1360,11 @@ function BrandArchitectInner() {
               <MapPin size={15} strokeWidth={2} />
               {locating ? "Locating…" : "Use my location"}
             </button>
+            {locationHint ? (
+              <p className="mb-3 text-[13px] text-[#76767e]" role="status">
+                {locationHint}
+              </p>
+            ) : null}
             <div className="mb-8">
               <FloatingField label="City / area you serve" value={location} onChange={setLocation} autoComplete="address-level2" />
             </div>
