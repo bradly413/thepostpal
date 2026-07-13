@@ -6,6 +6,9 @@ export interface MetaConnectionPublic {
   igAccountId: string | null;
   locationId: string;
   connectedAt: string;
+  /** True when the stored Page token is expired/revoked — publishing fails until reconnect. */
+  tokenExpired: boolean;
+  tokenExpiresAt: string | null;
 }
 
 export interface MetaConnectionSecrets {

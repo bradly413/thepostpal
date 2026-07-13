@@ -14,6 +14,7 @@ export function BrandMetaConnectionRow({
   onChanged: () => void;
 }) {
   const connected = Boolean(row.connection?.connected);
+  const tokenExpired = Boolean(row.connection?.tokenExpired);
 
   async function handleDisconnect() {
     if (!confirm(`Disconnect Facebook and Instagram from ${row.locationName}?`)) return;
@@ -27,6 +28,11 @@ export function BrandMetaConnectionRow({
         <p className="font-medium">{row.locationName}</p>
         {connected ? (
           <div className="space-y-1">
+            {tokenExpired && (
+              <p className="text-xs pb-press-text font-medium">
+                Facebook session expired — scheduled posts for this brand will fail until you reconnect.
+              </p>
+            )}
             <p className="text-xs text-black/65">
               Facebook: <span className="font-medium text-black">{row.connection?.pageName}</span>
             </p>
@@ -42,12 +48,18 @@ export function BrandMetaConnectionRow({
       <div className="flex flex-col gap-2 shrink-0">
         {connected ? (
           <>
-            <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1f9d4d]">
-              Connected
-            </span>
+            {tokenExpired ? (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#ee2532]">
+                Session expired
+              </span>
+            ) : (
+              <span className="text-[10px] font-semibold uppercase tracking-wide text-[#1f9d4d]">
+                Connected
+              </span>
+            )}
             <button
               type="button"
-              className="pb-btn-secondary text-xs py-2 px-3"
+              className={`${tokenExpired ? "pb-btn-primary" : "pb-btn-secondary"} text-xs py-2 px-3`}
               onClick={() => {
                 window.location.href = buildMetaLoginUrl(row.locationId, "organization");
               }}

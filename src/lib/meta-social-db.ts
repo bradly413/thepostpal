@@ -101,6 +101,8 @@ export async function persistMetaBundle(
     igAccountId: input.igAccountId,
     locationId: input.locationId,
     connectedAt: connectedAt.toISOString(),
+    tokenExpired: false,
+    tokenExpiresAt: null,
   };
 }
 
@@ -131,6 +133,25 @@ export async function loadMetaBundlePublic(
 
   const instagram = rows.find((row) => row.platform === "instagram");
 
+  // Token health lives on SocialAccount (the OAuth layer): the refresh cron
+  // marks a dead token with tokenExpiresAt = epoch(0). Surface it so the UI
+  // can prompt a reconnect BEFORE scheduled posts start failing.
+  const accounts = await tx.socialAccount.findMany({
+    where: {
+      organizationId: auth.tenantId,
+      locationId,
+      provider: { in: [...META_PLATFORMS] },
+    },
+    select: { tokenExpiresAt: true },
+  });
+  const expiries = accounts
+    .map((account) => account.tokenExpiresAt)
+    .filter((d): d is Date => d instanceof Date);
+  const soonestExpiry = expiries.length
+    ? new Date(Math.min(...expiries.map((d) => d.getTime())))
+    : null;
+  const tokenExpired = soonestExpiry !== null && soonestExpiry.getTime() <= Date.now();
+
   return {
     connected: true,
     pageName: facebook.handle || "Facebook Page",
@@ -138,6 +159,8 @@ export async function loadMetaBundlePublic(
     igAccountId: instagram?.externalAccountId ?? null,
     locationId,
     connectedAt: facebook.updatedAt.toISOString(),
+    tokenExpired,
+    tokenExpiresAt: soonestExpiry ? soonestExpiry.toISOString() : null,
   };
 }
 

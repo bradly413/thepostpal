@@ -178,10 +178,32 @@ export default function AccountSecurityPanel({
             )}
             {meta?.connected ? (
               <div className="space-y-2 mt-3">
+                {meta.tokenExpired && (
+                  <div
+                    className="rounded-lg px-3 py-2"
+                    style={{ background: "rgba(238,37,50,0.08)", border: "1px solid rgba(238,37,50,0.2)" }}
+                  >
+                    <p className="text-xs pb-press-text font-medium">Facebook session expired</p>
+                    <p className="text-[11px] text-black/55 mt-0.5">
+                      Scheduled posts can&apos;t publish until you reconnect this brand.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={onConnectMeta}
+                      className="pb-btn-primary w-full text-xs py-2 mt-2"
+                    >
+                      Reconnect with Facebook
+                    </button>
+                  </div>
+                )}
                 <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
                   <div className="flex-1 min-w-0">
                     <p className="text-xs font-medium truncate">{meta.pageName}</p>
-                    <p className="text-[10px]" style={{ color: "#157a38" }}>Facebook connected</p>
+                    {meta.tokenExpired ? (
+                      <p className="text-[10px] pb-press-text">Session expired — reconnect to publish</p>
+                    ) : (
+                      <p className="text-[10px]" style={{ color: "#157a38" }}>Facebook connected</p>
+                    )}
                   </div>
                 </div>
                 <div className="flex items-center gap-3 rounded-lg bg-white p-3 border border-black/10">
