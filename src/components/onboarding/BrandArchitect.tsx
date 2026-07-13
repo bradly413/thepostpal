@@ -1,8 +1,8 @@
 "use client";
 
-import { useState, useEffect, useCallback, type ReactNode, type CSSProperties } from "react";
-import { useRouter } from "next/navigation";
-import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
+import { useState, useEffect, useCallback, Suspense, type ReactNode, type CSSProperties } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { fetchDashboardLocations, updateDashboardVertical } from "@/lib/dashboard-api";
 import { Skeleton, ErrorState } from "@/components/dashboard/StateViews";
 import PosterboyLogo from "@/components/PosterboyLogo";
 import { INDUSTRIES, getIndustry } from "@/lib/industries";
@@ -24,10 +24,9 @@ import PromptRewriteDemo from "@/components/onboarding/PromptRewriteDemo";
 import FloatingField from "@/components/onboarding/FloatingField";
 import FeatureTour from "@/components/onboarding/FeatureTour";
 import BrandVoiceReview from "@/components/onboarding/BrandVoiceReview";
-import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
+import type { ZeroShotHistoryResult } from "@/lib/zero-shot-extraction";
 import { Users, Sparkles, MapPin, Check, ArrowRight } from "lucide-react";
 import { suggestVerticalSlugForIndustry } from "@/lib/compliance/vertical-catalog";
-import { updateDashboardVertical } from "@/lib/dashboard-api";
 import { cachePendingVerticalSlug } from "@/lib/onboarding-brand-sync";
 import {
   cacheStoredBrandBook,
@@ -35,6 +34,8 @@ import {
   markOnboardingComplete,
   syncPendingVerticalSlug,
 } from "@/lib/onboarding-brand-sync";
+import { buildMetaLoginUrl } from "@/lib/meta-connect-client";
+import { saveBrandEngine, fetchBrandEngine } from "@/lib/brand-engine-api";
 
 // Social platforms the user can connect (Step 1). Profile URLs are captured in
 // local state; backend persistence (Meta OAuth / profile store) is a follow-up.
@@ -89,6 +90,16 @@ const SOCIAL_PLATFORMS: SocialPlatform[] = [
     icon: (
       <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
         <path d="M6.2 9H3.5v9.5h2.7V9zM4.85 4.5a1.6 1.6 0 1 0 0 3.2 1.6 1.6 0 0 0 0-3.2zM20.5 18.5v-5.2c0-2.8-1.5-4.1-3.5-4.1-1.6 0-2.3.9-2.7 1.5V9h-2.7v9.5h2.7v-5c0-.3 0-.6.1-.8.2-.6.8-1.2 1.7-1.2 1.2 0 1.7.9 1.7 2.2v4.8h2.7z" />
+      </svg>
+    ),
+  },
+  {
+    id: "youtube",
+    label: "YouTube",
+    placeholder: "youtube.com/@yourchannel",
+    icon: (
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M23.5 7.2a3 3 0 0 0-2.1-2.1C19.5 4.5 12 4.5 12 4.5s-7.5 0-9.4.6A3 3 0 0 0 .5 7.2 31.5 31.5 0 0 0 0 12a31.5 31.5 0 0 0 .5 4.8 3 3 0 0 0 2.1 2.1c1.9.6 9.4.6 9.4.6s7.5 0 9.4-.6a3 3 0 0 0 2.1-2.1A31.5 31.5 0 0 0 24 12a31.5 31.5 0 0 0-.5-4.8zM9.8 15.5v-7l6.3 3.5-6.3 3.5z" />
       </svg>
     ),
   },
@@ -187,10 +198,55 @@ function BehavioralPicker<T extends string>({
 }
 
 export default function BrandArchitect() {
+  return (
+    <Suspense
+      fallback={
+        <div className="flex min-h-dvh items-center justify-center bg-[#f3f3f5]">
+          <Skeleton className="h-64 w-full max-w-md rounded-[24px]" />
+        </div>
+      }
+    >
+      <BrandArchitectInner />
+    </Suspense>
+  );
+}
+
+const ONBOARDING_DRAFT_KEY = "pb_brand_architect_draft_v1";
+
+type OnboardingDraft = {
+  name: string;
+  birthMonth: string;
+  birthDay: string;
+  birthYear: string;
+  agree: { terms: boolean; privacy: boolean; emails: boolean };
+};
+
+function saveOnboardingDraft(draft: OnboardingDraft) {
+  try {
+    sessionStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
+  } catch {
+    /* ignore quota */
+  }
+}
+
+function loadOnboardingDraft(): OnboardingDraft | null {
+  try {
+    const raw = sessionStorage.getItem(ONBOARDING_DRAFT_KEY);
+    if (!raw) return null;
+    return JSON.parse(raw) as OnboardingDraft;
+  } catch {
+    return null;
+  }
+}
+
+function BrandArchitectInner() {
+  const searchParams = useSearchParams();
   const [step, setStep] = useState(0); // 0 intro · 1 profiles · 2 loader · 3 business · 4 compliance · 5 topics · 6–8 behavioral
   const router = useRouter();
   const [saving, setSaving] = useState(false);
   const [saveNote, setSaveNote] = useState<string | null>(null);
+  const [connectBusy, setConnectBusy] = useState(false);
+  const [connectError, setConnectError] = useState<string | null>(null);
 
   // Connected social profiles (populated by OAuth in the real flow). Read by
   // buildAnswers for the social handles line.
@@ -232,7 +288,88 @@ export default function BrandArchitect() {
   const [dir, setDir] = useState<"fwd" | "back">("fwd");
   // Zero-shot: brand voice inferred from the user's past posts (null until the
   // history analysis returns; manual / guest onboarding falls back when null).
-  const [prefilledVoice, setPrefilledVoice] = useState<ZeroShotExtraction | null>(null);
+  const [prefilledVoice, setPrefilledVoice] = useState<ZeroShotHistoryResult | null>(null);
+
+  // Restore name/age/consent after OAuth round-trip (full page reload).
+  useEffect(() => {
+    const draft = loadOnboardingDraft();
+    if (draft) {
+      if (draft.name) setName(draft.name);
+      if (draft.birthMonth) setBirthMonth(draft.birthMonth);
+      if (draft.birthDay) setBirthDay(draft.birthDay);
+      if (draft.birthYear) setBirthYear(draft.birthYear);
+      if (draft.agree) setAgree(draft.agree);
+    }
+
+    const connected =
+      searchParams.get("meta_connected") === "1" ||
+      searchParams.get("linkedin_connected") === "1" ||
+      searchParams.get("tiktok_connected") === "1";
+    const connectErr =
+      searchParams.get("meta_error") ||
+      searchParams.get("linkedin_error") ||
+      searchParams.get("tiktok_error");
+    if (connectErr) {
+      setConnectError(decodeURIComponent(connectErr.replace(/\+/g, " ")));
+      setStep(1);
+    } else if (connected) {
+      setStep(2);
+    } else if (searchParams.get("connect")) {
+      setStep(1);
+    }
+
+    if (connected || connectErr || searchParams.get("connect")) {
+      router.replace("/onboarding", { scroll: false });
+    }
+  }, [searchParams, router]);
+
+  const startSocialConnect = useCallback(
+    async (provider: "meta" | "linkedin" | "tiktok") => {
+      setConnectBusy(true);
+      setConnectError(null);
+      saveOnboardingDraft({
+        name,
+        birthMonth,
+        birthDay,
+        birthYear,
+        agree,
+      });
+
+      try {
+        const me = await fetch("/api/me", { credentials: "same-origin" });
+        if (!me.ok) {
+          const next = encodeURIComponent(`/onboarding?connect=${provider}`);
+          window.location.href = `/sign-in?next=${next}`;
+          return;
+        }
+
+        const locations = await fetchDashboardLocations();
+        const locationId = locations[0]?.id;
+        if (!locationId) {
+          setConnectError(
+            "Your workspace is still setting up. Sign in again, then reconnect.",
+          );
+          setConnectBusy(false);
+          return;
+        }
+
+        if (provider === "meta") {
+          window.location.href = buildMetaLoginUrl(locationId, "onboarding");
+          return;
+        }
+
+        const params = new URLSearchParams({
+          locationId,
+          returnTo: "onboarding",
+        });
+        window.location.href = `/api/auth/${provider}/login?${params.toString()}`;
+      } catch {
+        setConnectError("Could not start connection. Try again.");
+        setConnectBusy(false);
+      }
+    },
+    [name, birthMonth, birthDay, birthYear, agree],
+  );
 
   const detectLocation = () => {
     if (typeof navigator === "undefined" || !navigator.geolocation) return;
@@ -461,11 +598,23 @@ export default function BrandArchitect() {
         const answers = prefilledVoice
           ? {
               ...base,
-              voiceSamples: [...(base.voiceSamples ?? []), ...prefilledVoice.weSay],
+              voiceSamples: [
+                ...(base.voiceSamples ?? []),
+                ...prefilledVoice.weSay,
+                ...prefilledVoice.hashtags.slice(0, 6),
+              ],
               personalityTraits: prefilledVoice.tone
                 .split(/[.•]/)
                 .map((t) => t.trim())
                 .filter(Boolean),
+              visualRefs: [
+                ...(base.visualRefs ?? []),
+                ...prefilledVoice.visualStyle,
+                prefilledVoice.mediaMix ? `Media mix: ${prefilledVoice.mediaMix}` : "",
+                prefilledVoice.postingCadence
+                  ? `Cadence: ${prefilledVoice.postingCadence}`
+                  : "",
+              ].filter(Boolean),
             }
           : base;
         const res = await fetch("/api/brand-book/generate", {
@@ -523,8 +672,23 @@ export default function BrandArchitect() {
     void (async () => {
       try {
         const res = await fetch("/api/onboarding/analyze-history", { method: "POST" });
-        const data = (await res.json()) as { analyzed?: boolean; voice?: ZeroShotExtraction };
-        if (!cancelled && data?.analyzed && data.voice) setPrefilledVoice(data.voice);
+        const data = (await res.json()) as {
+          analyzed?: boolean;
+          voice?: ZeroShotHistoryResult;
+        };
+        if (!cancelled && data?.analyzed && data.voice) {
+          const v = data.voice;
+          setPrefilledVoice({
+            tone: v.tone,
+            pillars: v.pillars,
+            weSay: v.weSay,
+            weDontSay: v.weDontSay,
+            visualStyle: v.visualStyle ?? [],
+            hashtags: v.hashtags ?? [],
+            postingCadence: v.postingCadence ?? "",
+            mediaMix: v.mediaMix ?? "",
+          });
+        }
       } catch {
         /* fall back to manual onboarding */
       }
@@ -741,18 +905,51 @@ export default function BrandArchitect() {
             </p>
 
             <div className="flex flex-col gap-3">
-              {[
-                { id: "meta", label: "Connect Meta", sub: "Facebook & Instagram" },
-                { id: "linkedin", label: "Connect LinkedIn", sub: "Company or personal" },
-              ].map((o) => (
+              {(
+                [
+                  {
+                    id: "meta" as const,
+                    label: "Connect Meta",
+                    sub: "Facebook & Instagram",
+                    oauth: true,
+                  },
+                  {
+                    id: "linkedin" as const,
+                    label: "Connect LinkedIn",
+                    sub: "Company or personal",
+                    oauth: true,
+                  },
+                  {
+                    id: "tiktok" as const,
+                    label: "Connect TikTok",
+                    sub: "Business or creator account",
+                    oauth: true,
+                  },
+                  {
+                    id: "x" as const,
+                    label: "Connect X",
+                    sub: "Coming soon",
+                    oauth: false,
+                  },
+                  {
+                    id: "youtube" as const,
+                    label: "Connect YouTube",
+                    sub: "Coming soon",
+                    oauth: false,
+                  },
+                ] as const
+              ).map((o) => (
                 <button
                   key={o.id}
                   type="button"
-                  // SCAFFOLD: real OAuth (redirect → provider → callback persists a
-                  // SocialAccount → return here) is the integration point. For now,
-                  // advance to the analysis loader, which calls analyze-history.
-                  onClick={next}
-                  className="group flex w-full items-center justify-between rounded-2xl border border-black/10 bg-white/60 px-5 py-4 text-left transition-all hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.04]"
+                  disabled={connectBusy || !o.oauth}
+                  onClick={() => {
+                    if (o.oauth && (o.id === "meta" || o.id === "linkedin" || o.id === "tiktok")) {
+                      void startSocialConnect(o.id);
+                      return;
+                    }
+                  }}
+                  className="group flex w-full items-center justify-between rounded-2xl border border-black/10 bg-white/60 px-5 py-4 text-left transition-all hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.04] disabled:cursor-not-allowed disabled:opacity-45 disabled:hover:border-black/10 disabled:hover:bg-white/60"
                 >
                   <span>
                     <span className="block text-[15px] font-semibold text-[#1c1c1e]">{o.label}</span>
@@ -762,6 +959,12 @@ export default function BrandArchitect() {
                 </button>
               ))}
             </div>
+
+            {connectError ? (
+              <p className="mt-4 text-center text-[13px] text-[#c81e2a]" role="alert">
+                {connectError}
+              </p>
+            ) : null}
 
             <div className="mt-8 text-center">
               <button

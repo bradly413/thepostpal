@@ -47,8 +47,14 @@ function SettingsContent() {
 
 
   useEffect(() => {
-    const connected = searchParams.get("meta_connected");
-    const error = searchParams.get("meta_error");
+    const connected =
+      searchParams.get("meta_connected") ||
+      searchParams.get("linkedin_connected") ||
+      searchParams.get("tiktok_connected");
+    const error =
+      searchParams.get("meta_error") ||
+      searchParams.get("linkedin_error") ||
+      searchParams.get("tiktok_error");
     const tab = searchParams.get("tab");
     const upgrade = searchParams.get("upgrade");
     if (tab === "billing" || upgrade) {
@@ -271,6 +277,7 @@ function SettingsContent() {
             <AccountSecurityPanel
               meta={meta}
               metaError={metaError}
+              locationId={locationId}
               locationName={locations.find((l) => l.id === locationId)?.name ?? null}
               onConnectMeta={handleConnectMeta}
               onDisconnectMeta={() => void handleDisconnectMeta()}

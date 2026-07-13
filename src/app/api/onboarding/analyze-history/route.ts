@@ -5,67 +5,92 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { decryptToken } from "@/lib/social/token-crypto";
 import {
+  analyzeHistorySignals,
+  type HistoryPost,
+} from "@/lib/social-history-signals";
+import {
   ZERO_SHOT_EXTRACTION_PROMPT,
   zeroShotExtractionSchema,
   type ZeroShotExtraction,
+  type ZeroShotHistoryResult,
 } from "@/lib/zero-shot-extraction";
-
-//  Zero-shot historical onboarding — analyze the tenant's past social posts and
-//  infer their Brand Book voice (weSay / weDontSay / tone / pillars), so the
-//  Brand Architect can open pre-filled instead of asking the user to type it.
-//
-//  SCAFFOLD: the provider fetch and the AI synthesis are stubbed. The auth,
-//  tenant scoping, token decryption (token-crypto), and the Zod schema wiring
-//  are real. Returns { analyzed: false } until the provider fetch is built —
-//  which keeps the manual / guest onboarding fallback fully intact.
+import { refineVisualStyleFromImages } from "@/lib/history-vision-style";
 
 const GRAPH = "https://graph.facebook.com/v25.0";
 const LINKEDIN_POSTS = "https://api.linkedin.com/rest/posts";
 const LINKEDIN_VERSION = "202405";
 const POST_LIMIT = 50;
 
-interface RecentPost {
-  id: string;
-  provider: string;
-  caption: string;
-  createdAt?: string;
-}
-
 /**
- * Fetch the account's recent captions for voice analysis. `accessToken` is
- * already decrypted by the caller via token-crypto. Best-effort and
- * error-tolerant — any failure yields [] so onboarding falls back to manual.
- *
- * NOTE: not exercised against live provider APIs here (the demo tenant has no
- * connected accounts / tokens). LinkedIn read access additionally depends on
- * the granted product + scopes.
+ * Fetch recent posts with captions + media metadata for voice + local signals.
+ * Best-effort — any failure yields [] so onboarding falls back to manual.
  */
 async function fetchRecentPosts(
   accountId: string,
   provider: string,
   accessToken: string,
-): Promise<RecentPost[]> {
+): Promise<HistoryPost[]> {
   try {
     if (provider === "facebook") {
       const res = await fetch(
-        `${GRAPH}/${accountId}/posts?fields=id,message,created_time&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
+        `${GRAPH}/${accountId}/posts?fields=id,message,created_time,full_picture,permalink_url,attachments{media_type,media,type,subattachments}&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
       );
       if (!res.ok) return [];
-      const json = (await res.json()) as { data?: { id: string; message?: string; created_time?: string }[] };
-      return (json.data ?? [])
-        .filter((p) => p.message?.trim())
-        .map((p) => ({ id: p.id, provider, caption: p.message as string, createdAt: p.created_time }));
+      const json = (await res.json()) as {
+        data?: {
+          id: string;
+          message?: string;
+          created_time?: string;
+          full_picture?: string;
+          permalink_url?: string;
+          attachments?: {
+            data?: { media_type?: string; type?: string; media?: { image?: { src?: string } } }[];
+          };
+        }[];
+      };
+
+      return (json.data ?? []).map((p) => {
+        const att = p.attachments?.data?.[0];
+        const mediaType = att?.media_type || att?.type || (p.full_picture ? "IMAGE" : null);
+        const mediaUrl = p.full_picture || att?.media?.image?.src || null;
+        return {
+          id: p.id,
+          provider,
+          caption: (p.message ?? "").trim(),
+          createdAt: p.created_time,
+          mediaType,
+          mediaUrl,
+          permalink: p.permalink_url ?? null,
+        };
+      });
     }
 
     if (provider === "instagram") {
       const res = await fetch(
-        `${GRAPH}/${accountId}/media?fields=id,caption,timestamp&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
+        `${GRAPH}/${accountId}/media?fields=id,caption,timestamp,media_type,media_url,permalink,thumbnail_url&limit=${POST_LIMIT}&access_token=${encodeURIComponent(accessToken)}`,
       );
       if (!res.ok) return [];
-      const json = (await res.json()) as { data?: { id: string; caption?: string; timestamp?: string }[] };
-      return (json.data ?? [])
-        .filter((m) => m.caption?.trim())
-        .map((m) => ({ id: m.id, provider, caption: m.caption as string, createdAt: m.timestamp }));
+      const json = (await res.json()) as {
+        data?: {
+          id: string;
+          caption?: string;
+          timestamp?: string;
+          media_type?: string;
+          media_url?: string;
+          thumbnail_url?: string;
+          permalink?: string;
+        }[];
+      };
+
+      return (json.data ?? []).map((m) => ({
+        id: m.id,
+        provider,
+        caption: (m.caption ?? "").trim(),
+        createdAt: m.timestamp,
+        mediaType: m.media_type ?? null,
+        mediaUrl: m.media_url || m.thumbnail_url || null,
+        permalink: m.permalink ?? null,
+      }));
     }
 
     if (provider === "linkedin") {
@@ -81,10 +106,35 @@ async function fetchRecentPosts(
         },
       );
       if (!res.ok) return [];
-      const json = (await res.json()) as { elements?: { id?: string; commentary?: string }[] };
+      const json = (await res.json()) as {
+        elements?: {
+          id?: string;
+          commentary?: string;
+          createdAt?: number;
+          publishedAt?: number;
+          content?: { media?: { id?: string } };
+        }[];
+      };
+
       return (json.elements ?? [])
-        .map((el, i) => ({ id: el.id ?? `li-${i}`, provider, caption: (el.commentary ?? "").trim() }))
+        .map((el, i) => {
+          const ms = el.publishedAt ?? el.createdAt;
+          return {
+            id: el.id ?? `li-${i}`,
+            provider,
+            caption: (el.commentary ?? "").trim(),
+            createdAt: ms ? new Date(ms).toISOString() : undefined,
+            mediaType: el.content?.media ? "IMAGE" : "TEXT",
+            mediaUrl: null,
+            permalink: null,
+          };
+        })
         .filter((p) => p.caption);
+    }
+
+    if (provider === "tiktok") {
+      // Connect-only today; no post-list scope wiring yet.
+      return [];
     }
 
     return [];
@@ -94,20 +144,45 @@ async function fetchRecentPosts(
   }
 }
 
-/**
- * Reverse-engineer the brand's tone / pillars / weSay / weDontSay from their own
- * captions using Anthropic + the zero-shot extraction schema. Only called when
- * there are posts to analyze.
- */
-async function synthesizeVoiceFromPosts(posts: RecentPost[]): Promise<ZeroShotExtraction> {
-  const dataset = JSON.stringify(posts.map((p) => p.caption));
+async function synthesizeVoiceFromPosts(
+  posts: HistoryPost[],
+  signalsSummary: { hashtags: string[]; cadence: string; mediaMix: string },
+): Promise<ZeroShotExtraction> {
+  const dataset = JSON.stringify(
+    posts.slice(0, 50).map((p) => ({
+      caption: p.caption,
+      mediaType: p.mediaType ?? null,
+      createdAt: p.createdAt ?? null,
+      provider: p.provider,
+    })),
+  );
+
   const { object } = await generateObject({
     model: anthropic("claude-sonnet-4-6"),
     schema: zeroShotExtractionSchema,
     system: ZERO_SHOT_EXTRACTION_PROMPT,
-    prompt: `Here is the array of the user's last ${posts.length} social media posts:\n${dataset}`,
+    prompt: `Precomputed local stats (trust these; do not invent alternatives):
+- Top hashtags: ${signalsSummary.hashtags.length ? signalsSummary.hashtags.join(", ") : "(none found)"}
+- Posting cadence: ${signalsSummary.cadence}
+- Media mix: ${signalsSummary.mediaMix}
+
+Here is the array of the user's last ${Math.min(posts.length, 50)} social media posts (captions + media labels):
+${dataset}`,
   });
   return object;
+}
+
+function mergeHistoryResult(
+  voice: ZeroShotExtraction,
+  posts: HistoryPost[],
+): ZeroShotHistoryResult {
+  const signals = analyzeHistorySignals(posts);
+  return {
+    ...voice,
+    hashtags: signals.topHashtags.map((h) => h.tag),
+    postingCadence: signals.cadence.summary,
+    mediaMix: signals.mediaMix.summary,
+  };
 }
 
 export async function POST() {
@@ -115,8 +190,6 @@ export async function POST() {
     const auth = await requireAuthContext();
 
     return await withTenantDb(auth, async (tx) => {
-      // 1. Retrieve the active tenant's connected social accounts. RLS scopes to
-      //    the tenant; the explicit org filter is belt-and-suspenders.
       const accounts = await tx.socialAccount.findMany({
         where: { organizationId: auth.tenantId },
         select: { accountId: true, provider: true, accessToken: true },
@@ -126,28 +199,70 @@ export async function POST() {
         return NextResponse.json({ analyzed: false, reason: "no_social_accounts" });
       }
 
-      // 2. Pull recent posts per account. Tokens are stored encrypted — decrypt
-      //    each one with token-crypto before handing it to the provider fetch.
-      const posts: RecentPost[] = [];
+      const posts: HistoryPost[] = [];
       for (const account of accounts) {
         const accessToken = decryptToken(account.accessToken);
         posts.push(...(await fetchRecentPosts(account.accountId, account.provider, accessToken)));
       }
 
-      if (posts.length === 0) {
-        // Placeholder fetch returns nothing yet — nothing to analyze.
+      // Keep posts that have either caption or media (photo-only still useful for mix).
+      const usable = posts.filter((p) => p.caption || p.mediaUrl || p.mediaType);
+      if (usable.length === 0) {
         return NextResponse.json({ analyzed: false, reason: "no_posts" });
       }
 
-      // No AI key configured — skip the (doomed) model call and let onboarding
-      // fall back to manual. Mirrors the guard in /api/brand-book/generate.
-      if (!process.env.ANTHROPIC_API_KEY?.trim()) {
-        return NextResponse.json({ analyzed: false, reason: "ai_unavailable" });
+      const signals = analyzeHistorySignals(usable);
+
+      // Caption-less libraries still return local signals (no AI voice).
+      const withCaptions = usable.filter((p) => p.caption.trim());
+      if (withCaptions.length === 0 || !process.env.ANTHROPIC_API_KEY?.trim()) {
+        return NextResponse.json({
+          analyzed: true,
+          voice: {
+            tone: "Warm. Clear. Local.",
+            pillars: ["Updates", "Behind the Scenes", "Community"],
+            weSay: ["we're", "our team", "come see"],
+            weDontSay: ["guaranteed results", "act now", "cheap"],
+            visualStyle: ["authentic moments", "brand-forward"],
+            hashtags: signals.topHashtags.map((h) => h.tag),
+            postingCadence: signals.cadence.summary,
+            mediaMix: signals.mediaMix.summary,
+          } satisfies ZeroShotHistoryResult,
+          signals,
+          reason: withCaptions.length === 0 ? "signals_only" : "ai_unavailable",
+        });
       }
 
-      // 3. Synthesize the brand voice from the user's own history.
-      const voice = await synthesizeVoiceFromPosts(posts.slice(0, 50));
-      return NextResponse.json({ analyzed: true, voice });
+      const voiceCore = await synthesizeVoiceFromPosts(withCaptions.slice(0, 50), {
+        hashtags: signals.topHashtags.map((h) => h.tag),
+        cadence: signals.cadence.summary,
+        mediaMix: signals.mediaMix.summary,
+      });
+
+      const visualStyle = await refineVisualStyleFromImages(
+        signals.mediaMix.sampleImageUrls,
+        voiceCore.visualStyle,
+        signals.mediaMix.summary,
+      );
+      const voice = mergeHistoryResult({ ...voiceCore, visualStyle }, usable);
+
+      return NextResponse.json({
+        analyzed: true,
+        voice,
+        signals: {
+          topHashtags: signals.topHashtags,
+          cadence: signals.cadence,
+          mediaMix: {
+            images: signals.mediaMix.images,
+            video: signals.mediaMix.video,
+            carousels: signals.mediaMix.carousels,
+            other: signals.mediaMix.other,
+            total: signals.mediaMix.total,
+            summary: signals.mediaMix.summary,
+            sampleImageUrls: signals.mediaMix.sampleImageUrls.slice(0, 12),
+          },
+        },
+      });
     });
   } catch (error) {
     console.error("api.onboarding.analyze-history.POST", error);

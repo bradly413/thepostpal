@@ -4,6 +4,11 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { tiktokProvider } from "@/lib/social/providers/tiktok";
 import { resolveTikTokRedirectUri } from "@/lib/social/providers/tiktok-routes";
 import { resolveMetaConnectLocationId } from "@/lib/session-provision";
+import {
+  parseSocialOAuthReturnTo,
+  SOCIAL_OAUTH_RETURN_TO_COOKIE,
+  socialOAuthErrorPath,
+} from "@/lib/social-oauth-return";
 
 function cookieOpts(maxAge: number) {
   const secure = process.env.NODE_ENV === "production";
@@ -17,25 +22,27 @@ function cookieOpts(maxAge: number) {
 }
 
 function redirectWithError(req: NextRequest, message: string) {
+  const returnTo = parseSocialOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
   return NextResponse.redirect(
-    new URL(
-      `/dashboard/settings?meta_error=${encodeURIComponent(message)}`,
-      req.url,
-    ),
+    new URL(socialOAuthErrorPath(returnTo, message, "tiktok"), req.url),
   );
 }
 
 /**
- * GET /api/auth/tiktok/login?locationId=...
+ * GET /api/auth/tiktok/login?locationId=...&returnTo=settings|organization|onboarding
  * Starts TikTok OAuth. Inert without TIKTOK_CLIENT_KEY — fails gracefully with a
  * redirect rather than crashing.
  */
 export async function GET(req: NextRequest) {
+  const returnTo = parseSocialOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
   let auth;
   try {
     auth = await requireAuthContext();
   } catch {
-    const next = encodeURIComponent("/dashboard/settings");
+    const next =
+      returnTo === "onboarding"
+        ? encodeURIComponent("/onboarding?connect=tiktok")
+        : encodeURIComponent("/dashboard/settings");
     return NextResponse.redirect(new URL(`/sign-in?next=${next}`, req.url));
   }
 
@@ -69,6 +76,7 @@ export async function GET(req: NextRequest) {
     const response = NextResponse.redirect(redirectUrl);
     response.cookies.set("tiktok_oauth_state", state, cookieOpts(600));
     response.cookies.set("tiktok_oauth_location_id", locationId, cookieOpts(600));
+    response.cookies.set(SOCIAL_OAUTH_RETURN_TO_COOKIE, returnTo, cookieOpts(600));
     return response;
   } catch (err) {
     console.error(

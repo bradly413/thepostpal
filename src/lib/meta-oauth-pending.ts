@@ -1,8 +1,14 @@
 import "server-only";
 
 import { encryptToken, decryptToken } from "@/lib/social/token-crypto";
+import {
+  parseSocialOAuthReturnTo,
+  socialOAuthErrorPath,
+  socialOAuthSuccessPath,
+  type SocialOAuthReturnTo,
+} from "@/lib/social-oauth-return";
 
-export type MetaOAuthReturnTo = "organization" | "settings";
+export type MetaOAuthReturnTo = SocialOAuthReturnTo;
 
 export interface MetaOAuthPending {
   locationId: string;
@@ -26,7 +32,9 @@ export function openMetaOAuthPending(sealed: string): MetaOAuthPending | null {
     if (
       typeof parsed.locationId !== "string" ||
       typeof parsed.userToken !== "string" ||
-      (parsed.returnTo !== "organization" && parsed.returnTo !== "settings")
+      (parsed.returnTo !== "organization" &&
+        parsed.returnTo !== "settings" &&
+        parsed.returnTo !== "onboarding")
     ) {
       return null;
     }
@@ -43,17 +51,13 @@ export function openMetaOAuthPending(sealed: string): MetaOAuthPending | null {
 }
 
 export function metaConnectSuccessPath(returnTo: MetaOAuthReturnTo): string {
-  return returnTo === "organization"
-    ? "/dashboard/organization?meta_connected=1"
-    : "/dashboard/settings?meta_connected=1";
+  return socialOAuthSuccessPath(returnTo, "meta");
 }
 
 export function metaConnectErrorPath(returnTo: MetaOAuthReturnTo, message: string): string {
-  const base =
-    returnTo === "organization" ? "/dashboard/organization" : "/dashboard/settings";
-  return `${base}?meta_error=${encodeURIComponent(message)}`;
+  return socialOAuthErrorPath(returnTo, message, "meta");
 }
 
 export function parseMetaOAuthReturnTo(value: string | null | undefined): MetaOAuthReturnTo {
-  return value === "organization" ? "organization" : "settings";
+  return parseSocialOAuthReturnTo(value);
 }

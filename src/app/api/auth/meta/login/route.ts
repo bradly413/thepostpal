@@ -5,6 +5,7 @@ import { getAuthLoginUrl } from "@/lib/meta";
 import { resolveMetaConnectLocationId } from "@/lib/session-provision";
 import {
   META_OAUTH_RETURN_TO_COOKIE,
+  metaConnectErrorPath,
   parseMetaOAuthReturnTo,
 } from "@/lib/meta-oauth-pending";
 
@@ -20,11 +21,9 @@ function cookieOpts(maxAge: number) {
 }
 
 function redirectWithError(req: NextRequest, message: string) {
+  const returnTo = parseMetaOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
   return NextResponse.redirect(
-    new URL(
-      `/dashboard/settings?meta_error=${encodeURIComponent(message)}`,
-      req.url,
-    ),
+    new URL(metaConnectErrorPath(returnTo, message), req.url),
   );
 }
 
@@ -37,7 +36,11 @@ export async function GET(req: NextRequest) {
   try {
     auth = await requireAuthContext();
   } catch {
-    const next = encodeURIComponent("/dashboard/settings");
+    const returnTo = parseMetaOAuthReturnTo(req.nextUrl.searchParams.get("returnTo"));
+    const next =
+      returnTo === "onboarding"
+        ? encodeURIComponent("/onboarding?connect=meta")
+        : encodeURIComponent("/dashboard/settings");
     return NextResponse.redirect(new URL(`/sign-in?next=${next}`, req.url));
   }
 

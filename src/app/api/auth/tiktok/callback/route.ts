@@ -7,13 +7,19 @@ import { resolveTikTokRedirectUri } from "@/lib/social/providers/tiktok-routes";
 import { persistTikTokSocialAccount } from "@/lib/social/social-account-db";
 import { SOLO_MAX_CONNECTED_PROFILES } from "@/lib/social-profile-limits";
 import { resolveMetaConnectLocationId } from "@/lib/session-provision";
+import {
+  parseSocialOAuthReturnTo,
+  SOCIAL_OAUTH_RETURN_TO_COOKIE,
+  socialOAuthErrorPath,
+  socialOAuthSuccessPath,
+} from "@/lib/social-oauth-return";
 
-function settingsError(req: NextRequest, message: string) {
+function tiktokError(req: NextRequest, message: string) {
+  const returnTo = parseSocialOAuthReturnTo(
+    req.cookies.get(SOCIAL_OAUTH_RETURN_TO_COOKIE)?.value,
+  );
   return NextResponse.redirect(
-    new URL(
-      `/dashboard/settings?meta_error=${encodeURIComponent(message)}`,
-      req.url,
-    ),
+    new URL(socialOAuthErrorPath(returnTo, message, "tiktok"), req.url),
   );
 }
 
@@ -22,29 +28,33 @@ function settingsError(req: NextRequest, message: string) {
  * Exchanges code → access token (+ profile), saves a TikTok SocialAccount row.
  */
 export async function GET(req: NextRequest) {
+  const returnTo = parseSocialOAuthReturnTo(
+    req.cookies.get(SOCIAL_OAUTH_RETURN_TO_COOKIE)?.value,
+  );
   const code = req.nextUrl.searchParams.get("code");
   const error = req.nextUrl.searchParams.get("error");
 
   if (error || !code) {
     const msg =
       req.nextUrl.searchParams.get("error_description") || "Authorization denied";
-    return settingsError(req, msg);
+    return tiktokError(req, msg);
   }
 
   const state = req.nextUrl.searchParams.get("state");
   const storedState = req.cookies.get("tiktok_oauth_state")?.value;
   if (!state || !storedState || state !== storedState) {
-    return settingsError(
-      req,
-      "Invalid OAuth state. Please try connecting again.",
-    );
+    return tiktokError(req, "Invalid OAuth state. Please try connecting again.");
   }
 
   const session = await getSession();
   if (!session) {
+    const next =
+      returnTo === "onboarding"
+        ? "/onboarding?connect=tiktok"
+        : "/dashboard/settings";
     return NextResponse.redirect(
       new URL(
-        "/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+TikTok",
+        `/sign-in?next=${encodeURIComponent(next)}&tiktok_error=${encodeURIComponent("Sign in required to connect TikTok")}`,
         req.url,
       ),
     );
@@ -61,7 +71,7 @@ export async function GET(req: NextRequest) {
     );
 
     if (!locationId) {
-      return settingsError(
+      return tiktokError(
         req,
         "Finish setting up your workspace before connecting TikTok.",
       );
@@ -71,7 +81,7 @@ export async function GET(req: NextRequest) {
     const accounts = await tiktokProvider.exchangeCode(code, redirectUri);
     const account = accounts[0];
     if (!account) {
-      return settingsError(req, "No TikTok profile returned.");
+      return tiktokError(req, "No TikTok profile returned.");
     }
 
     await withTenantDb(auth, async (tx) => {
@@ -86,30 +96,35 @@ export async function GET(req: NextRequest) {
     });
 
     const response = NextResponse.redirect(
-      new URL("/dashboard/settings?meta_connected=1", req.url),
+      new URL(socialOAuthSuccessPath(returnTo, "tiktok"), req.url),
     );
     response.cookies.delete("tiktok_oauth_state");
     response.cookies.delete("tiktok_oauth_location_id");
+    response.cookies.delete(SOCIAL_OAUTH_RETURN_TO_COOKIE);
     return response;
   } catch (err) {
     if (err instanceof Error && err.message === "UNAUTHORIZED") {
+      const next =
+        returnTo === "onboarding"
+          ? "/onboarding?connect=tiktok"
+          : "/dashboard/settings";
       return NextResponse.redirect(
         new URL(
-          "/sign-in?next=%2Fdashboard%2Fsettings&meta_error=Sign+in+required+to+connect+TikTok",
+          `/sign-in?next=${encodeURIComponent(next)}&tiktok_error=${encodeURIComponent("Sign in required to connect TikTok")}`,
           req.url,
         ),
       );
     }
 
     if (err instanceof Error && err.message === "SOLO_PROFILE_LIMIT") {
-      return settingsError(
+      return tiktokError(
         req,
         `Solo includes up to ${SOLO_MAX_CONNECTED_PROFILES} connected social profiles.`,
       );
     }
 
     if (err instanceof Error && err.message === "FORBIDDEN") {
-      return settingsError(
+      return tiktokError(
         req,
         "You don't have access to this location. Switch locations in the dashboard and try again.",
       );
@@ -119,7 +134,7 @@ export async function GET(req: NextRequest) {
       "[api/auth/tiktok/callback] connection failed:",
       err instanceof Error ? err.message : err,
     );
-    return settingsError(req, "Couldn't connect to TikTok — please try again.");
+    return tiktokError(req, "Couldn't connect to TikTok — please try again.");
   }
 }
 
