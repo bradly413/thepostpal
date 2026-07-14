@@ -286,11 +286,18 @@ export default function BrandPage() {
           .bb-cols-4 { display: grid; gap: clamp(14px, 1.6vw, 20px); grid-template-columns: 1.4fr 1fr 1fr 1fr; }
           .bb-cols-photo { display: grid; gap: clamp(24px, 2.5vw, 40px); grid-template-columns: repeat(4, 1fr); }
           .bb-cols-3 { display: grid; gap: 14px; grid-template-columns: repeat(3, 1fr); }
+          .bb-spec-scale { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
           @media (max-width: 768px) {
             .bb-split { grid-template-columns: 1fr !important; }
             .bb-cols-4 { grid-template-columns: 1fr 1fr; }
             .bb-cols-photo { grid-template-columns: 1fr 1fr; }
             .bb-cols-3 { grid-template-columns: 1fr; }
+            .bb-spec-scale { grid-template-columns: 1fr 1fr; }
+          }
+          @media (max-width: 480px) {
+            .bb-cols-4 { grid-template-columns: 1fr; }
+            .bb-cols-photo { grid-template-columns: 1fr; }
+            .bb-spec-scale { grid-template-columns: 1fr; }
           }
           @media print {
             nav[aria-label="Sections"], .brand-print-hide { display: none !important; }
@@ -861,10 +868,10 @@ function SerifSpecimen({ typography, identity, palette }: { typography: BrandTyp
       <div style={{ fontFamily: "var(--font-serif)", fontWeight: 400, fontSize: "clamp(72px, 11vw, 168px)", lineHeight: 0.94, letterSpacing: "-.02em", color: "var(--primary)" }}>
         Aa Gg <em style={{ fontStyle: "italic" }}>Home</em>
       </div>
-      <div style={{ marginTop: 18, fontSize: 12.5, letterSpacing: ".16em", textTransform: "uppercase" as const, color: "var(--neutral)", display: "flex", flexWrap: "wrap" as const, gap: 22 }}>
+      <div style={{ marginTop: 18, fontSize: 12.5, letterSpacing: ".16em", textTransform: "uppercase" as const, color: "var(--neutral)", display: "flex", flexWrap: "wrap" as const, gap: 22, minWidth: 0, overflowWrap: "anywhere" as const }}>
         <span>ABCDEFGHIJKLMNOPQRSTUVWXYZ</span><span>abcdefghijklmnopqrstuvwxyz</span><span>0123456789 &amp; .,:;!?</span>
       </div>
-      <div style={{ marginTop: 36, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 28, borderTop: ".5px solid var(--rule)", paddingTop: 28 }}>
+      <div className="bb-spec-scale" style={{ marginTop: 36, borderTop: ".5px solid var(--rule)", paddingTop: 28 }}>
         {[
           { sz: 64, lbl: "H1 / Hero", txt: `What ${identity.name.split(" ")[0]} Means.` },
           { sz: 44, lbl: "H2 / Section", txt: "It’s never just…" },

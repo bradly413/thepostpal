@@ -16,7 +16,9 @@ export function DashboardModal({
   onClose,
   ariaLabel,
   children,
-  className = "w-full max-w-md rounded-2xl border border-black/10 bg-white p-6 shadow-2xl",
+  // Phone: bottom sheet (safe-area padded, top-rounded); sm+: centered card —
+  // the same pattern the calendar modals already use.
+  className = "pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl",
 }: DashboardModalProps) {
   const ref = useRef<HTMLDivElement>(null);
   useFocusTrap(open, ref, onClose);
@@ -25,7 +27,7 @@ export function DashboardModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-sm"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
     >
       <div

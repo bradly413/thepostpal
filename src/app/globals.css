@@ -1397,6 +1397,9 @@ html[data-theme] body {
   cursor: pointer;
 }
 .pb-tab { transition: var(--transition-color); }
+@media (max-width: 600px) {
+  .pb-tab { min-height: 44px; display: inline-flex; align-items: center; }
+}
 .pb-tab:hover { color: var(--pb-ink, #111); background: rgba(17, 17, 17, 0.04); }
 .pb-tab-active,
 .pb-tab-active:hover { background: var(--pb-press, #ee2532); color: #fff; }
