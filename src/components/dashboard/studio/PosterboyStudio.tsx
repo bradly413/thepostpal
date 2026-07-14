@@ -55,6 +55,7 @@ import { usePlanFeatures, usePlan } from "@/components/dashboard/PlanProvider";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { socialPlatformsFromComposerId } from "@/lib/posterboy-types";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
+import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { StudioStyles } from "./studio-styles";
 import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
@@ -307,6 +308,7 @@ export default function PosterboyStudio() {
     img.src = url;
   };
   const [composerMode, setComposerMode] = useState<ComposerMode>("image");
+  const [confirmVideoSwitch, setConfirmVideoSwitch] = useState(false);
   const [mediaKind, setMediaKind] = useState<MediaKind>("image");
   const [scheduleDate, setScheduleDate] = useState(defaultScheduleDate);
   const [scheduleTime, setScheduleTime] = useState("10:00");
@@ -884,6 +886,7 @@ export default function PosterboyStudio() {
         const payload = await buildMetaPublishPayload({
           platform: metaTarget,
           caption: fullCaption,
+          locationId,
           ...(isVideo
             ? { videoUrl: generatedUrl, mediaType: "video" as const }
             : { imageUrl: exactPublish, mediaType: "image" as const }),
@@ -1552,11 +1555,8 @@ export default function PosterboyStudio() {
                 className={`pb-util${composerMode === "video" ? " active" : ""}`}
                 onClick={() => {
                   if (composerMode === "image") {
-                    if (
-                      genState === "done" &&
-                      generatedUrl &&
-                      !window.confirm("Switch to video? Your current image will be discarded.")
-                    ) {
+                    if (genState === "done" && generatedUrl) {
+                      setConfirmVideoSwitch(true);
                       return;
                     }
                     setGenState("idle");
@@ -1788,6 +1788,22 @@ export default function PosterboyStudio() {
         </main>
 
       </div>
+
+      <DashboardConfirm
+        open={confirmVideoSwitch}
+        title="Switch to video?"
+        message="Your current image will be discarded."
+        confirmLabel="Switch to video"
+        destructive
+        onConfirm={() => {
+          setConfirmVideoSwitch(false);
+          setGenState("idle");
+          setGeneratedUrl(null);
+          setShowTemplate(false);
+          setComposerMode("video");
+        }}
+        onCancel={() => setConfirmVideoSwitch(false)}
+      />
     </div>
   );
 }

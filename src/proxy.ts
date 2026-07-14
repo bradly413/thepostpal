@@ -40,6 +40,8 @@ const PUBLIC_PREFIXES = [
   // public — the rest of /api/brand-book (GET/PUT CRUD) stays tenant-gated.
   "/onboarding",
   "/api/brand-book/generate",
+  // Onboarding "Use my location" — coords only; reverse-geocode stays server-side.
+  "/api/geocode/",
   // public lead-magnet tool (its own IP rate limit lives in the route)
   "/api/tools/",
 ];

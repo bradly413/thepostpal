@@ -1,4 +1,4 @@
-export type MetaOAuthReturnTo = "organization" | "settings";
+export type MetaOAuthReturnTo = "organization" | "settings" | "onboarding";
 
 export function buildMetaLoginUrl(
   locationId: string,

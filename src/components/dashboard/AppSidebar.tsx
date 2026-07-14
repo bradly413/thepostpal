@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { useEffect, useState } from "react";
 import {
   Home,
   Plus,
@@ -44,24 +43,13 @@ const NAV_BOTTOM: NavLink[] = [
   { label: "View site", href: "/", Icon: Globe },
 ];
 
-interface MeInfo {
-  name: string;
-  initials: string;
-  role: string;
-}
-
-function deriveInitials(name: string): string {
-  const parts = name.split(/\s+/).filter(Boolean).slice(0, 2);
-  return parts.map((p) => p[0]?.toUpperCase()).join("") || "PB";
-}
-
 const SIDEBAR_CSS = `
 .pb-side {
   --ink: #1c1c1e;
   --ink-soft: #76767e;
   --red: #ee2532;
   --line: rgba(20,20,30,0.07);
-  position: sticky; top: 22px; align-self: start; height: calc(100vh - 44px);
+  position: sticky; top: 22px; align-self: start; height: calc(100dvh - 44px);
   display: flex; flex-direction: column; padding: 26px 20px;
   border-radius: 28px; background: rgba(255,255,255,0.78);
   backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
@@ -107,7 +95,7 @@ const SIDEBAR_CSS = `
   .pb-side .logo { display: none; }
   .pb-side nav { width: 100%; }
   .pb-side nav a {
-    justify-content: center; gap: 0; padding: 11px 0; letter-spacing: 0;
+    justify-content: center; gap: 0; min-height: 44px; padding: 12px 0; letter-spacing: 0;
   }
   .pb-side nav a .nav-label {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
@@ -120,10 +108,12 @@ const SIDEBAR_CSS = `
 
 @media (max-width: 600px) {
   .pb-side {
-    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 16px 6px; border-radius: 22px;
+    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 12px 6px; border-radius: 22px;
   }
-  .pb-side nav a { padding: 10px 0; border-radius: 12px; }
-  .pb-side nav a svg { width: 17px; height: 17px; }
+  .pb-side nav a {
+    justify-content: center; min-height: 44px; padding: 12px 0; border-radius: 12px;
+  }
+  .pb-side nav a svg { width: 18px; height: 18px; }
   .pb-side .foot .av { width: 30px; height: 30px; border-radius: 10px; font-size: 10px; }
 }
 `;
@@ -149,34 +139,7 @@ function NavItem({
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { features } = usePlan();
-  const [me, setMe] = useState<MeInfo>({ name: "Your workspace", initials: "PB", role: "Owner" });
-
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      try {
-        const res = await fetch("/api/me", { credentials: "same-origin" });
-        if (!res.ok) return;
-        const data = (await res.json()) as {
-          role?: string;
-          organization?: { name?: string };
-        };
-        if (cancelled) return;
-        const name = data.organization?.name?.trim() || "Your workspace";
-        setMe({
-          name,
-          initials: deriveInitials(name),
-          role: data.role === "admin" ? "Owner" : data.role || "Member",
-        });
-      } catch {
-        /* keep fallback */
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  const { features, workspaceName, workspaceInitials, roleLabel } = usePlan();
 
   const isActive = (href: string) =>
     href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
@@ -207,14 +170,14 @@ export default function AppSidebar() {
       <Link
         href="/dashboard/settings"
         className="foot"
-        aria-label={`Account settings for ${me.name}`}
+        aria-label={`Account settings for ${workspaceName}`}
       >
         <span className="av" aria-hidden>
-          {me.initials}
+          {workspaceInitials}
         </span>
         <span className="foot-text">
-          <div className="nm">{me.name}</div>
-          <div className="rl">{me.role}</div>
+          <div className="nm">{workspaceName}</div>
+          <div className="rl">{roleLabel}</div>
         </span>
       </Link>
     </aside>

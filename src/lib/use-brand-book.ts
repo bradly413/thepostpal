@@ -10,12 +10,10 @@ import {
   cacheStoredBrandBook,
   cacheStoredOnboardingAnswers,
 } from "@/lib/onboarding-brand-sync";
-import {
-  getStoredActiveLocationId,
-  onStoredActiveLocationChange,
-} from "@/lib/dashboard-browser-state";
+import { useActiveLocation } from "@/lib/use-active-location";
 
 export function useBrandBook() {
+  const { locationId: activeLocationId, loading: locationLoading } = useActiveLocation();
   const [book, setBook] = useState<BrandBook | null>(null);
   const [onboardingAnswers, setOnboardingAnswers] = useState<OnboardingAnswers | null>(null);
   const [locationId, setLocationId] = useState<string | null>(null);
@@ -23,15 +21,21 @@ export function useBrandBook() {
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async (preferredLocationId?: string | null) => {
-    const activeLocationId =
-      preferredLocationId === undefined
-        ? getStoredActiveLocationId()
-        : preferredLocationId;
+    const resolved =
+      preferredLocationId === undefined ? activeLocationId : preferredLocationId;
+
+    if (!resolved) {
+      setBook(null);
+      setOnboardingAnswers(null);
+      setLocationId(null);
+      setLoading(false);
+      return;
+    }
 
     try {
       setLoading(true);
       setError(null);
-      const data = await fetchDashboardBrandBook(activeLocationId);
+      const data = await fetchDashboardBrandBook(resolved);
       setLocationId(data.locationId);
       setBook(data.brandBook);
       setOnboardingAnswers(data.onboardingAnswers ?? null);
@@ -48,14 +52,19 @@ export function useBrandBook() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeLocationId]);
 
   useEffect(() => {
-    void load();
-    return onStoredActiveLocationChange(() => {
-      void load();
-    });
-  }, [load]);
+    if (locationLoading) return;
+    void load(activeLocationId);
+  }, [load, activeLocationId, locationLoading]);
 
-  return { book, locationId, onboardingAnswers, loading, error, reload: load };
+  return {
+    book,
+    locationId,
+    onboardingAnswers,
+    loading: locationLoading || loading,
+    error,
+    reload: load,
+  };
 }

@@ -43,7 +43,8 @@ export default function MetaAdsBuilderPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const { features, loading: planLoading } = usePlan();
-  const { locationId, loading: locationLoading } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } =
+    useActiveLocation();
 
   const [accounts, setAccounts] = useState<DashboardMetaAdAccountRecord[]>([]);
   const [photos, setPhotos] = useState<DashboardPhotoRecord[]>([]);
@@ -180,6 +181,14 @@ export default function MetaAdsBuilderPage() {
     );
   }
 
+  if (locationError) {
+    return (
+      <div className="pb-app">
+        <ErrorState message={locationError} onRetry={() => void refreshLocations()} />
+      </div>
+    );
+  }
+
   if (!locationId) {
     return (
       <div className="pb-app">
@@ -276,7 +285,7 @@ export default function MetaAdsBuilderPage() {
 
           <section className="pb-panel">
             <h2 className="pb-panel-h">Budget and schedule</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="pb-label">Daily budget (USD)</label>
                 <input
@@ -320,7 +329,7 @@ export default function MetaAdsBuilderPage() {
 
           <section className="pb-panel">
             <h2 className="pb-panel-h">Audience</h2>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <div>
                 <label className="pb-label">Age min</label>
                 <input

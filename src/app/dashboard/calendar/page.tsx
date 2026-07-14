@@ -125,9 +125,23 @@ export default function CalendarPage() {
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [view, setView] = useState<"month" | "week">("month");
+  const [view, setView] = useState<"month" | "week" | "agenda">("month");
+  const mobileDefaultApplied = useRef(false);
   const [posts, setPosts] = useState<CalendarScheduledPost[]>([]);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+
+  useEffect(() => {
+    const mq = window.matchMedia("(max-width: 768px)");
+    const sync = () => {
+      if (mq.matches) {
+        setView((v) => (v === "month" ? "agenda" : v));
+        mobileDefaultApplied.current = true;
+      }
+    };
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
   const [selectedDate, setSelectedDate] = useState<string>("");
   const [editingPost, setEditingPost] = useState<CalendarScheduledPost | null>(null);
@@ -300,14 +314,14 @@ export default function CalendarPage() {
 
   function prevPeriod() {
     const d = new Date(currentDate);
-    if (view === "month") d.setMonth(d.getMonth() - 1);
+    if (view === "month" || view === "agenda") d.setMonth(d.getMonth() - 1);
     else d.setDate(d.getDate() - 7);
     setCurrentDate(d);
   }
 
   function nextPeriod() {
     const d = new Date(currentDate);
-    if (view === "month") d.setMonth(d.getMonth() + 1);
+    if (view === "month" || view === "agenda") d.setMonth(d.getMonth() + 1);
     else d.setDate(d.getDate() + 7);
     setCurrentDate(d);
   }
@@ -396,6 +410,7 @@ export default function CalendarPage() {
         platform: formPlatform,
         caption: formCaption,
         imageUrl: mediaUrl,
+        locationId,
       });
       const res = await fetch("/api/meta/publish", {
         method: "POST",
@@ -696,14 +711,14 @@ export default function CalendarPage() {
             <div className="flex items-center gap-3">
               <h2 className="text-lg font-semibold text-black">{monthName}</h2>
               <div className="flex gap-1">
-                <button onClick={prevPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+                <button onClick={prevPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Previous">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
                 </button>
-                <button onClick={nextPeriod} className="p-1.5 rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                <button onClick={nextPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Next">
+                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
                 </button>
               </div>
-              <button onClick={goToday} className="rounded-lg border border-black/10 px-2.5 py-1 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
+              <button onClick={goToday} className="min-h-11 rounded-lg border border-black/10 px-3 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
                 Today
               </button>
             </div>
@@ -713,19 +728,22 @@ export default function CalendarPage() {
                 <span className="text-[11px] text-black/55">Holidays</span>
               </label>
               <div className="flex gap-1 rounded-xl bg-white border border-black/10 p-1">
-                <button onClick={() => setView("month")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "month" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
+                <button type="button" onClick={() => setView("agenda")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors ${view === "agenda" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
+                  Agenda
+                </button>
+                <button type="button" onClick={() => setView("month")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors max-md:hidden ${view === "month" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
                   Month
                 </button>
-                <button onClick={() => setView("week")} className={`rounded-lg px-3 py-1 text-xs font-medium transition-colors ${view === "week" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
+                <button type="button" onClick={() => setView("week")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors ${view === "week" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
                   Week
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Month view */}
+          {/* Month view — hidden on phones (agenda is default); compact for mid tablets */}
           {view === "month" && (
-            <div className="pb-panel overflow-hidden p-0">
+            <div className="pb-panel overflow-hidden p-0 max-md:hidden">
               <div className="grid grid-cols-7">
                 {DAYS.map((d) => (
                   <div key={d} className="px-2 py-3 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
@@ -791,25 +809,115 @@ export default function CalendarPage() {
             </div>
           )}
 
+          {/* Agenda — list of days in the current month (default on phones) */}
+          {view === "agenda" && (
+            <div className="pb-panel overflow-hidden p-0 divide-y divide-black/10">
+              {cells
+                .filter((c) => c.currentMonth)
+                .map((cell) => {
+                  const cellPosts = postsMap.get(cell.dateKey) || [];
+                  const cellEvents = eventsMap.get(cell.dateKey) || [];
+                  const holiday = showHolidays ? holidayMap.get(cell.dateKey) : undefined;
+                  const isToday = cell.dateKey === todayKey;
+                  const hasItems = cellPosts.length > 0 || cellEvents.length > 0 || Boolean(holiday);
+                  if (!hasItems && cell.dateKey < todayKey) return null;
+                  return (
+                    <div
+                      key={cell.dateKey}
+                      className={`flex gap-3 p-3 sm:p-4 ${isToday ? "bg-[rgba(238,37,50,0.04)]" : ""}`}
+                    >
+                      <button
+                        type="button"
+                        onClick={() => openDayDetail(cell.dateKey)}
+                        className="w-14 shrink-0 text-left"
+                      >
+                        <p className="text-[10px] font-bold uppercase text-black/35">
+                          {DAYS[new Date(cell.dateKey + "T12:00:00").getDay()]}
+                        </p>
+                        <p className={`mt-0.5 text-xl font-semibold ${isToday ? "text-[#ee2532]" : "text-black"}`}>
+                          {cell.day}
+                        </p>
+                      </button>
+                      <div className="min-w-0 flex-1 space-y-1.5">
+                        {!hasItems && (
+                          <button
+                            type="button"
+                            onClick={() => openDayDetail(cell.dateKey)}
+                            className="w-full rounded-lg border border-dashed border-black/10 px-3 py-2.5 text-left text-xs text-black/45 hover:bg-black/[0.03]"
+                          >
+                            Nothing scheduled — tap to add
+                          </button>
+                        )}
+                        {holiday && (
+                          <div className="rounded-lg px-3 py-2 text-xs font-semibold bg-[rgba(217,119,6,0.1)] text-[#b45309]">
+                            {holiday}
+                          </div>
+                        )}
+                        {cellEvents
+                          .slice()
+                          .sort((a, b) => (a.time || "").localeCompare(b.time || ""))
+                          .map((ev) => (
+                            <button
+                              key={ev.id}
+                              type="button"
+                              onClick={() => openEditEvent(ev)}
+                              className={`w-full min-h-11 text-left rounded-lg px-3 py-2.5 transition-colors hover:opacity-85 ${eventTypeColors[ev.type]}`}
+                            >
+                              <p className="text-xs font-medium truncate">
+                                {ev.time ? `${ev.time.slice(0, 5)} · ` : ""}
+                                {ev.title}
+                              </p>
+                              <p className="text-[10px] opacity-70 capitalize">{eventTypeLabels[ev.type]}</p>
+                            </button>
+                          ))}
+                        {cellPosts
+                          .slice()
+                          .sort((a, b) => a.time.localeCompare(b.time))
+                          .map((p) => (
+                            <button
+                              key={p.id}
+                              type="button"
+                              onClick={() => openEditPost(p)}
+                              className={`w-full min-h-11 text-left rounded-lg px-3 py-2.5 transition-colors hover:opacity-85 ${
+                                p.status === "failed"
+                                  ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25"
+                                  : p.status === "draft"
+                                    ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10"
+                                    : platformColors[p.platform]
+                              }`}
+                            >
+                              <p className="text-xs font-medium truncate">
+                                {p.time.slice(0, 5)} · {p.templateName}
+                              </p>
+                              <p className="text-[10px] opacity-70 capitalize">{p.platform}</p>
+                            </button>
+                          ))}
+                      </div>
+                    </div>
+                  );
+                })}
+            </div>
+          )}
+
           {/* Week view */}
           {view === "week" && (
             <div className="pb-panel overflow-hidden p-0">
-              <div className="grid grid-cols-7">
+              <div className="grid grid-cols-1 md:grid-cols-7">
                 {getWeekDates().map((wd) => {
                   const isToday = wd.dateKey === todayKey;
                   const dayPosts = postsMap.get(wd.dateKey) || [];
                   const dayEvents = eventsMap.get(wd.dateKey) || [];
                   const holiday = showHolidays ? holidayMap.get(wd.dateKey) : undefined;
                   return (
-                    <div key={wd.dateKey} className="border-r border-black/10 last:border-r-0">
-                      <div className={`px-2 py-3 text-center border-b border-black/10 ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
+                    <div key={wd.dateKey} className="border-b md:border-b-0 md:border-r border-black/10 last:border-r-0">
+                      <div className={`px-3 py-3 text-left md:text-center border-b border-black/10 ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
                         <p className="text-[10px] text-black/55 font-bold uppercase">{wd.dayName}</p>
                         <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-[#ee2532]" : "text-black"}`}>{wd.day}</p>
                       </div>
                       <div
                         role="button"
                         tabIndex={0}
-                        className="min-h-[400px] w-full cursor-pointer space-y-1.5 p-2 text-left transition-colors hover:bg-black/[0.04]"
+                        className="min-h-[120px] md:min-h-[400px] w-full cursor-pointer space-y-1.5 p-2 text-left transition-colors hover:bg-black/[0.04]"
                         onClick={() => openDayDetail(wd.dateKey)}
                         onKeyDown={(e) => openDayFromKeyboard(e, wd.dateKey, openDayDetail)}
                       >
@@ -822,7 +930,7 @@ export default function CalendarPage() {
                           <button
                             key={ev.id}
                             onClick={(e) => { e.stopPropagation(); openEditEvent(ev); }}
-                            className={`w-full text-left rounded-lg p-2 transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
+                            className={`w-full min-h-11 text-left rounded-lg p-2 transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
                           >
                             {ev.time && <p className="text-[10px] font-bold">{ev.time.slice(0,5)}</p>}
                             <p className="text-xs font-medium truncate">{ev.title}</p>
@@ -833,7 +941,7 @@ export default function CalendarPage() {
                           <button
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
-                            className={`w-full text-left rounded-lg p-2 transition-colors hover:opacity-80 ${
+                            className={`w-full min-h-11 text-left rounded-lg p-2 transition-colors hover:opacity-80 ${
                               p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                             }`}
                           >
@@ -917,7 +1025,7 @@ export default function CalendarPage() {
 
           <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
             <h3 className="text-sm font-bold text-black mb-4">Schedule Stats</h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="rounded-xl bg-black/[0.03] p-3 text-center">
                 <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
                 <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
@@ -947,8 +1055,8 @@ export default function CalendarPage() {
 
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Day details" tabIndex={-1} className="w-full max-w-md max-h-[80vh] rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Day details" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 shrink-0">
               <div>
                 <h3 className="text-lg font-semibold text-black">{formatDisplayDate(selectedDate)}</h3>
@@ -956,7 +1064,7 @@ export default function CalendarPage() {
                   <p className="text-xs font-semibold text-[#b45309] mt-0.5">{holidayMap.get(selectedDate)}</p>
                 )}
               </div>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1035,11 +1143,11 @@ export default function CalendarPage() {
 
       {/* Schedule Post Modal */}
       {modalMode === "post" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Schedule post" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Schedule post" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-black">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1073,7 +1181,7 @@ export default function CalendarPage() {
                 </select>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input
@@ -1249,11 +1357,11 @@ export default function CalendarPage() {
 
       {/* Event Modal */}
       {modalMode === "event" && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Add event" tabIndex={-1} className="w-full max-w-md rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
+          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Add event" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-black">{editingEvent ? "Edit Event" : "Add Event"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="p-1 rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
+              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
                 <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
               </button>
             </div>
@@ -1289,7 +1397,7 @@ export default function CalendarPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input

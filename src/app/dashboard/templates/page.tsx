@@ -85,6 +85,7 @@ function TemplatesContent() {
   const searchParams = useSearchParams();
   const initialPillar = searchParams.get("pillar") || "All";
   const [templateCatalog, setTemplateCatalog] = useState<Template[]>(staticTemplates);
+  const [catalogNotice, setCatalogNotice] = useState<string | null>(null);
   const [filter, setFilter] = useState("All");
   const [search, setSearch] = useState("");
   const [view, setView] = useState<"grid" | "list">("grid");
@@ -95,12 +96,20 @@ function TemplatesContent() {
     async function loadCatalog() {
       try {
         const res = await fetch("/api/templates/catalog", { cache: "no-store" });
-        if (!res.ok) return;
+        if (!res.ok) {
+          if (isActive) {
+            setCatalogNotice("Live catalog unavailable — showing built-in templates.");
+          }
+          return;
+        }
         const data = await res.json() as { templates?: Template[] };
         if (!isActive || !Array.isArray(data.templates)) return;
         setTemplateCatalog(data.templates);
+        setCatalogNotice(null);
       } catch {
-        // Keep static fallback if catalog endpoint is unavailable.
+        if (isActive) {
+          setCatalogNotice("Live catalog unavailable — showing built-in templates.");
+        }
       }
     }
     void loadCatalog();
@@ -146,6 +155,12 @@ function TemplatesContent() {
         </Link>
       </div>
 
+      {catalogNotice ? (
+        <p className="mb-4 text-sm text-[#6b6b6b]" role="status">
+          {catalogNotice}
+        </p>
+      ) : null}
+
       <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center">
         <div className="flex items-center gap-2 rounded-xl bg-white border border-black/10 px-3 py-2 flex-1 max-w-md">
           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="#111" strokeWidth={2} className="opacity-45">
@@ -190,7 +205,7 @@ function TemplatesContent() {
             <button
               key={p}
               onClick={() => setFilter(p)}
-              className={`shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold transition-all ${
+              className={`shrink-0 min-h-11 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
                 filter === p
                   ? "text-white"
                   : "bg-white text-current opacity-65 border border-black/10 hover:opacity-100"
@@ -240,10 +255,10 @@ function TemplatesContent() {
                           {t.fields[1]?.defaultValue || t.fields[0]?.defaultValue}
                         </p>
                       </div>
-                      <div className="absolute inset-0 bg-[#ee2532]/0 group-hover:bg-[#ee2532]/10 transition-colors flex items-center justify-center">
-                        <span className="opacity-0 group-hover:opacity-100 transition-opacity inline-flex items-center gap-1.5 rounded-full bg-white/15 backdrop-blur-sm border border-white/20 px-4 py-2 text-[11px] font-medium text-white">
+                      <div className="absolute inset-x-0 bottom-0 flex justify-center bg-gradient-to-t from-black/55 to-transparent px-3 pb-3 pt-8 pointer-events-none">
+                        <span className="inline-flex min-h-11 items-center gap-1.5 rounded-full bg-white/95 border border-white/40 px-4 text-[11px] font-semibold text-[#1c1c1e] shadow-sm">
                           Customize
-                          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
+                          <svg width="10" height="10" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" /></svg>
                         </span>
                       </div>
                     </div>

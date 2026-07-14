@@ -139,8 +139,8 @@ export default function ChatbotWidget() {
         onClick={() => setIsOpen(true)}
         style={{
           position: 'fixed',
-          bottom: 24,
-          right: 24,
+          bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+          right: 'calc(24px + env(safe-area-inset-right, 0px))',
           zIndex: 200,
           width: 56,
           height: 56,
@@ -166,11 +166,11 @@ export default function ChatbotWidget() {
     <div
       style={{
         position: 'fixed',
-        bottom: 24,
-        right: 24,
+        bottom: 'calc(24px + env(safe-area-inset-bottom, 0px))',
+        right: 'calc(24px + env(safe-area-inset-right, 0px))',
         zIndex: 200,
         width: 'min(420px, calc(100vw - 48px))',
-        height: 'min(600px, calc(100vh - 48px))',
+        height: 'min(600px, calc(100dvh - 48px - env(safe-area-inset-bottom, 0px)))',
         borderRadius: 24,
         background: 'var(--paper)',
         boxShadow: '0 20px 60px rgba(0,0,0,0.15), 0 0 0 1px var(--newsprint)',

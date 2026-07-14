@@ -1254,12 +1254,15 @@ html[data-theme] body {
 .pb-draft-actions button,
 .pb-draft-actions a {
   font-size: 0.75rem;
-  padding: 0.4rem 0.75rem;
+  min-height: 44px;
+  padding: 0.65rem 0.9rem;
   border: 1px solid rgba(17, 17, 17, 0.15);
   background: transparent;
   cursor: pointer;
   text-decoration: none;
   color: inherit;
+  display: inline-flex;
+  align-items: center;
 }
 
 .pb-draft-actions .pb-press-btn {
@@ -1299,13 +1302,14 @@ html[data-theme] body {
 
 .pb-toast {
   position: fixed;
-  bottom: 1.5rem;
-  right: 1.5rem;
+  bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.5rem + env(safe-area-inset-right, 0px));
   padding: 0.75rem 1.25rem;
   background: var(--pb-ink);
   color: var(--pb-paper);
   font-size: 0.8125rem;
   z-index: 100;
+  max-width: min(22rem, calc(100vw - 2rem));
 }
 
 .pb-location-switcher { margin-left: auto; }
@@ -1393,6 +1397,9 @@ html[data-theme] body {
   cursor: pointer;
 }
 .pb-tab { transition: var(--transition-color); }
+@media (max-width: 600px) {
+  .pb-tab { min-height: 44px; display: inline-flex; align-items: center; }
+}
 .pb-tab:hover { color: var(--pb-ink, #111); background: rgba(17, 17, 17, 0.04); }
 .pb-tab-active,
 .pb-tab-active:hover { background: var(--pb-press, #ee2532); color: #fff; }
@@ -1924,4 +1931,19 @@ body.pb-xp-active {
     animation-iteration-count: 1 !important;
     transition-duration: 0.01ms !important;
   }
+}
+
+/* Safe-area helpers — phones with home indicator / notches */
+.pb-safe-fab {
+  bottom: calc(1.25rem + env(safe-area-inset-bottom, 0px));
+  right: calc(1.25rem + env(safe-area-inset-right, 0px));
+}
+/* Studio: keep FAB clear of prompt bar + edit tray on phones */
+.pb-safe-fab-studio {
+  top: calc(0.85rem + env(safe-area-inset-top, 0px));
+  right: calc(0.85rem + env(safe-area-inset-right, 0px));
+  bottom: auto;
+}
+.pb-safe-sheet {
+  padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
 }

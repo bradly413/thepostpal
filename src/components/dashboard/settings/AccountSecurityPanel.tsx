@@ -10,12 +10,14 @@ export default function AccountSecurityPanel({
   meta,
   metaError,
   locationName,
+  locationId,
   onConnectMeta,
   onDisconnectMeta,
 }: {
   meta: MetaConnectionPublic | null;
   metaError: string | null;
   locationName?: string | null;
+  locationId?: string | null;
   onConnectMeta: () => void;
   onDisconnectMeta: () => void;
 }) {
@@ -163,8 +165,8 @@ export default function AccountSecurityPanel({
                 <p className="text-sm font-medium">Connected Accounts</p>
                 <p className="text-xs opacity-55 mt-0.5">
                   {locationName
-                    ? `Facebook and Instagram for ${locationName}`
-                    : "Facebook and Instagram for the active brand"}
+                    ? `Meta, LinkedIn, TikTok, X, and YouTube for ${locationName}`
+                    : "Meta, LinkedIn, TikTok, X, and YouTube for the active brand"}
                 </p>
               </div>
             </div>
@@ -239,6 +241,55 @@ export default function AccountSecurityPanel({
                 </p>
               </div>
             )}
+            <div className="mt-3 space-y-2">
+              {(
+                [
+                  {
+                    id: "linkedin",
+                    label: "Connect LinkedIn",
+                    href: locationId
+                      ? `/api/auth/linkedin/login?locationId=${encodeURIComponent(locationId)}&returnTo=settings`
+                      : null,
+                    ready: Boolean(locationId),
+                  },
+                  {
+                    id: "tiktok",
+                    label: "Connect TikTok",
+                    href: locationId
+                      ? `/api/auth/tiktok/login?locationId=${encodeURIComponent(locationId)}&returnTo=settings`
+                      : null,
+                    ready: Boolean(locationId),
+                  },
+                  { id: "x", label: "Connect X", href: null, ready: false },
+                  { id: "youtube", label: "Connect YouTube", href: null, ready: false },
+                ] as const
+              ).map((row) =>
+                row.href && row.ready ? (
+                  <a
+                    key={row.id}
+                    href={row.href}
+                    className="pb-btn-secondary w-full flex items-center justify-center gap-2 text-xs py-2.5"
+                  >
+                    {row.label}
+                  </a>
+                ) : (
+                  <button
+                    key={row.id}
+                    type="button"
+                    disabled
+                    title={
+                      row.ready === false && !row.href
+                        ? "Coming soon"
+                        : "Choose a workspace location first"
+                    }
+                    className="pb-btn-secondary w-full flex items-center justify-center gap-2 text-xs py-2.5 opacity-45 cursor-not-allowed"
+                  >
+                    {row.label}
+                    {!row.href ? <span className="opacity-70">· Soon</span> : null}
+                  </button>
+                ),
+              )}
+            </div>
           </div>
         </div>
       </div>

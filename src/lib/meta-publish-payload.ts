@@ -18,8 +18,10 @@ export async function buildMetaPublishPayload(options: {
   videoUrl?: string;
   mediaType?: "image" | "video";
   scheduledTime?: number;
+  /** Preferred — pass the active location from context. Falls back to stored id. */
+  locationId?: string | null;
 }): Promise<MetaPublishPayload> {
-  const locationId = getStoredActiveLocationId();
+  const locationId = options.locationId ?? getStoredActiveLocationId();
   if (!locationId) {
     throw new Error("Choose a location before publishing.");
   }

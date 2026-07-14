@@ -8,10 +8,7 @@ import {
   type DashboardPhotoRecord,
 } from "@/lib/dashboard-api";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
-import {
-  getStoredActiveLocationId,
-  onStoredActiveLocationChange,
-} from "@/lib/dashboard-browser-state";
+import { useActiveLocation } from "@/lib/use-active-location";
 
 export interface DashboardDisplayPhoto {
   id: string;
@@ -24,13 +21,18 @@ function toDisplay(record: DashboardPhotoRecord): DashboardDisplayPhoto {
   return { id: record.id, src: record.url, name: record.alt || "Photo" };
 }
 
+/**
+ * @param locationId Prefer passing the active location explicitly. When omitted,
+ * falls back to ActiveLocationProvider (must be under dashboard layout).
+ */
 export function useDashboardPhotos(locationId?: string | null) {
+  const ctx = useActiveLocation();
+  const activeLocationId = locationId === undefined ? ctx.locationId : locationId;
+  const locationLoading = locationId === undefined ? ctx.loading : false;
+
   const [photos, setPhotos] = useState<DashboardDisplayPhoto[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  const activeLocationId =
-    locationId === undefined ? getStoredActiveLocationId() : locationId;
 
   const load = useCallback(async () => {
     if (!activeLocationId) {
@@ -71,11 +73,16 @@ export function useDashboardPhotos(locationId?: string | null) {
   );
 
   useEffect(() => {
+    if (locationLoading) return;
     void load();
-    return onStoredActiveLocationChange(() => {
-      void load();
-    });
-  }, [load]);
+  }, [load, locationLoading]);
 
-  return { photos, loading, error, reload: load, uploadAndCreate, locationId: activeLocationId };
+  return {
+    photos,
+    loading: locationLoading || loading,
+    error,
+    reload: load,
+    uploadAndCreate,
+    locationId: activeLocationId,
+  };
 }

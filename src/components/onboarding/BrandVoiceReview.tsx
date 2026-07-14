@@ -1,6 +1,6 @@
 "use client";
 
-import type { ZeroShotExtraction } from "@/lib/zero-shot-extraction";
+import type { ZeroShotHistoryResult } from "@/lib/zero-shot-extraction";
 
 // Pre-filled, editable brand voice — shown after the zero-shot history analysis.
 // The user reviews/tweaks what Posterboy inferred from their past posts before
@@ -10,11 +10,15 @@ export default function BrandVoiceReview({
   onChange,
   onContinue,
 }: {
-  voice: ZeroShotExtraction;
-  onChange: (next: ZeroShotExtraction) => void;
+  voice: ZeroShotHistoryResult;
+  onChange: (next: ZeroShotHistoryResult) => void;
   onContinue: () => void;
 }) {
-  const setList = (key: "pillars" | "weSay" | "weDontSay", i: number, val: string) => {
+  const setList = (
+    key: "pillars" | "weSay" | "weDontSay" | "visualStyle",
+    i: number,
+    val: string,
+  ) => {
     const arr = [...voice[key]];
     arr[i] = val;
     onChange({ ...voice, [key]: arr });
@@ -26,8 +30,42 @@ export default function BrandVoiceReview({
         Here&apos;s your voice
       </h2>
       <p className="text-[15px] text-[#76767e] mb-7">
-        We read your past posts and drafted your brand voice. Tweak anything that doesn&apos;t sound like you.
+        We read your past posts — captions, hashtags, cadence, and media mix — and drafted your brand voice. Tweak anything that doesn&apos;t sound like you.
       </p>
+
+      {(voice.postingCadence || voice.mediaMix || voice.hashtags.length > 0) && (
+        <div className="mb-7 rounded-2xl border border-black/[0.08] bg-white/70 px-4 py-4">
+          <p className="text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-3">
+            From your history
+          </p>
+          {voice.postingCadence ? (
+            <p className="text-[13px] text-[#1c1c1e] mb-1.5">
+              <span className="text-[#76767e]">Cadence · </span>
+              {voice.postingCadence}
+            </p>
+          ) : null}
+          {voice.mediaMix ? (
+            <p className="text-[13px] text-[#1c1c1e] mb-2">
+              <span className="text-[#76767e]">Media · </span>
+              {voice.mediaMix}
+            </p>
+          ) : null}
+          {voice.hashtags.length > 0 ? (
+            <div className="flex flex-wrap gap-1.5 mt-2">
+              {voice.hashtags.slice(0, 10).map((tag) => (
+                <span
+                  key={tag}
+                  className="rounded-full border border-black/10 bg-white/90 px-2.5 py-1 text-[11px] font-medium text-[#1c1c1e]"
+                >
+                  {tag}
+                </span>
+              ))}
+            </div>
+          ) : (
+            <p className="text-[12px] text-[#9a9aa2]">No hashtags found in recent captions.</p>
+          )}
+        </div>
+      )}
 
       <label className="block text-[12px] font-semibold uppercase tracking-[0.14em] text-[#9a9aa2] mb-2">
         Tone
@@ -41,6 +79,12 @@ export default function BrandVoiceReview({
       <Section label="Content pillars" items={voice.pillars} onItem={(i, v) => setList("pillars", i, v)} compact />
       <Section label="We say" items={voice.weSay} onItem={(i, v) => setList("weSay", i, v)} />
       <Section label="We don't say" items={voice.weDontSay} onItem={(i, v) => setList("weDontSay", i, v)} />
+      <Section
+        label="Visual style"
+        items={voice.visualStyle}
+        onItem={(i, v) => setList("visualStyle", i, v)}
+        compact
+      />
 
       <div className="mt-8 flex items-center justify-end">
         <button

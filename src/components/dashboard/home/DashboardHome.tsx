@@ -142,9 +142,16 @@ export default function DashboardHome() {
     };
   }, [notifOpen]);
 
+  // Active location drives the weather widget's geo + label (per-tenant).
+  const { locationId, locations } = useActiveLocation();
+  const activeLocation = useMemo(
+    () => locations.find((l) => l.id === locationId) ?? null,
+    [locations, locationId],
+  );
+
   // Recent Media — live workspace photos only (no stock fallback: stock images
   // looked like another account's photos to beta users).
-  const { photos: livePhotos } = useDashboardPhotos();
+  const { photos: livePhotos } = useDashboardPhotos(locationId);
   const recentMedia = livePhotos.slice(0, 4).map((p) => p.src);
 
   // Fresh tenant — nothing scheduled, in review, posted, or uploaded. The home
@@ -156,13 +163,6 @@ export default function DashboardHome() {
     (data?.pendingCount ?? 0) === 0 &&
     (data?.weeklyOverview?.postsCount ?? 0) === 0 &&
     recentMedia.length === 0;
-
-  // Active location drives the weather widget's geo + label (per-tenant).
-  const { locationId, locations } = useActiveLocation();
-  const activeLocation = useMemo(
-    () => locations.find((l) => l.id === locationId) ?? null,
-    [locations, locationId],
-  );
 
   const refresh = useCallback(async () => {
     try {
