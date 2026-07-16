@@ -293,7 +293,6 @@ export default function PhotosPage() {
           error={locationError}
           locationId={locationId}
           onRetry={() => void refreshLocations()}
-          onCreate={() => router.push("/dashboard/organization")}
           skeleton={<SkeletonGrid count={10} />}
         >
         {busy && locationId ? (

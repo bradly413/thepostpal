@@ -173,7 +173,6 @@ export default function DraftsPage() {
         error={locationError}
         locationId={locationId}
         onRetry={() => void refreshLocations()}
-        onCreate={() => router.push("/dashboard/organization")}
         skeleton={
           <div className="space-y-3">
             {Array.from({ length: 3 }).map((_, idx) => (

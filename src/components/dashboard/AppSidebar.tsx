@@ -8,7 +8,6 @@ import {
   CalendarDays,
   FileText,
   Image as ImageIcon,
-  BarChart3,
   Megaphone,
   Building2,
   PenLine,
@@ -31,7 +30,6 @@ const NAV_TOP: NavLink[] = [
   { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays },
   { label: "Content", href: "/dashboard/drafts", Icon: FileText },
   { label: "Media", href: "/dashboard/photos", Icon: ImageIcon },
-  { label: "Reports", href: "/dashboard/analytics", Icon: BarChart3 },
   { label: "Ads", href: "/dashboard/ads", Icon: Megaphone, gate: "metaAds" },
   { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup" },
 ];
@@ -89,48 +87,57 @@ const SIDEBAR_CSS = `
 
 /* Route-collapsed rail (dense pages like the calendar) — icon-only at desktop.
    At <=980px the media query below collapses everything anyway. */
-.pb-side--collapsed { padding: 26px 12px; align-items: center; width: 72px; }
-.pb-side--collapsed .logo { display: none; }
-.pb-side--collapsed nav { width: 100%; }
-.pb-side--collapsed nav a {
-  justify-content: center; gap: 0; min-height: 44px; padding: 12px 0; letter-spacing: 0;
+.pb-side--collapsed {
+  padding: 18px 6px; align-items: center; width: 52px; border-radius: 22px;
 }
+.pb-side--collapsed .logo { display: none; }
+.pb-side--collapsed nav { width: 100%; gap: 2px; }
+.pb-side--collapsed nav a {
+  justify-content: center; gap: 0; min-height: 40px; padding: 10px 0;
+  letter-spacing: 0; border-radius: 12px;
+}
+.pb-side--collapsed nav a svg { width: 16px; height: 16px; }
 .pb-side--collapsed nav a .nav-label {
   position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
   clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.pb-side--collapsed nav .grp-gap { margin: 8px 8px; width: calc(100% - 16px); }
-.pb-side--collapsed .foot { justify-content: center; gap: 0; }
+.pb-side--collapsed nav .grp-gap { margin: 6px 6px; width: calc(100% - 12px); height: 16px; }
+.pb-side--collapsed .foot { justify-content: center; gap: 0; margin-top: 12px; padding-top: 12px; }
+.pb-side--collapsed .foot .av { width: 28px; height: 28px; border-radius: 9px; font-size: 10px; }
 .pb-side--collapsed .foot .foot-text, .pb-side--collapsed .foot .foot-chevron { display: none; }
 
 /* Tablet + mobile: slim icon rail — never stack full nav above content */
 @media (max-width: 980px) {
   .pb-side {
-    top: 12px; height: calc(100dvh - 24px); padding: 20px 10px; align-items: center; width: 72px;
+    top: 12px; height: calc(100dvh - 24px); padding: 16px 6px; align-items: center;
+    width: 52px; border-radius: 22px;
   }
   .pb-side .logo { display: none; }
-  .pb-side nav { width: 100%; }
+  .pb-side nav { width: 100%; gap: 2px; }
   .pb-side nav a {
-    justify-content: center; gap: 0; min-height: 44px; padding: 12px 0; letter-spacing: 0;
+    justify-content: center; gap: 0; min-height: 40px; padding: 10px 0;
+    letter-spacing: 0; border-radius: 12px;
   }
+  .pb-side nav a svg { width: 16px; height: 16px; }
   .pb-side nav a .nav-label {
     position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
     clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
-  .pb-side nav .grp-gap { margin: 8px 8px; width: calc(100% - 16px); }
+  .pb-side nav .grp-gap { margin: 6px 6px; width: calc(100% - 12px); height: 16px; }
   .pb-side .foot { justify-content: center; gap: 0; margin-top: 12px; padding-top: 12px; }
+  .pb-side .foot .av { width: 28px; height: 28px; border-radius: 9px; font-size: 10px; }
   .pb-side .foot .foot-text, .pb-side .foot .foot-chevron { display: none; }
 }
 
 @media (max-width: 600px) {
   .pb-side {
-    top: 8px; height: calc(100dvh - 16px); width: 56px; padding: 12px 6px; border-radius: 22px;
+    top: 8px; height: calc(100dvh - 16px); width: 48px; padding: 10px 4px; border-radius: 20px;
   }
   .pb-side nav a {
-    justify-content: center; min-height: 44px; padding: 12px 0; border-radius: 12px;
+    justify-content: center; min-height: 38px; padding: 9px 0; border-radius: 11px;
   }
-  .pb-side nav a svg { width: 18px; height: 18px; }
-  .pb-side .foot .av { width: 30px; height: 30px; border-radius: 10px; font-size: 10px; }
+  .pb-side nav a svg { width: 15px; height: 15px; }
+  .pb-side .foot .av { width: 26px; height: 26px; border-radius: 8px; font-size: 9px; }
 }
 `;
 

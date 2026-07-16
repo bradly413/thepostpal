@@ -1,7 +1,8 @@
-import BulkScheduler from "@/components/dashboard/BulkScheduler";
+import { redirect } from "next/navigation";
 
 export const dynamic = "force-dynamic";
 
+/** Legacy bulk page — Schedule owns bulk upload inline. */
 export default function BulkSchedulePage() {
-  return <BulkScheduler />;
+  redirect("/dashboard/calendar");
 }

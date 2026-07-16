@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
-import { hasProImagesAddon } from "@/lib/plan-features";
+import { hasProImagesAddon, isMetaAdsFeatureActive } from "@/lib/plan-features";
 
 // ─────────────────────────────────────────────────────────────
 //  GET /api/me
@@ -45,6 +45,7 @@ export async function GET() {
         organizationId: auth.organizationId,
         isSuperadmin: auth.isSuperadmin,
         locationCount,
+        metaAdsEnabled: isMetaAdsFeatureActive(org.plan),
         addons: { proImages: hasProImagesAddon(org.brandEngine) },
         organization: {
           id: auth.organizationId,

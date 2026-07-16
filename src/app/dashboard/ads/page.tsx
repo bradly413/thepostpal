@@ -192,7 +192,7 @@ export default function MetaAdsBuilderPage() {
   if (!locationId) {
     return (
       <div className="pb-app">
-        <NoLocationState onCreate={() => router.push("/dashboard/organization")} />
+        <NoLocationState />
       </div>
     );
   }

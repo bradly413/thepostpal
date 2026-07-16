@@ -8,6 +8,7 @@ import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guard
 import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const MODEL = "claude-sonnet-4-6";
 

@@ -7,6 +7,7 @@ import { SITE_NAME } from "@/lib/site";
 import VerticalCompliancePanel from "@/components/compliance/VerticalCompliancePanel";
 import BillingSettingsPanel from "@/components/dashboard/settings/BillingSettingsPanel";
 import AccountSecurityPanel from "@/components/dashboard/settings/AccountSecurityPanel";
+import ReportsPanel from "@/components/dashboard/analytics/ReportsPanel";
 import Link from "next/link";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useActiveLocation } from "@/lib/use-active-location";
@@ -59,6 +60,10 @@ function SettingsContent() {
     const upgrade = searchParams.get("upgrade");
     if (tab === "billing" || upgrade) {
       setActiveTab("billing");
+    } else if (tab === "reports") {
+      setActiveTab("reports");
+    } else if (tab === "account") {
+      setActiveTab("account");
     }
     if (connected) {
       void reloadMeta();
@@ -167,6 +172,7 @@ function SettingsContent() {
     { id: "profile", label: "Profile" },
     { id: "brand", label: "Brand voice" },
     { id: "compliance", label: "Compliance" },
+    { id: "reports", label: "Reports" },
     { id: "billing", label: "Billing" },
     { id: "account", label: "Account" },
     { id: "legal", label: "Legal" },
@@ -190,10 +196,20 @@ function SettingsContent() {
       <div className="flex gap-6 flex-col lg:flex-row">
         {/* Tab nav */}
         <div className="lg:w-48 shrink-0">
-          <nav className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible" style={{ scrollbarWidth: "none" }}>
+          <nav
+            role="tablist"
+            aria-label="Settings sections"
+            className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible"
+            style={{ scrollbarWidth: "none" }}
+          >
             {tabs.map((tab) => (
               <button
                 key={tab.id}
+                id={`settings-tab-${tab.id}`}
+                role="tab"
+                type="button"
+                aria-selected={activeTab === tab.id}
+                aria-controls={`settings-panel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
                 className={`pb-tab ${activeTab === tab.id ? "pb-tab-active" : ""}`}
               >
@@ -204,7 +220,12 @@ function SettingsContent() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 max-w-2xl">
+        <div
+          role="tabpanel"
+          id={`settings-panel-${activeTab}`}
+          aria-labelledby={`settings-tab-${activeTab}`}
+          className={`flex-1 ${activeTab === "reports" ? "max-w-5xl" : "max-w-2xl"}`}
+        >
           {activeTab === "profile" && profileLoadError && (
             <div className="mb-4 rounded-xl border border-[rgba(238,37,50,0.2)] bg-[rgba(238,37,50,0.08)] px-4 py-3 text-sm text-[#c81e2a]">
               Couldn&apos;t load your profile. Save still works — refresh the page to retry loading existing values.
@@ -267,6 +288,8 @@ function SettingsContent() {
           {activeTab === "compliance" && (
             <VerticalCompliancePanel compact />
           )}
+
+          {activeTab === "reports" && <ReportsPanel />}
 
           {activeTab === "billing" && (
             <BillingSettingsPanel accountEmail={profile.email} />

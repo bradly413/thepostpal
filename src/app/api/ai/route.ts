@@ -12,6 +12,9 @@ import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 
+export const runtime = "nodejs";
+export const maxDuration = 60;
+
 // Neutral, industry-agnostic brand voice. (Per-tenant brand voice from
 // Organization.brandEngine is a follow-up — see audit notes.)
 const brandContext = `## Brand Voice

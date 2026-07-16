@@ -464,7 +464,6 @@ export default function BulkScheduler() {
       error={locationsError}
       locationId={locationId}
       onRetry={() => void refresh()}
-      onCreate={() => (window.location.href = "/dashboard/organization")}
     >
       <div className="pb-app max-w-4xl mx-auto">
         <div className="pb-app-header">

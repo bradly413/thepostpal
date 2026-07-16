@@ -28,13 +28,23 @@ export function DashboardHomeStyles() {
 
     .home2 {
       display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 24px;
-      max-width: 1560px; margin: 0 auto; padding: 24px; min-height: 100%;
+      width: 100%; max-width: none; margin: 0 auto; padding: 24px; min-height: 100%;
+    }
+    /* Comfortable reading width on mid desktops; open up on XL+ */
+    @media (min-width: 981px) and (max-width: 1439px) {
+      .home2 { max-width: 1440px; }
+    }
+    @media (min-width: 1440px) {
+      .home2 { max-width: none; padding-left: 20px; padding-right: 20px; gap: 20px; }
+    }
+    @media (min-width: 1800px) {
+      .home2 { padding-left: 28px; padding-right: 28px; gap: 24px; }
     }
     @media (max-width: 980px) {
-      .home2 { grid-template-columns: 72px minmax(0, 1fr); gap: 16px; padding: 16px; }
+      .home2 { grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 14px; }
     }
     @media (max-width: 600px) {
-      .home2 { grid-template-columns: 56px minmax(0, 1fr); gap: 12px; padding: 12px; }
+      .home2 { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; padding: 10px; }
     }
 
     /* ---------- Main ---------- */
@@ -46,6 +56,7 @@ export function DashboardHomeStyles() {
       .pb-home2--fixed { overflow: hidden; height: 100%; }
       .pb-home2--fixed .home2 {
         height: 100%; min-height: 0; max-height: 100%;
+        max-width: none; width: 100%;
         padding-top: 16px; padding-bottom: 16px;
       }
       .pb-home2--fixed .main2 {

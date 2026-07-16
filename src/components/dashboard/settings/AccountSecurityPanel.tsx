@@ -5,6 +5,7 @@ import Link from "next/link";
 import type { MetaConnectionPublic } from "@/lib/meta-connection-types";
 import { clearStoredActiveLocationId } from "@/lib/dashboard-browser-state";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
+import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 
 export default function AccountSecurityPanel({
   meta,
@@ -33,6 +34,7 @@ export default function AccountSecurityPanel({
   const [deleteError, setDeleteError] = useState<string | null>(null);
   const [logoutLoading, setLogoutLoading] = useState(false);
   const deleteDialogRef = useRef<HTMLDivElement>(null);
+  const features = usePlanFeatures();
 
   useFocusTrap(showDeleteModal, deleteDialogRef, () => setShowDeleteModal(false));
 
@@ -234,10 +236,21 @@ export default function AccountSecurityPanel({
                   Connect with Facebook
                 </button>
                 <p className="text-[11px] text-black/45 text-center">
-                  Manage all brands on{" "}
-                  <Link href="/dashboard/organization" className="text-[#ee2532] hover:underline">
-                    Organization
-                  </Link>
+                  {features.locationRollup ? (
+                    <>
+                      Manage all brands on{" "}
+                      <Link href="/dashboard/organization" className="text-[#ee2532] hover:underline">
+                        Organization
+                      </Link>
+                    </>
+                  ) : (
+                    <>
+                      Manage your workspace in{" "}
+                      <Link href="/dashboard/settings" className="text-[#ee2532] hover:underline">
+                        Settings
+                      </Link>
+                    </>
+                  )}
                 </p>
               </div>
             )}

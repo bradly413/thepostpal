@@ -173,7 +173,6 @@ function EditorInner() {
         error={locationError}
         locationId={locationId}
         onRetry={() => void refreshLocations()}
-        onCreate={() => router.push("/dashboard/organization")}
       >
       <div className="space-y-6">
         <label className="block">

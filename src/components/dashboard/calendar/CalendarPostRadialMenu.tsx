@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Eye, Pencil, Trash2 } from "lucide-react";
+import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 export type RadialPostAction = "preview" | "edit" | "cancel";
 
@@ -35,6 +36,9 @@ export default function CalendarPostRadialMenu({
   onAction,
 }: CalendarPostRadialMenuProps) {
   const [expanded, setExpanded] = useState(false);
+  const menuRef = useRef<HTMLElement>(null);
+
+  useFocusTrap(open && expanded, menuRef, onClose);
 
   useEffect(() => {
     if (!open) {
@@ -44,15 +48,6 @@ export default function CalendarPostRadialMenu({
     const id = window.requestAnimationFrame(() => setExpanded(true));
     return () => window.cancelAnimationFrame(id);
   }, [open]);
-
-  useEffect(() => {
-    if (!open) return;
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
-    };
-    window.addEventListener("keydown", onKey);
-    return () => window.removeEventListener("keydown", onKey);
-  }, [open, onClose]);
 
   if (!open) return null;
 
@@ -67,9 +62,11 @@ export default function CalendarPostRadialMenu({
         onClick={onClose}
       />
       <nav
+        ref={menuRef}
         className={`pb-radial__menu${expanded ? " is-open" : ""}`}
         style={{ left: x, top: y }}
         aria-label="Post actions"
+        role="menu"
       >
         <button
           type="button"
@@ -88,9 +85,11 @@ export default function CalendarPostRadialMenu({
                 key={action.id}
                 className="pb-radial__item"
                 style={{ ["--i" as string]: i }}
+                role="none"
               >
                 <button
                   type="button"
+                  role="menuitem"
                   title={action.label}
                   aria-label={action.label}
                   className={`pb-radial__action pb-radial__action--${action.tone}`}

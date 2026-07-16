@@ -40,13 +40,15 @@ import PostPreview, {
 import CalendarPostRadialMenu, {
   type RadialPostAction,
 } from "@/components/dashboard/calendar/CalendarPostRadialMenu";
+import CalendarAssistant from "@/components/dashboard/calendar/CalendarAssistant";
+import { AnimatedOverlay } from "@/components/dashboard/AnimatedOverlay";
+import CollapsingLabelButton from "@/components/dashboard/CollapsingLabelButton";
 import {
   Clock,
   ChevronDown,
   Image as ImageIcon,
   Search,
   Settings2,
-  MoreVertical,
   LayoutGrid,
   List,
   Plus,
@@ -57,7 +59,6 @@ import {
 } from "lucide-react";
 import { LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
-import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 
 // Adapt a live calendar record into the local CalendarEvent view shape the
 // grid + modals already render.
@@ -295,6 +296,9 @@ export default function CalendarPage() {
   useEffect(() => { document.title = `Schedule | ${SITE_NAME}`; }, []);
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
+  const postSettingsRef = useRef<HTMLDivElement>(null);
+  const bulkListRef = useRef<HTMLDivElement>(null);
+  const bulkUploadRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [view, setView] = useState<"month" | "week" | "agenda">("month");
   const mobileDefaultApplied = useRef(false);
@@ -368,6 +372,8 @@ export default function CalendarPage() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showPostSettings, setShowPostSettings] = useState(false);
+  const [autoGenerateCaptions, setAutoGenerateCaptions] = useState(true);
   const [showBulkList, setShowBulkList] = useState(false);
   const [bulkListScheduleIndex, setBulkListScheduleIndex] = useState<number | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -592,10 +598,6 @@ export default function CalendarPage() {
   const { workspaceName, workspaceInitials } = usePlan();
   const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
-  useFocusTrap(modalMode !== null, modalRef, () => {
-    setPreviewPost(null);
-    setModalMode(null);
-  });
   const loadPosts = useCallback(async () => {
     if (!locationId) {
       setPosts([]);
@@ -811,7 +813,7 @@ export default function CalendarPage() {
   }
 
   function closePostPreview() {
-    setPreviewPost(null);
+    // Keep previewPost mounted through the GSAP exit tween.
     setModalMode(null);
   }
 
@@ -1049,10 +1051,11 @@ export default function CalendarPage() {
       skipNextCaptionGenRef.current = false;
       return;
     }
+    if (!autoGenerateCaptions) return;
     if (!mediaUrl || mediaType !== "image" || uploadingMedia) return;
     void generateCaptionsFromImage(mediaUrl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on media change
-  }, [mediaUrl, mediaType]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on media change / toggle
+  }, [mediaUrl, mediaType, autoGenerateCaptions]);
 
   useEffect(() => {
     return () => stopCaptionRotation();
@@ -1296,7 +1299,6 @@ export default function CalendarPage() {
         error={locationError}
         locationId={locationId}
         onRetry={() => void refreshLocations()}
-        onCreate={() => router.push("/dashboard/organization")}
       >
       <>
       <div className="pb-app-header shrink-0 !mb-3">
@@ -1304,7 +1306,7 @@ export default function CalendarPage() {
           <div className="min-w-0">
             <h1 className="!text-[1.65rem] !leading-tight !tracking-tight">Schedule</h1>
             <p className="!mt-0.5 !max-w-xl !text-[12px] !text-black/45">
-              Manage and track your scheduled uploads to ensure everything goes as planned
+              Queue and edit posts for your connected channels
             </p>
           </div>
           <div className="flex shrink-0 flex-wrap items-center gap-2.5">
@@ -1315,16 +1317,24 @@ export default function CalendarPage() {
                 value={calendarSearch}
                 onChange={(e) => setCalendarSearch(e.target.value)}
                 placeholder="Search"
+                aria-label="Search schedule"
                 className="h-10 w-[200px] rounded-xl border border-black/10 bg-white pl-9 pr-3 text-sm text-black outline-none transition-colors placeholder:text-black/35 focus:border-[#ee2532]/40"
               />
             </label>
-            <a
-              href="/dashboard/calendar/bulk"
-              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#ee2532] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a]"
-            >
-              <Settings2 size={15} aria-hidden />
-              Post Setting
-            </a>
+            <CollapsingLabelButton
+              aria-label="Post settings"
+              icon={<Settings2 size={15} aria-hidden />}
+              label="Post settings"
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                // Never open bulk flows from this control.
+                setShowBulkUpload(false);
+                setShowBulkList(false);
+                setBulkListScheduleIndex(null);
+                setShowPostSettings(true);
+              }}
+            />
             {features.multiLocation && <LocationSwitcher />}
           </div>
         </div>
@@ -1386,14 +1396,11 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,360px)_minmax(0,1fr)] xl:gap-4">
+      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(340px,400px)_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] 2xl:gap-6">
         {/* Create Schedule — left composer card */}
         <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)]">
           <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
             <h2 className="text-[15px] font-semibold tracking-tight text-black">Create Post</h2>
-            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-black/35 hover:bg-black/[0.04] hover:text-black/60" aria-label="Composer menu">
-              <MoreVertical size={16} aria-hidden />
-            </button>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-0">
@@ -1787,7 +1794,7 @@ export default function CalendarPage() {
                                   onClick={(e) => openPostRadialMenu(p, e)}
                                   title={`${formatDisplayTime(p.time)} · ${p.platform === "both" ? "Facebook & Instagram" : p.platform}`}
                                   aria-label={`Post actions ${formatDisplayTime(p.time)}`}
-                                  className="relative h-7 w-7 overflow-hidden rounded-none ring-1 ring-black/10 transition-transform hover:-translate-y-0.5 hover:ring-black/25"
+                                  className="relative h-7 w-7 overflow-hidden rounded-none shadow-[0_6px_14px_-6px_rgba(20,20,40,0.55)] ring-1 ring-black/10 transition-transform hover:-translate-y-0.5 hover:ring-black/25"
                                 >
                                   {p.mediaUrl ? (
                                     // eslint-disable-next-line @next/next/no-img-element
@@ -1964,7 +1971,7 @@ export default function CalendarPage() {
                             }`}
                           >
                             <span className="flex w-10 shrink-0 flex-col items-center gap-0.5">
-                              <span className="relative h-10 w-10 overflow-hidden rounded-none ring-1 ring-black/10">
+                              <span className="relative h-10 w-10 overflow-hidden rounded-none shadow-[0_8px_18px_-8px_rgba(20,20,40,0.5)] ring-1 ring-black/10">
                                 {p.mediaUrl ? (
                                   // eslint-disable-next-line @next/next/no-img-element
                                   <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
@@ -2001,22 +2008,148 @@ export default function CalendarPage() {
 
       </div>
 
-      {/* Bulk queue list view */}
-      {showBulkList && isBulkQueue && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center"
-          onClick={() => {
-            setBulkListScheduleIndex(null);
-            setShowBulkList(false);
-          }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Bulk upload list"
-            className="pb-safe-sheet flex w-full max-w-lg max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/85 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
+      {/* Post settings (session defaults for composer) */}
+      <AnimatedOverlay
+        open={showPostSettings}
+        onClose={() => setShowPostSettings(false)}
+        ariaLabel="Post settings"
+        align="bottom"
+        zIndexClass="z-[100]"
+        backdropClassName="bg-black/55 backdrop-blur-md"
+        panelRef={postSettingsRef}
+        panelClassName="pb-safe-sheet flex w-full max-w-md flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/85 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
+      >
+        <div className="flex items-center justify-between gap-3 border-b border-black/8 px-5 py-3.5">
+          <div>
+            <h3 className="text-base font-semibold text-black">Post settings</h3>
+            <p className="mt-0.5 text-[12px] text-black/45">
+              Defaults for this session — not saved to the server
+            </p>
+          </div>
+          <button
+            type="button"
+            aria-label="Close post settings"
+            onClick={() => setShowPostSettings(false)}
+            className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-black/45 transition-colors hover:bg-black/[0.05] hover:text-black"
           >
+            <X size={18} aria-hidden />
+          </button>
+        </div>
+
+        <div className="space-y-5 px-5 py-5">
+          <div>
+            <p className="mb-2 text-[11px] font-semibold uppercase tracking-wider text-black/40">
+              Default channels
+            </p>
+            <div className="flex items-center gap-2">
+              {(["facebook", "instagram"] as const).map((ch) => {
+                const on = formPlatform === ch || formPlatform === "both";
+                return (
+                  <button
+                    key={ch}
+                    type="button"
+                    onClick={() => togglePlatformChannel(ch)}
+                    aria-label={ch}
+                    aria-pressed={on}
+                    className={`inline-flex h-10 items-center gap-2 rounded-xl border px-3.5 text-sm font-medium capitalize transition-colors ${
+                      on
+                        ? "border-[#ee2532] bg-[#ee2532]/10 text-[#ee2532]"
+                        : "border-black/10 bg-white text-black/45 hover:text-black/70"
+                    }`}
+                  >
+                    {ch === "facebook" ? <FacebookGlyph /> : <InstagramGlyph />}
+                    {ch}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          <div>
+            <label
+              htmlFor="post-settings-time"
+              className="mb-2 block text-[11px] font-semibold uppercase tracking-wider text-black/40"
+            >
+              Default time
+            </label>
+            <div className="relative">
+              <Clock
+                size={15}
+                className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-black/35"
+                aria-hidden
+              />
+              <select
+                id="post-settings-time"
+                value={formTime}
+                onChange={(e) => {
+                  setFormTime(e.target.value);
+                  setScheduleTimeTouched(true);
+                }}
+                className="h-11 w-full appearance-none rounded-xl border border-black/10 bg-white pl-9 pr-9 text-sm font-medium text-black outline-none focus:border-[#ee2532]/40"
+              >
+                {TIME_OPTIONS.map((t) => (
+                  <option key={t.value} value={t.value}>
+                    {t.display}
+                  </option>
+                ))}
+              </select>
+              <ChevronDown
+                size={15}
+                className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-black/35"
+                aria-hidden
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-4 rounded-xl border border-black/8 bg-white/70 px-4 py-3">
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-black">Auto-generate captions</p>
+              <p className="mt-0.5 text-[12px] text-black/45">
+                When on, new images get AI caption options automatically
+              </p>
+            </div>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={autoGenerateCaptions}
+              onClick={() => setAutoGenerateCaptions((v) => !v)}
+              className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
+                autoGenerateCaptions ? "bg-[#ee2532]" : "bg-black/15"
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 left-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform ${
+                  autoGenerateCaptions ? "translate-x-5" : "translate-x-0"
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+
+        <div className="border-t border-black/8 px-5 py-3.5">
+          <button
+            type="button"
+            onClick={() => setShowPostSettings(false)}
+            className="pb-btn-primary w-full text-sm py-2.5"
+          >
+            Done
+          </button>
+        </div>
+      </AnimatedOverlay>
+
+      {/* Bulk queue list view */}
+      <AnimatedOverlay
+        open={showBulkList && isBulkQueue}
+        onClose={() => {
+          setBulkListScheduleIndex(null);
+          setShowBulkList(false);
+        }}
+        ariaLabel="Bulk upload list"
+        align="bottom"
+        backdropClassName="bg-black/55 backdrop-blur-md"
+        panelRef={bulkListRef}
+        panelClassName="pb-safe-sheet flex w-full max-w-lg max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/85 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
+      >
             <div className="flex items-center justify-between gap-3 border-b border-black/8 px-5 py-3.5">
               <div>
                 <h3 className="text-base font-semibold text-black">Bulk queue</h3>
@@ -2158,23 +2291,21 @@ export default function CalendarPage() {
                 Close
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </AnimatedOverlay>
 
       {/* Bulk upload popup */}
-      {showBulkUpload && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
-          onClick={() => { if (!bulkUploading) setShowBulkUpload(false); }}
-        >
-          <div
-            role="dialog"
-            aria-modal="true"
-            aria-label="Bulk upload photos"
-            className="w-full max-w-md rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <AnimatedOverlay
+        open={showBulkUpload}
+        onClose={() => {
+          if (!bulkUploading) setShowBulkUpload(false);
+        }}
+        ariaLabel="Bulk upload photos"
+        align="bottom"
+        backdropClassName="bg-black/60 backdrop-blur-sm"
+        panelRef={bulkUploadRef}
+        panelClassName="w-full max-w-md rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl"
+        closeOnBackdrop={!bulkUploading}
+      >
             <div className="mb-4 flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-lg font-semibold text-black">Bulk Upload</h3>
@@ -2226,9 +2357,7 @@ export default function CalendarPage() {
                 onChange={(e) => void handleBulkFiles(e.target.files)}
               />
             </label>
-          </div>
-        </div>
-      )}
+      </AnimatedOverlay>
 
       <CalendarPostRadialMenu
         open={Boolean(radialMenu)}
@@ -2239,29 +2368,26 @@ export default function CalendarPage() {
       />
 
       {/* Scheduled post preview */}
-      {modalMode === "preview" && previewPost && (
-        <div
-          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center"
-          onClick={closePostPreview}
-        >
-          <div
-            ref={modalRef}
-            role="dialog"
-            aria-modal="true"
-            aria-label="Post preview"
-            tabIndex={-1}
-            className="pb-safe-sheet flex w-full max-w-md max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/80 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
-            onClick={(e) => e.stopPropagation()}
-          >
+      <AnimatedOverlay
+        open={modalMode === "preview"}
+        onClose={closePostPreview}
+        ariaLabel="Post preview"
+        align="bottom"
+        backdropClassName="bg-black/55 backdrop-blur-md"
+        panelRef={modalRef}
+        panelClassName="pb-safe-sheet flex w-full max-w-md max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/80 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
+      >
             <div className="flex items-center justify-between gap-3 border-b border-black/8 px-5 py-3.5">
               <div className="min-w-0">
                 <p className="truncate text-sm font-semibold text-black">
-                  {formatComposerSchedule(previewPost.date, previewPost.time)}
+                  {previewPost
+                    ? formatComposerSchedule(previewPost.date, previewPost.time)
+                    : "Post preview"}
                 </p>
                 <p className="mt-0.5 text-[11px] font-medium capitalize text-black/45">
-                  {previewPost.platform === "both" ? "Facebook · Instagram" : previewPost.platform}
-                  {" · "}
-                  {previewPost.status}
+                  {previewPost
+                    ? `${previewPost.platform === "both" ? "Facebook · Instagram" : previewPost.platform} · ${previewPost.status}`
+                    : ""}
                 </p>
               </div>
               <button
@@ -2278,7 +2404,7 @@ export default function CalendarPage() {
 
             <div className="min-h-0 flex-1 overflow-y-auto">
               <div className="relative aspect-square w-full bg-black/[0.04]">
-                {previewPost.mediaUrl ? (
+                {previewPost?.mediaUrl ? (
                   previewPost.mediaType === "video" ? (
                     <video
                       src={previewPost.mediaUrl}
@@ -2300,7 +2426,7 @@ export default function CalendarPage() {
                   </div>
                 )}
               </div>
-              {previewPost.caption ? (
+              {previewPost?.caption ? (
                 <p className="whitespace-pre-wrap px-5 py-4 text-sm leading-relaxed text-black/80">
                   {previewPost.caption}
                 </p>
@@ -2319,20 +2445,24 @@ export default function CalendarPage() {
               </button>
               <button
                 type="button"
-                onClick={() => openEditPost(previewPost)}
+                onClick={() => previewPost && openEditPost(previewPost)}
                 className="pb-btn-primary flex-1 py-2.5 text-xs"
               >
                 Edit in composer
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </AnimatedOverlay>
 
       {/* Day Detail Modal */}
-      {modalMode === "day-detail" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Day details" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col" onClick={(e) => e.stopPropagation()}>
+      <AnimatedOverlay
+        open={modalMode === "day-detail"}
+        onClose={() => setModalMode(null)}
+        ariaLabel="Day details"
+        align="bottom"
+        backdropClassName="bg-black/60 backdrop-blur-sm"
+        panelRef={modalRef}
+        panelClassName="pb-safe-sheet w-full max-w-md max-h-[85dvh] rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 shadow-2xl flex flex-col"
+      >
             <div className="flex items-center justify-between px-6 py-4 border-b border-black/10 shrink-0">
               <div>
                 <h3 className="text-lg font-semibold text-black">{formatDisplayDate(selectedDate)}</h3>
@@ -2416,15 +2546,18 @@ export default function CalendarPage() {
                 Schedule Post
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </AnimatedOverlay>
 
-      {/* Schedule Post Modal */}
       {/* Event Modal */}
-      {modalMode === "event" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Add event" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <AnimatedOverlay
+        open={modalMode === "event"}
+        onClose={() => setModalMode(null)}
+        ariaLabel="Add event"
+        align="bottom"
+        backdropClassName="bg-black/60 backdrop-blur-sm"
+        panelRef={modalRef}
+        panelClassName="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl"
+      >
             <div className="flex items-center justify-between mb-5">
               <h3 className="text-lg font-semibold text-black">{editingEvent ? "Edit Event" : "Add Event"}</h3>
               <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
@@ -2520,9 +2653,7 @@ export default function CalendarPage() {
                 {editingEvent ? "Update" : "Add Event"}
               </button>
             </div>
-          </div>
-        </div>
-      )}
+      </AnimatedOverlay>
         </>
       </LocationGate>
 
@@ -2546,6 +2677,11 @@ export default function CalendarPage() {
         destructive
         onCancel={() => setConfirmDeleteEvent(false)}
         onConfirm={() => void handleDeleteEvent()}
+      />
+
+      <CalendarAssistant
+        locationId={locationId}
+        onPostsChanged={() => void loadPosts()}
       />
     </div>
   );

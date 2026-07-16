@@ -10,6 +10,7 @@ import { isInlineReferenceImage } from "@/lib/reference-image";
 import { loadVisionJpegBase64 } from "@/lib/studio/vision-image-input";
 
 export const runtime = "nodejs";
+export const maxDuration = 60;
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -142,29 +143,29 @@ export async function POST(req: Request) {
 - If notes are empty, write from the image and brand voice only.
 Notes are guidance — never claim things not visible in the image.`;
 
-  const system = `You write short restaurant Instagram captions — simple, clear, product-first.
+  const system = `You write short social captions for local businesses — simple, clear, offer-first.
 Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
 
 ${creatorIntent}
 
 Look at the image and write EXACTLY ${count} captions for this post.
 
-STEP 1 — Identify the REAL product in the photo first:
-- What physical thing is shown? Food, drink, gift cards, merch, patio, people, etc.
-- On-image headlines are marketing copy, NOT the product. Example: cards that say "more than a logo on a napkin" are still GIFT CARDS — caption the gift cards, not napkins.
-- Never caption a metaphor from the graphic as if it were the item for sale.
+STEP 1 — Identify the REAL subject in the photo first:
+- What is actually shown? Product, service moment, place, people, promo graphic, etc.
+- On-image headlines are marketing copy, NOT always the product. Caption the real offer, not a metaphor on the graphic.
+- Never invent details that are not visible or stated in the brand/notes.
 
-STEP 2 — Write captions that sell that product.
+STEP 2 — Write captions that sell that offer.
 
 TARGET STYLE (match this closely):
-Food: "Try our new Breakfast Bowl! #breakfast"
-Gift cards: "Give the greatest gift of all. #giftcards"
-Gift cards: "Gift cards make everyone happy. #giftcard"
-Merch: "Grab a tee before they're gone. #merch"
+"Try our weekend special. #weekend"
+"Gift cards make everyone happy. #giftcards"
+"Book your consultation this week. #local"
+"New arrivals just dropped. #new"
 
 Rules:
-- One short sentence. Name the actual product you see (Breakfast Bowl, gift cards, wings, etc.).
-- Sound like a restaurant posting to sell it — friendly, direct, obvious.
+- One short sentence. Name the actual offer you see.
+- Friendly, direct, obvious — adapt to the business niche from brand context.
 - End with ONE simple hashtag when it fits. Put it in the hashtags array, not inside the caption string.
 - No artsy observations, no soft preambles, no essays, no rhetorical questions.
 - Never narrate the picture. Never quote on-image text word for word.
@@ -173,11 +174,11 @@ Rules:
 ${CAPTION_ANTI_AI_TELLS}
 
 Respond with ONLY a JSON array (no prose, no code fences):
-[{"angle":"short label","caption":"Give the greatest gift of all.","hashtags":["#giftcards"]}]`;
+[{"angle":"short label","caption":"Gift cards make everyone happy.","hashtags":["#giftcards"]}]`;
 
   const userText = context
     ? `Creator notes:\n${context}`
-    : "Write short product captions. Identify the real item in the photo first (gift cards stay gift cards even if the graphic mentions something else).";
+    : "Write short offer captions. Identify the real subject in the photo first.";
 
   try {
     const client = new Anthropic({ apiKey });
@@ -252,7 +253,21 @@ Respond with ONLY a JSON array (no prose, no code fences):
         { status: 502 },
       );
     }
-    return Response.json({ variants });
+
+    // warn / suggest: keep variants; surface flags like /api/ai/captions
+    const flags = variants
+      .map((v, variantIndex) => {
+        const phrases = [
+          ...new Set(checkViolations(variantText(v), guardrails!).map((x) => x.phrase)),
+        ];
+        return phrases.length ? { variantIndex, phrases } : null;
+      })
+      .filter((f): f is { variantIndex: number; phrases: string[] } => f !== null);
+
+    if (flags.length === 0) {
+      return Response.json({ variants });
+    }
+    return Response.json({ variants, compliance: { level, flags } });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Caption generation failed.";
     // Vision fetch / Anthropic / image decode failures land here.

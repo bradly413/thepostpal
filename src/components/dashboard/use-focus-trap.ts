@@ -8,6 +8,7 @@ export function useFocusTrap(
   active: boolean,
   containerRef: RefObject<HTMLElement | null>,
   onEscape?: () => void,
+  options?: { focusContainer?: boolean },
 ) {
   useEffect(() => {
     if (!active || !containerRef.current) return;
@@ -20,6 +21,10 @@ export function useFocusTrap(
       );
 
     const timer = window.setTimeout(() => {
+      if (options?.focusContainer) {
+        root.focus();
+        return;
+      }
       const els = focusables();
       (els[0] ?? root).focus();
     }, 0);
@@ -52,5 +57,5 @@ export function useFocusTrap(
       document.removeEventListener("keydown", onKey);
       previous?.focus?.();
     };
-  }, [active, containerRef, onEscape]);
+  }, [active, containerRef, onEscape, options?.focusContainer]);
 }

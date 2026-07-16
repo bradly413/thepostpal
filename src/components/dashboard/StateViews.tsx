@@ -1,6 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
+import { usePlan } from "@/components/dashboard/PlanProvider";
 
 // Shared, calm state views for the dashboard — warm-light system: frosted
 // white surfaces, soft ink, brand red (#ee2532) accent, no emojis, no spinners.
@@ -92,20 +93,31 @@ export function ErrorState({
 }
 
 export function NoLocationState({ onCreate }: { onCreate?: () => void }) {
+  const { features } = usePlan();
+  const rollup = features.locationRollup;
+
+  const handleCreate =
+    onCreate ??
+    (() => {
+      window.location.href = rollup ? "/dashboard/organization" : "/dashboard/settings";
+    });
+
   return (
     <EmptyState
       title="No workspace yet"
-      sub="Create your first location to start planning content."
+      sub={
+        rollup
+          ? "Create your first location to start planning content."
+          : "Finish workspace setup in Settings to start planning content."
+      }
       action={
-        onCreate ? (
-          <button
-            type="button"
-            onClick={onCreate}
-            className="pb-btn-primary text-sm px-5 py-2"
-          >
-            Create a location
-          </button>
-        ) : undefined
+        <button
+          type="button"
+          onClick={handleCreate}
+          className="pb-btn-primary text-sm px-5 py-2"
+        >
+          {rollup ? "Create a location" : "Open settings"}
+        </button>
       }
     />
   );

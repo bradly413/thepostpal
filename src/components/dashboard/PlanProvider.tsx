@@ -55,6 +55,7 @@ interface MeResponse {
   organizationId: string;
   isSuperadmin: boolean;
   locationCount: number;
+  metaAdsEnabled?: boolean;
   businessType?: string | null;
   organization?: { name?: string | null; businessType?: string | null };
   addons?: { proImages?: boolean };
@@ -90,6 +91,7 @@ export function PlanProvider({ children }: { children: React.ReactNode }) {
           plan: data.plan,
           features: {
             ...features,
+            metaAds: features.metaAds && data.metaAdsEnabled === true,
             // Pro images can also be a purchased add-on (solo users) — the
             // entitlement is plan OR add-on, mirrored server-side.
             proImageModel: features.proImageModel || data.addons?.proImages === true,

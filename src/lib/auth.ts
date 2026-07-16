@@ -22,10 +22,19 @@ export interface SessionPayload extends JWTPayload {
 
 const AUTH_SECRET_BYTES = getAuthSecretBytes();
 
-function getCredentials() {
-  const username = process.env.PORTAL_USERNAME || "demo";
-  const pw = process.env.PORTAL_PASSWORD || "demo123";
-  return { username, password: pw };
+function getCredentials(): { username: string; password: string } | null {
+  const username = process.env.PORTAL_USERNAME?.trim();
+  const password = process.env.PORTAL_PASSWORD?.trim();
+  if (username && password) return { username, password };
+
+  // Dev-only defaults — never enable demo/demo123 in production without explicit env.
+  if (
+    process.env.NODE_ENV !== "production" ||
+    process.env.ALLOW_DEMO_LOGIN === "true"
+  ) {
+    return { username: "demo", password: "demo123" };
+  }
+  return null;
 }
 
 async function verifyLegacyCredentials(identifier: string, password: string): Promise<boolean> {

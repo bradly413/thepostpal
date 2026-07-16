@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCube, Navigation, Pagination, A11y, Keyboard } from "swiper/modules";
@@ -38,6 +38,17 @@ interface PostPreviewProps {
   onCarouselIndexChange?: (index: number) => void;
 }
 
+function mediaAltText(
+  item: ComposerMediaItem,
+  index: number,
+  total: number,
+): string {
+  const kind = item.type === "video" ? "Video" : "Photo";
+  const caption = item.caption?.trim();
+  if (caption) return `${kind} ${index + 1} of ${total}: ${caption.slice(0, 80)}`;
+  return `${kind} ${index + 1} of ${total} in post preview`;
+}
+
 /** Media frame for the Schedule composer — cube Swiper when bulk-uploaded. */
 export default function PostPreview({
   mediaUrl,
@@ -51,14 +62,28 @@ export default function PostPreview({
   onCarouselIndexChange,
 }: PostPreviewProps) {
   const swiperRef = useRef<SwiperInstance | null>(null);
+  const [reduceMotion, setReduceMotion] = useState(false);
   const showCarousel = mediaItems.length > 1;
+
+  useEffect(() => {
+    const mq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduceMotion(mq.matches);
+    sync();
+    mq.addEventListener("change", sync);
+    return () => mq.removeEventListener("change", sync);
+  }, []);
 
   useEffect(() => {
     if (!showCarousel || !swiperRef.current) return;
     if (swiperRef.current.activeIndex !== carouselIndex) {
-      swiperRef.current.slideTo(carouselIndex, 450);
+      swiperRef.current.slideTo(carouselIndex, reduceMotion ? 0 : 450);
     }
-  }, [carouselIndex, showCarousel]);
+  }, [carouselIndex, showCarousel, reduceMotion]);
+
+  const carouselEffect = reduceMotion ? undefined : "cube";
+  const carouselModules = reduceMotion
+    ? [Navigation, Pagination, A11y, Keyboard]
+    : [EffectCube, Navigation, Pagination, A11y, Keyboard];
 
   return (
     <div className="mb-2 flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -93,7 +118,7 @@ export default function PostPreview({
 
       {!mediaUrl ? (
         <label
-          className={`flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center transition-colors hover:bg-[#ececed] ${
+          className={`flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center shadow-[0_16px_36px_-18px_rgba(20,20,40,0.4),0_2px_8px_-4px_rgba(20,20,40,0.18)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
             uploadingMedia ? "pointer-events-none" : ""
           }`}
         >
@@ -111,14 +136,14 @@ export default function PostPreview({
           />
         </label>
       ) : (
-        <div className="relative min-h-0 w-full flex-1 overflow-hidden bg-[#f3f3f4]">
+        <div className="relative min-h-0 w-full flex-1 shadow-[0_18px_42px_-16px_rgba(20,20,40,0.45),0_4px_12px_-6px_rgba(20,20,40,0.22)] ring-1 ring-black/[0.06]">
+          <div className="absolute inset-0 overflow-hidden bg-[#f3f3f4]">
           {showCarousel ? (
             <Swiper
               className="pb-composer-swiper"
-              modules={[EffectCube, Navigation, Pagination, A11y, Keyboard]}
-              effect="cube"
-              cubeEffect={{ slideShadows: false }}
-              speed={550}
+              modules={carouselModules}
+              {...(carouselEffect ? { effect: carouselEffect, cubeEffect: { slideShadows: false } } : {})}
+              speed={reduceMotion ? 0 : 550}
               loop={false}
               initialSlide={carouselIndex}
               keyboard={{ enabled: true }}
@@ -139,10 +164,18 @@ export default function PostPreview({
               {mediaItems.map((item, i) => (
                 <SwiperSlide key={`${item.url}-${i}`}>
                   {item.type === "video" ? (
-                    <video src={item.url} muted playsInline />
+                    <video
+                      src={item.url}
+                      muted
+                      playsInline
+                      aria-label={mediaAltText(item, i, mediaItems.length)}
+                    />
                   ) : (
                     // eslint-disable-next-line @next/next/no-img-element
-                    <img src={item.url} alt="" />
+                    <img
+                      src={item.url}
+                      alt={mediaAltText(item, i, mediaItems.length)}
+                    />
                   )}
                 </SwiperSlide>
               ))}
@@ -153,12 +186,13 @@ export default function PostPreview({
               className="absolute inset-0 h-full w-full object-cover"
               muted
               playsInline
+              aria-label="Post preview video"
             />
           ) : (
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={mediaUrl}
-              alt=""
+              alt="Post preview photo"
               className="absolute inset-0 h-full w-full rounded-none object-cover"
             />
           )}
@@ -215,6 +249,7 @@ export default function PostPreview({
               )}
             </>
           )}
+          </div>
         </div>
       )}
       {mediaError && (

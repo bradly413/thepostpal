@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, type ReactNode } from "react";
-import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
+import { AnimatedOverlay } from "@/components/dashboard/AnimatedOverlay";
 
 interface DashboardModalProps {
   open: boolean;
@@ -18,30 +18,23 @@ export function DashboardModal({
   children,
   // Phone: bottom sheet (safe-area padded, top-rounded); sm+: centered card —
   // the same pattern the calendar modals already use.
-  className = "pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl",
+  className = "pb-safe-sheet relative w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl",
 }: DashboardModalProps) {
   const ref = useRef<HTMLDivElement>(null);
-  useFocusTrap(open, ref, onClose);
-
-  if (!open) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
-      onClick={onClose}
+    <AnimatedOverlay
+      open={open}
+      onClose={onClose}
+      ariaLabel={ariaLabel}
+      align="bottom"
+      zIndexClass="z-50"
+      backdropClassName="bg-black/55 backdrop-blur-sm"
+      panelClassName={className}
+      panelRef={ref}
     >
-      <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        tabIndex={-1}
-        className={className}
-        onClick={(e) => e.stopPropagation()}
-      >
-        {children}
-      </div>
-    </div>
+      {children}
+    </AnimatedOverlay>
   );
 }
 
