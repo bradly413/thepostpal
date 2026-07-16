@@ -106,8 +106,8 @@ const SIDEBAR_CSS = `
 .pb-side--collapsed .foot .av { width: 28px; height: 28px; border-radius: 9px; font-size: 10px; }
 .pb-side--collapsed .foot .foot-text, .pb-side--collapsed .foot .foot-chevron { display: none; }
 
-/* Tablet + mobile: slim icon rail — never stack full nav above content */
-@media (max-width: 980px) {
+/* Tablet: slim icon rail. Phones use AppMobileNav bottom bar instead. */
+@media (max-width: 980px) and (min-width: 769px) {
   .pb-side {
     top: 12px; height: calc(100dvh - 24px); padding: 16px 6px; align-items: center;
     width: 52px; border-radius: 22px;
@@ -129,15 +129,8 @@ const SIDEBAR_CSS = `
   .pb-side .foot .foot-text, .pb-side .foot .foot-chevron { display: none; }
 }
 
-@media (max-width: 600px) {
-  .pb-side {
-    top: 8px; height: calc(100dvh - 16px); width: 48px; padding: 10px 4px; border-radius: 20px;
-  }
-  .pb-side nav a {
-    justify-content: center; min-height: 38px; padding: 9px 0; border-radius: 11px;
-  }
-  .pb-side nav a svg { width: 15px; height: 15px; }
-  .pb-side .foot .av { width: 26px; height: 26px; border-radius: 8px; font-size: 9px; }
+@media (max-width: 768px) {
+  .pb-side { display: none !important; }
 }
 `;
 

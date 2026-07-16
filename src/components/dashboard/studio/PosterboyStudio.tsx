@@ -931,8 +931,8 @@ export default function PosterboyStudio() {
       <StudioStyles />
       <div className="app">
 
-        {/* SIDEBAR — shared across the whole dashboard */}
-        <div style={{ gridArea: "sidebar", minWidth: 0 }}>
+        {/* SIDEBAR — desktop/tablet; phones use AppMobileNav from DashboardShell */}
+        <div className="studio-sidebar" style={{ gridArea: "sidebar", minWidth: 0 }}>
           <AppSidebar />
         </div>
 

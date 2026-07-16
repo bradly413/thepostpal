@@ -40,19 +40,26 @@ export function DashboardHomeStyles() {
     @media (min-width: 1800px) {
       .home2 { padding-left: 28px; padding-right: 28px; gap: 24px; }
     }
-    @media (max-width: 980px) {
+    /* Tablet: slim icon rail beside content */
+    @media (max-width: 980px) and (min-width: 769px) {
       .home2 { grid-template-columns: 52px minmax(0, 1fr); gap: 14px; padding: 14px; }
     }
-    @media (max-width: 600px) {
-      .home2 { grid-template-columns: 48px minmax(0, 1fr); gap: 10px; padding: 10px; }
+    /* Phone: full-width content + bottom tab bar (AppMobileNav) */
+    @media (max-width: 768px) {
+      .home2 {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 0;
+        padding: 12px 12px calc(72px + env(safe-area-inset-bottom, 0px));
+      }
+      .pb-side { display: none !important; }
     }
 
     /* ---------- Main ---------- */
     .main2 { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
-    /* Fixed app-pane (calendar): everything fits the viewport — no page scroll
-       and no scroll inside Create Schedule / Your Schedule. Desktop only. */
-    @media (min-width: 1280px) {
+    /* Fixed app-pane (calendar): fits the viewport on tablet landscape + desktop.
+       Phones stay scrollable (see max-width: 1023px rules below). */
+    @media (min-width: 1024px) {
       .pb-home2--fixed { overflow: hidden; height: 100%; }
       .pb-home2--fixed .home2 {
         height: 100%; min-height: 0; max-height: 100%;
@@ -90,6 +97,14 @@ export function DashboardHomeStyles() {
         grid-template-rows: repeat(6, minmax(0, 1fr));
       }
       .pb-home2--fixed .pb-cal-month-grid > * { min-height: 0; }
+    }
+
+    /* Phone / tablet portrait: page scrolls; composer preview is height-capped in JS/Tailwind. */
+    @media (max-width: 1023px) {
+      .pb-home2--fixed { overflow-y: auto; height: 100%; -webkit-overflow-scrolling: touch; }
+      .pb-home2--fixed .pb-app { padding-bottom: 0.5rem; }
+      .pb-home2--fixed .pb-cal-grid { grid-template-rows: none; }
+      .pb-home2--fixed .pb-cal-grid > * { height: auto; min-height: 0; overflow: visible; }
     }
 
     /* Utility bar */

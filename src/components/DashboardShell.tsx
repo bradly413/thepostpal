@@ -4,6 +4,7 @@ import { usePathname } from "next/navigation";
 import PageTransition from "./PageTransition";
 import FeedbackWidget from "./FeedbackWidget";
 import AppSidebar from "@/components/dashboard/AppSidebar";
+import AppMobileNav from "@/components/dashboard/AppMobileNav";
 import { DashboardHomeStyles } from "@/components/dashboard/home/dashboard-home-styles";
 import { usePlan } from "@/components/dashboard/PlanProvider";
 
@@ -46,6 +47,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
             </div>
           </PageTransition>
         </main>
+        <AppMobileNav />
         <FeedbackWidget />
       </div>
     );
@@ -76,6 +78,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           </main>
         </div>
       </div>
+      <AppMobileNav />
       <FeedbackWidget />
     </div>
   );

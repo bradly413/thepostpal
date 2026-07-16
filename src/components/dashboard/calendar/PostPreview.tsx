@@ -49,7 +49,11 @@ function mediaAltText(
   return `${kind} ${index + 1} of ${total} in post preview`;
 }
 
-/** Media frame for the Schedule composer — cube Swiper when bulk-uploaded. */
+/**
+ * Full-width Instagram portrait frame (4:5).
+ * Width drives height so the card never collapses into a skinny centered strip.
+ * object-contain keeps the whole asset visible (no top/side crop).
+ */
 export default function PostPreview({
   mediaUrl,
   mediaType,
@@ -86,14 +90,14 @@ export default function PostPreview({
     : [EffectCube, Navigation, Pagination, A11y, Keyboard];
 
   return (
-    <div className="mb-2 flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="mb-2 w-full shrink-0">
       <style>{`
         .pb-composer-swiper {
           width: 100%;
           height: 100%;
         }
         .pb-composer-swiper .swiper-slide {
-          background: #f3f3f4;
+          background: #111;
           overflow: hidden;
         }
         .pb-composer-swiper .swiper-slide img,
@@ -101,7 +105,9 @@ export default function PostPreview({
           display: block;
           width: 100%;
           height: 100%;
-          object-fit: cover;
+          object-fit: contain;
+          object-position: center;
+          background: #111;
         }
         .pb-composer-swiper .swiper-pagination-bullet {
           background: rgba(255,255,255,0.55);
@@ -114,11 +120,17 @@ export default function PostPreview({
         .pb-composer-swiper .swiper-button-next {
           display: none;
         }
+        @media (pointer: coarse) {
+          .pb-composer-nav {
+            width: 2.75rem;
+            height: 2.75rem;
+          }
+        }
       `}</style>
 
       {!mediaUrl ? (
         <label
-          className={`flex min-h-0 w-full flex-1 cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center shadow-[0_16px_36px_-18px_rgba(20,20,40,0.4),0_2px_8px_-4px_rgba(20,20,40,0.18)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
+          className={`relative flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center shadow-[0_16px_36px_-18px_rgba(20,20,40,0.4),0_2px_8px_-4px_rgba(20,20,40,0.18)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
             uploadingMedia ? "pointer-events-none" : ""
           }`}
         >
@@ -136,13 +148,14 @@ export default function PostPreview({
           />
         </label>
       ) : (
-        <div className="relative min-h-0 w-full flex-1 shadow-[0_18px_42px_-16px_rgba(20,20,40,0.45),0_4px_12px_-6px_rgba(20,20,40,0.22)] ring-1 ring-black/[0.06]">
-          <div className="absolute inset-0 overflow-hidden bg-[#f3f3f4]">
+        <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#111] shadow-[0_18px_42px_-16px_rgba(20,20,40,0.45),0_4px_12px_-6px_rgba(20,20,40,0.22)] ring-1 ring-black/[0.06]">
           {showCarousel ? (
             <Swiper
-              className="pb-composer-swiper"
+              className="pb-composer-swiper absolute inset-0"
               modules={carouselModules}
-              {...(carouselEffect ? { effect: carouselEffect, cubeEffect: { slideShadows: false } } : {})}
+              {...(carouselEffect
+                ? { effect: carouselEffect, cubeEffect: { slideShadows: false } }
+                : {})}
               speed={reduceMotion ? 0 : 550}
               loop={false}
               initialSlide={carouselIndex}
@@ -183,7 +196,7 @@ export default function PostPreview({
           ) : mediaType === "video" ? (
             <video
               src={mediaUrl}
-              className="absolute inset-0 h-full w-full object-cover"
+              className="absolute inset-0 h-full w-full object-contain object-center"
               muted
               playsInline
               aria-label="Post preview video"
@@ -193,14 +206,14 @@ export default function PostPreview({
             <img
               src={mediaUrl}
               alt="Post preview photo"
-              className="absolute inset-0 h-full w-full rounded-none object-cover"
+              className="absolute inset-0 h-full w-full object-contain object-center"
             />
           )}
 
           {uploadingMedia && (
-            <div className="absolute inset-0 z-20 flex items-center justify-center bg-white/55 backdrop-blur-md">
+            <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-md">
               <span
-                className="h-6 w-6 animate-spin rounded-full border-2 border-[#323232]/25 border-t-[#323232]"
+                className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white"
                 aria-hidden
               />
             </div>
@@ -208,8 +221,8 @@ export default function PostPreview({
 
           {!uploadingMedia && (
             <>
-              <div className="absolute right-2.5 top-2.5 z-20 flex gap-1.5">
-                <label className="cursor-pointer rounded-lg bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/70">
+              <div className="absolute right-2 top-2 z-20 flex gap-1.5 sm:right-2.5 sm:top-2.5">
+                <label className="cursor-pointer rounded-lg bg-black/55 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/70 sm:py-1">
                   Change
                   <input
                     type="file"
@@ -221,7 +234,7 @@ export default function PostPreview({
                 <button
                   type="button"
                   onClick={onRemove}
-                  className="rounded-lg bg-black/55 px-2.5 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/70"
+                  className="rounded-lg bg-black/55 px-2.5 py-1.5 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/70 sm:py-1"
                 >
                   Remove
                 </button>
@@ -230,30 +243,29 @@ export default function PostPreview({
                 <>
                   <button
                     type="button"
-                    className="pb-composer-prev absolute left-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/70"
+                    className="pb-composer-prev pb-composer-nav absolute left-1.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/70 sm:left-2"
                     aria-label="Previous image"
                   >
                     <ChevronLeft size={18} aria-hidden />
                   </button>
                   <button
                     type="button"
-                    className="pb-composer-next absolute right-2 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/70"
+                    className="pb-composer-next pb-composer-nav absolute right-1.5 top-1/2 z-20 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full bg-black/55 text-white backdrop-blur transition-colors hover:bg-black/70 sm:right-2"
                     aria-label="Next image"
                   >
                     <ChevronRight size={18} aria-hidden />
                   </button>
-                  <div className="pointer-events-none absolute bottom-2.5 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur">
+                  <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/55 px-2.5 py-1 text-[11px] font-semibold text-white backdrop-blur sm:bottom-2.5">
                     {carouselIndex + 1} / {mediaItems.length}
                   </div>
                 </>
               )}
             </>
           )}
-          </div>
         </div>
       )}
       {mediaError && (
-        <p className="mt-1 shrink-0 text-center text-[11px] text-[#ee2532]">{mediaError}</p>
+        <p className="mt-1 text-center text-[11px] text-[#ee2532]">{mediaError}</p>
       )}
     </div>
   );

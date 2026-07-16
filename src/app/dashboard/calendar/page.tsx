@@ -379,6 +379,7 @@ export default function CalendarPage() {
   const [bulkUploading, setBulkUploading] = useState(false);
   const [bulkUploadProgress, setBulkUploadProgress] = useState({ done: 0, total: 0 });
   const bulkInputRef = useRef<HTMLInputElement>(null);
+  const addComposerInputRef = useRef<HTMLInputElement>(null);
   const isBulkQueue = mediaItems.length > 1;
 
   function stopCaptionRotation() {
@@ -494,7 +495,7 @@ export default function CalendarPage() {
   }
 
   // On select/drop → bypass local blobs, push straight to S3, bind the returned
-  // absolute publicUrl as the active (single) media item.
+  // absolute publicUrl as the active media item (replaces current slide).
   async function handleMediaFile(file: File | null | undefined) {
     if (!file) return;
     setMediaError(null);
@@ -507,15 +508,101 @@ export default function CalendarPage() {
       setCaptionOptions([]);
       setCaptionGenError(null);
       stopCaptionRotation();
-      setComposerMediaSingle(publicUrl, type);
+      if (mediaItems.length === 0) {
+        setComposerMediaSingle(publicUrl, type);
+      } else {
+        // Replace the active slide only — keep the rest of the carousel.
+        setMediaItems((prev) =>
+          prev.map((item, i) =>
+            i === mediaIndex ? { ...item, url: publicUrl, type, caption: "" } : item,
+          ),
+        );
+      }
     } catch (err) {
-      clearComposerMedia();
+      if (mediaItems.length === 0) clearComposerMedia();
       setMediaError(
         err instanceof DashboardUploadError ? err.message : "Upload failed. Please try again.",
       );
     } finally {
       setUploadingMedia(false);
     }
+  }
+
+  /** Append another image/video as a new carousel slide (keeps existing posts). */
+  async function handleAddComposerMedia(file: File | null | undefined) {
+    if (!file) return;
+    setMediaError(null);
+    setUploadingMedia(true);
+    const inferred = inferMediaContentType(file.name, file.type);
+    const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
+    try {
+      const publicUrl = await uploadMediaToS3(file);
+      const scheduleDate =
+        !selectedDate || isPastDateKey(selectedDate, todayDateKeyLocal())
+          ? todayDateKeyLocal()
+          : selectedDate;
+
+      // Persist the active slide's draft fields before leaving it.
+      const preserved = mediaItems.map((item, i) =>
+        i === mediaIndex
+          ? { ...item, caption: formCaption, date: scheduleDate, time: formTime }
+          : item,
+      );
+
+      const last = preserved[preserved.length - 1];
+      const startDate = last?.date || scheduleDate;
+      const startTime = last?.time || formTime || nextScheduleTime();
+      // Next slide gets the slot 30 minutes after the previous post.
+      const nextSlot = staggerBulkSlots(2, startDate, startTime)[1] ?? {
+        date: scheduleDate,
+        time: nextScheduleTime(),
+      };
+
+      const nextItems: ComposerMediaItem[] = [
+        ...preserved,
+        {
+          url: publicUrl,
+          type,
+          caption: "",
+          date: nextSlot.date,
+          time: nextSlot.time,
+        },
+      ];
+
+      setEditingPost(null);
+      setCaptionUserEdited(false);
+      setCaptionOptions([]);
+      setCaptionGenError(null);
+      stopCaptionRotation();
+      setMediaItems(nextItems);
+      setMediaIndex(nextItems.length - 1);
+      setSelectedDate(nextSlot.date);
+      setFormTime(nextSlot.time);
+      setScheduleTimeTouched(true);
+      setFormCaption("");
+      setFormStatus("scheduled");
+      if (typeof document !== "undefined") {
+        document.getElementById("post-composer")?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }
+    } catch (err) {
+      setMediaError(
+        err instanceof DashboardUploadError ? err.message : "Upload failed. Please try again.",
+      );
+    } finally {
+      setUploadingMedia(false);
+    }
+  }
+
+  function requestAddComposerPost() {
+    // Empty or editing a saved post → clear into a fresh composer.
+    if (editingPost || mediaItems.length === 0) {
+      openNewPost(todayKey);
+      return;
+    }
+    addComposerInputRef.current?.click();
   }
 
   async function handleBulkFiles(fileList: FileList | File[] | null) {
@@ -1301,16 +1388,16 @@ export default function CalendarPage() {
         onRetry={() => void refreshLocations()}
       >
       <>
-      <div className="pb-app-header shrink-0 !mb-3">
+      <div className="pb-app-header shrink-0 !mb-3 max-lg:!mb-2">
         <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1 className="!text-[1.65rem] !leading-tight !tracking-tight">Schedule</h1>
-            <p className="!mt-0.5 !max-w-xl !text-[12px] !text-black/45">
+            <h1 className="!text-[1.45rem] !leading-tight !tracking-tight sm:!text-[1.65rem]">Schedule</h1>
+            <p className="!mt-0.5 !max-w-xl !text-[12px] !text-black/45 max-sm:!hidden">
               Queue and edit posts for your connected channels
             </p>
           </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2.5">
-            <label className="relative flex items-center">
+          <div className="flex w-full shrink-0 flex-wrap items-center gap-2.5 md:w-auto">
+            <label className="relative flex min-w-0 flex-1 items-center md:flex-none">
               <Search size={15} className="pointer-events-none absolute left-3 text-black/35" aria-hidden />
               <input
                 type="search"
@@ -1318,7 +1405,7 @@ export default function CalendarPage() {
                 onChange={(e) => setCalendarSearch(e.target.value)}
                 placeholder="Search"
                 aria-label="Search schedule"
-                className="h-10 w-[200px] rounded-xl border border-black/10 bg-white pl-9 pr-3 text-sm text-black outline-none transition-colors placeholder:text-black/35 focus:border-[#ee2532]/40"
+                className="h-10 w-full rounded-xl border border-black/10 bg-white pl-9 pr-3 text-sm text-black outline-none transition-colors placeholder:text-black/35 focus:border-[#ee2532]/40 md:w-[200px]"
               />
             </label>
             <CollapsingLabelButton
@@ -1396,14 +1483,14 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(340px,400px)_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] 2xl:gap-6">
+      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] 2xl:gap-6">
         {/* Create Schedule — left composer card */}
-        <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)]">
-          <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
+        <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[16px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)] sm:rounded-[20px]">
+          <div className="flex shrink-0 items-center justify-between px-3 pt-3 pb-1.5 sm:px-4 sm:pt-4 sm:pb-2">
             <h2 className="text-[15px] font-semibold tracking-tight text-black">Create Post</h2>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-0">
+          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-0 sm:px-4">
             {editingPost?.status === "failed" && (
               <div className="mb-3 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
                 <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
@@ -1449,13 +1536,34 @@ export default function CalendarPage() {
                 })}
                 <button
                   type="button"
-                  onClick={() => openNewPost(todayKey)}
-                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ee2532] text-white transition-colors hover:bg-[#c81e2a]"
-                  aria-label="New post"
-                  title="New post"
+                  onClick={requestAddComposerPost}
+                  disabled={uploadingMedia || bulkUploading}
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ee2532] text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                  aria-label={
+                    mediaItems.length > 0 && !editingPost
+                      ? "Add another post"
+                      : "New post"
+                  }
+                  title={
+                    mediaItems.length > 0 && !editingPost
+                      ? "Add another post"
+                      : "New post"
+                  }
                 >
                   <Plus size={15} strokeWidth={2.5} aria-hidden />
                 </button>
+                <input
+                  ref={addComposerInputRef}
+                  type="file"
+                  accept="image/*,video/*"
+                  className="sr-only"
+                  tabIndex={-1}
+                  onChange={(e) => {
+                    const file = e.target.files?.[0];
+                    e.target.value = "";
+                    void handleAddComposerMedia(file);
+                  }}
+                />
               </div>
             </div>
 
@@ -1510,9 +1618,9 @@ export default function CalendarPage() {
               onCarouselIndexChange={goCarouselTo}
             />
 
-            {/* Fixed-height caption block — prevents the media frame from jumping when options appear. */}
-            <div className="mb-3 flex h-[66px] shrink-0 flex-col overflow-hidden">
-              <div className="relative h-[40px] shrink-0 overflow-hidden">
+            {/* Caption block — slightly taller on phones for easier editing. */}
+            <div className="mb-2 flex h-[72px] shrink-0 flex-col overflow-hidden sm:mb-3 sm:h-[66px]">
+              <div className="relative h-[44px] shrink-0 overflow-hidden sm:h-[40px]">
                 {captionLoading ? (
                   <p className="h-full overflow-hidden text-[13px] font-medium leading-snug text-[#ee2532] animate-pulse">
                     Analyzing image & writing captions…
@@ -1533,7 +1641,7 @@ export default function CalendarPage() {
                     }}
                     rows={2}
                     placeholder="Write your caption…"
-                    className={`h-full w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[13px] leading-snug text-black outline-none placeholder:text-black/35 transition-all duration-500 ease-in-out ${
+                    className={`h-full w-full resize-none overflow-y-auto border-0 bg-transparent p-0 text-[16px] leading-snug text-black outline-none placeholder:text-black/35 transition-all duration-500 ease-in-out sm:text-[13px] ${
                       captionFade === "out" ? "translate-y-1.5 opacity-0" : "translate-y-0 opacity-100"
                     }`}
                   />
@@ -1559,13 +1667,13 @@ export default function CalendarPage() {
                             stopCaptionRotation();
                             applyCaptionOption(opt, i);
                           }}
-                          className={`h-1.5 rounded-full transition-all duration-300 ${
-                            i === captionIndex ? "w-4 bg-[#ee2532]" : "w-1.5 bg-black/15 hover:bg-black/30"
+                          className={`h-2 min-w-[8px] rounded-full transition-all duration-300 sm:h-1.5 ${
+                            i === captionIndex ? "w-4 bg-[#ee2532]" : "w-2 bg-black/15 hover:bg-black/30 sm:w-1.5"
                           }`}
                         />
                       ))}
                     </div>
-                    <span className="text-[10px] font-medium uppercase tracking-wide text-black/35">
+                    <span className="truncate text-[10px] font-medium uppercase tracking-wide text-black/35">
                       {captionOptions[captionIndex]?.angle || "Option"} · {captionIndex + 1}/{captionOptions.length}
                     </span>
                   </>
@@ -1575,15 +1683,17 @@ export default function CalendarPage() {
 
           </div>
 
-          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-4 py-2.5">
-            <div className="flex items-center justify-between gap-3">
+          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
+            <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
               <button
                 type="button"
                 onClick={() => setShowSchedulePicker((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black/65 hover:text-black"
+                className="inline-flex min-h-10 items-center gap-1.5 text-[13px] font-medium text-black/65 hover:text-black"
               >
                 <Clock size={15} className="text-black/40" aria-hidden />
-                {formatComposerSchedule(composerDate, formTime)}
+                <span className="max-w-[9.5rem] truncate sm:max-w-none">
+                  {formatComposerSchedule(composerDate, formTime)}
+                </span>
                 <ChevronDown size={14} className={`text-black/35 transition-transform ${showSchedulePicker ? "rotate-180" : ""}`} aria-hidden />
               </button>
               <div className="relative shrink-0">
@@ -1592,7 +1702,7 @@ export default function CalendarPage() {
                     type="button"
                     onClick={() => void handleSavePost(true)}
                     disabled={publishing || uploadingMedia}
-                    className="bg-[#ee2532] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                    className="min-h-11 bg-[#ee2532] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50 sm:min-h-0 sm:px-5"
                   >
                     {publishing ? "Scheduling…" : editingPost ? "Update" : "Schedule"}
                   </button>
@@ -1601,7 +1711,7 @@ export default function CalendarPage() {
                     onClick={() => setShowScheduleMenu((v) => !v)}
                     disabled={publishing || uploadingMedia}
                     aria-label="More options"
-                    className="border-l border-white/25 bg-[#ee2532] px-2.5 py-2.5 text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                    className="min-h-11 border-l border-white/25 bg-[#ee2532] px-3 py-2.5 text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50 sm:min-h-0 sm:px-2.5"
                   >
                     <ChevronDown size={16} aria-hidden />
                   </button>
@@ -1683,8 +1793,8 @@ export default function CalendarPage() {
         </div>
 
         {/* Your Schedule — right calendar card */}
-        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)]">
-          <div className="shrink-0 border-b border-black/[0.06] px-4 py-3 sm:px-5">
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[16px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)] sm:rounded-[20px] max-lg:min-h-[28rem]">
+          <div className="shrink-0 border-b border-black/[0.06] px-3 py-3 sm:px-5">
             <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
               <h2 className="mr-auto min-w-0 truncate text-[15px] font-semibold tracking-tight text-black" aria-live="polite">
                 {calendarPeriodLabel}

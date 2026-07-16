@@ -359,7 +359,7 @@ export default function DashboardHome() {
     <div className="pb-home2" ref={root}>
       <DashboardHomeStyles />
       <div className="home2">
-        {/* Shared sidebar — identical on every dashboard page */}
+        {/* Desktop/tablet sidebar — phones use AppMobileNav from DashboardShell */}
         <AppSidebar />
 
         {/* Main */}

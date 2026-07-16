@@ -895,19 +895,36 @@ export function StudioStyles() {
     .pb-studio .app { grid-template-columns: 232px minmax(0, 1fr); }
     .pb-studio .canvas { min-height: 620px; }
   }
-  @media (max-width: 980px) {
+  @media (max-width: 980px) and (min-width: 769px) {
     .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
     .pb-studio .canvas { min-height: min(620px, calc(100dvh - 120px)); }
   }
-  @media (max-width: 860px) {
+  @media (max-width: 860px) and (min-width: 769px) {
     .pb-studio .canvas { min-height: min(540px, calc(100dvh - 120px)); }
     .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
     .pb-studio .pb-ref-chip span, .pb-studio .pb-plat-cue span { display: none; }
     .pb-studio .pb-ref-chip { padding: 0 9px; }
   }
-  @media (max-width: 600px) {
-    .pb-studio .app { grid-template-columns: 56px minmax(0, 1fr); gap: 8px; padding: 8px; }
-    .pb-studio .canvas { min-height: min(420px, calc(100dvh - 160px)); }.pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }.pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }.pb-studio .pb-bar-controls { flex-wrap: wrap; }.pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }.pb-studio .pb-ref-chip { padding: 0 9px; }.pb-studio .prompt-bar textarea.pb-bar-textarea { font-size: var(--text-body); }.pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }.pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }}@media (max-width: 380px) {.pb-studio .frame-wrap { width: 72%; }}
+  /* Phone: no sidebar rail — bottom tab bar (AppMobileNav) */
+  @media (max-width: 768px) {
+    .pb-studio .app {
+      grid-template-columns: minmax(0, 1fr);
+      grid-template-areas: "canvas";
+      gap: 0;
+      padding: 8px 8px calc(72px + env(safe-area-inset-bottom, 0px));
+    }
+    .pb-studio .studio-sidebar { display: none !important; }
+    .pb-studio .canvas { min-height: min(420px, calc(100dvh - 160px)); }
+    .pb-studio .frame-wrap { width: 64%; max-width: 320px; transform: translate(-50%, -60%); }
+    .pb-studio .prompt-bar { width: 92%; bottom: 18px; padding: 10px 10px 9px 14px; }
+    .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
+    .pb-studio .pb-ref-chip span, .pb-studio .pb-dim-chip, .pb-studio .pb-plat-cue span { display: none; }
+    .pb-studio .pb-ref-chip { padding: 0 9px; }
+    .pb-studio .prompt-bar textarea.pb-bar-textarea { font-size: var(--text-body); }
+    .pb-studio .canvas-top { top: 14px; left: 14px; right: 14px; }
+    .pb-studio .dim-chip { padding: 8px 12px; font-size: var(--text-caption); }
+  }
+  @media (max-width: 380px) { .pb-studio .frame-wrap { width: 72%; } }
 
   /* ===== WHITE ROOM — simple studio (overrides; appended last to win) =====
      Enter: clean white. Composer floats in. Generate: frame materializes.
@@ -1067,21 +1084,21 @@ export function StudioStyles() {
     .pb-studio .frame-wrap .ambient-glow { animation: none; opacity: 0.55; }
   }
 
-  /* R4: the white-room overrides above out-cascade the ≤600px rules that
-     live earlier in this sheet — re-assert mobile layout here, last. */
-  @media (max-width: 600px) {
+  /* R4: the white-room overrides above out-cascade earlier mobile rules —
+     re-assert phone layout here, last. Clears AppMobileNav (~72px). */
+  @media (max-width: 768px) {
     .pb-studio .prompt-bar {
-      bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(72px + env(safe-area-inset-bottom, 0px));
       width: min(94%, calc(100% - 20px));
       z-index: 25;
     }
-    /* Edit tools → horizontal tray above the prompt (clears home indicator). */
+    /* Edit tools → horizontal tray above the prompt (clears tab bar). */
     .pb-studio .tool-rail,
     .pb-studio .tool-rail.edit-rail {
       left: 50%;
       right: auto;
       top: auto;
-      bottom: calc(108px + env(safe-area-inset-bottom, 0px));
+      bottom: calc(168px + env(safe-area-inset-bottom, 0px));
       transform: translateX(-50%);
       flex-direction: row;
       flex-wrap: nowrap;
