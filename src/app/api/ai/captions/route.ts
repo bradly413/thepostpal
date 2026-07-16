@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
@@ -6,11 +6,10 @@ import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
 import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
+import { aiTelemetry, getLanguageModel, useAiGateway } from "@/lib/ai/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const MODEL = "claude-sonnet-4-6";
 
 const PLATFORM_GUIDE: Record<string, string> = {
   instagram: "Instagram: conversational, written like a person. 2–4 lowercase hashtags, none forced.",
@@ -88,8 +87,7 @@ export async function POST(req: Request) {
     throw error;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!useAiGateway() && !process.env.ANTHROPIC_API_KEY?.trim()) {
     return Response.json({ error: "AI service not configured" }, { status: 500 });
   }
 
@@ -130,14 +128,18 @@ Respond with ONLY a JSON array (no prose, no code fences) of this exact shape:
 [{"angle":"short label","caption":"the caption text","hashtags":["#tag1","#tag2"]}]`;
 
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1800,
+    const result = await generateText({
+      model: getLanguageModel("sonnet"),
       system,
-      messages: [{ role: "user", content: brief }],
+      prompt: brief,
+      maxOutputTokens: 1800,
+      experimental_telemetry: aiTelemetry("ai-captions", {
+        feature: "captions",
+        tenantId: auth.tenantId,
+        platform,
+      }),
     });
-    const text = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const text = result.text || "";
     const variants = parseVariants(text);
 
     // Resolve compliance guardrails (null = tenant has no vertical → behave

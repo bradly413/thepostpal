@@ -58,6 +58,7 @@ export default function CalendarAssistant({
   const fabHoverRef = useRef(false);
   const fabTweenRef = useRef<gsap.core.Tween | null>(null);
   const fabBtnTweenRef = useRef<gsap.core.Tween | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
   const openRef = useRef(false);
   const wasOpenRef = useRef(false);
   openRef.current = open;
@@ -212,45 +213,154 @@ export default function CalendarAssistant({
     nextMessages: ChatMessage[],
     deleteConfirmToken?: string,
   ) {
+    abortRef.current?.abort();
+    const abort = new AbortController();
+    abortRef.current = abort;
+
     const res = await fetch("/api/ai/calendar-assistant", {
       method: "POST",
       credentials: "same-origin",
       headers: { "Content-Type": "application/json" },
+      signal: abort.signal,
       body: JSON.stringify({
         locationId,
         messages: nextMessages.map((m) => ({ role: m.role, content: m.content })),
         ...(deleteConfirmToken ? { deleteConfirmToken } : {}),
       }),
     });
-    const data = (await res.json().catch(() => ({}))) as {
-      message?: string;
-      error?: string;
-      postsChanged?: boolean;
-      toolSummaries?: string[];
-      pendingDelete?: PendingDelete;
-    };
-    if (!res.ok) {
+
+    const contentType = res.headers.get("content-type") || "";
+
+    // Confirm deletes stay JSON; chat streams NDJSON.
+    if (!contentType.includes("ndjson")) {
+      const data = (await res.json().catch(() => ({}))) as {
+        message?: string;
+        error?: string;
+        postsChanged?: boolean;
+        toolSummaries?: string[];
+        pendingDelete?: PendingDelete;
+      };
+      if (!res.ok) {
+        throw new Error(data.error || "Assistant unavailable. Try again.");
+      }
+      const reply = (data.message || "Done.").trim();
+      setMessages((prev) => {
+        const cleared = deleteConfirmToken
+          ? prev.map((m) =>
+              m.pendingDelete ? { ...m, pendingDelete: undefined } : m,
+            )
+          : prev;
+        return [
+          ...cleared,
+          {
+            role: "assistant",
+            content: reply,
+            toolSummaries: data.toolSummaries?.length
+              ? data.toolSummaries
+              : undefined,
+            pendingDelete: data.pendingDelete,
+          },
+        ];
+      });
+      if (data.postsChanged) onPostsChanged?.();
+      return;
+    }
+
+    if (!res.ok || !res.body) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
       throw new Error(data.error || "Assistant unavailable. Try again.");
     }
 
-    const reply = (data.message || "Done.").trim();
-    setMessages((prev) => {
-      const cleared = deleteConfirmToken
-        ? prev.map((m) =>
-            m.pendingDelete ? { ...m, pendingDelete: undefined } : m,
-          )
-        : prev;
-      return [
-        ...cleared,
-        {
-          role: "assistant",
-          content: reply,
-          toolSummaries: data.toolSummaries?.length ? data.toolSummaries : undefined,
-          pendingDelete: data.pendingDelete,
-        },
-      ];
-    });
-    if (data.postsChanged) onPostsChanged?.();
+    setMessages((prev) => [...prev, { role: "assistant", content: "" }]);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    const applyDone = (data: {
+      message?: string;
+      toolSummaries?: string[];
+      pendingDelete?: PendingDelete;
+      postsChanged?: boolean;
+    }) => {
+      setMessages((prev) => {
+        const copy = [...prev];
+        const last = copy[copy.length - 1];
+        if (last?.role === "assistant") {
+          copy[copy.length - 1] = {
+            ...last,
+            content: (data.message || last.content || "Done.").trim(),
+            toolSummaries: data.toolSummaries?.length
+              ? data.toolSummaries
+              : undefined,
+            pendingDelete: data.pendingDelete,
+          };
+        }
+        return copy;
+      });
+      if (data.postsChanged) onPostsChanged?.();
+    };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        if (!line.trim()) continue;
+        let evt: {
+          type?: string;
+          text?: string;
+          message?: string;
+          error?: string;
+          toolSummaries?: string[];
+          pendingDelete?: PendingDelete;
+          postsChanged?: boolean;
+        };
+        try {
+          evt = JSON.parse(line) as typeof evt;
+        } catch {
+          continue;
+        }
+        if (evt.type === "delta" && typeof evt.text === "string") {
+          setMessages((prev) => {
+            const copy = [...prev];
+            const last = copy[copy.length - 1];
+            if (last?.role === "assistant") {
+              copy[copy.length - 1] = {
+                ...last,
+                content: `${last.content}${evt.text}`,
+              };
+            }
+            return copy;
+          });
+        } else if (evt.type === "done") {
+          applyDone(evt);
+        } else if (evt.type === "error") {
+          throw new Error(evt.error || "Assistant unavailable.");
+        }
+      }
+    }
+    if (buffer.trim()) {
+      try {
+        const evt = JSON.parse(buffer) as {
+          type?: string;
+          message?: string;
+          toolSummaries?: string[];
+          pendingDelete?: PendingDelete;
+          postsChanged?: boolean;
+          error?: string;
+        };
+        if (evt.type === "done") applyDone(evt);
+        else if (evt.type === "error") {
+          throw new Error(evt.error || "Assistant unavailable.");
+        }
+      } catch (err) {
+        if (err instanceof SyntaxError) return;
+        throw err;
+      }
+    }
   }
 
   async function send(deleteConfirmToken?: string) {
@@ -274,12 +384,18 @@ export default function CalendarAssistant({
     try {
       await postToAssistant(nextMessages, deleteConfirmToken);
     } catch (err) {
+      if (err instanceof DOMException && err.name === "AbortError") return;
       const msg = err instanceof Error ? err.message : "Assistant unavailable.";
       setError(msg);
-      setMessages((prev) => [
-        ...prev,
-        { role: "assistant", content: `Sorry — ${msg}` },
-      ]);
+      setMessages((prev) => {
+        const last = prev[prev.length - 1];
+        if (last?.role === "assistant" && !last.content) {
+          const copy = [...prev];
+          copy[copy.length - 1] = { role: "assistant", content: `Sorry — ${msg}` };
+          return copy;
+        }
+        return [...prev, { role: "assistant", content: `Sorry — ${msg}` }];
+      });
     } finally {
       setBusy(false);
     }

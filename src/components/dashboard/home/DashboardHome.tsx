@@ -7,7 +7,7 @@ import gsap from "gsap";
 import {
   Plus,
   CalendarPlus,
-  Send,
+  FileText,
   Bell,
   Sparkles,
   Sun as SunIcon,
@@ -351,8 +351,8 @@ export default function DashboardHome() {
 
   const SHORTCUTS = [
     { label: "Create", sub: "Design a new post", href: "/dashboard/studio", Icon: Plus },
-    { label: "Schedule", sub: "Plan your content", href: "/dashboard/calendar", Icon: CalendarPlus },
-    { label: "Post", sub: "Publish now", href: "/dashboard/editor", Icon: Send },
+    { label: "Schedule", sub: "Queue & calendar", href: "/dashboard/calendar", Icon: CalendarPlus },
+    { label: "Drafts", sub: "Saved copy & ideas", href: "/dashboard/drafts", Icon: FileText },
   ];
 
   return (

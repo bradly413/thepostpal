@@ -1,13 +1,13 @@
 import { randomUUID } from "crypto";
 import { NextRequest, NextResponse } from "next/server";
-import { generateText, stepCountIs, tool } from "ai";
+import { streamText, stepCountIs, tool } from "ai";
 import { z } from "zod";
 import type { DraftStatus, LocationRole, Prisma } from "@prisma/client";
 import { requireAuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
-import { anthropic } from "@/lib/ai/anthropic";
+import { aiTelemetry, getLanguageModel, useAiGateway } from "@/lib/ai/model";
 import {
   rateLimit,
   buildRateLimitKey,
@@ -130,7 +130,7 @@ async function executeConfirmedDelete(
 
 export async function POST(request: NextRequest) {
   try {
-    if (!process.env.ANTHROPIC_API_KEY?.trim()) {
+    if (!useAiGateway() && !process.env.ANTHROPIC_API_KEY?.trim()) {
       return NextResponse.json(
         { error: "Assistant is not configured (missing API key)." },
         { status: 503 },
@@ -220,12 +220,17 @@ export async function POST(request: NextRequest) {
       | { token: string; count: number; summary: string }
       | undefined;
 
-    const result = await generateText({
-      model: anthropic("claude-sonnet-4-6"),
+    const result = streamText({
+      model: getLanguageModel("sonnet"),
       system: SYSTEM,
       messages,
       maxOutputTokens: 1024,
       stopWhen: stepCountIs(6),
+      experimental_telemetry: aiTelemetry("calendar-assistant", {
+        feature: "calendar-assistant",
+        tenantId: auth.tenantId,
+        locationId,
+      }),
       tools: {
         listScheduledPosts: tool({
           description:
@@ -387,15 +392,44 @@ export async function POST(request: NextRequest) {
       },
     });
 
-    return NextResponse.json({
-      message:
-        result.text?.trim() ||
-        (pendingDelete
-          ? `I found ${pendingDelete.count} post(s) to remove. Confirm below to delete them.`
-          : "Done."),
-      postsChanged: false,
-      toolSummaries,
-      ...(pendingDelete ? { pendingDelete } : {}),
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream<Uint8Array>({
+      async start(controller) {
+        const send = (payload: unknown) => {
+          controller.enqueue(encoder.encode(`${JSON.stringify(payload)}\n`));
+        };
+        try {
+          for await (const delta of result.textStream) {
+            if (delta) send({ type: "delta", text: delta });
+          }
+          const text = (await result.text)?.trim();
+          const message =
+            text ||
+            (pendingDelete
+              ? `I found ${pendingDelete.count} post(s) to remove. Confirm below to delete them.`
+              : "Done.");
+          send({
+            type: "done",
+            message,
+            postsChanged: false,
+            toolSummaries,
+            ...(pendingDelete ? { pendingDelete } : {}),
+          });
+          controller.close();
+        } catch (err) {
+          const msg =
+            err instanceof Error ? err.message : "Assistant unavailable.";
+          send({ type: "error", error: msg });
+          controller.close();
+        }
+      },
+    });
+
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "application/x-ndjson; charset=utf-8",
+        "Cache-Control": "no-store",
+      },
     });
   } catch (error) {
     return handleRouteError("api.ai.calendar-assistant.POST", error);

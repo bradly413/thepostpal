@@ -1,4 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
+import { generateText } from "ai";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
@@ -8,11 +8,10 @@ import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guard
 import { CAPTION_ANTI_AI_TELLS } from "@/lib/ai-caption-voice";
 import { isInlineReferenceImage } from "@/lib/reference-image";
 import { loadVisionJpegBase64 } from "@/lib/studio/vision-image-input";
+import { aiTelemetry, getLanguageModel, useAiGateway } from "@/lib/ai/model";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
-
-const MODEL = "claude-sonnet-4-6";
 
 const PLATFORM_GUIDE: Record<string, string> = {
   instagram: "Instagram: conversational, written like a person. 2–4 lowercase hashtags, none forced.",
@@ -93,8 +92,7 @@ export async function POST(req: Request) {
     throw error;
   }
 
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
+  if (!useAiGateway() && !process.env.ANTHROPIC_API_KEY?.trim()) {
     return Response.json({ error: "AI service not configured" }, { status: 500 });
   }
 
@@ -181,22 +179,26 @@ Respond with ONLY a JSON array (no prose, no code fences):
     : "Write short offer captions. Identify the real subject in the photo first.";
 
   try {
-    const client = new Anthropic({ apiKey });
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 1800,
+    const result = await generateText({
+      model: getLanguageModel("sonnet"),
       system,
+      maxOutputTokens: 1800,
+      experimental_telemetry: aiTelemetry("ai-captions-from-image", {
+        feature: "captions-from-image",
+        tenantId: auth.tenantId,
+        platform,
+      }),
       messages: [
         {
           role: "user",
           content: [
-            { type: "image", source: { type: "base64", media_type: "image/jpeg", data: imageB64 } },
+            { type: "image", image: `data:image/jpeg;base64,${imageB64}` },
             { type: "text", text: userText },
           ],
         },
       ],
     });
-    const text = response.content[0]?.type === "text" ? response.content[0].text : "";
+    const text = result.text || "";
     const variants = parseVariants(text);
 
     let guardrails: ResolvedGuardrails | null = null;
