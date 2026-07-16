@@ -87,6 +87,22 @@ const SIDEBAR_CSS = `
 .pb-side .foot .nm { font-size: var(--text-body-sm); font-weight: 600; color: var(--ink); }
 .pb-side .foot .rl { font-size: var(--text-label); color: var(--ink-soft); }
 
+/* Route-collapsed rail (dense pages like the calendar) — icon-only at desktop.
+   At <=980px the media query below collapses everything anyway. */
+.pb-side--collapsed { padding: 26px 12px; align-items: center; width: 72px; }
+.pb-side--collapsed .logo { display: none; }
+.pb-side--collapsed nav { width: 100%; }
+.pb-side--collapsed nav a {
+  justify-content: center; gap: 0; min-height: 44px; padding: 12px 0; letter-spacing: 0;
+}
+.pb-side--collapsed nav a .nav-label {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.pb-side--collapsed nav .grp-gap { margin: 8px 8px; width: calc(100% - 16px); }
+.pb-side--collapsed .foot { justify-content: center; gap: 0; }
+.pb-side--collapsed .foot .foot-text, .pb-side--collapsed .foot .foot-chevron { display: none; }
+
 /* Tablet + mobile: slim icon rail — never stack full nav above content */
 @media (max-width: 980px) {
   .pb-side {
@@ -130,7 +146,7 @@ function NavItem({
   active: boolean;
 }) {
   return (
-    <Link href={href} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+    <Link href={href} title={label} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
       <Icon aria-hidden />
       <span className="nav-label">{label}</span>
     </Link>
@@ -140,6 +156,9 @@ function NavItem({
 export default function AppSidebar() {
   const pathname = usePathname();
   const { features, workspaceName, workspaceInitials, roleLabel } = usePlan();
+
+  // Dense pages (the calendar composer+grid) collapse the rail to icons.
+  const collapsed = pathname.startsWith("/dashboard/calendar");
 
   const isActive = (href: string) =>
     href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
@@ -151,7 +170,7 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside className="pb-side">
+    <aside className={collapsed ? "pb-side pb-side--collapsed" : "pb-side"}>
       <style>{SIDEBAR_CSS}</style>
       <Link href="/dashboard" className="logo" aria-label="Posterboy home">
         poster<em>boy</em>

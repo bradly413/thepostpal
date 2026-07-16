@@ -147,7 +147,11 @@ Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
 
 ${creatorIntent}
 
-Look at the image and write EXACTLY ${count} captions for this post. Each must describe what is actually in the image — not a generic guess from text alone.
+Look at the image and write EXACTLY ${count} captions for this post.
+
+These posts are usually designed graphics with text baked into them: a headline, a stat, a hook, a price, an offer. Read that on-image text first. It is the message. Your caption's job is to CONTINUE that thought, not repeat it: add the context, the reason it matters, the story behind it, or the invitation it sets up. Never quote the on-image text back word for word.
+
+Write a caption, not a description. Never narrate the picture ("a graphic that says", "an image showing", "this photo of", "the text reads"). The reader can already see the image. The caption says what the image cannot say on its own. Ground every caption in what is genuinely there, but the job is to add to it, not to label it.
 
 ${CAPTION_SOUND_HUMAN.replace(
     "Vary length and rhythm — one line or two or three sentences is fine.",

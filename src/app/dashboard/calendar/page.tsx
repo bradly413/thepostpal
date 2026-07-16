@@ -154,7 +154,7 @@ export default function CalendarPage() {
   const loadedOkRef = useRef(false);
   const eventsLoadedOkRef = useRef(false);
 
-  const [formTemplate, setFormTemplate] = useState(templates[0]?.id || "");
+  const [formTemplate, setFormTemplate] = useState("");
   const [formPlatform, setFormPlatform] = useState<"facebook" | "instagram" | "both">("both");
   const [formTime, setFormTime] = useState("09:00");
   const [formCaption, setFormCaption] = useState("");
@@ -338,7 +338,7 @@ export default function CalendarPage() {
   function openNewPost(dateKey: string) {
     setEditingPost(null);
     setSelectedDate(dateKey);
-    setFormTemplate(templates[0]?.id || "");
+    setFormTemplate("");
     setFormPlatform("both");
     setFormTime("09:00");
     setFormCaption("");
@@ -346,7 +346,9 @@ export default function CalendarPage() {
     setMediaUrl("");
     setMediaType("image");
     setMediaError(null);
-    setModalMode("post");
+    if (typeof document !== "undefined") {
+      document.getElementById("post-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   }
 
   function openEditPost(post: CalendarScheduledPost) {
@@ -364,7 +366,9 @@ export default function CalendarPage() {
     setMediaUrl(post.mediaUrl ?? "");
     setMediaType(post.mediaType ?? "image");
     setMediaError(null);
-    setModalMode("post");
+    if (typeof document !== "undefined") {
+      document.getElementById("post-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
   }
 
   function openNewEvent(dateKey: string) {
@@ -441,7 +445,7 @@ export default function CalendarPage() {
       });
       await loadPosts();
       setPublishResult({ type: "success", message: "Published to Meta!" });
-      setModalMode(null);
+      openNewPost(selectedDate);
     } catch (err) {
       setPublishResult({
         type: "error",
@@ -524,7 +528,7 @@ export default function CalendarPage() {
       return;
     }
 
-    setModalMode(null);
+    openNewPost(selectedDate);
   }
 
   async function handleDeletePost() {
@@ -649,7 +653,7 @@ export default function CalendarPage() {
             <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
               <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
             </svg>
-            Schedule Post
+            New post
           </button>
           <a
             href="/dashboard/calendar/bulk"
@@ -704,7 +708,147 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-8 2xl:grid-cols-[minmax(0,1fr)_272px] 2xl:gap-10">
+      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(360px,400px)_minmax(0,1fr)] xl:gap-8">
+        <div id="post-composer" className="xl:sticky xl:top-6 xl:self-start">
+          <div className="pb-panel">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-base font-bold text-black">{editingPost ? "Edit post" : "New post"}</h2>
+              {editingPost && (
+                <button
+                  type="button"
+                  onClick={() => openNewPost(todayKey)}
+                  className="text-xs font-medium text-[#ee2532] hover:underline"
+                >
+                  Start new
+                </button>
+              )}
+            </div>
+
+            <div className="space-y-4">
+              {editingPost?.status === "failed" && (
+                <div className="rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
+                  <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
+                  {editingPost.errorLog && (
+                    <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
+                  )}
+                  <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
+                </div>
+              )}
+              {features.multiLocation && (
+                <div>
+                  <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
+                  <LocationSwitcher />
+                </div>
+              )}
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <div>
+                  <label className="block text-xs font-medium text-black mb-1.5">Date</label>
+                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pb-field" />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-black mb-1.5">Time</label>
+                  <select value={formTime} onChange={(e) => setFormTime(e.target.value)} className="pb-field">
+                    {TIME_OPTIONS.map((t) => (
+                      <option key={t.value} value={t.value}>{t.display}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1.5">Platform</label>
+                <div className="flex gap-2">
+                  {(["facebook", "instagram", "both"] as const).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setFormPlatform(p)}
+                      className={`flex-1 rounded-xl py-2 text-xs font-semibold capitalize transition-all ${
+                        formPlatform === p
+                          ? "bg-[#ee2532] text-white"
+                          : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
+                      }`}
+                    >
+                      {p === "both" ? "Both" : p}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1.5">Caption</label>
+                <textarea value={formCaption} onChange={(e) => setFormCaption(e.target.value)} rows={3} placeholder="Write your post caption…" className="pb-field resize-none" />
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-black mb-1.5">Status</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setFormStatus("scheduled")} className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${formStatus === "scheduled" ? "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d] border border-[rgba(31,157,77,0.3)]" : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"}`}>
+                    Schedule
+                  </button>
+                  <button onClick={() => setFormStatus("draft")} className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${formStatus === "draft" ? "bg-[rgba(217,119,6,0.12)] text-[#b45309] border border-[rgba(217,119,6,0.3)]" : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"}`}>
+                    Save as Draft
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {meta?.connected && formStatus === "scheduled" && !editingPost && (
+              <div className="flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2 mt-4">
+                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
+                <p className="text-[11px] text-[#1f9d4d] font-medium">Connected to {meta.pageName}. Will schedule via Meta.</p>
+              </div>
+            )}
+
+            <div className="mt-4">
+              <label className="block text-[11px] font-bold uppercase tracking-wider text-black/55 mb-1.5">Media</label>
+              <div className="relative">
+                <label className={`group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 bg-white/60 backdrop-blur-xl px-4 py-6 text-center cursor-pointer transition-colors hover:border-[#ee2532]/40 ${uploadingMedia ? "pointer-events-none" : ""}`}>
+                  {mediaUrl && mediaType === "image" ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img src={mediaUrl} alt="" className="max-h-36 w-auto rounded-xl object-contain" />
+                  ) : mediaUrl && mediaType === "video" ? (
+                    <video src={mediaUrl} className="max-h-36 w-auto rounded-xl" muted />
+                  ) : (
+                    <>
+                      <span className="text-sm font-medium text-black/70">Drop or choose a photo / video</span>
+                      <span className="text-[11px] text-black/45">Uploads straight to your secure bucket</span>
+                    </>
+                  )}
+                  <input type="file" accept="image/*,video/*" className="sr-only" onChange={(e) => handleMediaFile(e.target.files?.[0])} disabled={uploadingMedia} />
+                </label>
+                {uploadingMedia && (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/55 backdrop-blur-md">
+                    <span className="h-6 w-6 rounded-full border-2 border-[#323232]/25 border-t-[#323232] animate-spin" aria-hidden />
+                    <span className="text-[11px] font-medium text-[#323232]">Uploading…</span>
+                  </div>
+                )}
+              </div>
+              {mediaUrl && !uploadingMedia && (
+                <button type="button" onClick={() => { setMediaUrl(""); setMediaError(null); }} className="mt-1.5 text-[11px] text-black/45 hover:text-[#ee2532] transition-colors">
+                  Remove media
+                </button>
+              )}
+              {mediaError && <p className="mt-1.5 text-[11px] text-[#ee2532]">{mediaError}</p>}
+            </div>
+
+            <div className="mt-6 flex flex-wrap gap-2">
+              {editingPost && (
+                <button onClick={() => setConfirmDeletePost(true)} className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all">
+                  Delete
+                </button>
+              )}
+              {!editingPost && meta?.connected && formStatus === "scheduled" && mediaUrl && mediaType === "image" && (
+                <button onClick={() => void handlePublishNow()} disabled={publishing || uploadingMedia} className="flex-1 min-w-[110px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50">
+                  {publishing ? "Publishing…" : "Publish now"}
+                </button>
+              )}
+              <button onClick={() => void handleSavePost(false)} disabled={publishing || uploadingMedia} className="flex-1 min-w-[110px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50">
+                {publishing ? "Saving…" : editingPost ? "Update" : "Schedule"}
+              </button>
+              <button onClick={() => void handleSavePost(true)} disabled={publishing || uploadingMedia} className="pb-btn-primary flex-1 min-w-[130px] text-sm py-2.5 disabled:opacity-50" title="Approve so the dispatcher publishes at the scheduled time">
+                Schedule &amp; Approve
+              </button>
+            </div>
+          </div>
+        </div>
+
         <div className="min-w-0">
           {/* Calendar controls */}
           <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -763,10 +907,13 @@ export default function CalendarPage() {
                       tabIndex={0}
                       onClick={() => openDayDetail(cell.dateKey)}
                       onKeyDown={(e) => openDayFromKeyboard(e, cell.dateKey, openDayDetail)}
-                      className={`min-h-[124px] overflow-hidden border-b border-r border-black/10 p-2 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
+                      className={`relative min-h-[124px] overflow-hidden border-b border-r border-black/10 p-2 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
                         !cell.currentMonth ? "opacity-40" : ""
                       }`}
                     >
+                      {cellPosts.length > 0 && (
+                        <span className="absolute inset-x-2 top-0 h-[3px] rounded-b-full bg-[#ee2532]" aria-hidden="true" />
+                      )}
                       <div className={`text-xs font-medium mb-0.5 w-6 h-6 flex items-center justify-center rounded-full ${
                         isToday ? "bg-[#ee2532] text-white font-bold" : "text-black/55"
                       }`}>
@@ -787,17 +934,38 @@ export default function CalendarPage() {
                             {ev.time ? `${ev.time.slice(0,5)} ` : ""}{ev.title}
                           </button>
                         ))}
-                        {cellPosts.slice(0, 2).map((p) => (
-                          <button
-                            key={p.id}
-                            onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
-                            className={`w-full text-left rounded px-1.5 py-0.5 text-[10px] font-medium truncate transition-colors hover:opacity-80 ${
-                              p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] text-black/55 border border-dashed border-black/10" : platformColors[p.platform]
-                            }`}
-                          >
-                            {p.time.slice(0, 5)} {p.templateName}
-                          </button>
-                        ))}
+                        {cellPosts.length > 0 && (
+                          <div className="flex flex-wrap gap-1 pt-0.5">
+                            {cellPosts.slice(0, 2).map((p) => (
+                              <button
+                                key={p.id}
+                                onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
+                                title={`${p.time.slice(0, 5)} ${p.templateName}`}
+                                className="relative h-9 w-9 overflow-hidden rounded-md ring-1 ring-black/10 transition-transform hover:-translate-y-0.5 hover:ring-black/30"
+                              >
+                                {p.mediaUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span
+                                    className={`flex h-full w-full items-center justify-center text-[9px] font-semibold ${
+                                      p.status === "failed"
+                                        ? "bg-[#ee2532]/10 text-[#c81e2a]"
+                                        : p.status === "draft"
+                                          ? "bg-black/[0.05] text-black/45"
+                                          : "bg-black/[0.06] text-black/55"
+                                    }`}
+                                  >
+                                    {p.time.slice(0, 5)}
+                                  </span>
+                                )}
+                                {p.status === "failed" && (
+                                  <span className="absolute inset-x-0 bottom-0 h-1 bg-[#ee2532]" aria-hidden="true" />
+                                )}
+                              </button>
+                            ))}
+                          </div>
+                        )}
                         {overflow > 0 && (
                           <p className="text-[10px] text-black/55 px-1.5">+{overflow} more</p>
                         )}
@@ -910,7 +1078,7 @@ export default function CalendarPage() {
                   const holiday = showHolidays ? holidayMap.get(wd.dateKey) : undefined;
                   return (
                     <div key={wd.dateKey} className="border-b md:border-b-0 md:border-r border-black/10 last:border-r-0">
-                      <div className={`px-3 py-3 text-left md:text-center border-b border-black/10 ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
+                      <div className={`px-3 py-3 text-left md:text-center ${dayPosts.length > 0 ? "border-b-2 border-b-[#ee2532]" : "border-b border-black/10"} ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
                         <p className="text-[10px] text-black/55 font-bold uppercase">{wd.dayName}</p>
                         <p className={`text-lg font-bold mt-0.5 ${isToday ? "text-[#ee2532]" : "text-black"}`}>{wd.day}</p>
                       </div>
@@ -941,13 +1109,27 @@ export default function CalendarPage() {
                           <button
                             key={p.id}
                             onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
-                            className={`w-full min-h-11 text-left rounded-lg p-2 transition-colors hover:opacity-80 ${
-                              p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
+                            className={`flex w-full items-center gap-2 rounded-lg p-1.5 text-left transition-colors hover:bg-black/[0.05] ${
+                              p.status === "failed" ? "ring-1 ring-[#ee2532]/25" : ""
                             }`}
                           >
-                            <p className="text-[10px] font-bold">{p.time.slice(0, 5)}</p>
-                            <p className="text-xs font-medium truncate">{p.templateName}</p>
-                            <p className="text-[10px] opacity-70 capitalize">{p.platform}</p>
+                            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">
+                              {p.mediaUrl ? (
+                                // eslint-disable-next-line @next/next/no-img-element
+                                <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
+                              ) : (
+                                <span className="flex h-full w-full items-center justify-center bg-black/[0.06] text-[9px] font-semibold text-black/50">
+                                  {p.time.slice(0, 5)}
+                                </span>
+                              )}
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block text-[10px] font-bold text-black/70">{p.time.slice(0, 5)}</span>
+                              <span className="block text-xs font-medium truncate text-black">{p.templateName}</span>
+                              <span className="block text-[10px] capitalize text-black/45">
+                                {p.status === "failed" ? "failed" : p.platform}
+                              </span>
+                            </span>
                           </button>
                         ))}
                       </div>
@@ -959,98 +1141,6 @@ export default function CalendarPage() {
           )}
         </div>
 
-        {/* Sidebar — full width below calendar until 2xl; then a calm right rail */}
-        <aside className="grid grid-cols-1 gap-5 sm:grid-cols-2 2xl:grid-cols-1 2xl:gap-5">
-          <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
-            <h3 className="text-sm font-bold text-black mb-4">Upcoming Posts</h3>
-            {upcoming.length === 0 ? (
-              <p className="text-xs text-black/55 py-4 text-center">No upcoming posts scheduled</p>
-            ) : (
-              <div className="space-y-2">
-                {upcoming.map((p) => (
-                  <button
-                    key={p.id}
-                    onClick={() => openEditPost(p)}
-                    className="w-full text-left rounded-xl bg-black/[0.03] p-3 hover:bg-black/[0.05] transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-black/55">{p.date} at {p.time}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold capitalize ${platformColors[p.platform]}`}>{p.platform}</span>
-                    </div>
-                    <p className="text-xs font-semibold text-black">{p.templateName}</p>
-                    {p.caption && <p className="text-[10px] text-black/55 truncate mt-0.5">{p.caption}</p>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="pb-panel p-5">
-            <h3 className="text-sm font-bold text-black mb-4">Upcoming Events</h3>
-            {upcomingEvents.length === 0 ? (
-              <p className="text-xs text-black/55 py-4 text-center">No upcoming events</p>
-            ) : (
-              <div className="space-y-2">
-                {upcomingEvents.map((ev) => (
-                  <button
-                    key={ev.id}
-                    onClick={() => openEditEvent(ev)}
-                    className="w-full text-left rounded-xl bg-black/[0.03] p-3 hover:bg-black/[0.05] transition-colors"
-                  >
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-[10px] font-bold text-black/55">{ev.date}{ev.time ? ` at ${ev.time}` : ""}</span>
-                      <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold ${eventTypeColors[ev.type]}`}>{eventTypeLabels[ev.type]}</span>
-                    </div>
-                    <p className="text-xs font-semibold text-black">{ev.title}</p>
-                    {ev.notes && <p className="text-[10px] text-black/55 truncate mt-0.5">{ev.notes}</p>}
-                  </button>
-                ))}
-              </div>
-            )}
-          </div>
-
-          {showHolidays && upcomingHolidays.length > 0 && (
-            <div className="pb-panel p-5">
-              <h3 className="text-sm font-bold text-black mb-4">Upcoming Holidays</h3>
-              <div className="space-y-3">
-                {upcomingHolidays.map((h) => (
-                  <div key={h.date} className="rounded-xl bg-[rgba(217,119,6,0.06)] border border-[rgba(217,119,6,0.15)] p-3">
-                    <p className="text-[10px] font-bold text-black/55">{new Date(h.date + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" })}</p>
-                    <p className="text-xs font-semibold text-[#b45309]">{h.name}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
-
-          <div className="pb-panel p-5 sm:col-span-2 2xl:col-span-1">
-            <h3 className="text-sm font-bold text-black mb-4">Schedule Stats</h3>
-            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-semibold text-black">{queuedPostCount}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Queued</p>
-              </div>
-              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "draft").length}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Drafts</p>
-              </div>
-              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-semibold text-black">{posts.filter((p) => p.status === "published").length}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Published</p>
-              </div>
-              <div className="rounded-xl bg-black/[0.03] p-3 text-center">
-                <p className="text-xl font-semibold text-black">{events.length}</p>
-                <p className="text-[10px] text-black/55 mt-0.5">Events</p>
-              </div>
-              {posts.some((p) => p.status === "failed") && (
-                <div className="rounded-xl bg-[#ee2532]/[0.06] p-3 text-center col-span-2">
-                  <p className="text-xl font-semibold text-[#c81e2a]">{posts.filter((p) => p.status === "failed").length}</p>
-                  <p className="text-[10px] text-[#c81e2a]/70 mt-0.5">Failed — tap the post to retry</p>
-                </div>
-              )}
-            </div>
-          </div>
-        </aside>
       </div>
 
       {/* Day Detail Modal */}
@@ -1142,219 +1232,6 @@ export default function CalendarPage() {
       )}
 
       {/* Schedule Post Modal */}
-      {modalMode === "post" && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>
-          <div ref={modalRef} role="dialog" aria-modal="true" aria-label="Schedule post" tabIndex={-1} className="pb-safe-sheet w-full max-w-md max-h-[85dvh] overflow-y-auto rounded-t-2xl sm:rounded-2xl bg-white border border-black/10 p-6 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-5">
-              <h3 className="text-lg font-semibold text-black">{editingPost ? "Edit Post" : "Schedule Post"}</h3>
-              <button aria-label="Close" onClick={() => setModalMode(null)} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:text-black hover:bg-black/[0.05] transition-colors">
-                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-              </button>
-            </div>
-
-            <div className="space-y-4">
-              {editingPost?.status === "failed" && (
-                <div className="rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
-                  <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
-                  {editingPost.errorLog && (
-                    <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
-                  )}
-                  <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
-                </div>
-              )}
-              {features.multiLocation && (
-                <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
-                  <LocationSwitcher />
-                </div>
-              )}
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Template</label>
-                <select
-                  value={formTemplate}
-                  onChange={(e) => setFormTemplate(e.target.value)}
-                  className="pb-field"
-                >
-                  {templates.map((t) => (
-                    <option key={t.id} value={t.id}>{t.name}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Date</label>
-                  <input
-                    type="date"
-                    value={selectedDate}
-                    onChange={(e) => setSelectedDate(e.target.value)}
-                    className="pb-field"
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Time</label>
-                  <select
-                    value={formTime}
-                    onChange={(e) => setFormTime(e.target.value)}
-                    className="pb-field"
-                  >
-                    {TIME_OPTIONS.map((t) => (
-                      <option key={t.value} value={t.value}>{t.display}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Platform</label>
-                <div className="flex gap-2">
-                  {(["facebook", "instagram", "both"] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setFormPlatform(p)}
-                      className={`flex-1 rounded-xl py-2 text-xs font-semibold capitalize transition-all ${
-                        formPlatform === p
-                          ? "bg-[#ee2532] text-white"
-                          : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
-                      }`}
-                    >
-                      {p === "both" ? "Both" : p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Caption</label>
-                <textarea
-                  value={formCaption}
-                  onChange={(e) => setFormCaption(e.target.value)}
-                  rows={3}
-                  placeholder="Write your post caption…"
-                  className="pb-field resize-none"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Status</label>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => setFormStatus("scheduled")}
-                    className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
-                      formStatus === "scheduled"
-                        ? "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d] border border-[rgba(31,157,77,0.3)]"
-                        : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
-                    }`}
-                  >
-                    Schedule
-                  </button>
-                  <button
-                    onClick={() => setFormStatus("draft")}
-                    className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${
-                      formStatus === "draft"
-                        ? "bg-[rgba(217,119,6,0.12)] text-[#b45309] border border-[rgba(217,119,6,0.3)]"
-                        : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
-                    }`}
-                  >
-                    Save as Draft
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {meta?.connected && formStatus === "scheduled" && !editingPost && (
-              <div className="flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2 mt-4">
-                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
-                <p className="text-[11px] text-[#1f9d4d] font-medium">Connected to {meta.pageName} — will schedule via Meta Graph API</p>
-              </div>
-            )}
-
-            {/* Media → S3 (absolute publicUrl for the Meta dispatcher) */}
-            <div className="mt-4">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-black/55 mb-1.5">Media</label>
-              <div className="relative">
-                <label
-                  className={`group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 bg-white/60 backdrop-blur-xl px-4 py-6 text-center cursor-pointer transition-colors hover:border-[#ee2532]/40 ${uploadingMedia ? "pointer-events-none" : ""}`}
-                >
-                  {mediaUrl && mediaType === "image" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={mediaUrl} alt="" className="max-h-36 w-auto rounded-xl object-contain" />
-                  ) : mediaUrl && mediaType === "video" ? (
-                    <video src={mediaUrl} className="max-h-36 w-auto rounded-xl" muted />
-                  ) : (
-                    <>
-                      <span className="text-sm font-medium text-black/70">Drop or choose a photo / video</span>
-                      <span className="text-[11px] text-black/45">Uploads straight to your secure bucket</span>
-                    </>
-                  )}
-                  <input
-                    type="file"
-                    accept="image/*,video/*"
-                    className="sr-only"
-                    onChange={(e) => handleMediaFile(e.target.files?.[0])}
-                    disabled={uploadingMedia}
-                  />
-                </label>
-                {uploadingMedia && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/55 backdrop-blur-md">
-                    <span className="h-6 w-6 rounded-full border-2 border-[#323232]/25 border-t-[#323232] animate-spin" aria-hidden />
-                    <span className="text-[11px] font-medium text-[#323232]">Uploading…</span>
-                  </div>
-                )}
-              </div>
-              {mediaUrl && !uploadingMedia && (
-                <button
-                  type="button"
-                  onClick={() => { setMediaUrl(""); setMediaError(null); }}
-                  className="mt-1.5 text-[11px] text-black/45 hover:text-[#ee2532] transition-colors"
-                >
-                  Remove media
-                </button>
-              )}
-              {mediaError && <p className="mt-1.5 text-[11px] text-[#ee2532]">{mediaError}</p>}
-            </div>
-
-            <div className="flex flex-wrap gap-3 mt-6">
-              {editingPost && (
-                <button
-                  onClick={() => setConfirmDeletePost(true)}
-                  className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all"
-                >
-                  Delete
-                </button>
-              )}
-              <button onClick={() => setModalMode(null)} className="flex-1 min-w-[120px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
-                Cancel
-              </button>
-              {!editingPost && meta?.connected && formStatus === "scheduled" && mediaUrl && mediaType === "image" && (
-                <button
-                  onClick={() => void handlePublishNow()}
-                  disabled={publishing || uploadingMedia}
-                  className="pb-btn-primary flex-1 min-w-[120px] text-sm py-2.5 disabled:opacity-50"
-                >
-                  {publishing ? "Publishing…" : "Publish now"}
-                </button>
-              )}
-              <button
-                onClick={() => void handleSavePost(false)}
-                disabled={publishing || uploadingMedia}
-                className="flex-1 min-w-[120px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
-              >
-                {publishing ? "Saving…" : editingPost ? "Update" : "Schedule"}
-              </button>
-              <button
-                onClick={() => void handleSavePost(true)}
-                disabled={publishing || uploadingMedia}
-                className="flex-1 min-w-[140px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50"
-                title="Approve so the dispatcher publishes at the scheduled time"
-              >
-                Schedule &amp; Approve
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Event Modal */}
       {modalMode === "event" && (
         <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center" onClick={() => setModalMode(null)}>

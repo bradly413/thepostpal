@@ -73,6 +73,8 @@ export default function BulkScheduler() {
   const [generatingCaptions, setGeneratingCaptions] = useState(false);
   const [captionBatchError, setCaptionBatchError] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [showBrief, setShowBrief] = useState(false);
+  const [showScheduleDetail, setShowScheduleDetail] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const captionQueueRef = useRef<Set<string>>(new Set());
   const autoCaptionChainRef = useRef<Promise<void>>(Promise.resolve());
@@ -445,6 +447,15 @@ export default function BulkScheduler() {
     setDone(true);
   }
 
+  const timeLabel = (() => {
+    const [h, m] = time.split(":").map(Number);
+    const d = new Date();
+    d.setHours(h || 0, m || 0, 0, 0);
+    return d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" });
+  })();
+  const startLabel = new Date(`${startDate}T12:00:00`).toLocaleDateString([], { month: "short", day: "numeric" });
+  const everyLabel = intervalDays === 1 ? "Daily" : `Every ${intervalDays} days`;
+  const scheduleSummary = `${everyLabel} at ${timeLabel}, from ${startLabel}${skipWeekends ? ", skips weekends" : ""}`;
   const postedCount = items.filter((i) => i.posted).length;
 
   return (
@@ -467,10 +478,7 @@ export default function BulkScheduler() {
                 <span className="text-black/70">Bulk schedule</span>
               </div>
               <h1>Bulk schedule</h1>
-              <p>
-                Tell us what the batch is about, drop your photos, pick captions you like, and schedule the
-                whole run.
-              </p>
+              <p>Drop a batch of photos. We caption them and space them across your calendar.</p>
             </div>
             <div className="flex flex-wrap items-center gap-2.5 self-start lg:self-auto">
               {features.multiLocation && <LocationSwitcher />}
@@ -486,112 +494,7 @@ export default function BulkScheduler() {
         </div>
 
         <div className="grid grid-cols-1 gap-5 lg:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="space-y-5">
-            <div className="pb-panel">
-              <h2 className="text-sm font-bold text-black mb-1">What is this batch about?</h2>
-              <p className="text-xs text-black/50 mb-3 leading-relaxed">
-                Paste a caption, describe an idea, or jot loose thoughts — anything works. Leave blank and
-                we will write from the photos and your brand voice.
-              </p>
-              <textarea
-                value={batchDirection}
-                onChange={(e) => setBatchDirection(e.target.value)}
-                placeholder={directionPlaceholder}
-                rows={3}
-                className={`pb-field w-full resize-y text-sm${
-                  directionPlaceholderFading ? " is-placeholder-fading" : ""
-                }`}
-              />
-              <div className="mt-4">
-                <span className="pb-label">Tone</span>
-                <p className="text-[11px] text-black/45 mt-1 mb-2">
-                  Optional — tap the voice you want. You can pick more than one.
-                </p>
-                <div className="flex flex-wrap gap-2">
-                  {BULK_CAPTION_TONE_CHIPS.map((chip) => {
-                    const on = selectedTones.includes(chip.id);
-                    return (
-                      <button
-                        key={chip.id}
-                        type="button"
-                        onClick={() => toggleTone(chip.id)}
-                        className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors border ${
-                          on
-                            ? "bg-[#ee2532] text-white border-[#ee2532]"
-                            : "bg-white text-black/60 border-black/10 hover:border-black/25 hover:text-black"
-                        }`}
-                      >
-                        {chip.label}
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
-
-            <div className="pb-panel">
-              <div className="flex flex-wrap items-center gap-3 mb-4">
-                <span className="pb-label">Platform</span>
-                <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
-                  {(["facebook", "instagram", "both"] as PlatformChoice[]).map((p) => (
-                    <button
-                      key={p}
-                      type="button"
-                      onClick={() => setPlatform(p)}
-                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-colors ${
-                        platform === p
-                          ? "bg-[#ee2532] text-white"
-                          : "text-black/55 hover:text-black"
-                      }`}
-                    >
-                      {p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <label className="block">
-                  <span className="pb-label">Start date</span>
-                  <input
-                    type="date"
-                    value={startDate}
-                    onChange={(e) => setStartDate(e.target.value)}
-                    className="pb-field w-full mt-1.5"
-                  />
-                </label>
-                <label className="block">
-                  <span className="pb-label">Post time</span>
-                  <input
-                    type="time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="pb-field w-full mt-1.5"
-                  />
-                </label>
-                <label className="block">
-                  <span className="pb-label">Every (days)</span>
-                  <input
-                    type="number"
-                    min={1}
-                    max={30}
-                    value={intervalDays}
-                    onChange={(e) => setIntervalDays(Math.max(1, Number(e.target.value) || 1))}
-                    className="pb-field w-full mt-1.5"
-                  />
-                </label>
-                <label className="flex items-center gap-3 pt-6 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={skipWeekends}
-                    onChange={(e) => setSkipWeekends(e.target.checked)}
-                    className="rounded border-black/10 accent-[#ee2532]"
-                  />
-                  <span className="text-sm text-black/70">Skip weekends</span>
-                </label>
-              </div>
-            </div>
-
+          <div className="space-y-4">
             <div
               role="button"
               tabIndex={0}
@@ -631,6 +534,121 @@ export default function BulkScheduler() {
               <p className="mt-1 text-xs text-black/50">
                 Select your whole batch at once — uploads run, then captions write automatically
               </p>
+            </div>
+
+            <div className="pb-panel">
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="inline-flex rounded-full border border-black/10 bg-white p-1">
+                  {(["facebook", "instagram", "both"] as PlatformChoice[]).map((p) => (
+                    <button
+                      key={p}
+                      type="button"
+                      onClick={() => setPlatform(p)}
+                      className={`rounded-full px-3.5 py-1.5 text-xs font-medium capitalize transition-colors ${
+                        platform === p ? "bg-[#ee2532] text-white" : "text-black/55 hover:text-black"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setShowScheduleDetail((v) => !v)}
+                  className="ml-auto inline-flex items-center gap-1 text-xs font-medium text-black/55 hover:text-black"
+                >
+                  <ChevronRight
+                    size={12}
+                    className={`transition-transform ${showScheduleDetail ? "rotate-90" : ""}`}
+                    aria-hidden="true"
+                  />
+                  {showScheduleDetail ? "Done" : "Adjust"}
+                </button>
+              </div>
+              <p className="mt-2 text-xs text-black/50">{scheduleSummary}</p>
+              {showScheduleDetail && (
+                <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <label className="block">
+                    <span className="pb-label">Start date</span>
+                    <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} className="pb-field w-full mt-1.5" />
+                  </label>
+                  <label className="block">
+                    <span className="pb-label">Post time</span>
+                    <input type="time" value={time} onChange={(e) => setTime(e.target.value)} className="pb-field w-full mt-1.5" />
+                  </label>
+                  <label className="block">
+                    <span className="pb-label">Every (days)</span>
+                    <input type="number" min={1} max={30} value={intervalDays} onChange={(e) => setIntervalDays(Math.max(1, Number(e.target.value) || 1))} className="pb-field w-full mt-1.5" />
+                  </label>
+                  <label className="flex items-center gap-3 pt-6 cursor-pointer">
+                    <input type="checkbox" checked={skipWeekends} onChange={(e) => setSkipWeekends(e.target.checked)} className="rounded border-black/10 accent-[#ee2532]" />
+                    <span className="text-sm text-black/70">Skip weekends</span>
+                  </label>
+                </div>
+              )}
+            </div>
+
+            <div className="pb-panel">
+              <button
+                type="button"
+                onClick={() => setShowBrief((v) => !v)}
+                className="flex w-full items-center justify-between text-left"
+              >
+                <span className="text-sm font-bold text-black">
+                  Caption brief <span className="font-normal text-black/45">· optional</span>
+                </span>
+                <ChevronRight
+                  size={14}
+                  className={`text-black/40 transition-transform ${showBrief ? "rotate-90" : ""}`}
+                  aria-hidden="true"
+                />
+              </button>
+              {!showBrief && (
+                <p className="mt-1 text-xs text-black/45">
+                  {batchDirection.trim() || selectedTones.length
+                    ? "Brief added. Captions will follow it."
+                    : "Skip it and we write from your photos and brand voice."}
+                </p>
+              )}
+              {showBrief && (
+                <div className="mt-3">
+                  <p className="text-xs text-black/50 mb-3 leading-relaxed">
+                    Paste a caption, describe an idea, or jot loose thoughts. Anything works.
+                  </p>
+                  <textarea
+                    value={batchDirection}
+                    onChange={(e) => setBatchDirection(e.target.value)}
+                    placeholder={directionPlaceholder}
+                    rows={3}
+                    className={`pb-field w-full resize-y text-sm${
+                      directionPlaceholderFading ? " is-placeholder-fading" : ""
+                    }`}
+                  />
+                  <div className="mt-4">
+                    <span className="pb-label">Tone</span>
+                    <p className="text-[11px] text-black/45 mt-1 mb-2">Tap the voice you want. Pick more than one.</p>
+                    <div className="flex flex-wrap gap-2">
+                      {BULK_CAPTION_TONE_CHIPS.map((chip) => {
+                        const on = selectedTones.includes(chip.id);
+                        return (
+                          <button
+                            key={chip.id}
+                            type="button"
+                            onClick={() => toggleTone(chip.id)}
+                            className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors border ${
+                              on
+                                ? "bg-[#ee2532] text-white border-[#ee2532]"
+                                : "bg-white text-black/60 border-black/10 hover:border-black/25 hover:text-black"
+                            }`}
+                          >
+                            {chip.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
 
             {items.length > 0 && (
@@ -813,50 +831,17 @@ export default function BulkScheduler() {
 
           <aside className="space-y-4 lg:sticky lg:top-6 lg:self-start">
             <div className="pb-panel p-5">
-              <h3 className="text-sm font-bold text-black mb-3">Timeline</h3>
-              {items.length === 0 ? (
-                <p className="text-xs text-black/50 leading-relaxed">
-                  Add photos to preview your posting cadence. Dates update as you reorder or change the
-                  interval.
-                </p>
-              ) : (
-                <ul className="space-y-2 max-h-[320px] overflow-y-auto pr-1">
-                  {timeline.map((slot, i) => (
-                    <li
-                      key={slot.id}
-                      className={`flex items-center justify-between gap-2 text-xs ${
-                        slot.posted ? "text-[#1f9d4d]" : slot.hasCaption ? "text-black/65" : "text-black/40"
-                      }`}
-                    >
-                      <span className="font-medium tabular-nums text-black/40 w-5">{i + 1}</span>
-                      <span className="flex-1 truncate">{prettyScheduleDate(slot.iso)}</span>
-                      {slot.posted ? (
-                        <span className="text-[10px] font-medium">done</span>
-                      ) : slot.hasCaption ? (
-                        new Date(slot.iso) <= new Date() ? (
-                          <span className="text-[10px] font-medium text-[#c81e2a]">posts now</span>
-                        ) : (
-                          <span className="text-[10px] font-medium text-black/45">ready</span>
-                        )
-                      ) : null}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-
-            <div className="pb-panel p-5">
               <h3 className="text-sm font-bold text-black mb-2">Ready to publish</h3>
               <p className="text-xs text-black/50 mb-4 leading-relaxed">
                 {done
                   ? `${postedCount} of ${items.length} scheduled to ${locationName}.`
                   : items.length > 0
                     ? `${schedulableCount} of ${items.length} ready · ${locationName}`
-                    : "No posts yet"}
+                    : "Add photos to get started."}
               </p>
               {items.length > 0 && schedulableCount < items.length - items.filter((i) => i.posted).length && (
                 <p className="text-[11px] text-black/45 mb-3">
-                  Create captions before scheduling — or write your own in each post.
+                  Create captions before scheduling, or write your own in each post.
                 </p>
               )}
               {pastDueCount > 0 && !done && (
@@ -890,6 +875,33 @@ export default function BulkScheduler() {
                 >
                   View on calendar
                 </Link>
+              )}
+              {items.length > 0 && (
+                <div className="mt-4 border-t border-black/[0.06] pt-4">
+                  <p className="pb-label mb-2">Timeline</p>
+                  <ul className="space-y-2 max-h-[280px] overflow-y-auto pr-1">
+                    {timeline.map((slot, i) => (
+                      <li
+                        key={slot.id}
+                        className={`flex items-center justify-between gap-2 text-xs ${
+                          slot.posted ? "text-[#1f9d4d]" : slot.hasCaption ? "text-black/65" : "text-black/40"
+                        }`}
+                      >
+                        <span className="font-medium tabular-nums text-black/40 w-5">{i + 1}</span>
+                        <span className="flex-1 truncate">{prettyScheduleDate(slot.iso)}</span>
+                        {slot.posted ? (
+                          <span className="text-[10px] font-medium">done</span>
+                        ) : slot.hasCaption ? (
+                          new Date(slot.iso) <= new Date() ? (
+                            <span className="text-[10px] font-medium text-[#c81e2a]">posts now</span>
+                          ) : (
+                            <span className="text-[10px] font-medium text-black/45">ready</span>
+                          )
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
               )}
             </div>
           </aside>
