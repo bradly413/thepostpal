@@ -7,7 +7,7 @@ import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
 import { inferMediaContentType, isVideoContentType } from "@/lib/upload-mime";
 import { type CalendarEvent } from "@/lib/events-store";
-import { getHolidayMap, getUpcomingHolidays } from "@/lib/holidays";
+import { getHolidayMap } from "@/lib/holidays";
 import { useMetaConnection } from "@/lib/use-meta-connection";
 import { buildMetaPublishPayload } from "@/lib/meta-publish-payload";
 import { SITE_NAME } from "@/lib/site";
@@ -34,8 +34,27 @@ import {
 } from "@/lib/dashboard-post-helpers";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlan, usePlanFeatures } from "@/components/dashboard/PlanProvider";
-import PostPreview from "@/components/dashboard/calendar/PostPreview";
-import { Clock, ChevronDown, PenLine, Image as ImageIcon } from "lucide-react";
+import PostPreview, {
+  type ComposerMediaItem,
+} from "@/components/dashboard/calendar/PostPreview";
+import CalendarPostRadialMenu, {
+  type RadialPostAction,
+} from "@/components/dashboard/calendar/CalendarPostRadialMenu";
+import {
+  Clock,
+  ChevronDown,
+  Image as ImageIcon,
+  Search,
+  Settings2,
+  MoreVertical,
+  LayoutGrid,
+  List,
+  Plus,
+  ChevronLeft,
+  ChevronRight,
+  Check,
+  X,
+} from "lucide-react";
 import { LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
@@ -65,6 +84,71 @@ const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
   const value = `${String(h).padStart(2, "0")}:${m}`;
   return { display, value };
 });
+
+/** Next 30-minute schedule slot at or after `from` (keeps the picker from sitting in the past). */
+function nextScheduleTime(from = new Date()): string {
+  const totalMins = from.getHours() * 60 + from.getMinutes() + 1;
+  let next = Math.ceil(totalMins / 30) * 30;
+  if (next >= 24 * 60) next = 23 * 60 + 30;
+  const h = Math.floor(next / 60);
+  const m = next % 60;
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`;
+}
+
+/** YYYY-MM-DD compare — true when `dateKey` is before today (local). */
+function isPastDateKey(dateKey: string, todayKey = todayDateKeyLocal()): boolean {
+  return Boolean(dateKey) && dateKey < todayKey;
+}
+
+/** True when the schedule slot is already in the past (past day, or earlier today). */
+function isScheduleSlotPast(
+  dateKey: string,
+  time: string,
+  now = new Date(),
+): boolean {
+  const todayKey = todayDateKeyLocal(now);
+  if (!dateKey || dateKey < todayKey) return true;
+  if (dateKey > todayKey) return false;
+  const [h, m] = time.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) return true;
+  const slotMins = h * 60 + m;
+  const nowMins = now.getHours() * 60 + now.getMinutes();
+  return slotMins <= nowMins;
+}
+
+/** Stagger bulk-upload schedule slots by 30 minutes from a start date/time. */
+function staggerBulkSlots(
+  count: number,
+  startDate: string,
+  startTime: string,
+): { date: string; time: string }[] {
+  const slots: { date: string; time: string }[] = [];
+  let date = startDate;
+  let [h, m] = startTime.split(":").map(Number);
+  if (!Number.isFinite(h) || !Number.isFinite(m)) {
+    h = 10;
+    m = 0;
+  }
+  for (let i = 0; i < count; i++) {
+    slots.push({
+      date,
+      time: `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}`,
+    });
+    m += 30;
+    if (m >= 60) {
+      h += 1;
+      m -= 60;
+    }
+    if (h >= 24) {
+      h = 9;
+      m = 0;
+      const d = new Date(`${date}T12:00:00`);
+      d.setDate(d.getDate() + 1);
+      date = todayDateKeyLocal(d);
+    }
+  }
+  return slots;
+}
 
 const platformColors: Record<string, string> = {
   facebook: "bg-[rgba(59,130,246,0.12)] text-[#2563eb]",
@@ -114,7 +198,7 @@ function openDayFromKeyboard(
   }
 }
 
-type ModalMode = "post" | "event" | "day-detail" | null;
+type ModalMode = "post" | "event" | "day-detail" | "preview" | null;
 
 type CalendarScheduledPost = ScheduledPost & {
   mediaUrl?: string | null;
@@ -140,10 +224,57 @@ function InstagramGlyph() {
   );
 }
 
+/** Tiny platform dots under calendar thumbs — FB blue, IG warm gradient. */
+function PlatformDots({
+  platform,
+  size = "sm",
+}: {
+  platform: "facebook" | "instagram" | "both";
+  size?: "sm" | "md";
+}) {
+  const showFb = platform === "facebook" || platform === "both";
+  const showIg = platform === "instagram" || platform === "both";
+  const dot = size === "md" ? "h-2 w-2" : "h-1.5 w-1.5";
+  return (
+    <span className="flex items-center justify-center gap-0.5" aria-hidden="true">
+      {showFb && (
+        <span
+          title="Facebook"
+          className={`${dot} rounded-full bg-gradient-to-br from-[#86b7ff] via-[#1877F2] to-[#0b5fcc] shadow-[0_0_0_1px_rgba(255,255,255,0.35)]`}
+        />
+      )}
+      {showIg && (
+        <span
+          title="Instagram"
+          className={`${dot} rounded-full bg-gradient-to-br from-[#f9ce34] via-[#ee2a7b] to-[#6228d7] shadow-[0_0_0_1px_rgba(255,255,255,0.35)]`}
+        />
+      )}
+    </span>
+  );
+}
+
 function formatComposerSchedule(dateKey: string, time: string): string {
   const d = new Date(`${dateKey}T${time || "09:00"}:00`);
   if (Number.isNaN(d.getTime())) return "Pick a time";
   return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+function formatDisplayTime(time: string): string {
+  const match = TIME_OPTIONS.find((t) => t.value === time.slice(0, 5));
+  if (match) return match.display;
+  const [hRaw, mRaw] = time.split(":").map(Number);
+  if (!Number.isFinite(hRaw) || !Number.isFinite(mRaw)) return time;
+  const h12 = hRaw % 12 || 12;
+  const suffix = hRaw < 12 ? "AM" : "PM";
+  return `${h12}:${String(mRaw).padStart(2, "0")} ${suffix}`;
+}
+
+function formatPostStatusLabel(status: string): string {
+  if (status === "scheduled") return "Scheduled";
+  if (status === "draft") return "Draft";
+  if (status === "published") return "Published";
+  if (status === "failed") return "Failed";
+  return status.charAt(0).toUpperCase() + status.slice(1);
 }
 
 interface CaptionOption {
@@ -152,8 +283,16 @@ interface CaptionOption {
   hashtags: string[];
 }
 
+function formatCaptionOption(v: CaptionOption): string {
+  // Keep caption + hashtag on one line so nothing clips in the fixed composer field.
+  const tags = v.hashtags.slice(0, 1).join(" ");
+  if (!tags) return v.caption.trim();
+  const base = v.caption.trim().replace(/\s+/g, " ");
+  return `${base} ${tags}`.trim();
+}
+
 export default function CalendarPage() {
-  useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
+  useEffect(() => { document.title = `Schedule | ${SITE_NAME}`; }, []);
   const router = useRouter();
   const modalRef = useRef<HTMLDivElement>(null);
   const [currentDate, setCurrentDate] = useState(new Date());
@@ -175,10 +314,15 @@ export default function CalendarPage() {
     return () => mq.removeEventListener("change", sync);
   }, []);
   const [modalMode, setModalMode] = useState<ModalMode>(null);
-  const [selectedDate, setSelectedDate] = useState<string>("");
+  const [selectedDate, setSelectedDate] = useState<string>(() => todayDateKeyLocal());
   const [editingPost, setEditingPost] = useState<CalendarScheduledPost | null>(null);
+  const [previewPost, setPreviewPost] = useState<CalendarScheduledPost | null>(null);
+  const [radialMenu, setRadialMenu] = useState<{
+    post: CalendarScheduledPost;
+    x: number;
+    y: number;
+  } | null>(null);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [showHolidays, setShowHolidays] = useState(true);
   // D2: surface a genuine initial-load failure (was silently swallowed → blank
   // grid). Transient errors after a good load still keep the grid stable.
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -188,36 +332,178 @@ export default function CalendarPage() {
 
   const [formTemplate, setFormTemplate] = useState("");
   const [formPlatform, setFormPlatform] = useState<"facebook" | "instagram" | "both">("both");
-  const [formTime, setFormTime] = useState("09:00");
+  const [formTime, setFormTime] = useState(() => nextScheduleTime());
+  const [scheduleTimeTouched, setScheduleTimeTouched] = useState(false);
   const [formCaption, setFormCaption] = useState("");
   const [captionOptions, setCaptionOptions] = useState<CaptionOption[]>([]);
   const [captionLoading, setCaptionLoading] = useState(false);
   const [captionGenError, setCaptionGenError] = useState<string | null>(null);
+  const [captionIndex, setCaptionIndex] = useState(0);
+  const [captionFade, setCaptionFade] = useState<"in" | "out">("in");
+  const [captionUserEdited, setCaptionUserEdited] = useState(false);
+  const skipNextCaptionGenRef = useRef(false);
+  const captionGenIdRef = useRef(0);
+  const captionRotateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const captionFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [showScheduleMenu, setShowScheduleMenu] = useState(false);
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
+  const [calendarSearch, setCalendarSearch] = useState("");
   const [formStatus, setFormStatus] = useState<"scheduled" | "draft">("scheduled");
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
 
-  // S3 media for the post (absolute public URL — what the Meta dispatcher needs).
-  const [mediaUrl, setMediaUrl] = useState<string>("");
-  const [mediaType, setMediaType] = useState<"image" | "video">("image");
+  // Brief glass toast — auto-dismiss so it doesn't stick around.
+  useEffect(() => {
+    if (!publishResult) return;
+    const ms = publishResult.type === "success" ? 2800 : 4200;
+    const id = window.setTimeout(() => setPublishResult(null), ms);
+    return () => window.clearTimeout(id);
+  }, [publishResult]);
+
+  // S3 media for the composer (carousel when bulk-uploaded).
+  const [mediaItems, setMediaItems] = useState<ComposerMediaItem[]>([]);
+  const [mediaIndex, setMediaIndex] = useState(0);
+  const mediaUrl = mediaItems[mediaIndex]?.url ?? "";
+  const mediaType = mediaItems[mediaIndex]?.type ?? "image";
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
+  const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showBulkList, setShowBulkList] = useState(false);
+  const [bulkListScheduleIndex, setBulkListScheduleIndex] = useState<number | null>(null);
+  const [bulkUploading, setBulkUploading] = useState(false);
+  const [bulkUploadProgress, setBulkUploadProgress] = useState({ done: 0, total: 0 });
+  const bulkInputRef = useRef<HTMLInputElement>(null);
+  const isBulkQueue = mediaItems.length > 1;
+
+  function stopCaptionRotation() {
+    if (captionRotateTimerRef.current) {
+      clearInterval(captionRotateTimerRef.current);
+      captionRotateTimerRef.current = null;
+    }
+    if (captionFadeTimerRef.current) {
+      clearTimeout(captionFadeTimerRef.current);
+      captionFadeTimerRef.current = null;
+    }
+    setCaptionFade("in");
+  }
+
+  function applyCaptionOption(option: CaptionOption, index: number) {
+    const text = formatCaptionOption(option);
+    setCaptionIndex(index);
+    setFormCaption(text);
+    setCaptionFade("in");
+    setMediaItems((prev) =>
+      prev.map((item, i) => (i === mediaIndex ? { ...item, caption: text } : item)),
+    );
+  }
+
+  function startCaptionRotation(options: CaptionOption[]) {
+    stopCaptionRotation();
+    if (options.length < 2) return;
+    captionRotateTimerRef.current = setInterval(() => {
+      setCaptionFade("out");
+      captionFadeTimerRef.current = setTimeout(() => {
+        setCaptionIndex((prev) => {
+          const next = (prev + 1) % options.length;
+          setFormCaption(formatCaptionOption(options[next]));
+          return next;
+        });
+        setCaptionFade("in");
+      }, 480);
+    }, 5200);
+  }
+
+  function clearComposerMedia() {
+    setMediaItems([]);
+    setMediaIndex(0);
+  }
+
+  function setComposerMediaSingle(url: string, type: "image" | "video") {
+    setMediaItems([{ url, type }]);
+    setMediaIndex(0);
+  }
+
+  function updateBulkItemSchedule(index: number, nextDate: string, nextTime: string) {
+    const date = isPastDateKey(nextDate, todayDateKeyLocal()) ? todayDateKeyLocal() : nextDate;
+    let time = nextTime;
+    if (isScheduleSlotPast(date, time)) {
+      time = date === todayDateKeyLocal() ? nextScheduleTime() : time;
+    }
+    setMediaItems((prev) =>
+      prev.map((item, i) => (i === index ? { ...item, date, time } : item)),
+    );
+    if (index === mediaIndex) {
+      setSelectedDate(date);
+      setFormTime(time);
+      setScheduleTimeTouched(true);
+    }
+  }
+
+  function goCarouselTo(index: number) {
+    if (index < 0 || index >= mediaItems.length || index === mediaIndex) return;
+    const scheduleDate =
+      !selectedDate || isPastDateKey(selectedDate, todayDateKeyLocal())
+        ? todayDateKeyLocal()
+        : selectedDate;
+    const nextItems = mediaItems.map((item, i) =>
+      i === mediaIndex
+        ? { ...item, caption: formCaption, date: scheduleDate, time: formTime }
+        : item,
+    );
+    const target = nextItems[index];
+    stopCaptionRotation();
+    setCaptionOptions([]);
+    setCaptionGenError(null);
+    setMediaItems(nextItems);
+    setMediaIndex(index);
+    if (target.date) setSelectedDate(target.date);
+    if (target.time) {
+      setFormTime(target.time);
+      setScheduleTimeTouched(true);
+    }
+    if (target.caption) {
+      skipNextCaptionGenRef.current = true;
+      setFormCaption(target.caption);
+      setCaptionUserEdited(true);
+    } else {
+      setFormCaption("");
+      setCaptionUserEdited(false);
+    }
+  }
+
+  function removeActiveMedia() {
+    stopCaptionRotation();
+    setCaptionOptions([]);
+    setCaptionGenError(null);
+    setCaptionUserEdited(false);
+    setMediaError(null);
+    if (mediaItems.length <= 1) {
+      clearComposerMedia();
+      return;
+    }
+    const nextItems = mediaItems.filter((_, i) => i !== mediaIndex);
+    const nextIndex = Math.min(mediaIndex, nextItems.length - 1);
+    setMediaItems(nextItems);
+    setMediaIndex(nextIndex);
+  }
 
   // On select/drop → bypass local blobs, push straight to S3, bind the returned
-  // absolute publicUrl to mediaUrl + set mediaType from the file.
+  // absolute publicUrl as the active (single) media item.
   async function handleMediaFile(file: File | null | undefined) {
     if (!file) return;
     setMediaError(null);
     setUploadingMedia(true);
     const inferred = inferMediaContentType(file.name, file.type);
-    setMediaType(inferred && isVideoContentType(inferred) ? "video" : "image");
+    const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
     try {
       const publicUrl = await uploadMediaToS3(file);
-      setMediaUrl(publicUrl);
+      setCaptionUserEdited(false);
+      setCaptionOptions([]);
+      setCaptionGenError(null);
+      stopCaptionRotation();
+      setComposerMediaSingle(publicUrl, type);
     } catch (err) {
-      setMediaUrl("");
+      clearComposerMedia();
       setMediaError(
         err instanceof DashboardUploadError ? err.message : "Upload failed. Please try again.",
       );
@@ -226,11 +512,79 @@ export default function CalendarPage() {
     }
   }
 
+  async function handleBulkFiles(fileList: FileList | File[] | null) {
+    const files = fileList ? Array.from(fileList).filter((f) => f.type.startsWith("image/") || f.type.startsWith("video/")) : [];
+    if (files.length === 0) return;
+    setMediaError(null);
+    setBulkUploading(true);
+    setBulkUploadProgress({ done: 0, total: files.length });
+    const uploaded: ComposerMediaItem[] = [];
+    try {
+      for (let i = 0; i < files.length; i++) {
+        const file = files[i];
+        const inferred = inferMediaContentType(file.name, file.type);
+        const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
+        const publicUrl = await uploadMediaToS3(file);
+        uploaded.push({ url: publicUrl, type });
+        setBulkUploadProgress({ done: i + 1, total: files.length });
+      }
+      setCaptionUserEdited(false);
+      setCaptionOptions([]);
+      setCaptionGenError(null);
+      stopCaptionRotation();
+      const startDate =
+        !selectedDate || isPastDateKey(selectedDate, todayDateKeyLocal())
+          ? todayDateKeyLocal()
+          : selectedDate;
+      const slots = staggerBulkSlots(uploaded.length, startDate, nextScheduleTime());
+      const queued = uploaded.map((item, i) => ({
+        ...item,
+        caption: "",
+        date: slots[i]?.date ?? startDate,
+        time: slots[i]?.time ?? nextScheduleTime(),
+      }));
+      setMediaItems(queued);
+      setMediaIndex(0);
+      if (queued[0]?.date) setSelectedDate(queued[0].date);
+      if (queued[0]?.time) {
+        setFormTime(queued[0].time);
+        setScheduleTimeTouched(true);
+      }
+      setShowBulkUpload(false);
+    } catch (err) {
+      if (uploaded.length > 0) {
+        const startDate =
+          !selectedDate || isPastDateKey(selectedDate, todayDateKeyLocal())
+            ? todayDateKeyLocal()
+            : selectedDate;
+        const slots = staggerBulkSlots(uploaded.length, startDate, nextScheduleTime());
+        setMediaItems(
+          uploaded.map((item, i) => ({
+            ...item,
+            caption: "",
+            date: slots[i]?.date ?? startDate,
+            time: slots[i]?.time ?? nextScheduleTime(),
+          })),
+        );
+        setMediaIndex(0);
+        setShowBulkUpload(false);
+      }
+      setMediaError(
+        err instanceof DashboardUploadError ? err.message : "Some uploads failed. Please try again.",
+      );
+    } finally {
+      setBulkUploading(false);
+      setBulkUploadProgress({ done: 0, total: 0 });
+      if (bulkInputRef.current) bulkInputRef.current.value = "";
+    }
+  }
+
   const [eventTitle, setEventTitle] = useState("");
   const [eventTime, setEventTime] = useState("");
   const [eventType, setEventType] = useState<CalendarEvent["type"]>("other");
   const [eventNotes, setEventNotes] = useState("");
   const [confirmDeletePost, setConfirmDeletePost] = useState(false);
+  const [postPendingDelete, setPostPendingDelete] = useState<CalendarScheduledPost | null>(null);
   const [confirmDeleteEvent, setConfirmDeleteEvent] = useState(false);
 
   const { meta } = useMetaConnection();
@@ -238,7 +592,10 @@ export default function CalendarPage() {
   const { workspaceName, workspaceInitials } = usePlan();
   const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
-  useFocusTrap(modalMode !== null, modalRef, () => setModalMode(null));
+  useFocusTrap(modalMode !== null, modalRef, () => {
+    setPreviewPost(null);
+    setModalMode(null);
+  });
   const loadPosts = useCallback(async () => {
     if (!locationId) {
       setPosts([]);
@@ -304,6 +661,58 @@ export default function CalendarPage() {
   const month = currentDate.getMonth();
   const today = new Date();
   const todayKey = todayDateKeyLocal(today);
+
+  // Composer never targets a past day — snap selection forward if needed.
+  const composerDate =
+    !selectedDate || isPastDateKey(selectedDate, todayKey) ? todayKey : selectedDate;
+
+  const scheduleTimeOptions = useMemo(() => {
+    if (composerDate !== todayKey) return TIME_OPTIONS;
+    const min = nextScheduleTime();
+    return TIME_OPTIONS.filter((t) => t.value >= min);
+  }, [composerDate, todayKey]);
+
+  // Keep the composer schedule time current while the user hasn't picked a custom slot.
+  useEffect(() => {
+    if (editingPost || scheduleTimeTouched) return;
+    if (composerDate !== todayKey) return;
+
+    const sync = () => {
+      const next = nextScheduleTime();
+      setFormTime((prev) => (prev === next ? prev : next));
+    };
+    sync();
+    const id = window.setInterval(sync, 30_000);
+    return () => window.clearInterval(id);
+  }, [editingPost, scheduleTimeTouched, composerDate, todayKey]);
+
+  // If the selected slot drifts into the past (e.g. sitting on today's page), bump it.
+  useEffect(() => {
+    if (editingPost) return;
+    if (!isScheduleSlotPast(composerDate, formTime)) return;
+    setFormTime(nextScheduleTime());
+  }, [editingPost, composerDate, formTime]);
+
+  // Keep the active bulk-queue slide's draft fields in sync with the composer.
+  useEffect(() => {
+    if (!isBulkQueue) return;
+    setMediaItems((prev) => {
+      const cur = prev[mediaIndex];
+      if (
+        !cur ||
+        (cur.caption === formCaption &&
+          cur.date === composerDate &&
+          cur.time === formTime)
+      ) {
+        return prev;
+      }
+      return prev.map((item, i) =>
+        i === mediaIndex
+          ? { ...item, caption: formCaption, date: composerDate, time: formTime }
+          : item,
+      );
+    });
+  }, [isBulkQueue, mediaIndex, formCaption, composerDate, formTime]);
 
   const holidayMap = useMemo(() => {
     const map = new Map<string, string>();
@@ -374,39 +783,84 @@ export default function CalendarPage() {
   }
 
   function openNewPost(dateKey: string) {
+    const day = isPastDateKey(dateKey, todayKey) ? todayKey : dateKey;
     setEditingPost(null);
-    setSelectedDate(dateKey);
+    setSelectedDate(day);
     setFormTemplate("");
     setFormPlatform("both");
-    setFormTime("09:00");
+    setFormTime(nextScheduleTime());
+    setScheduleTimeTouched(false);
     setFormCaption("");
     setCaptionOptions([]);
     setCaptionGenError(null);
+    setCaptionIndex(0);
+    setCaptionUserEdited(false);
+    stopCaptionRotation();
     setFormStatus("scheduled");
-    setMediaUrl("");
-    setMediaType("image");
+    clearComposerMedia();
     setMediaError(null);
     if (typeof document !== "undefined") {
       document.getElementById("post-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
     }
   }
 
+  function openPostPreview(post: CalendarScheduledPost) {
+    setRadialMenu(null);
+    setPreviewPost(post);
+    setModalMode("preview");
+  }
+
+  function closePostPreview() {
+    setPreviewPost(null);
+    setModalMode(null);
+  }
+
+  function openPostRadialMenu(post: CalendarScheduledPost, e: React.MouseEvent<HTMLElement>) {
+    e.stopPropagation();
+    const rect = e.currentTarget.getBoundingClientRect();
+    setRadialMenu({
+      post,
+      x: rect.left + rect.width / 2,
+      y: rect.top + rect.height / 2,
+    });
+  }
+
+  function handleRadialPostAction(action: RadialPostAction) {
+    if (!radialMenu) return;
+    const post = radialMenu.post;
+    setRadialMenu(null);
+    if (action === "preview") openPostPreview(post);
+    else if (action === "edit") openEditPost(post);
+    else requestCancelPost(post);
+  }
+
   function openEditPost(post: CalendarScheduledPost) {
+    skipNextCaptionGenRef.current = true;
+    setRadialMenu(null);
+    setPreviewPost(null);
+    setModalMode(null);
     setEditingPost(post);
     setSelectedDate(post.date);
     setFormTemplate(post.templateId);
     setFormPlatform(post.platform);
     setFormTime(post.time);
+    setScheduleTimeTouched(true);
     setFormCaption(post.caption);
     setCaptionOptions([]);
     setCaptionGenError(null);
+    setCaptionIndex(0);
+    setCaptionUserEdited(true);
+    stopCaptionRotation();
     setFormStatus(
       post.status === "published" || post.status === "failed"
         ? "scheduled"
         : (post.status as "scheduled" | "draft"),
     );
-    setMediaUrl(post.mediaUrl ?? "");
-    setMediaType(post.mediaType ?? "image");
+    if (post.mediaUrl) {
+      setComposerMediaSingle(post.mediaUrl, post.mediaType === "video" ? "video" : "image");
+    } else {
+      clearComposerMedia();
+    }
     setMediaError(null);
     if (typeof document !== "undefined") {
       document.getElementById("post-composer")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
@@ -470,7 +924,7 @@ export default function CalendarPage() {
         templateId: formTemplate,
         templateName: tmpl?.name || "",
         platform: formPlatform,
-        date: selectedDate,
+        date: selectedDate || todayKey,
         time: formTime,
         caption: formCaption,
         status: "scheduled" as const,
@@ -487,7 +941,7 @@ export default function CalendarPage() {
       });
       await loadPosts();
       setPublishResult({ type: "success", message: "Published to Meta!" });
-      openNewPost(selectedDate);
+      advanceComposerAfterSave();
     } catch (err) {
       setPublishResult({
         type: "error",
@@ -496,6 +950,26 @@ export default function CalendarPage() {
     } finally {
       setPublishing(false);
     }
+  }
+
+  function advanceComposerAfterSave() {
+    const scheduleDate = selectedDate || todayKey;
+    if (editingPost || mediaItems.length <= 1) {
+      openNewPost(scheduleDate);
+      return;
+    }
+    const nextItems = mediaItems.filter((_, i) => i !== mediaIndex);
+    const nextIndex = Math.min(mediaIndex, nextItems.length - 1);
+    setCaptionUserEdited(false);
+    setCaptionOptions([]);
+    setCaptionGenError(null);
+    setFormCaption("");
+    setFormTime(nextScheduleTime());
+    setScheduleTimeTouched(false);
+    stopCaptionRotation();
+    setEditingPost(null);
+    setMediaItems(nextItems);
+    setMediaIndex(nextIndex);
   }
 
   function togglePlatformChannel(ch: "facebook" | "instagram") {
@@ -509,30 +983,33 @@ export default function CalendarPage() {
     // never allow zero channels — ignore the toggle that would clear the last one
   }
 
-  async function generateCaptionOptions() {
-    if (!mediaUrl || mediaType !== "image" || captionLoading) return;
+  async function generateCaptionsFromImage(imageUrl: string) {
+    if (!imageUrl) return;
+    const genId = ++captionGenIdRef.current;
     setCaptionLoading(true);
     setCaptionGenError(null);
+    setCaptionOptions([]);
+    setFormCaption("");
+    stopCaptionRotation();
     try {
       const platform = formPlatform === "both" ? "instagram" : formPlatform;
       const body = JSON.stringify({
-        imageUrl: mediaUrl,
+        imageUrl,
         platform,
         count: 3,
         locationId,
-        context: formCaption.trim() || undefined,
       });
-      // The vision model occasionally returns unparseable output (502). Retry
-      // once before surfacing an error to the user.
-      let data: { variants?: CaptionOption[]; compliance?: { blocked?: boolean; message?: string }; error?: string } | null = null;
+      let data: { variants?: CaptionOption[]; compliance?: { blocked?: boolean; message?: string } } | null = null;
       let blocked: string | null = null;
+      let lastError = "Couldn't generate captions. Try again.";
       for (let attempt = 0; attempt < 2; attempt++) {
+        if (genId !== captionGenIdRef.current) return;
         const res = await fetch("/api/ai/captions-from-image", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body,
         });
-        const json = await res.json();
+        const json = await res.json().catch(() => ({}));
         if (json?.compliance?.blocked) {
           blocked = json.compliance.message || "These options were blocked by your content rules.";
           break;
@@ -541,33 +1018,86 @@ export default function CalendarPage() {
           data = json;
           break;
         }
+        if (typeof json?.error === "string" && json.error.trim()) {
+          lastError = json.error.trim();
+        } else if (!res.ok) {
+          lastError = `Caption service error (${res.status}). Try again.`;
+        }
       }
+      if (genId !== captionGenIdRef.current) return;
       if (blocked) {
         setCaptionGenError(blocked);
         return;
       }
       const variants: CaptionOption[] = data?.variants ?? [];
-      if (variants.length === 0) throw new Error("Couldn't generate options. Try again.");
+      if (variants.length === 0) throw new Error(lastError);
       setCaptionOptions(variants);
-      requestAnimationFrame(() => {
-        document.getElementById("caption-options")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-      });
+      setCaptionUserEdited(false);
+      applyCaptionOption(variants[0], 0);
+      startCaptionRotation(variants);
     } catch (err) {
+      if (genId !== captionGenIdRef.current) return;
       setCaptionGenError(err instanceof Error ? err.message : "Couldn't generate captions.");
     } finally {
-      setCaptionLoading(false);
+      if (genId === captionGenIdRef.current) setCaptionLoading(false);
     }
   }
 
+  // Auto-generate captions whenever a new image lands in the composer.
+  useEffect(() => {
+    if (skipNextCaptionGenRef.current) {
+      skipNextCaptionGenRef.current = false;
+      return;
+    }
+    if (!mediaUrl || mediaType !== "image" || uploadingMedia) return;
+    void generateCaptionsFromImage(mediaUrl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on media change
+  }, [mediaUrl, mediaType]);
+
+  useEffect(() => {
+    return () => stopCaptionRotation();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   async function handleSavePost(approve = false) {
     if (!locationId || uploadingMedia) return;
+
+    // Composer UI falls back to today when selectedDate is empty — never schedule a past day.
+    const scheduleDate =
+      !selectedDate || isPastDateKey(selectedDate, todayKey) ? todayKey : selectedDate;
+    if (selectedDate !== scheduleDate) setSelectedDate(scheduleDate);
+
+    const isScheduling =
+      !editingPost && (approve || formStatus === "scheduled");
+    const savingAsScheduled =
+      isScheduling ||
+      (editingPost && (approve || formStatus === "scheduled"));
+
+    if (savingAsScheduled && isScheduleSlotPast(scheduleDate, formTime)) {
+      setPublishResult({
+        type: "error",
+        message: "Pick a future date and time — posts can’t be scheduled in the past.",
+      });
+      setShowSchedulePicker(true);
+      return;
+    }
+
+    // Keep the month grid on the day we're scheduling onto.
+    const [sy, sm] = scheduleDate.split("-").map(Number);
+    if (sy && sm) {
+      setCurrentDate((prev) =>
+        prev.getFullYear() === sy && prev.getMonth() === sm - 1
+          ? prev
+          : new Date(sy, sm - 1, 1),
+      );
+    }
 
     const tmpl = templates.find((t) => t.id === formTemplate);
     const postData = {
       templateId: formTemplate,
       templateName: tmpl?.name || "",
       platform: formPlatform,
-      date: selectedDate,
+      date: scheduleDate,
       time: formTime,
       caption: formCaption,
       status: formStatus,
@@ -578,8 +1108,9 @@ export default function CalendarPage() {
     // Meta-native scheduling (`scheduledTime` on /api/meta/publish) is not
     // used here: Instagram's API has no native scheduling, so it would post
     // immediately, and the DB row would sit in "scheduled" forever.
-    const queuedSchedule = formStatus === "scheduled" && !editingPost && !approve;
 
+    setPublishing(true);
+    setPublishResult(null);
     try {
       const base = mapCalendarPostToCreateInput(postData, locationId);
       const status = approve
@@ -616,12 +1147,15 @@ export default function CalendarPage() {
         });
       }
       await loadPosts();
-      if (queuedSchedule) {
-        const scheduledAt = new Date(`${selectedDate}T${formTime}`);
+      if (isScheduling) {
         setPublishResult({
           type: "success",
-          message: `Scheduled for ${scheduledAt.toLocaleDateString()} at ${scheduledAt.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`,
+          message: "Your post has been scheduled.",
         });
+      } else if (editingPost) {
+        setPublishResult({ type: "success", message: "Post updated." });
+      } else if (formStatus === "draft") {
+        setPublishResult({ type: "success", message: "Saved as draft." });
       }
     } catch (err) {
       setPublishResult({
@@ -629,18 +1163,36 @@ export default function CalendarPage() {
         message: formatDashboardApiMessage(err, "Could not save this post."),
       });
       return;
+    } finally {
+      setPublishing(false);
     }
 
-    openNewPost(selectedDate);
+    advanceComposerAfterSave();
+  }
+
+  function requestCancelPost(post: CalendarScheduledPost) {
+    setPostPendingDelete(post);
+    setConfirmDeletePost(true);
   }
 
   async function handleDeletePost() {
-    if (!editingPost) return;
+    const target = postPendingDelete || editingPost;
+    if (!target) return;
     setConfirmDeletePost(false);
+    setPostPendingDelete(null);
     try {
-      await deleteDashboardPost(editingPost.id);
+      await deleteDashboardPost(target.id);
       await loadPosts();
-      setModalMode(null);
+      if (editingPost?.id === target.id) {
+        setEditingPost(null);
+        setModalMode(null);
+        openNewPost(todayKey);
+      }
+      if (previewPost?.id === target.id) {
+        setPreviewPost(null);
+        setModalMode(null);
+      }
+      setPublishResult({ type: "success", message: "Post canceled." });
     } catch (err) {
       setPublishResult({
         type: "error",
@@ -687,8 +1239,17 @@ export default function CalendarPage() {
     }
   }
 
+  const visiblePosts = posts.filter((p) => {
+    if (calendarSearch.trim()) {
+      const q = calendarSearch.trim().toLowerCase();
+      const hay = `${p.caption || ""} ${p.templateName || ""}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
   const postsMap = new Map<string, CalendarScheduledPost[]>();
-  posts.forEach((p) => {
+  visiblePosts.forEach((p) => {
     const existing = postsMap.get(p.date) || [];
     existing.push(p);
     postsMap.set(p.date, existing);
@@ -701,21 +1262,27 @@ export default function CalendarPage() {
     eventsMap.set(e.date, existing);
   });
 
-  const monthName = currentDate.toLocaleString("default", { month: "long", year: "numeric" });
-
-  const upcoming = posts
-    .filter((p) => p.date >= todayKey && isCalendarPostQueued(p))
-    .sort((a, b) => (a.date + a.time).localeCompare(b.date + b.time))
-    .slice(0, 5);
-
-  const queuedPostCount = posts.filter(isCalendarPostQueued).length;
-
-  const upcomingEvents = events
-    .filter((e) => e.date >= todayKey)
-    .sort((a, b) => (a.date + (a.time || "")).localeCompare(b.date + (b.time || "")))
-    .slice(0, 5);
-
-  const upcomingHolidays = getUpcomingHolidays({ from: today, limit: 3 });
+  const calendarPeriodLabel = (() => {
+    if (view === "week") {
+      const start = new Date(currentDate);
+      const day = start.getDay();
+      start.setDate(start.getDate() - day);
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      const sameMonth = start.getMonth() === end.getMonth();
+      const sameYear = start.getFullYear() === end.getFullYear();
+      if (sameMonth) {
+        return `${start.toLocaleDateString("en-US", { month: "long" })} ${start.getDate()}–${end.getDate()}, ${end.getFullYear()}`;
+      }
+      if (sameYear) {
+        return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric" })}, ${end.getFullYear()}`;
+      }
+      return `${start.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })} – ${end.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    }
+    return currentDate.toLocaleDateString("en-US", { month: "long", year: "numeric" });
+  })();
+  const accountLabel = meta?.connected ? meta.pageName : workspaceName;
+  const accountHandle = `@${(accountLabel || "workspace").toLowerCase().replace(/[^a-z0-9]+/g, "") || "workspace"}`;
 
   function formatDisplayDate(dateKey: string) {
     const d = new Date(dateKey + "T12:00:00");
@@ -723,7 +1290,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="pb-app">
+    <div className="pb-app min-h-0">
       <LocationGate
         loading={locationLoading}
         error={locationError}
@@ -732,41 +1299,33 @@ export default function CalendarPage() {
         onCreate={() => router.push("/dashboard/organization")}
       >
       <>
-      <div className="pb-app-header">
-        <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
+      <div className="pb-app-header shrink-0 !mb-3">
+        <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
           <div className="min-w-0">
-            <h1>Calendar</h1>
-            <p>Schedule posts, track events, and plan your content</p>
+            <h1 className="!text-[1.65rem] !leading-tight !tracking-tight">Schedule</h1>
+            <p className="!mt-0.5 !max-w-xl !text-[12px] !text-black/45">
+              Manage and track your scheduled uploads to ensure everything goes as planned
+            </p>
           </div>
-          <div className="flex flex-wrap items-center gap-2.5 self-start xl:self-auto">
-            {features.multiLocation && <LocationSwitcher />}
-            <button
-              onClick={() => openNewEvent(todayKey)}
-              className="pb-btn-secondary flex items-center gap-1.5 text-xs py-2.5 px-4"
+          <div className="flex shrink-0 flex-wrap items-center gap-2.5">
+            <label className="relative flex items-center">
+              <Search size={15} className="pointer-events-none absolute left-3 text-black/35" aria-hidden />
+              <input
+                type="search"
+                value={calendarSearch}
+                onChange={(e) => setCalendarSearch(e.target.value)}
+                placeholder="Search"
+                className="h-10 w-[200px] rounded-xl border border-black/10 bg-white pl-9 pr-3 text-sm text-black outline-none transition-colors placeholder:text-black/35 focus:border-[#ee2532]/40"
+              />
+            </label>
+            <a
+              href="/dashboard/calendar/bulk"
+              className="inline-flex h-10 items-center gap-1.5 rounded-xl bg-[#ee2532] px-4 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a]"
             >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5" />
-            </svg>
-            Add Event
-          </button>
-          <button
-            onClick={() => openNewPost(todayKey)}
-            className="pb-btn-primary flex items-center gap-1.5 text-xs py-2.5 px-4"
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" />
-            </svg>
-            New post
-          </button>
-          <a
-            href="/dashboard/calendar/bulk"
-            className="pb-btn-secondary inline-flex items-center gap-1.5 text-xs py-2.5 px-4"
-          >
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-              <path strokeLinecap="round" strokeLinejoin="round" d="M3.75 6h16.5M3.75 12h16.5M3.75 18h16.5" />
-            </svg>
-            Bulk schedule
-          </a>
+              <Settings2 size={15} aria-hidden />
+              Post Setting
+            </a>
+            {features.multiLocation && <LocationSwitcher />}
           </div>
         </div>
       </div>
@@ -801,38 +1360,65 @@ export default function CalendarPage() {
       )}
 
       {publishResult && (
-        <div className={`mb-4 rounded-xl px-4 py-3 text-sm font-medium flex items-center justify-between ${
-          publishResult.type === "success" ? "bg-[rgba(31,157,77,0.1)] text-[#1f9d4d]" : "bg-[rgba(238,37,50,0.1)] text-[#ee2532]"
-        }`}>
-          {publishResult.message}
-          <button onClick={() => setPublishResult(null)} className="ml-3 opacity-60 hover:opacity-100 transition-opacity">
-            <svg width="14" height="14" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}><path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" /></svg>
-          </button>
+        <div
+          role="status"
+          aria-live="polite"
+          className="pointer-events-none fixed inset-x-0 top-[max(1.25rem,env(safe-area-inset-top))] z-[120] flex justify-center px-4"
+        >
+          <div
+            className={`pointer-events-auto flex items-center gap-3 rounded-2xl border px-4 py-3 shadow-[0_12px_40px_-12px_rgba(20,20,40,0.45)] backdrop-blur-xl animate-[pbToastIn_0.28s_ease-out] ${
+              publishResult.type === "success"
+                ? "border-white/50 bg-white/55 text-black/85"
+                : "border-[#ee2532]/25 bg-[#fff5f5]/80 text-[#c81e2a]"
+            }`}
+          >
+            {publishResult.type === "success" ? (
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#1f9d4d] text-white shadow-[0_0_0_4px_rgba(31,157,77,0.18)]">
+                <Check size={16} strokeWidth={2.75} aria-hidden />
+              </span>
+            ) : (
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#ee2532] text-sm font-bold text-white">
+                !
+              </span>
+            )}
+            <p className="text-sm font-semibold tracking-tight">{publishResult.message}</p>
+          </div>
         </div>
       )}
 
-      <div className="pb-cal-grid grid grid-cols-1 gap-6 xl:grid-cols-[minmax(360px,400px)_minmax(0,1fr)] xl:gap-8">
-        <div id="post-composer" className="xl:sticky xl:top-6 xl:self-start">
-          <div>
+      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-4 xl:grid-cols-[minmax(320px,360px)_minmax(0,1fr)] xl:gap-4">
+        {/* Create Schedule — left composer card */}
+        <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)]">
+          <div className="flex shrink-0 items-center justify-between px-4 pt-4 pb-2">
+            <h2 className="text-[15px] font-semibold tracking-tight text-black">Create Post</h2>
+            <button type="button" className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-black/35 hover:bg-black/[0.04] hover:text-black/60" aria-label="Composer menu">
+              <MoreVertical size={16} aria-hidden />
+            </button>
+          </div>
+
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-4 pb-0">
             {editingPost?.status === "failed" && (
               <div className="mb-3 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
                 <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
                 {editingPost.errorLog && (
-                  <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
+                  <p className="mt-1 break-words text-[11px] text-black/65">{editingPost.errorLog}</p>
                 )}
-                <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
+                <p className="mt-1 text-[11px] text-black/55">Updating it sends it back through the queue.</p>
               </div>
             )}
 
-            <div className="mb-3 flex items-center justify-between gap-2">
-              <div className="flex min-w-0 items-center gap-2.5">
+            <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
+              <button
+                type="button"
+                aria-label={accountHandle}
+                title={accountHandle}
+                className="flex shrink-0 items-center gap-0.5 rounded-xl py-0.5 pr-1 text-left hover:bg-black/[0.03]"
+              >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#ee2532] to-[#c81e2a] text-[11px] font-bold text-white">
                   {workspaceInitials}
                 </span>
-                <span className="truncate text-sm font-semibold text-black">
-                  {meta?.connected ? meta.pageName : workspaceName}
-                </span>
-              </div>
+                <ChevronDown size={14} className="shrink-0 text-black/35" aria-hidden />
+              </button>
               <div className="flex items-center gap-1.5">
                 {(["facebook", "instagram"] as const).map((ch) => {
                   const on = formPlatform === ch || formPlatform === "both";
@@ -845,25 +1431,56 @@ export default function CalendarPage() {
                       aria-pressed={on}
                       title={ch}
                       className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
-                        on ? "border-[#ee2532] bg-[#ee2532]/10 text-[#ee2532]" : "border-black/10 text-black/30 hover:text-black/55"
+                        on
+                          ? "border-[#ee2532] bg-[#ee2532]/10 text-[#ee2532]"
+                          : "border-black/10 bg-white text-black/30 hover:text-black/55"
                       }`}
                     >
                       {ch === "facebook" ? <FacebookGlyph /> : <InstagramGlyph />}
                     </button>
                   );
                 })}
-              </div>
-            </div>
-
-            <div className="mb-3 flex items-center border-b border-black/10">
-              <span className="-mb-px flex items-center gap-1.5 border-b-2 border-[#ee2532] pb-2 text-sm font-semibold text-[#ee2532]">
-                <ImageIcon size={15} aria-hidden /> Post
-              </span>
-              {editingPost && (
                 <button
                   type="button"
                   onClick={() => openNewPost(todayKey)}
-                  className="ml-auto pb-2 text-xs font-medium text-[#ee2532] hover:underline"
+                  className="flex h-8 w-8 items-center justify-center rounded-full bg-[#ee2532] text-white transition-colors hover:bg-[#c81e2a]"
+                  aria-label="New post"
+                  title="New post"
+                >
+                  <Plus size={15} strokeWidth={2.5} aria-hidden />
+                </button>
+              </div>
+            </div>
+
+            <div className="mb-2 flex shrink-0 items-end gap-3 border-b border-black/[0.08] sm:gap-5">
+              <span className="-mb-px flex items-center gap-1.5 border-b-2 border-[#ee2532] pb-2 text-[13px] font-semibold text-[#ee2532]">
+                <ImageIcon size={15} aria-hidden /> Post
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowBulkUpload(true)}
+                className={`-mb-px flex items-center gap-1 border-b-2 pb-2 text-[13px] font-semibold transition-colors ${
+                  isBulkQueue
+                    ? "border-[#ee2532] text-[#ee2532]"
+                    : "border-transparent text-black/45 hover:text-[#ee2532]"
+                }`}
+              >
+                Bulk Upload <Plus size={14} strokeWidth={2.5} aria-hidden />
+              </button>
+              {isBulkQueue && (
+                <button
+                  type="button"
+                  onClick={() => setShowBulkList(true)}
+                  className="-mb-px ml-auto flex items-center gap-1 border-b-2 border-transparent pb-2 text-[13px] font-semibold text-black/45 transition-colors hover:text-[#ee2532]"
+                >
+                  <List size={15} aria-hidden /> List view
+                </button>
+              )}
+              {editingPost && !isBulkQueue && (
+                <button
+                  type="button"
+                  onClick={() => openNewPost(todayKey)}
+                  className="ml-auto pb-2.5 text-xs font-medium text-[#ee2532] hover:underline"
                 >
                   Start new
                 </button>
@@ -875,85 +1492,100 @@ export default function CalendarPage() {
               mediaUrl={mediaUrl}
               mediaType={mediaType}
               caption={formCaption}
-              accountName={meta?.connected ? meta.pageName : workspaceName}
+              accountName={accountLabel}
               avatarInitials={workspaceInitials}
-              uploadingMedia={uploadingMedia}
+              uploadingMedia={uploadingMedia || bulkUploading}
               onPickFile={(f) => handleMediaFile(f)}
-              onRemove={() => { setMediaUrl(""); setMediaError(null); }}
+              onRemove={removeActiveMedia}
               mediaError={mediaError}
+              mediaItems={mediaItems}
+              carouselIndex={mediaIndex}
+              onCarouselIndexChange={goCarouselTo}
             />
 
-            <textarea
-              value={formCaption}
-              onChange={(e) => setFormCaption(e.target.value)}
-              rows={3}
-              placeholder="Write your caption…"
-              className="pb-field resize-none"
-            />
-            {captionGenError && <p className="mt-1 text-[11px] text-[#ee2532]">{captionGenError}</p>}
-            {captionOptions.length > 0 && (
-              <div id="caption-options" className="mt-2 space-y-1.5">
-                <p className="text-[10px] font-semibold uppercase tracking-wide text-black/40">Tap to use</p>
-                {captionOptions.map((v, i) => (
-                  <button
-                    key={i}
-                    type="button"
-                    onClick={() => {
-                      setFormCaption(v.hashtags.length ? `${v.caption}\n\n${v.hashtags.join(" ")}` : v.caption);
-                      setCaptionOptions([]);
+            {/* Fixed-height caption block — prevents the media frame from jumping when options appear. */}
+            <div className="mb-3 flex h-[66px] shrink-0 flex-col overflow-hidden">
+              <div className="relative h-[40px] shrink-0 overflow-hidden">
+                {captionLoading ? (
+                  <p className="h-full overflow-hidden text-[13px] font-medium leading-snug text-[#ee2532] animate-pulse">
+                    Analyzing image & writing captions…
+                  </p>
+                ) : (
+                  <textarea
+                    value={formCaption}
+                    onChange={(e) => {
+                      setCaptionUserEdited(true);
+                      stopCaptionRotation();
+                      setFormCaption(e.target.value);
                     }}
-                    className="block w-full rounded-xl border border-black/10 p-2.5 text-left transition-colors hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.03]"
-                  >
-                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#ee2532]">{v.angle}</span>
-                    <span className="mt-0.5 block text-xs leading-snug text-black/70 line-clamp-3">{v.caption}</span>
-                  </button>
-                ))}
+                    onFocus={() => {
+                      if (captionOptions.length > 0) {
+                        setCaptionUserEdited(true);
+                        stopCaptionRotation();
+                      }
+                    }}
+                    rows={2}
+                    placeholder="Write your caption…"
+                    className={`h-full w-full resize-none overflow-hidden border-0 bg-transparent p-0 text-[13px] leading-snug text-black outline-none placeholder:text-black/35 transition-all duration-500 ease-in-out ${
+                      captionFade === "out" ? "translate-y-1.5 opacity-0" : "translate-y-0 opacity-100"
+                    }`}
+                  />
+                )}
+                {captionGenError && (
+                  <p className="absolute inset-x-0 bottom-0 truncate bg-white/90 text-[11px] text-[#ee2532]">
+                    {captionGenError}
+                  </p>
+                )}
               </div>
-            )}
-            <div className="mt-2.5">
-              <button
-                type="button"
-                onClick={() => void generateCaptionOptions()}
-                disabled={!mediaUrl || mediaType !== "image" || captionLoading || uploadingMedia}
-                title={mediaUrl ? "Rewrite this caption with AI from your photo" : "Add a photo first"}
-                className="inline-flex items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-1.5 text-xs font-semibold text-black/70 transition-colors hover:border-[#ee2532]/40 hover:text-[#ee2532] disabled:opacity-40"
-              >
-                <PenLine size={13} aria-hidden />
-                {captionLoading ? "Writing…" : "Rewrite With AI"}
-              </button>
+              <div className="mt-1.5 flex h-[18px] shrink-0 items-center gap-2 overflow-hidden">
+                {captionOptions.length > 1 && !captionUserEdited && !captionLoading ? (
+                  <>
+                    <div className="flex items-center gap-1.5">
+                      {captionOptions.map((opt, i) => (
+                        <button
+                          key={`${opt.angle}-${i}`}
+                          type="button"
+                          aria-label={`Caption option ${i + 1}`}
+                          title={opt.angle}
+                          onClick={() => {
+                            setCaptionUserEdited(true);
+                            stopCaptionRotation();
+                            applyCaptionOption(opt, i);
+                          }}
+                          className={`h-1.5 rounded-full transition-all duration-300 ${
+                            i === captionIndex ? "w-4 bg-[#ee2532]" : "w-1.5 bg-black/15 hover:bg-black/30"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <span className="text-[10px] font-medium uppercase tracking-wide text-black/35">
+                      {captionOptions[captionIndex]?.angle || "Option"} · {captionIndex + 1}/{captionOptions.length}
+                    </span>
+                  </>
+                ) : null}
+              </div>
             </div>
 
-            {meta?.connected && !editingPost && (
-              <div className="mt-3 flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2">
-                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
-                <p className="text-[11px] font-medium text-[#1f9d4d]">Connected to {meta.pageName}. Will schedule via Meta.</p>
-              </div>
-            )}
+          </div>
 
-            {features.multiLocation && (
-              <div className="mt-3">
-                <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
-                <LocationSwitcher />
-              </div>
-            )}
-
-            <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-3">
+          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-4 py-2.5">
+            <div className="flex items-center justify-between gap-3">
               <button
                 type="button"
                 onClick={() => setShowSchedulePicker((v) => !v)}
-                className="inline-flex items-center gap-1.5 text-sm font-medium text-black/70 hover:text-black"
+                className="inline-flex items-center gap-1.5 text-[13px] font-medium text-black/65 hover:text-black"
               >
-                <Clock size={15} aria-hidden />
-                {formatComposerSchedule(selectedDate || todayKey, formTime)}
-                <ChevronDown size={14} className={`transition-transform ${showSchedulePicker ? "rotate-180" : ""}`} aria-hidden />
+                <Clock size={15} className="text-black/40" aria-hidden />
+                {formatComposerSchedule(composerDate, formTime)}
+                <ChevronDown size={14} className={`text-black/35 transition-transform ${showSchedulePicker ? "rotate-180" : ""}`} aria-hidden />
               </button>
               <div className="relative shrink-0">
-                <div className="flex">
+                <div className="flex overflow-hidden rounded-xl shadow-sm">
                   <button
                     type="button"
                     onClick={() => void handleSavePost(true)}
                     disabled={publishing || uploadingMedia}
-                    className="rounded-l-xl bg-[#ee2532] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                    className="bg-[#ee2532] px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
                   >
                     {publishing ? "Scheduling…" : editingPost ? "Update" : "Schedule"}
                   </button>
@@ -962,7 +1594,7 @@ export default function CalendarPage() {
                     onClick={() => setShowScheduleMenu((v) => !v)}
                     disabled={publishing || uploadingMedia}
                     aria-label="More options"
-                    className="rounded-r-xl border-l border-white/25 bg-[#ee2532] px-2 py-2.5 text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                    className="border-l border-white/25 bg-[#ee2532] px-2.5 py-2.5 text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
                   >
                     <ChevronDown size={16} aria-hidden />
                   </button>
@@ -985,10 +1617,20 @@ export default function CalendarPage() {
                     >
                       Save as draft
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => { setShowScheduleMenu(false); openNewEvent(selectedDate || todayKey); }}
+                      className="block w-full px-3.5 py-2 text-left text-sm text-black/75 hover:bg-black/[0.04]"
+                    >
+                      Add event
+                    </button>
                     {editingPost && (
                       <button
                         type="button"
-                        onClick={() => { setShowScheduleMenu(false); setConfirmDeletePost(true); }}
+                        onClick={() => {
+                          setShowScheduleMenu(false);
+                          if (editingPost) requestCancelPost(editingPost);
+                        }}
                         className="block w-full px-3.5 py-2 text-left text-sm text-[#ee2532] hover:bg-[#ee2532]/[0.06]"
                       >
                         Delete post
@@ -1001,13 +1643,29 @@ export default function CalendarPage() {
             {showSchedulePicker && (
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Date</label>
-                  <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pb-field" />
+                  <label className="mb-1.5 block text-xs font-medium text-black">Date</label>
+                  <input
+                    type="date"
+                    min={todayKey}
+                    value={composerDate}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setSelectedDate(isPastDateKey(next, todayKey) ? todayKey : next);
+                    }}
+                    className="pb-field"
+                  />
                 </div>
                 <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Time</label>
-                  <select value={formTime} onChange={(e) => setFormTime(e.target.value)} className="pb-field">
-                    {TIME_OPTIONS.map((t) => (
+                  <label className="mb-1.5 block text-xs font-medium text-black">Time</label>
+                  <select
+                    value={formTime}
+                    onChange={(e) => {
+                      setScheduleTimeTouched(true);
+                      setFormTime(e.target.value);
+                    }}
+                    className="pb-field"
+                  >
+                    {scheduleTimeOptions.map((t) => (
                       <option key={t.value} value={t.value}>{t.display}</option>
                     ))}
                   </select>
@@ -1017,125 +1675,147 @@ export default function CalendarPage() {
           </div>
         </div>
 
-        <div className="min-w-0">
-          {/* Calendar controls */}
-          <div className="mb-5 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <div className="flex items-center gap-3">
-              <h2 className="text-lg font-semibold text-black">{monthName}</h2>
-              <div className="flex gap-1">
-                <button onClick={prevPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Previous">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5L8.25 12l7.5-7.5" /></svg>
+        {/* Your Schedule — right calendar card */}
+        <div className="flex min-h-0 min-w-0 flex-col overflow-hidden rounded-[20px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)]">
+          <div className="shrink-0 border-b border-black/[0.06] px-4 py-3 sm:px-5">
+            <div className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-2">
+              <h2 className="mr-auto min-w-0 truncate text-[15px] font-semibold tracking-tight text-black" aria-live="polite">
+                {calendarPeriodLabel}
+              </h2>
+              <div className="flex items-center gap-0.5 rounded-xl border border-black/10 bg-white p-0.5">
+                <button type="button" onClick={prevPeriod} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-black/45 hover:bg-black/[0.04] hover:text-black" aria-label="Previous">
+                  <ChevronLeft size={16} aria-hidden />
                 </button>
-                <button onClick={nextPeriod} className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg text-black/55 hover:bg-black/[0.05] hover:text-black transition-colors" aria-label="Next">
-                  <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden><path strokeLinecap="round" strokeLinejoin="round" d="M8.25 4.5l7.5 7.5-7.5 7.5" /></svg>
+                <button type="button" onClick={goToday} className="h-8 rounded-lg px-2.5 text-xs font-semibold text-black/70 hover:bg-black/[0.04]">
+                  Today
+                </button>
+                <button type="button" onClick={nextPeriod} className="inline-flex h-8 w-8 items-center justify-center rounded-lg text-black/45 hover:bg-black/[0.04] hover:text-black" aria-label="Next">
+                  <ChevronRight size={16} aria-hidden />
                 </button>
               </div>
-              <button onClick={goToday} className="min-h-11 rounded-lg border border-black/10 px-3 text-xs font-medium text-black/55 hover:text-black hover:bg-black/[0.05] transition-all">
-                Today
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <label className="flex items-center gap-1.5 cursor-pointer">
-                <input type="checkbox" name="show-holidays" checked={showHolidays} onChange={(e) => setShowHolidays(e.target.checked)} className="rounded border-black/10 accent-[#ee2532]" />
-                <span className="text-[11px] text-black/55">Holidays</span>
-              </label>
-              <div className="flex gap-1 rounded-xl bg-white border border-black/10 p-1">
-                <button type="button" onClick={() => setView("agenda")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors ${view === "agenda" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
-                  Agenda
+              <div className="flex items-center gap-1 rounded-xl border border-black/10 p-0.5">
+                <button
+                  type="button"
+                  onClick={() => setView("month")}
+                  aria-label="Month view"
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors max-md:hidden ${view === "month" ? "bg-[#ee2532]/10 text-[#ee2532]" : "text-black/40 hover:text-black"}`}
+                >
+                  <LayoutGrid size={15} aria-hidden />
                 </button>
-                <button type="button" onClick={() => setView("month")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors max-md:hidden ${view === "month" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
-                  Month
+                <button
+                  type="button"
+                  onClick={() => setView("agenda")}
+                  aria-label="Agenda view"
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${view === "agenda" ? "bg-[#ee2532]/10 text-[#ee2532]" : "text-black/40 hover:text-black"}`}
+                >
+                  <List size={15} aria-hidden />
                 </button>
-                <button type="button" onClick={() => setView("week")} className={`rounded-lg px-3 py-2.5 min-h-11 text-xs font-medium transition-colors ${view === "week" ? "bg-black/[0.04] text-black" : "text-black/55 hover:text-black"}`}>
-                  Week
+                <button
+                  type="button"
+                  onClick={() => setView("week")}
+                  aria-label="Week view"
+                  className={`inline-flex h-8 w-8 items-center justify-center rounded-lg transition-colors ${view === "week" ? "bg-[#ee2532]/10 text-[#ee2532]" : "text-black/40 hover:text-black"}`}
+                >
+                  <Clock size={15} aria-hidden />
                 </button>
               </div>
             </div>
           </div>
 
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden p-3 sm:p-4">
           {/* Month view — hidden on phones (agenda is default); compact for mid tablets */}
           {view === "month" && (
-            <div className="pb-panel overflow-hidden p-0 max-md:hidden">
-              <div className="grid grid-cols-7">
+            <div className="pb-cal-month overflow-hidden rounded-2xl border border-black/[0.06] max-md:hidden">
+              <div className="grid shrink-0 grid-cols-7 bg-[#fafafa]">
                 {DAYS.map((d) => (
-                  <div key={d} className="px-2 py-3 text-center text-xs font-bold text-black/35 border-b border-black/10">{d}</div>
+                  <div key={d} className="px-2 py-2 text-center text-[11px] font-semibold text-black/35">{d}</div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 grid-rows-6">
+              <div className="pb-cal-month-grid grid grid-cols-7 border-t border-black/[0.06]">
                 {cells.map((cell, i) => {
                   const cellPosts = postsMap.get(cell.dateKey) || [];
                   const cellEvents = eventsMap.get(cell.dateKey) || [];
-                  const holiday = showHolidays ? holidayMap.get(cell.dateKey) : undefined;
+                  const holiday = holidayMap.get(cell.dateKey);
                   const isToday = cell.dateKey === todayKey;
+                  const isPast = isPastDateKey(cell.dateKey, todayKey);
+                  const isSelected = cell.dateKey === (selectedDate || todayKey);
                   const overflow = calendarCellOverflow(Boolean(holiday), cellEvents.length, cellPosts.length);
                   return (
                     <div
                       key={i}
                       role="button"
                       tabIndex={0}
-                      onClick={() => openDayDetail(cell.dateKey)}
+                      onClick={() => {
+                        setSelectedDate(cell.dateKey);
+                        openDayDetail(cell.dateKey);
+                      }}
                       onKeyDown={(e) => openDayFromKeyboard(e, cell.dateKey, openDayDetail)}
-                      className={`relative min-h-[124px] overflow-hidden border-b border-r border-black/10 p-2 cursor-pointer hover:bg-black/[0.04] transition-colors text-left ${
-                        !cell.currentMonth ? "opacity-40" : ""
-                      }`}
+                      title={isPast ? "Past date — view only; scheduling starts today" : undefined}
+                      className={`relative min-h-0 cursor-pointer overflow-hidden border-b border-r border-black/[0.06] p-1.5 text-left transition-colors hover:bg-black/[0.02] ${
+                        !cell.currentMonth ? "bg-[#fcfcfc] opacity-45" : ""
+                      } ${isPast && cell.currentMonth ? "opacity-40" : ""} ${isSelected ? "bg-[#fff1ee]" : ""}`}
                     >
                       {cellPosts.length > 0 && (
-                        <span className="absolute inset-x-2 top-0 h-[3px] rounded-b-full bg-[#ee2532]" aria-hidden="true" />
+                        <span className="absolute inset-x-0 top-0 h-[2.5px] bg-[#ee2532]" aria-hidden="true" />
                       )}
-                      <div className={`text-xs font-medium mb-0.5 w-6 h-6 flex items-center justify-center rounded-full ${
-                        isToday ? "bg-[#ee2532] text-white font-bold" : "text-black/55"
+                      <div className={`mb-1 flex h-5 w-5 items-center justify-center rounded-full text-[11px] font-medium ${
+                        isToday ? "bg-[#ee2532] font-bold text-white" : "text-black/55"
                       }`}>
                         {cell.day}
                       </div>
-                      <div className="space-y-1">
+                      <div className="min-h-0 space-y-0.5 overflow-hidden">
                         {holiday && (
-                          <div className="rounded px-1.5 py-0.5 text-[10px] font-semibold truncate bg-[rgba(217,119,6,0.1)] text-[#b45309]">
+                          <div className="truncate rounded px-1 py-0.5 text-[9px] font-semibold bg-[rgba(217,119,6,0.1)] text-[#b45309]">
                             {holiday}
                           </div>
                         )}
-                        {cellEvents.slice(0, 2).map((ev) => (
+                        {cellEvents.slice(0, 1).map((ev) => (
                           <button
                             key={ev.id}
                             onClick={(e) => { e.stopPropagation(); openEditEvent(ev); }}
-                            className={`w-full text-left rounded px-1.5 py-0.5 text-[10px] font-medium truncate transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
+                            className={`w-full truncate rounded px-1 py-0.5 text-left text-[9px] font-medium transition-colors hover:opacity-80 ${eventTypeColors[ev.type]}`}
                           >
                             {ev.time ? `${ev.time.slice(0,5)} ` : ""}{ev.title}
                           </button>
                         ))}
                         {cellPosts.length > 0 && (
-                          <div className="flex flex-wrap gap-1 pt-0.5">
+                          <div className="flex flex-wrap gap-0.5 pt-0.5">
                             {cellPosts.slice(0, 2).map((p) => (
-                              <button
-                                key={p.id}
-                                onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
-                                title={`${p.time.slice(0, 5)} ${p.templateName}`}
-                                className="relative h-9 w-9 overflow-hidden rounded-md ring-1 ring-black/10 transition-transform hover:-translate-y-0.5 hover:ring-black/30"
-                              >
-                                {p.mediaUrl ? (
-                                  // eslint-disable-next-line @next/next/no-img-element
-                                  <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
-                                ) : (
-                                  <span
-                                    className={`flex h-full w-full items-center justify-center text-[9px] font-semibold ${
-                                      p.status === "failed"
-                                        ? "bg-[#ee2532]/10 text-[#c81e2a]"
-                                        : p.status === "draft"
-                                          ? "bg-black/[0.05] text-black/45"
-                                          : "bg-black/[0.06] text-black/55"
-                                    }`}
-                                  >
-                                    {p.time.slice(0, 5)}
-                                  </span>
-                                )}
-                                {p.status === "failed" && (
-                                  <span className="absolute inset-x-0 bottom-0 h-1 bg-[#ee2532]" aria-hidden="true" />
-                                )}
-                              </button>
+                              <div key={p.id} className="flex w-7 flex-col items-center gap-0.5">
+                                <button
+                                  type="button"
+                                  onClick={(e) => openPostRadialMenu(p, e)}
+                                  title={`${formatDisplayTime(p.time)} · ${p.platform === "both" ? "Facebook & Instagram" : p.platform}`}
+                                  aria-label={`Post actions ${formatDisplayTime(p.time)}`}
+                                  className="relative h-7 w-7 overflow-hidden rounded-none ring-1 ring-black/10 transition-transform hover:-translate-y-0.5 hover:ring-black/25"
+                                >
+                                  {p.mediaUrl ? (
+                                    // eslint-disable-next-line @next/next/no-img-element
+                                    <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
+                                  ) : (
+                                    <span
+                                      className={`flex h-full w-full items-center justify-center text-[8px] font-semibold ${
+                                        p.status === "failed"
+                                          ? "bg-[#ee2532]/10 text-[#c81e2a]"
+                                          : p.status === "draft"
+                                            ? "bg-black/[0.05] text-black/45"
+                                            : "bg-black/[0.06] text-black/55"
+                                      }`}
+                                    >
+                                      {p.time.slice(0, 5)}
+                                    </span>
+                                  )}
+                                  {p.status === "failed" && (
+                                    <span className="absolute inset-x-0 bottom-0 h-1 bg-[#ee2532]" aria-hidden="true" />
+                                  )}
+                                </button>
+                                <PlatformDots platform={p.platform} />
+                              </div>
                             ))}
                           </div>
                         )}
                         {overflow > 0 && (
-                          <p className="text-[10px] text-black/55 px-1.5">+{overflow} more</p>
+                          <p className="px-0.5 text-[9px] text-black/40">+{overflow} more</p>
                         )}
                       </div>
                     </div>
@@ -1153,7 +1833,7 @@ export default function CalendarPage() {
                 .map((cell) => {
                   const cellPosts = postsMap.get(cell.dateKey) || [];
                   const cellEvents = eventsMap.get(cell.dateKey) || [];
-                  const holiday = showHolidays ? holidayMap.get(cell.dateKey) : undefined;
+                  const holiday = holidayMap.get(cell.dateKey);
                   const isToday = cell.dateKey === todayKey;
                   const hasItems = cellPosts.length > 0 || cellEvents.length > 0 || Boolean(holiday);
                   if (!hasItems && cell.dateKey < todayKey) return null;
@@ -1213,7 +1893,7 @@ export default function CalendarPage() {
                             <button
                               key={p.id}
                               type="button"
-                              onClick={() => openEditPost(p)}
+                              onClick={() => openPostPreview(p)}
                               className={`w-full min-h-11 text-left rounded-lg px-3 py-2.5 transition-colors hover:opacity-85 ${
                                 p.status === "failed"
                                   ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25"
@@ -1223,9 +1903,11 @@ export default function CalendarPage() {
                               }`}
                             >
                               <p className="text-xs font-medium truncate">
-                                {p.time.slice(0, 5)} · {p.templateName}
+                                {accountLabel || "Account"}
                               </p>
-                              <p className="text-[10px] opacity-70 capitalize">{p.platform}</p>
+                              <p className="text-[10px] opacity-70">
+                                {formatDisplayTime(p.time)} · {formatPostStatusLabel(p.status)}
+                              </p>
                             </button>
                           ))}
                       </div>
@@ -1243,7 +1925,7 @@ export default function CalendarPage() {
                   const isToday = wd.dateKey === todayKey;
                   const dayPosts = postsMap.get(wd.dateKey) || [];
                   const dayEvents = eventsMap.get(wd.dateKey) || [];
-                  const holiday = showHolidays ? holidayMap.get(wd.dateKey) : undefined;
+                  const holiday = holidayMap.get(wd.dateKey);
                   return (
                     <div key={wd.dateKey} className="border-b md:border-b-0 md:border-r border-black/10 last:border-r-0">
                       <div className={`px-3 py-3 text-left md:text-center ${dayPosts.length > 0 ? "border-b-2 border-b-[#ee2532]" : "border-b border-black/10"} ${isToday ? "bg-[rgba(238,37,50,0.06)]" : ""}`}>
@@ -1276,27 +1958,34 @@ export default function CalendarPage() {
                         {dayPosts.sort((a, b) => a.time.localeCompare(b.time)).map((p) => (
                           <button
                             key={p.id}
-                            onClick={(e) => { e.stopPropagation(); openEditPost(p); }}
+                            onClick={(e) => { e.stopPropagation(); openPostPreview(p); }}
                             className={`flex w-full items-center gap-2 rounded-lg p-1.5 text-left transition-colors hover:bg-black/[0.05] ${
                               p.status === "failed" ? "ring-1 ring-[#ee2532]/25" : ""
                             }`}
                           >
-                            <span className="relative h-10 w-10 shrink-0 overflow-hidden rounded-md ring-1 ring-black/10">
-                              {p.mediaUrl ? (
-                                // eslint-disable-next-line @next/next/no-img-element
-                                <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
-                              ) : (
-                                <span className="flex h-full w-full items-center justify-center bg-black/[0.06] text-[9px] font-semibold text-black/50">
-                                  {p.time.slice(0, 5)}
-                                </span>
-                              )}
+                            <span className="flex w-10 shrink-0 flex-col items-center gap-0.5">
+                              <span className="relative h-10 w-10 overflow-hidden rounded-none ring-1 ring-black/10">
+                                {p.mediaUrl ? (
+                                  // eslint-disable-next-line @next/next/no-img-element
+                                  <img src={p.mediaUrl} alt="" className="h-full w-full object-cover" />
+                                ) : (
+                                  <span className="flex h-full w-full items-center justify-center bg-black/[0.06] text-[9px] font-semibold text-black/50">
+                                    {p.time.slice(0, 5)}
+                                  </span>
+                                )}
+                              </span>
+                              <PlatformDots platform={p.platform} size="md" />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block text-[10px] font-bold text-black/70">{p.time.slice(0, 5)}</span>
-                              <span className="block text-xs font-medium truncate text-black">{p.templateName}</span>
-                              <span className="block text-[10px] capitalize text-black/45">
-                                {p.status === "failed" ? "failed" : p.platform}
+                              <span className="block text-xs font-medium truncate text-black">
+                                {accountLabel || "Account"}
                               </span>
+                              <span className="block text-[10px] font-bold text-black/70">
+                                {formatDisplayTime(p.time)} · {formatPostStatusLabel(p.status)}
+                              </span>
+                              {p.caption ? (
+                                <span className="block truncate text-[10px] text-black/45">{p.caption}</span>
+                              ) : null}
                             </span>
                           </button>
                         ))}
@@ -1307,9 +1996,338 @@ export default function CalendarPage() {
               </div>
             </div>
           )}
+          </div>
         </div>
 
       </div>
+
+      {/* Bulk queue list view */}
+      {showBulkList && isBulkQueue && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center"
+          onClick={() => {
+            setBulkListScheduleIndex(null);
+            setShowBulkList(false);
+          }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bulk upload list"
+            className="pb-safe-sheet flex w-full max-w-lg max-h-[85dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/85 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-black/8 px-5 py-3.5">
+              <div>
+                <h3 className="text-base font-semibold text-black">Bulk queue</h3>
+                <p className="mt-0.5 text-[12px] text-black/45">
+                  {mediaItems.length} posts · tap time to reschedule · tap row to open
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close list"
+                onClick={() => {
+                  setBulkListScheduleIndex(null);
+                  setShowBulkList(false);
+                }}
+                className="inline-flex h-10 w-10 items-center justify-center rounded-xl text-black/45 transition-colors hover:bg-black/[0.05] hover:text-black"
+              >
+                <X size={18} aria-hidden />
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
+              {mediaItems.map((item, i) => {
+                const date = item.date || composerDate;
+                const time = item.time || formTime;
+                const caption = i === mediaIndex ? formCaption : item.caption || "";
+                const active = i === mediaIndex;
+                const editingSchedule = bulkListScheduleIndex === i;
+                const rowTimeOptions =
+                  date === todayKey
+                    ? TIME_OPTIONS.filter((t) => t.value >= nextScheduleTime())
+                    : TIME_OPTIONS;
+                return (
+                  <div
+                    key={`${item.url}-${i}`}
+                    className={`mb-1.5 flex w-full items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors ${
+                      active
+                        ? "border-[#ee2532]/35 bg-[#ee2532]/[0.06]"
+                        : "border-black/[0.06] bg-white/70"
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setBulkListScheduleIndex(null);
+                        goCarouselTo(i);
+                        setShowBulkList(false);
+                      }}
+                      className="relative h-14 w-14 shrink-0 overflow-hidden rounded-none ring-1 ring-black/10"
+                      aria-label={`Open post ${i + 1}`}
+                    >
+                      {item.type === "video" ? (
+                        <video src={item.url} className="h-full w-full object-cover" muted playsInline />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img src={item.url} alt="" className="h-full w-full object-cover" />
+                      )}
+                      <span className="absolute left-1 top-1 flex h-4 min-w-4 items-center justify-center rounded bg-black/55 px-1 text-[9px] font-bold text-white">
+                        {i + 1}
+                      </span>
+                    </button>
+                    <div className="min-w-0 flex-1">
+                      {editingSchedule ? (
+                        <div className="mb-1.5 grid grid-cols-[1fr_1fr_auto] items-center gap-1.5">
+                          <input
+                            type="date"
+                            min={todayKey}
+                            value={date}
+                            onChange={(e) => {
+                              const next = e.target.value;
+                              updateBulkItemSchedule(
+                                i,
+                                isPastDateKey(next, todayKey) ? todayKey : next,
+                                time,
+                              );
+                            }}
+                            className="h-8 rounded-lg border border-black/10 bg-white px-2 text-[11px] font-medium text-black outline-none focus:border-[#ee2532]/40"
+                          />
+                          <select
+                            value={time}
+                            onChange={(e) => updateBulkItemSchedule(i, date, e.target.value)}
+                            className="h-8 rounded-lg border border-black/10 bg-white px-1.5 text-[11px] font-medium text-black outline-none focus:border-[#ee2532]/40"
+                          >
+                            {rowTimeOptions.map((t) => (
+                              <option key={t.value} value={t.value}>{t.display}</option>
+                            ))}
+                          </select>
+                          <button
+                            type="button"
+                            onClick={() => setBulkListScheduleIndex(null)}
+                            className="h-8 rounded-lg bg-[#ee2532] px-2.5 text-[11px] font-semibold text-white hover:bg-[#c81e2a]"
+                          >
+                            Done
+                          </button>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setBulkListScheduleIndex(i)}
+                          className="mb-1 inline-flex items-center gap-2 rounded-md text-[11px] font-semibold text-black/55 transition-colors hover:bg-black/[0.04] hover:text-black"
+                          title="Edit date & time"
+                        >
+                          <Clock size={12} className="text-black/35" aria-hidden />
+                          {formatComposerSchedule(date, time)}
+                          {active && (
+                            <span className="rounded bg-[#ee2532]/15 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-wide text-[#ee2532]">
+                              Editing
+                            </span>
+                          )}
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setBulkListScheduleIndex(null);
+                          goCarouselTo(i);
+                          setShowBulkList(false);
+                        }}
+                        className="block w-full text-left"
+                      >
+                        <span className="line-clamp-2 text-[13px] leading-snug text-black/80">
+                          {captionLoading && active
+                            ? "Writing caption…"
+                            : caption || "No caption yet"}
+                        </span>
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+            <div className="border-t border-black/8 px-5 py-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setBulkListScheduleIndex(null);
+                  setShowBulkList(false);
+                }}
+                className="pb-btn-secondary w-full py-2.5 text-xs"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Bulk upload popup */}
+      {showBulkUpload && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center"
+          onClick={() => { if (!bulkUploading) setShowBulkUpload(false); }}
+        >
+          <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Bulk upload photos"
+            className="w-full max-w-md rounded-t-2xl border border-black/10 bg-white p-6 shadow-2xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="mb-4 flex items-start justify-between gap-3">
+              <div>
+                <h3 className="text-lg font-semibold text-black">Bulk Upload</h3>
+                <p className="mt-1 text-sm text-black/45">
+                  Drop multiple photos — we&apos;ll turn them into a carousel so you can caption each one.
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close"
+                disabled={bulkUploading}
+                onClick={() => setShowBulkUpload(false)}
+                className="inline-flex h-9 w-9 items-center justify-center rounded-lg text-black/45 hover:bg-black/[0.05] hover:text-black disabled:opacity-40"
+              >
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <label
+              className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border border-dashed border-black/15 bg-[#f7f7f8] px-6 py-10 text-center transition-colors hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.03] ${
+                bulkUploading ? "pointer-events-none opacity-70" : ""
+              }`}
+            >
+              {bulkUploading ? (
+                <>
+                  <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#323232]/25 border-t-[#323232]" aria-hidden />
+                  <span className="text-sm font-semibold text-black/70">
+                    Uploading {bulkUploadProgress.done} of {bulkUploadProgress.total}…
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#ee2532]/12 text-[#ee2532]">
+                    <Plus size={22} strokeWidth={2.5} aria-hidden />
+                  </span>
+                  <span className="text-sm font-semibold text-black">Choose photos</span>
+                  <span className="text-[12px] text-black/40">Select multiple images at once</span>
+                </>
+              )}
+              <input
+                ref={bulkInputRef}
+                type="file"
+                accept="image/*"
+                multiple
+                className="sr-only"
+                disabled={bulkUploading}
+                onChange={(e) => void handleBulkFiles(e.target.files)}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
+      <CalendarPostRadialMenu
+        open={Boolean(radialMenu)}
+        x={radialMenu?.x ?? 0}
+        y={radialMenu?.y ?? 0}
+        onClose={() => setRadialMenu(null)}
+        onAction={handleRadialPostAction}
+      />
+
+      {/* Scheduled post preview */}
+      {modalMode === "preview" && previewPost && (
+        <div
+          className="fixed inset-0 z-50 flex items-end justify-center bg-black/55 backdrop-blur-md sm:items-center"
+          onClick={closePostPreview}
+        >
+          <div
+            ref={modalRef}
+            role="dialog"
+            aria-modal="true"
+            aria-label="Post preview"
+            tabIndex={-1}
+            className="pb-safe-sheet flex w-full max-w-md max-h-[90dvh] flex-col overflow-hidden rounded-t-2xl border border-white/40 bg-white/80 shadow-[0_24px_80px_-20px_rgba(20,20,40,0.55)] backdrop-blur-xl sm:rounded-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between gap-3 border-b border-black/8 px-5 py-3.5">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-black">
+                  {formatComposerSchedule(previewPost.date, previewPost.time)}
+                </p>
+                <p className="mt-0.5 text-[11px] font-medium capitalize text-black/45">
+                  {previewPost.platform === "both" ? "Facebook · Instagram" : previewPost.platform}
+                  {" · "}
+                  {previewPost.status}
+                </p>
+              </div>
+              <button
+                type="button"
+                aria-label="Close preview"
+                onClick={closePostPreview}
+                className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl text-black/45 transition-colors hover:bg-black/[0.05] hover:text-black"
+              >
+                <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <div className="relative aspect-square w-full bg-black/[0.04]">
+                {previewPost.mediaUrl ? (
+                  previewPost.mediaType === "video" ? (
+                    <video
+                      src={previewPost.mediaUrl}
+                      className="h-full w-full object-cover"
+                      controls
+                      playsInline
+                    />
+                  ) : (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={previewPost.mediaUrl}
+                      alt=""
+                      className="h-full w-full object-cover"
+                    />
+                  )
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-sm text-black/35">
+                    No media
+                  </div>
+                )}
+              </div>
+              {previewPost.caption ? (
+                <p className="whitespace-pre-wrap px-5 py-4 text-sm leading-relaxed text-black/80">
+                  {previewPost.caption}
+                </p>
+              ) : (
+                <p className="px-5 py-4 text-sm text-black/35">No caption</p>
+              )}
+            </div>
+
+            <div className="flex gap-2 border-t border-black/8 px-5 py-3.5">
+              <button
+                type="button"
+                onClick={closePostPreview}
+                className="pb-btn-secondary flex-1 py-2.5 text-xs"
+              >
+                Close
+              </button>
+              <button
+                type="button"
+                onClick={() => openEditPost(previewPost)}
+                className="pb-btn-primary flex-1 py-2.5 text-xs"
+              >
+                Edit in composer
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Day Detail Modal */}
       {modalMode === "day-detail" && (
@@ -1358,17 +2376,18 @@ export default function CalendarPage() {
                     {(postsMap.get(selectedDate) || []).map((p) => (
                       <button
                         key={p.id}
-                        onClick={() => openEditPost(p)}
+                        onClick={() => openPostPreview(p)}
                         className={`w-full text-left rounded-xl p-3 transition-colors hover:opacity-80 ${
                           p.status === "failed" ? "bg-[#ee2532]/10 text-[#c81e2a] border border-[#ee2532]/25" : p.status === "draft" ? "bg-black/[0.04] border border-dashed border-black/10" : platformColors[p.platform]
                         }`}
                       >
-                        <div className="flex items-center justify-between mb-0.5">
-                          <p className="text-xs font-semibold">{p.templateName}</p>
-                          <span className="text-[10px] opacity-70 capitalize">{p.platform}</span>
-                        </div>
-                        <p className="text-[10px] opacity-70">{p.time} · {p.status}</p>
-                        {p.caption && <p className="text-[10px] opacity-60 mt-0.5 truncate">{p.caption}</p>}
+                        <p className="text-xs font-semibold">{accountLabel || "Account"}</p>
+                        <p className="mt-0.5 text-[10px] opacity-70">
+                          {formatDisplayTime(p.time)} · {formatPostStatusLabel(p.status)}
+                        </p>
+                        {p.caption && (
+                          <p className="mt-1 line-clamp-2 text-[11px] opacity-70">{p.caption}</p>
+                        )}
                       </button>
                     ))}
                   </div>
@@ -1389,7 +2408,9 @@ export default function CalendarPage() {
               </button>
               <button
                 onClick={() => openNewPost(selectedDate)}
-                className="pb-btn-primary flex-1 flex items-center justify-center gap-1.5 text-xs py-2.5"
+                disabled={isPastDateKey(selectedDate, todayKey)}
+                title={isPastDateKey(selectedDate, todayKey) ? "Can’t schedule posts on past dates" : undefined}
+                className="pb-btn-primary flex-1 flex items-center justify-center gap-1.5 text-xs py-2.5 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 <svg width="12" height="12" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}><path strokeLinecap="round" strokeLinejoin="round" d="M12 4.5v15m7.5-7.5h-15" /></svg>
                 Schedule Post
@@ -1507,11 +2528,14 @@ export default function CalendarPage() {
 
       <DashboardConfirm
         open={confirmDeletePost}
-        title="Delete this post?"
+        title="Cancel this post?"
         message="This removes the scheduled post from your calendar."
-        confirmLabel="Delete"
+        confirmLabel="Cancel post"
         destructive
-        onCancel={() => setConfirmDeletePost(false)}
+        onCancel={() => {
+          setConfirmDeletePost(false);
+          setPostPendingDelete(null);
+        }}
         onConfirm={() => void handleDeletePost()}
       />
       <DashboardConfirm

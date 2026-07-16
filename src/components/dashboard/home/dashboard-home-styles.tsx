@@ -40,15 +40,45 @@ export function DashboardHomeStyles() {
     /* ---------- Main ---------- */
     .main2 { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
-    /* Fixed app-pane (calendar): the document never scrolls; the calendar
-       column scrolls internally instead. Desktop only — phones scroll normally. */
+    /* Fixed app-pane (calendar): everything fits the viewport — no page scroll
+       and no scroll inside Create Schedule / Your Schedule. Desktop only. */
     @media (min-width: 1280px) {
-      .pb-home2--fixed { overflow: hidden; }
-      .pb-home2--fixed .home2 { height: 100%; min-height: 0; }
-      .pb-home2--fixed .main2 { min-height: 0; }
-      .pb-home2--fixed .pb-app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
-      .pb-home2--fixed .pb-cal-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
-      .pb-home2--fixed .pb-cal-grid > * { min-height: 0; overflow-y: auto; }
+      .pb-home2--fixed { overflow: hidden; height: 100%; }
+      .pb-home2--fixed .home2 {
+        height: 100%; min-height: 0; max-height: 100%;
+        padding-top: 16px; padding-bottom: 16px;
+      }
+      .pb-home2--fixed .main2 {
+        min-height: 0; height: 100%; overflow: hidden;
+        display: flex; flex-direction: column; gap: 12px;
+      }
+      .pb-home2--fixed .main2 > * {
+        flex: 1; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+      }
+      .pb-home2--fixed .pb-app {
+        flex: 1; min-height: 0; height: 100%;
+        display: flex; flex-direction: column;
+        overflow: hidden; padding: 0;
+      }
+      .pb-home2--fixed .pb-app-header { margin-bottom: 0 !important; flex-shrink: 0; }
+      .pb-home2--fixed .pb-app-header h1 { font-size: 1.5rem !important; }
+      .pb-home2--fixed .pb-cal-grid {
+        flex: 1; min-height: 0;
+        grid-template-rows: minmax(0, 1fr);
+        overflow: hidden;
+      }
+      .pb-home2--fixed .pb-cal-grid > * {
+        min-height: 0; height: 100%; overflow: hidden;
+      }
+      .pb-home2--fixed .pb-cal-month {
+        height: 100%; min-height: 0;
+        display: flex; flex-direction: column;
+      }
+      .pb-home2--fixed .pb-cal-month-grid {
+        flex: 1; min-height: 0;
+        grid-template-rows: repeat(6, minmax(0, 1fr));
+      }
+      .pb-home2--fixed .pb-cal-month-grid > * { min-height: 0; }
     }
 
     /* Utility bar */

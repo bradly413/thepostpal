@@ -5,7 +5,7 @@ import { buildTenantBrandContext } from "@/lib/ai-brand-context";
 import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
-import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
+import { CAPTION_ANTI_AI_TELLS } from "@/lib/ai-caption-voice";
 import { isInlineReferenceImage } from "@/lib/reference-image";
 import { loadVisionJpegBase64 } from "@/lib/studio/vision-image-input";
 
@@ -142,32 +142,42 @@ export async function POST(req: Request) {
 - If notes are empty, write from the image and brand voice only.
 Notes are guidance — never claim things not visible in the image.`;
 
-  const system = `You write social captions the way a real small-business owner would — like a person, not a brand and not an AI.
+  const system = `You write short restaurant Instagram captions — simple, clear, product-first.
 Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
 
 ${creatorIntent}
 
 Look at the image and write EXACTLY ${count} captions for this post.
 
-If the image is a designed graphic with text baked into it (a headline, stat, hook, price, or offer), read that text and CONTINUE the thought instead of repeating it: add the context, the reason it matters, the story behind it, or the invitation it sets up. Never quote the on-image text back word for word. If it is a plain photo with no text, caption the moment it captures.
+STEP 1 — Identify the REAL product in the photo first:
+- What physical thing is shown? Food, drink, gift cards, merch, patio, people, etc.
+- On-image headlines are marketing copy, NOT the product. Example: cards that say "more than a logo on a napkin" are still GIFT CARDS — caption the gift cards, not napkins.
+- Never caption a metaphor from the graphic as if it were the item for sale.
 
-Either way, write a caption, not a description. Never narrate the picture ("a graphic that says", "an image showing", "this photo of", "the text reads"). The reader can already see the image. The caption says what the image cannot say on its own. Ground every caption in what is genuinely there, but the job is to add to it, not to label it.
+STEP 2 — Write captions that sell that product.
 
-${CAPTION_SOUND_HUMAN.replace(
-    "Vary length and rhythm — one line or two or three sentences is fine.",
-    `Vary length and rhythm across the ${count} options.`,
-  )}
+TARGET STYLE (match this closely):
+Food: "Try our new Breakfast Bowl! #breakfast"
+Gift cards: "Give the greatest gift of all. #giftcards"
+Gift cards: "Gift cards make everyone happy. #giftcard"
+Merch: "Grab a tee before they're gone. #merch"
+
+Rules:
+- One short sentence. Name the actual product you see (Breakfast Bowl, gift cards, wings, etc.).
+- Sound like a restaurant posting to sell it — friendly, direct, obvious.
+- End with ONE simple hashtag when it fits. Put it in the hashtags array, not inside the caption string.
+- No artsy observations, no soft preambles, no essays, no rhetorical questions.
+- Never narrate the picture. Never quote on-image text word for word.
+- Vary the angle across the ${count} options but keep the same short shape.
 
 ${CAPTION_ANTI_AI_TELLS}
 
-Each option should be a genuinely different angle on the same image.
-
 Respond with ONLY a JSON array (no prose, no code fences):
-[{"angle":"short label","caption":"the caption text","hashtags":["#tag1","#tag2"]}]`;
+[{"angle":"short label","caption":"Give the greatest gift of all.","hashtags":["#giftcards"]}]`;
 
   const userText = context
     ? `Creator notes:\n${context}`
-    : "Write caption options for this post image.";
+    : "Write short product captions. Identify the real item in the photo first (gift cards stay gift cards even if the graphic mentions something else).";
 
   try {
     const client = new Anthropic({ apiKey });
@@ -197,7 +207,13 @@ Respond with ONLY a JSON array (no prose, no code fences):
 
     if (!guardrails) {
       if (variants.length === 0) {
-        return Response.json({ error: "Couldn't generate options. Try again." }, { status: 502 });
+        return Response.json(
+          {
+            error: "Couldn't parse caption options from the model. Try again.",
+            debug: process.env.NODE_ENV === "development" ? text.slice(0, 400) : undefined,
+          },
+          { status: 502 },
+        );
       }
       return Response.json({ variants });
     }
@@ -228,10 +244,26 @@ Respond with ONLY a JSON array (no prose, no code fences):
     }
 
     if (variants.length === 0) {
-      return Response.json({ error: "Couldn't generate options. Try again." }, { status: 502 });
+      return Response.json(
+        {
+          error: "Couldn't parse caption options from the model. Try again.",
+          debug: process.env.NODE_ENV === "development" ? text.slice(0, 400) : undefined,
+        },
+        { status: 502 },
+      );
     }
     return Response.json({ variants });
-  } catch {
-    return Response.json({ error: "Caption generation failed." }, { status: 500 });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Caption generation failed.";
+    // Vision fetch / Anthropic / image decode failures land here.
+    return Response.json(
+      {
+        error: message.includes("fetch") || message.includes("image")
+          ? "Couldn't read that image. Try another one."
+          : "Caption generation failed. Try again.",
+        debug: process.env.NODE_ENV === "development" ? message : undefined,
+      },
+      { status: 500 },
+    );
   }
 }
