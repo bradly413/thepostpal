@@ -40,6 +40,17 @@ export function DashboardHomeStyles() {
     /* ---------- Main ---------- */
     .main2 { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
 
+    /* Fixed app-pane (calendar): the document never scrolls; the calendar
+       column scrolls internally instead. Desktop only — phones scroll normally. */
+    @media (min-width: 1280px) {
+      .pb-home2--fixed { overflow: hidden; }
+      .pb-home2--fixed .home2 { height: 100%; min-height: 0; }
+      .pb-home2--fixed .main2 { min-height: 0; }
+      .pb-home2--fixed .pb-app { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+      .pb-home2--fixed .pb-cal-grid { flex: 1; min-height: 0; grid-template-rows: minmax(0, 1fr); }
+      .pb-home2--fixed .pb-cal-grid > * { min-height: 0; overflow-y: auto; }
+    }
+
     /* Utility bar */
     .topbar2 { position: relative; z-index: 60; display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 6px; margin-bottom: 6px; }
     .topbar2 .ut {

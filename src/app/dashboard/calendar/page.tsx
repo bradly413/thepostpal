@@ -33,7 +33,9 @@ import {
   todayDateKeyLocal,
 } from "@/lib/dashboard-post-helpers";
 import LocationSwitcher from "@/components/LocationSwitcher";
-import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
+import { usePlan, usePlanFeatures } from "@/components/dashboard/PlanProvider";
+import PostPreview from "@/components/dashboard/calendar/PostPreview";
+import { Clock, ChevronDown, PenLine, Image as ImageIcon } from "lucide-react";
 import { LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
@@ -120,6 +122,36 @@ type CalendarScheduledPost = ScheduledPost & {
   errorLog?: string | null;
 };
 
+function FacebookGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z" />
+    </svg>
+  );
+}
+
+function InstagramGlyph() {
+  return (
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
+      <rect x="3" y="3" width="18" height="18" rx="5" />
+      <circle cx="12" cy="12" r="4" />
+      <circle cx="17.5" cy="6.5" r="1.1" fill="currentColor" stroke="none" />
+    </svg>
+  );
+}
+
+function formatComposerSchedule(dateKey: string, time: string): string {
+  const d = new Date(`${dateKey}T${time || "09:00"}:00`);
+  if (Number.isNaN(d.getTime())) return "Pick a time";
+  return `${d.toLocaleDateString([], { month: "short", day: "numeric" })}, ${d.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
+}
+
+interface CaptionOption {
+  angle: string;
+  caption: string;
+  hashtags: string[];
+}
+
 export default function CalendarPage() {
   useEffect(() => { document.title = `Calendar | ${SITE_NAME}`; }, []);
   const router = useRouter();
@@ -158,6 +190,11 @@ export default function CalendarPage() {
   const [formPlatform, setFormPlatform] = useState<"facebook" | "instagram" | "both">("both");
   const [formTime, setFormTime] = useState("09:00");
   const [formCaption, setFormCaption] = useState("");
+  const [captionOptions, setCaptionOptions] = useState<CaptionOption[]>([]);
+  const [captionLoading, setCaptionLoading] = useState(false);
+  const [captionGenError, setCaptionGenError] = useState<string | null>(null);
+  const [showScheduleMenu, setShowScheduleMenu] = useState(false);
+  const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [formStatus, setFormStatus] = useState<"scheduled" | "draft">("scheduled");
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ type: "success" | "error"; message: string } | null>(null);
@@ -198,6 +235,7 @@ export default function CalendarPage() {
 
   const { meta } = useMetaConnection();
   const features = usePlanFeatures();
+  const { workspaceName, workspaceInitials } = usePlan();
   const { locationId, loading: locationLoading, error: locationError, refresh: refreshLocations } = useActiveLocation();
 
   useFocusTrap(modalMode !== null, modalRef, () => setModalMode(null));
@@ -342,6 +380,8 @@ export default function CalendarPage() {
     setFormPlatform("both");
     setFormTime("09:00");
     setFormCaption("");
+    setCaptionOptions([]);
+    setCaptionGenError(null);
     setFormStatus("scheduled");
     setMediaUrl("");
     setMediaType("image");
@@ -358,6 +398,8 @@ export default function CalendarPage() {
     setFormPlatform(post.platform);
     setFormTime(post.time);
     setFormCaption(post.caption);
+    setCaptionOptions([]);
+    setCaptionGenError(null);
     setFormStatus(
       post.status === "published" || post.status === "failed"
         ? "scheduled"
@@ -453,6 +495,67 @@ export default function CalendarPage() {
       });
     } finally {
       setPublishing(false);
+    }
+  }
+
+  function togglePlatformChannel(ch: "facebook" | "instagram") {
+    const fb = formPlatform === "facebook" || formPlatform === "both";
+    const ig = formPlatform === "instagram" || formPlatform === "both";
+    const nfb = ch === "facebook" ? !fb : fb;
+    const nig = ch === "instagram" ? !ig : ig;
+    if (nfb && nig) setFormPlatform("both");
+    else if (nfb) setFormPlatform("facebook");
+    else if (nig) setFormPlatform("instagram");
+    // never allow zero channels — ignore the toggle that would clear the last one
+  }
+
+  async function generateCaptionOptions() {
+    if (!mediaUrl || mediaType !== "image" || captionLoading) return;
+    setCaptionLoading(true);
+    setCaptionGenError(null);
+    try {
+      const platform = formPlatform === "both" ? "instagram" : formPlatform;
+      const body = JSON.stringify({
+        imageUrl: mediaUrl,
+        platform,
+        count: 3,
+        locationId,
+        context: formCaption.trim() || undefined,
+      });
+      // The vision model occasionally returns unparseable output (502). Retry
+      // once before surfacing an error to the user.
+      let data: { variants?: CaptionOption[]; compliance?: { blocked?: boolean; message?: string }; error?: string } | null = null;
+      let blocked: string | null = null;
+      for (let attempt = 0; attempt < 2; attempt++) {
+        const res = await fetch("/api/ai/captions-from-image", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body,
+        });
+        const json = await res.json();
+        if (json?.compliance?.blocked) {
+          blocked = json.compliance.message || "These options were blocked by your content rules.";
+          break;
+        }
+        if (res.ok && Array.isArray(json?.variants) && json.variants.length > 0) {
+          data = json;
+          break;
+        }
+      }
+      if (blocked) {
+        setCaptionGenError(blocked);
+        return;
+      }
+      const variants: CaptionOption[] = data?.variants ?? [];
+      if (variants.length === 0) throw new Error("Couldn't generate options. Try again.");
+      setCaptionOptions(variants);
+      requestAnimationFrame(() => {
+        document.getElementById("caption-options")?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    } catch (err) {
+      setCaptionGenError(err instanceof Error ? err.message : "Couldn't generate captions.");
+    } finally {
+      setCaptionLoading(false);
     }
   }
 
@@ -708,39 +811,195 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(360px,400px)_minmax(0,1fr)] xl:gap-8">
+      <div className="pb-cal-grid grid grid-cols-1 gap-6 xl:grid-cols-[minmax(360px,400px)_minmax(0,1fr)] xl:gap-8">
         <div id="post-composer" className="xl:sticky xl:top-6 xl:self-start">
-          <div className="pb-panel">
-            <div className="mb-4 flex items-center justify-between">
-              <h2 className="text-base font-bold text-black">{editingPost ? "Edit post" : "New post"}</h2>
+          <div>
+            {editingPost?.status === "failed" && (
+              <div className="mb-3 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
+                <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
+                {editingPost.errorLog && (
+                  <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
+                )}
+                <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
+              </div>
+            )}
+
+            <div className="mb-3 flex items-center justify-between gap-2">
+              <div className="flex min-w-0 items-center gap-2.5">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#ee2532] to-[#c81e2a] text-[11px] font-bold text-white">
+                  {workspaceInitials}
+                </span>
+                <span className="truncate text-sm font-semibold text-black">
+                  {meta?.connected ? meta.pageName : workspaceName}
+                </span>
+              </div>
+              <div className="flex items-center gap-1.5">
+                {(["facebook", "instagram"] as const).map((ch) => {
+                  const on = formPlatform === ch || formPlatform === "both";
+                  return (
+                    <button
+                      key={ch}
+                      type="button"
+                      onClick={() => togglePlatformChannel(ch)}
+                      aria-label={ch}
+                      aria-pressed={on}
+                      title={ch}
+                      className={`flex h-8 w-8 items-center justify-center rounded-full border transition-colors ${
+                        on ? "border-[#ee2532] bg-[#ee2532]/10 text-[#ee2532]" : "border-black/10 text-black/30 hover:text-black/55"
+                      }`}
+                    >
+                      {ch === "facebook" ? <FacebookGlyph /> : <InstagramGlyph />}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mb-3 flex items-center border-b border-black/10">
+              <span className="-mb-px flex items-center gap-1.5 border-b-2 border-[#ee2532] pb-2 text-sm font-semibold text-[#ee2532]">
+                <ImageIcon size={15} aria-hidden /> Post
+              </span>
               {editingPost && (
                 <button
                   type="button"
                   onClick={() => openNewPost(todayKey)}
-                  className="text-xs font-medium text-[#ee2532] hover:underline"
+                  className="ml-auto pb-2 text-xs font-medium text-[#ee2532] hover:underline"
                 >
                   Start new
                 </button>
               )}
             </div>
 
-            <div className="space-y-4">
-              {editingPost?.status === "failed" && (
-                <div className="rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
-                  <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
-                  {editingPost.errorLog && (
-                    <p className="text-[11px] text-black/65 mt-1 break-words">{editingPost.errorLog}</p>
-                  )}
-                  <p className="text-[11px] text-black/55 mt-1">Updating it sends it back through the queue.</p>
+            <PostPreview
+              platform={formPlatform}
+              mediaUrl={mediaUrl}
+              mediaType={mediaType}
+              caption={formCaption}
+              accountName={meta?.connected ? meta.pageName : workspaceName}
+              avatarInitials={workspaceInitials}
+              uploadingMedia={uploadingMedia}
+              onPickFile={(f) => handleMediaFile(f)}
+              onRemove={() => { setMediaUrl(""); setMediaError(null); }}
+              mediaError={mediaError}
+            />
+
+            <textarea
+              value={formCaption}
+              onChange={(e) => setFormCaption(e.target.value)}
+              rows={3}
+              placeholder="Write your caption…"
+              className="pb-field resize-none"
+            />
+            {captionGenError && <p className="mt-1 text-[11px] text-[#ee2532]">{captionGenError}</p>}
+            {captionOptions.length > 0 && (
+              <div id="caption-options" className="mt-2 space-y-1.5">
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-black/40">Tap to use</p>
+                {captionOptions.map((v, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    onClick={() => {
+                      setFormCaption(v.hashtags.length ? `${v.caption}\n\n${v.hashtags.join(" ")}` : v.caption);
+                      setCaptionOptions([]);
+                    }}
+                    className="block w-full rounded-xl border border-black/10 p-2.5 text-left transition-colors hover:border-[#ee2532]/40 hover:bg-[#ee2532]/[0.03]"
+                  >
+                    <span className="block text-[10px] font-semibold uppercase tracking-wide text-[#ee2532]">{v.angle}</span>
+                    <span className="mt-0.5 block text-xs leading-snug text-black/70 line-clamp-3">{v.caption}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div className="mt-2.5">
+              <button
+                type="button"
+                onClick={() => void generateCaptionOptions()}
+                disabled={!mediaUrl || mediaType !== "image" || captionLoading || uploadingMedia}
+                title={mediaUrl ? "Rewrite this caption with AI from your photo" : "Add a photo first"}
+                className="inline-flex items-center gap-1.5 rounded-full border border-black/15 px-3.5 py-1.5 text-xs font-semibold text-black/70 transition-colors hover:border-[#ee2532]/40 hover:text-[#ee2532] disabled:opacity-40"
+              >
+                <PenLine size={13} aria-hidden />
+                {captionLoading ? "Writing…" : "Rewrite With AI"}
+              </button>
+            </div>
+
+            {meta?.connected && !editingPost && (
+              <div className="mt-3 flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2">
+                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
+                <p className="text-[11px] font-medium text-[#1f9d4d]">Connected to {meta.pageName}. Will schedule via Meta.</p>
+              </div>
+            )}
+
+            {features.multiLocation && (
+              <div className="mt-3">
+                <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
+                <LocationSwitcher />
+              </div>
+            )}
+
+            <div className="mt-4 flex items-center justify-between gap-3 border-t border-black/10 pt-3">
+              <button
+                type="button"
+                onClick={() => setShowSchedulePicker((v) => !v)}
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-black/70 hover:text-black"
+              >
+                <Clock size={15} aria-hidden />
+                {formatComposerSchedule(selectedDate || todayKey, formTime)}
+                <ChevronDown size={14} className={`transition-transform ${showSchedulePicker ? "rotate-180" : ""}`} aria-hidden />
+              </button>
+              <div className="relative shrink-0">
+                <div className="flex">
+                  <button
+                    type="button"
+                    onClick={() => void handleSavePost(true)}
+                    disabled={publishing || uploadingMedia}
+                    className="rounded-l-xl bg-[#ee2532] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                  >
+                    {publishing ? "Scheduling…" : editingPost ? "Update" : "Schedule"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowScheduleMenu((v) => !v)}
+                    disabled={publishing || uploadingMedia}
+                    aria-label="More options"
+                    className="rounded-r-xl border-l border-white/25 bg-[#ee2532] px-2 py-2.5 text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50"
+                  >
+                    <ChevronDown size={16} aria-hidden />
+                  </button>
                 </div>
-              )}
-              {features.multiLocation && (
-                <div>
-                  <label className="block text-xs font-medium text-black mb-1.5">Posting to</label>
-                  <LocationSwitcher />
-                </div>
-              )}
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                {showScheduleMenu && (
+                  <div className="absolute bottom-full right-0 z-10 mb-1.5 w-52 overflow-hidden rounded-xl border border-black/10 bg-white py-1 shadow-xl">
+                    {!editingPost && meta?.connected && mediaUrl && mediaType === "image" && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowScheduleMenu(false); void handlePublishNow(); }}
+                        className="block w-full px-3.5 py-2 text-left text-sm text-black/75 hover:bg-black/[0.04]"
+                      >
+                        Publish now
+                      </button>
+                    )}
+                    <button
+                      type="button"
+                      onClick={() => { setShowScheduleMenu(false); setFormStatus("draft"); setTimeout(() => void handleSavePost(false), 0); }}
+                      className="block w-full px-3.5 py-2 text-left text-sm text-black/75 hover:bg-black/[0.04]"
+                    >
+                      Save as draft
+                    </button>
+                    {editingPost && (
+                      <button
+                        type="button"
+                        onClick={() => { setShowScheduleMenu(false); setConfirmDeletePost(true); }}
+                        className="block w-full px-3.5 py-2 text-left text-sm text-[#ee2532] hover:bg-[#ee2532]/[0.06]"
+                      >
+                        Delete post
+                      </button>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            {showSchedulePicker && (
+              <div className="mt-3 grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-black mb-1.5">Date</label>
                   <input type="date" value={selectedDate} onChange={(e) => setSelectedDate(e.target.value)} className="pb-field" />
@@ -754,98 +1013,7 @@ export default function CalendarPage() {
                   </select>
                 </div>
               </div>
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Platform</label>
-                <div className="flex gap-2">
-                  {(["facebook", "instagram", "both"] as const).map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setFormPlatform(p)}
-                      className={`flex-1 rounded-xl py-2 text-xs font-semibold capitalize transition-all ${
-                        formPlatform === p
-                          ? "bg-[#ee2532] text-white"
-                          : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"
-                      }`}
-                    >
-                      {p === "both" ? "Both" : p}
-                    </button>
-                  ))}
-                </div>
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Caption</label>
-                <textarea value={formCaption} onChange={(e) => setFormCaption(e.target.value)} rows={3} placeholder="Write your post caption…" className="pb-field resize-none" />
-              </div>
-              <div>
-                <label className="block text-xs font-medium text-black mb-1.5">Status</label>
-                <div className="flex gap-2">
-                  <button onClick={() => setFormStatus("scheduled")} className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${formStatus === "scheduled" ? "bg-[rgba(31,157,77,0.12)] text-[#1f9d4d] border border-[rgba(31,157,77,0.3)]" : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"}`}>
-                    Schedule
-                  </button>
-                  <button onClick={() => setFormStatus("draft")} className={`flex-1 rounded-xl py-2 text-xs font-semibold transition-all ${formStatus === "draft" ? "bg-[rgba(217,119,6,0.12)] text-[#b45309] border border-[rgba(217,119,6,0.3)]" : "bg-black/[0.04] border border-black/10 text-black/55 hover:text-black"}`}>
-                    Save as Draft
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            {meta?.connected && formStatus === "scheduled" && !editingPost && (
-              <div className="flex items-center gap-2 rounded-lg bg-[rgba(31,157,77,0.1)] px-3 py-2 mt-4">
-                <div className="h-2 w-2 rounded-full bg-[#1f9d4d]" />
-                <p className="text-[11px] text-[#1f9d4d] font-medium">Connected to {meta.pageName}. Will schedule via Meta.</p>
-              </div>
             )}
-
-            <div className="mt-4">
-              <label className="block text-[11px] font-bold uppercase tracking-wider text-black/55 mb-1.5">Media</label>
-              <div className="relative">
-                <label className={`group relative flex flex-col items-center justify-center gap-1.5 rounded-2xl border border-dashed border-black/15 bg-white/60 backdrop-blur-xl px-4 py-6 text-center cursor-pointer transition-colors hover:border-[#ee2532]/40 ${uploadingMedia ? "pointer-events-none" : ""}`}>
-                  {mediaUrl && mediaType === "image" ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={mediaUrl} alt="" className="max-h-36 w-auto rounded-xl object-contain" />
-                  ) : mediaUrl && mediaType === "video" ? (
-                    <video src={mediaUrl} className="max-h-36 w-auto rounded-xl" muted />
-                  ) : (
-                    <>
-                      <span className="text-sm font-medium text-black/70">Drop or choose a photo / video</span>
-                      <span className="text-[11px] text-black/45">Uploads straight to your secure bucket</span>
-                    </>
-                  )}
-                  <input type="file" accept="image/*,video/*" className="sr-only" onChange={(e) => handleMediaFile(e.target.files?.[0])} disabled={uploadingMedia} />
-                </label>
-                {uploadingMedia && (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 rounded-2xl bg-white/55 backdrop-blur-md">
-                    <span className="h-6 w-6 rounded-full border-2 border-[#323232]/25 border-t-[#323232] animate-spin" aria-hidden />
-                    <span className="text-[11px] font-medium text-[#323232]">Uploading…</span>
-                  </div>
-                )}
-              </div>
-              {mediaUrl && !uploadingMedia && (
-                <button type="button" onClick={() => { setMediaUrl(""); setMediaError(null); }} className="mt-1.5 text-[11px] text-black/45 hover:text-[#ee2532] transition-colors">
-                  Remove media
-                </button>
-              )}
-              {mediaError && <p className="mt-1.5 text-[11px] text-[#ee2532]">{mediaError}</p>}
-            </div>
-
-            <div className="mt-6 flex flex-wrap gap-2">
-              {editingPost && (
-                <button onClick={() => setConfirmDeletePost(true)} className="rounded-xl border border-[rgba(238,37,50,0.3)] px-4 py-2.5 text-sm font-semibold text-[#ee2532] hover:bg-[rgba(238,37,50,0.1)] transition-all">
-                  Delete
-                </button>
-              )}
-              {!editingPost && meta?.connected && formStatus === "scheduled" && mediaUrl && mediaType === "image" && (
-                <button onClick={() => void handlePublishNow()} disabled={publishing || uploadingMedia} className="flex-1 min-w-[110px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50">
-                  {publishing ? "Publishing…" : "Publish now"}
-                </button>
-              )}
-              <button onClick={() => void handleSavePost(false)} disabled={publishing || uploadingMedia} className="flex-1 min-w-[110px] rounded-xl border border-black/10 py-2.5 text-sm font-semibold text-black/70 hover:bg-black/[0.05] transition-all disabled:opacity-50">
-                {publishing ? "Saving…" : editingPost ? "Update" : "Schedule"}
-              </button>
-              <button onClick={() => void handleSavePost(true)} disabled={publishing || uploadingMedia} className="pb-btn-primary flex-1 min-w-[130px] text-sm py-2.5 disabled:opacity-50" title="Approve so the dispatcher publishes at the scheduled time">
-                Schedule &amp; Approve
-              </button>
-            </div>
           </div>
         </div>
 

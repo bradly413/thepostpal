@@ -59,7 +59,10 @@ export default function DashboardShell({ children }: { children: React.ReactNode
       >
         Skip to content
       </a>
-      <div className="pb-home2" style={{ flex: 1, minWidth: 0 }}>
+      <div
+        className={pathname === "/dashboard/calendar" ? "pb-home2 pb-home2--fixed" : "pb-home2"}
+        style={{ flex: 1, minWidth: 0 }}
+      >
         <DashboardHomeStyles />
         <div className="home2">
           <AppSidebar />
