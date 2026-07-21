@@ -7,8 +7,8 @@ import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
 
 const LINKS = [
   { label: "How it works", href: "#how" },
-  { label: "Proof", href: "#proof" },
-  { label: "For teams", href: "#teams" },
+  { label: "Compare", href: "#compare" },
+  { label: "Results", href: "#results" },
   { label: "Pricing", href: "#pricing" },
 ] as const;
 
@@ -33,11 +33,11 @@ export default function CodexNav() {
     <>
       <header className="pb-cx-nav">
         <PosterboyLogo
-          href="#hero"
+          href="#demo"
           size="header"
           onClick={(e) => {
             e.preventDefault();
-            go("#hero");
+            go("#demo");
           }}
         />
         <nav className="pb-cx-nav-links" aria-label="Marketing">

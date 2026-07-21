@@ -9,7 +9,7 @@ import {
   SIGNIN_NEXT_DEFAULT,
   SIGNUP_NEXT_DEFAULT,
 } from "@/lib/safe-redirect";
-import { getSelectedPlan, saveSelectedPlan } from "@/lib/plan-storage";
+import { getSelectedPlan, saveSelectedPlan, saveSelectedBilling } from "@/lib/plan-storage";
 import {
   hasBrandBook,
   isOnboardingComplete,
@@ -43,6 +43,7 @@ function SignInForm() {
       setMode("signup");
     }
     saveSelectedPlan(searchParams.get("plan"));
+    saveSelectedBilling(searchParams.get("billing"));
   }, [searchParams]);
 
   async function resolvePostAuthPath(): Promise<string> {

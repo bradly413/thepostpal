@@ -6,16 +6,23 @@ import "./sticky-service-cards.css";
 import "./posterboy-overrides.css";
 
 import CodexNav from "@/components/marketing/codex/CodexNav";
-import CodexHero from "@/components/marketing/codex/CodexHero";
-import HowItWorks from "@/components/marketing/codex/HowItWorks";
-import ProofBeat from "@/components/marketing/codex/ProofBeat";
-import TeamsPitch from "@/components/marketing/codex/TeamsPitch";
+import HeroDemo from "@/components/marketing/codex/HeroDemo";
+import ProofStrip from "@/components/marketing/codex/ProofStrip";
+import StudioToPost from "@/components/marketing/codex/StudioToPost";
+import SayItWalkthrough from "@/components/marketing/codex/SayItWalkthrough";
+import HonestComparison from "@/components/marketing/codex/HonestComparison";
+import CaseStudies from "@/components/marketing/codex/CaseStudies";
+import WhatWeHandle from "@/components/marketing/codex/WhatWeHandle";
 import Faq from "@/components/marketing/codex/Faq";
+import FooterCta from "@/components/marketing/codex/FooterCta";
 import Pricing from "@/components/marketing/sections/Pricing";
 import Footer from "@/components/marketing/sections/Footer";
 
 /**
- * Munch-style conversion spine with Posterboy warm-light brand + real product demos.
+ * Product-led conversion homepage, in order:
+ * live-demo hero → proof strip → studio-to-post → "Say it. It's made."
+ * walkthrough → honest comparison → case studies → what we handle →
+ * pricing → FAQ → footer CTA + footer.
  */
 export default function PosterboyCodexHome() {
   return (
@@ -23,16 +30,20 @@ export default function PosterboyCodexHome() {
       <CodexNav />
       <div className="cx">
         <div className="frame" id="top">
-          <CodexHero />
+          <HeroDemo />
         </div>
       </div>
 
       <div className="pb-cx-embed">
-        <HowItWorks />
-        <ProofBeat />
-        <TeamsPitch />
-        <Faq />
+        <ProofStrip />
+        <StudioToPost />
+        <SayItWalkthrough />
+        <HonestComparison />
+        <CaseStudies />
+        <WhatWeHandle />
         <Pricing />
+        <Faq />
+        <FooterCta />
         <Footer />
       </div>
     </div>

@@ -10,7 +10,7 @@ export default function Footer() {
       items: [
         { label: "How it works", href: "/#how" },
         { label: "Pricing", href: "/pricing" },
-        { label: "For teams", href: "/#teams" },
+        { label: "For multi-location teams", href: "/for/multi-location" },
         { label: "FAQ", href: "/#faq" },
       ],
     },
@@ -21,6 +21,7 @@ export default function Footer() {
         { label: "Contact", href: "mailto:hello@posterboysocial.com" },
         { label: "Privacy", href: "/privacy" },
         { label: "Terms", href: "/terms" },
+        { label: "Data deletion", href: "/data-deletion" },
       ],
     },
   ] as const;
