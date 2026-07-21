@@ -6,6 +6,14 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: path.resolve(__dirname),
   },
+  // vision-image-input reads public/uploads with a dynamic path, which makes
+  // the file tracer pull ALL of public/ (~160MB of marketing media) into every
+  // importing serverless function — blowing Vercel's 250MB limit. Static
+  // assets are served from the CDN, and prod uploads live on S3, so functions
+  // never need these files bundled.
+  outputFileTracingExcludes: {
+    "*": ["./public/**"],
+  },
   async headers() {
     return [
       {
