@@ -4,21 +4,22 @@ import { CONTACT_EMAIL, SITE_DOMAIN } from "@/lib/site";
 
 export const metadata = {
   title: "Terms of Service",
-  description: "Terms of use for posterboy Social closed beta.",
+  description: "Terms of use for posterboy Social.",
+  alternates: { canonical: "/terms" },
 };
 
 export default function TermsPage() {
   return (
     <LegalDocument title="Terms of Service" updated="May 18, 2026">
       <p className="type-body" style={{ lineHeight: 1.65 }}>
-        These Terms govern your use of posterboy Social at {SITE_DOMAIN} during our closed beta. By
+        These Terms govern your use of posterboy Social at {SITE_DOMAIN} during its early-access period. By
         creating an account or using the service, you agree to these Terms and our{" "}
         <Link href="/privacy">Privacy Policy</Link>.
       </p>
 
       <LegalSection title="1. Beta service">
         <p>
-          posterboy is provided as a beta product. Features, pricing, uptime, and availability may
+          posterboy is provided as an early-access product. Features, pricing, uptime, and availability may
           change without notice. We may add, modify, or remove functionality as we learn from beta
           testers.
         </p>
@@ -77,7 +78,7 @@ export default function TermsPage() {
 
       <LegalSection title="7. Fees">
         <p>
-          Closed beta access may be free or offered at promotional pricing. Paid plans, if offered,
+          Early access is currently free to start. Paid plans are described on the Pricing page; when billing is enabled for your account, charges
           will be described separately before you are charged.
         </p>
       </LegalSection>

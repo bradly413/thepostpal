@@ -1390,7 +1390,7 @@ function BrandArchitectInner() {
               Start where you are. You can change it anytime.
             </p>
             <p className="inline-flex items-center gap-1.5 mb-7 rounded-full bg-[#1f9d4d]/10 px-3 py-1 text-[13px] font-semibold text-[#1f9d4d]">
-              14-day free trial — no credit card required
+              Free to start — no credit card required
             </p>
             <div className="grid sm:grid-cols-3 gap-3 mb-8">
               {getPublicTiers().map((tier) => {

@@ -4,6 +4,7 @@ import { CONTACT_EMAIL, SITE_DOMAIN } from "@/lib/site";
 export const metadata = {
   title: "Privacy Policy",
   description: "How posterboy handles your data, cookies, and Meta integrations.",
+  alternates: { canonical: "/privacy" },
 };
 
 export default function PrivacyPage() {
@@ -12,7 +13,7 @@ export default function PrivacyPage() {
       <p className="type-body" style={{ lineHeight: 1.65 }}>
         posterboy Social (&ldquo;posterboy,&rdquo; &ldquo;we,&rdquo; &ldquo;us&rdquo;) helps small
         businesses create and publish social content. This policy explains what we collect, why we
-        collect it, and how you can control your data during our closed beta.
+        collect it, and how you can control your data.
       </p>
 
       <LegalSection title="1. Who this applies to">

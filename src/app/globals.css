@@ -834,6 +834,13 @@ html[data-theme] body {
   color: var(--pb-ink);
 }
 
+.pb-marketing-links .pb-btn-primary {
+  color: #fff !important;
+  border-bottom: none;
+  padding: 10px 16px;
+  font-size: 0.8rem;
+}
+
 .pb-nav-sign-in {
   color: var(--pb-ink) !important;
   border-bottom: 1px solid var(--pb-ink);
@@ -1590,6 +1597,8 @@ html[data-theme] body {
 .pb-home2 :focus-visible,
 .pb-app :focus-visible,
 .pb-studio :focus-visible,
+.pb-marketing :focus-visible,
+.cx-page :focus-visible,
 [data-overlay] :focus-visible,
 [role="dialog"] :focus-visible {
   outline: 2px solid #ee2532;

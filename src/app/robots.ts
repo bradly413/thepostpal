@@ -6,6 +6,8 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
+      // Authenticated app surfaces — never useful in search results.
+      disallow: ["/dashboard", "/onboarding", "/sign-in", "/editor", "/api/"],
     },
     sitemap: `${SITE_URL}/sitemap.xml`,
   };
