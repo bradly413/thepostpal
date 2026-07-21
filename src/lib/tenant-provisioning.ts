@@ -3,6 +3,7 @@ import "server-only";
 import { Prisma, type PlanTier } from "@prisma/client";
 import { withProvisioningDb } from "@/lib/db";
 import type { SessionUser } from "@/lib/auth-store";
+import { resolveSessionSuperadmin } from "@/lib/superadmin-allowlist";
 import {
   normalizePricingTierId,
   pricingTierToOrganizationPlan,
@@ -30,16 +31,30 @@ function mapUserRole(role: SessionUser["role"]): string {
   return "member";
 }
 
-function resolveProvisionPlan(selectedPlan?: string | null): PlanTier {
+function resolveProvisionPlan(
+  selectedPlan: string | null | undefined,
+  user: SessionUser,
+): PlanTier {
   const tier = normalizePricingTierId(selectedPlan) ?? "solo";
-  return pricingTierToOrganizationPlan(tier) ?? "solo";
+  const plan = pricingTierToOrganizationPlan(tier) ?? "solo";
+  // Paid tiers must never be granted by a query param alone. Until a real
+  // billing/contract flow assigns Command, only allowlisted internal accounts
+  // may self-provision `house_account`; everyone else lands on solo and the
+  // Command interest is logged for sales follow-up.
+  if (plan === "house_account" && !resolveSessionSuperadmin({ email: user.email })) {
+    console.warn(
+      `[provisioning] Command signup without billing — provisioned solo instead: ${user.email}`,
+    );
+    return "solo";
+  }
+  return plan;
 }
 
 export async function ensureTenantProvisioned(
   user: SessionUser,
   selectedPlan?: string | null,
 ): Promise<void> {
-  const plan = resolveProvisionPlan(selectedPlan);
+  const plan = resolveProvisionPlan(selectedPlan, user);
 
   await withProvisioningDb(
     { tenantId: user.accountId, userId: user.userId },

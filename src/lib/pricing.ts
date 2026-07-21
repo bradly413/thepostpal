@@ -41,7 +41,7 @@ export const PRICING_TIERS: PricingTier[] = [
     bestFor:
       "Independent luxury agents, solo aesthetic practitioners, and boutique consultants.",
     features: [
-      "Isolated single-user tenant sandbox",
+      "A private workspace of your own",
       "3 social profiles",
       "Calm Room content workspace",
       "Visual Grid Planner",
@@ -68,10 +68,10 @@ export const PRICING_TIERS: PricingTier[] = [
       "Agency-wide asset library",
       "Per-location brand kit and calendar",
       "Per-location social connections",
-      "Enterprise onboarding (SSO by contract)",
+      "Guided team onboarding",
     ],
-    cta: "Start Command",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=command",
+    cta: "Talk to us about Command",
+    ctaHref: `mailto:${CONTACT_EMAIL}?subject=Command%20walkthrough`,
     tier: "public",
     highlighted: true,
   },

@@ -32,7 +32,7 @@ describe("pricing tiers", () => {
   it("finds tier by id", () => {
     expect(getTierById("solo")?.price).toBe("$99");
     expect(getTierById("command")?.price).toBe("$249");
-    expect(getTierById("command")?.cta).toBe("Start Command");
+    expect(getTierById("command")?.cta).toBe("Talk to us about Command");
   });
 
   it("normalizes legacy plan query params", () => {
