@@ -39,6 +39,22 @@ const FAQS = [
     q: "What happens if I forget to approve a post?",
     a: "Nothing goes out. Unapproved drafts simply wait for you — Posterboy never publishes something you haven't approved. Approved posts publish on schedule, and if one fails it surfaces with a retry instead of disappearing.",
   },
+  {
+    q: "Does Posterboy publish automatically?",
+    a: "Yes — once you approve. Approved posts go to Facebook and Instagram on their scheduled times without you touching anything else. The approval step is the only thing we won't automate.",
+  },
+  {
+    q: "Is Posterboy replacing an agency?",
+    a: "It replaces the work, not the relationship. If you have an agency you love, keep it. Posterboy is for businesses doing it themselves — it creates the posts an agency would, without the meetings or the retainer.",
+  },
+  {
+    q: "Is there a free trial?",
+    a: "Yes. Posterboy is free to start and we don't ask for a card. Set your voice, draft a week, and see if it sounds like you before anything else.",
+  },
+  {
+    q: "Can I cancel?",
+    a: "Anytime, from your account — no phone call, no exit interview. Everything you made is yours to keep.",
+  },
 ] as const;
 
 /** FAQ accordion — one answer open at a time, real buttons, aria-expanded. */

@@ -20,9 +20,8 @@ const TIER_NOTES: Record<string, string> = {
 const SOLO_MONTHLY = 99;
 const SOLO_ANNUAL_PER_MONTH = 79;
 const SOLO_ANNUAL_TOTAL = SOLO_ANNUAL_PER_MONTH * 12; // $948
-const SOLO_SAVINGS_PCT = Math.round(
-  (1 - SOLO_ANNUAL_TOTAL / (SOLO_MONTHLY * 12)) * 100,
-); // 20
+// Exact arithmetic, not a rounded percentage: $1,188 − $948 = $240/yr.
+const SOLO_SAVINGS_DOLLARS = SOLO_MONTHLY * 12 - SOLO_ANNUAL_TOTAL; // 240
 
 type Cadence = "monthly" | "annual";
 
@@ -40,9 +39,7 @@ export default function Pricing() {
     <section className="pb-pricing" id="pricing" aria-labelledby="pb-pricing-title">
       <div className="pb-pricing-head">
         <p className="pb-pricing-kicker">Pricing</p>
-        <h2 id="pb-pricing-title">
-          Solo. <strong>Command.</strong>
-        </h2>
+        <h2 id="pb-pricing-title">Pick the version that matches the business.</h2>
         <p className="pb-pricing-sub">Less than one Sunday night, every month.</p>
 
         <div
@@ -67,7 +64,7 @@ export default function Pricing() {
             aria-pressed={cadence === "annual"}
             onClick={() => setBilling("annual")}
           >
-            Annual <span className="pb-billing-save">save {SOLO_SAVINGS_PCT}%</span>
+            Annual <span className="pb-billing-save">save ${SOLO_SAVINGS_DOLLARS}/yr</span>
           </button>
         </div>
       </div>
@@ -101,7 +98,11 @@ export default function Pricing() {
               ) : (
                 <p className="pb-price-annual">Billed monthly · scales by location</p>
               )}
-              <p className="pb-price-desc">{tier.description}</p>
+              <p className="pb-price-desc">
+                {isSolo
+                  ? "For one business that needs the feed handled."
+                  : "For teams managing multiple locations without losing the local voice."}
+              </p>
               <ul className="pb-price-features">
                 {tier.features.map((f) => (
                   <li key={f}>

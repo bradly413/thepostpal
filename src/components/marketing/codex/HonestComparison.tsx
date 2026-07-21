@@ -11,28 +11,16 @@ import { track } from "@/lib/marketing/track";
 
 gsap.registerPlugin(ScrollTrigger);
 
-// Row copy carried over verbatim from the original comparison (source of truth).
-const OPTIONS = [
-  {
-    name: "Do it yourself",
-    cost: "$30/mo + your evenings",
-    copy:
-      "Buffer, Canva, a content calendar, and every Sunday night for the rest of your life. The tools schedule. You still do the work.",
-  },
-  {
-    name: "Hire an agency",
-    cost: "$1,500+/mo + meetings",
-    copy:
-      "Great work, eventually. After the onboarding call, the strategy deck, the revision rounds, and the invoice.",
-  },
-  {
-    name: "Go quiet",
-    cost: "$0 + your customers",
-    copy: "The cheapest option, until it isn't. A silent feed reads as a closed business.",
-  },
+// Fair alternatives, no invented competitor prices. Each line concedes the
+// real tradeoff; only Posterboy's own price appears.
+const ALTERNATIVES = [
+  { name: "Do it yourself", verdict: "Full control. It just costs your evenings." },
+  { name: "Use a scheduler", verdict: "Organizes the work. You still have to make it." },
+  { name: "Hire an agency", verdict: "Higher touch — with more cost and more meetings." },
+  { name: "Go quiet", verdict: "Free, until the feed makes the business look closed." },
 ] as const;
 
-/** Four honest rows; the fourth is the answer — distinct but not a gimmick. */
+/** The honest comparison — four struck-through options, one standing. */
 export default function HonestComparison() {
   const rootRef = useRef<HTMLElement | null>(null);
   const { ready, reducedMotion } = useMarketingScroll();
@@ -42,14 +30,11 @@ export default function HonestComparison() {
       if (!ready) return;
       const root = rootRef.current;
       if (!root) return;
-      const rows = root.querySelectorAll<HTMLElement>(".pbx-alt-row, .pbx-alt-answer");
-      const head = root.querySelector<HTMLElement>(".pbx-alt-head");
-
+      const bits = root.querySelectorAll(".pbv-fade, .pbv-alt-line, .pbv-alt-answer");
       if (reducedMotion) {
-        gsap.set([head, ...Array.from(rows)].filter(Boolean), { opacity: 1, y: 0, x: 0 });
+        gsap.set(bits, { opacity: 1, y: 0 });
         return;
       }
-
       const tl = gsap.timeline({
         defaults: { ease: "power2.out" },
         scrollTrigger: {
@@ -59,66 +44,58 @@ export default function HonestComparison() {
           toggleActions: "play none none reverse",
         },
       });
-      if (head) tl.fromTo(head, { autoAlpha: 0, y: 24 }, { autoAlpha: 1, y: 0, duration: 0.55 });
-      rows.forEach((row, i) => {
-        tl.fromTo(
-          row,
-          { autoAlpha: 0, x: -22 },
-          { autoAlpha: 1, x: 0, duration: 0.5 },
-          0.25 + i * 0.16,
-        );
-        const num = row.querySelector(".pbx-alt-num");
-        if (num) {
-          tl.fromTo(
-            num,
-            { autoAlpha: 0, y: 12 },
-            { autoAlpha: 1, y: 0, duration: 0.4 },
-            0.3 + i * 0.16,
-          );
-        }
-      });
+      tl.fromTo(
+        root.querySelectorAll(".pbv-fade"),
+        { autoAlpha: 0, y: 22 },
+        { autoAlpha: 1, y: 0, duration: 0.55, stagger: 0.08 },
+      );
+      tl.fromTo(
+        root.querySelectorAll(".pbv-alt-line"),
+        { autoAlpha: 0, y: 18 },
+        { autoAlpha: 1, y: 0, duration: 0.45, stagger: 0.13 },
+        "-=0.15",
+      );
+      tl.fromTo(
+        root.querySelector(".pbv-alt-answer"),
+        { autoAlpha: 0, y: 22 },
+        { autoAlpha: 1, y: 0, duration: 0.6 },
+        "-=0.1",
+      );
     },
     { scope: rootRef, dependencies: [ready, reducedMotion] },
   );
 
   return (
-    <section className="pbx-alt" id="compare" aria-labelledby="pbx-alt-title" ref={rootRef}>
-      <div className="pbx-alt-head">
-        <p className="pbx-alt-kicker">The honest comparison</p>
-        <h2 id="pbx-alt-title">
-          You have <strong>three options.</strong>
+    <section className="pbv-alt" id="compare" aria-labelledby="pbv-alt-title" ref={rootRef}>
+      <div className="pbv-alt-inner">
+        <p className="pbv-kicker pbv-fade">The honest comparison</p>
+        <h2 id="pbv-alt-title" className="pbv-fade">
+          You can keep making the posts yourself. Posterboy exists so you don&rsquo;t have to.
         </h2>
-      </div>
 
-      <div className="pbx-alt-rows">
-        {OPTIONS.map((o, i) => (
-          <div className="pbx-alt-row" key={o.name}>
-            <span className="pbx-alt-num" aria-hidden>
-              0{i + 1}
-            </span>
-            <div className="pbx-alt-body">
-              <h3 className="pbx-alt-name">{o.name}</h3>
-              <p className="pbx-alt-copy">{o.copy}</p>
-            </div>
-            <span className="pbx-alt-cost">{o.cost}</span>
-          </div>
-        ))}
+        <ul className="pbv-alt-list">
+          {ALTERNATIVES.map((alt) => (
+            <li className="pbv-alt-line" key={alt.name}>
+              <s className="pbv-alt-name">{alt.name}</s>
+              <span className="pbv-alt-verdict">{alt.verdict}</span>
+            </li>
+          ))}
+        </ul>
 
-        <div className="pbx-alt-answer">
-          <span className="pbx-alt-num pbx-alt-num--red" aria-hidden>
-            04
-          </span>
-          <div className="pbx-alt-body">
-            <p className="pbx-alt-answer-tag">The answer</p>
-            <h3 className="pbx-alt-answer-title">
-              Or: posterboy writes, schedules, and publishes in your voice. You approve from your
-              phone.
-            </h3>
-            <p className="pbx-alt-answer-cost">$99/mo. No meetings. No Sunday nights.</p>
-          </div>
+        <div className="pbv-alt-answer">
+          <p className="pbv-alt-answer-name">
+            poster<em>boy</em>
+          </p>
+          <p className="pbv-alt-answer-copy">
+            Creates the work and keeps you in control. $99/mo. No meetings. No Sunday nights.
+          </p>
+          <p className="pbv-alt-answer-note">
+            In practice: one post most weeks becomes three or four that sound like you.
+            Illustrative — not reported customer results.
+          </p>
           <Link
             href={SIGNUP_ONBOARDING_URL}
-            className="pbx-alt-cta"
+            className="pbv-alt-cta"
             onClick={() => track("start_trial_clicked", { location: "comparison" })}
           >
             Start free trial
@@ -127,93 +104,75 @@ export default function HonestComparison() {
       </div>
 
       <style>{`
-        .pbx-alt {
+        .pbv-alt {
           --red: #ee2532;
           --ink: #141418;
-          padding: clamp(72px, 11vh, 140px) clamp(20px, 3vw, 48px);
-          max-width: 1080px;
-          margin: 0 auto;
+          padding: clamp(88px, 13vh, 170px) clamp(20px, 3vw, 48px);
+          border-top: 1px solid rgba(20, 20, 24, 0.08);
         }
-        .pbx-alt-kicker {
-          margin: 0 0 14px;
-          font-size: 12px; font-weight: 700;
-          letter-spacing: 0.14em; text-transform: uppercase;
-          color: var(--red);
-        }
-        .pbx-alt h2 {
-          margin: 0 0 40px;
-          font-size: clamp(30px, 4vw, 48px);
-          font-weight: 700; letter-spacing: -0.025em; line-height: 1.06;
+        .pbv-alt-inner { max-width: 880px; margin: 0 auto; }
+        .pbv-alt h2 {
+          margin: 0 0 48px;
+          font-size: clamp(28px, 3.8vw, 46px);
+          font-weight: 700;
+          letter-spacing: -0.03em;
+          line-height: 1.08;
           color: var(--ink);
+          max-width: 24ch;
         }
-        .pbx-alt h2 strong { color: var(--red); }
-        .pbx-alt-rows { display: flex; flex-direction: column; gap: 12px; }
-        .pbx-alt-row {
-          display: grid;
-          grid-template-columns: auto minmax(0, 1fr) auto;
-          gap: clamp(16px, 3vw, 36px);
-          align-items: center;
-          background: rgba(255,255,255,0.6);
-          border: 1px solid rgba(20,20,24,0.08);
-          border-radius: 18px;
-          padding: clamp(18px, 2.4vw, 26px);
+        .pbv-alt-list { list-style: none; margin: 0 0 40px; padding: 0; }
+        .pbv-alt-line {
+          display: flex; align-items: baseline; gap: 16px; flex-wrap: wrap;
+          padding: 18px 0;
+          border-top: 1px solid rgba(20, 20, 24, 0.08);
         }
-        .pbx-alt-num {
-          font-size: clamp(22px, 2.4vw, 30px);
+        .pbv-alt-line:last-child { border-bottom: 1px solid rgba(20, 20, 24, 0.08); }
+        .pbv-alt-name {
+          font-size: clamp(21px, 2.4vw, 30px);
           font-weight: 700;
           letter-spacing: -0.02em;
-          color: color-mix(in srgb, var(--ink) 28%, transparent);
-          font-variant-numeric: tabular-nums;
-          min-width: 2ch;
+          color: color-mix(in srgb, var(--ink) 40%, transparent);
+          text-decoration-thickness: 2px;
+          text-decoration-color: color-mix(in srgb, var(--ink) 40%, transparent);
         }
-        .pbx-alt-num--red { color: var(--red); }
-        .pbx-alt-name { margin: 0 0 4px; font-size: clamp(17px, 1.6vw, 21px); font-weight: 700; color: var(--ink); }
-        .pbx-alt-copy { margin: 0; font-size: 14.5px; line-height: 1.55; color: color-mix(in srgb, var(--ink) 62%, transparent); max-width: 56ch; }
-        .pbx-alt-cost {
-          font-size: 13px; font-weight: 700;
-          color: color-mix(in srgb, var(--ink) 55%, transparent);
-          white-space: nowrap;
+        .pbv-alt-verdict {
+          font-size: 15px;
+          color: color-mix(in srgb, var(--ink) 58%, transparent);
         }
-        .pbx-alt-answer {
-          display: grid;
-          grid-template-columns: auto minmax(0, 1fr) auto;
-          gap: clamp(16px, 3vw, 36px);
-          align-items: center;
-          background: var(--ink);
-          border-radius: 20px;
-          padding: clamp(22px, 3vw, 34px);
-          box-shadow: 0 30px 70px -34px rgba(20,20,30,0.55);
-        }
-        .pbx-alt-answer-tag {
-          margin: 0 0 8px;
-          font-size: 11px; font-weight: 700;
-          letter-spacing: 0.14em; text-transform: uppercase;
-          color: var(--red);
-        }
-        .pbx-alt-answer-title {
+        .pbv-alt-answer { padding-top: 6px; }
+        .pbv-alt-answer-name {
           margin: 0 0 10px;
-          font-size: clamp(19px, 2vw, 25px);
-          font-weight: 700; line-height: 1.3; letter-spacing: -0.015em;
-          color: #fff;
-          max-width: 34ch;
+          font-family: var(--font-instrument-serif), Georgia, serif;
+          font-size: clamp(30px, 3.4vw, 42px);
+          color: var(--ink);
+          line-height: 1;
         }
-        .pbx-alt-answer-cost { margin: 0; font-size: 14.5px; font-weight: 600; color: rgba(255,255,255,0.72); }
-        .pbx-alt-cta {
-          background: var(--red); color: #fff;
-          border-radius: 13px; padding: 14px 22px;
-          font-size: 14.5px; font-weight: 700; text-decoration: none;
-          white-space: nowrap;
-          transition: background 0.25s ease;
-          min-height: 44px; display: inline-flex; align-items: center;
+        .pbv-alt-answer-name em { font-style: italic; }
+        .pbv-alt-answer-copy {
+          margin: 0 0 10px;
+          font-size: clamp(17px, 1.6vw, 21px);
+          font-weight: 600;
+          color: var(--red);
+          max-width: 40ch;
         }
-        .pbx-alt-cta:hover { background: #c81e2a; }
-        .pbx-alt-cta:focus-visible { outline: 2px solid #fff; outline-offset: 2px; }
-        @media (max-width: 720px) {
-          .pbx-alt-row { grid-template-columns: auto minmax(0, 1fr); }
-          .pbx-alt-cost { grid-column: 2; justify-self: start; }
-          .pbx-alt-answer { grid-template-columns: auto minmax(0, 1fr); }
-          .pbx-alt-cta { grid-column: 2; justify-self: start; }
+        .pbv-alt-answer-note {
+          margin: 0 0 24px;
+          font-size: 13px;
+          color: color-mix(in srgb, var(--ink) 48%, transparent);
+          max-width: 52ch;
         }
+        .pbv-alt-cta {
+          background: var(--ink); color: #fff;
+          border-radius: 999px;
+          padding: 0 28px; min-height: 52px;
+          display: inline-flex; align-items: center;
+          font-size: 15.5px; font-weight: 700;
+          text-decoration: none;
+          transition: background 0.3s cubic-bezier(0.32, 0.72, 0, 1), transform 0.2s ease;
+        }
+        .pbv-alt-cta:hover { background: #c81e2a; }
+        .pbv-alt-cta:active { transform: scale(0.98); }
+        .pbv-alt-cta:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
       `}</style>
     </section>
   );
