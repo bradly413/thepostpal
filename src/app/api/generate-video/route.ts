@@ -3,13 +3,18 @@ import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/r
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import { isProImageEntitled } from "@/lib/plan-features";
-import { createVideoTask, getVideoTask, klingConfigured } from "@/lib/kling";
+import {
+  getVeoTask,
+  startVeoVideo,
+  veoConfigured,
+  type VeoAspectRatio,
+  type VeoResolution,
+} from "@/lib/studio/veo";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
-// Video (Kling image-to-video) rides the Pro images entitlement — it's the
-// most expensive generation, so plan tier OR the Pro add-on unlocks it.
+// Video (Veo) rides the Pro images entitlement — expensive generation.
 async function entitled(auth: AuthContext): Promise<boolean> {
   try {
     return await withTenantDb(auth, async (tx) => {
@@ -24,7 +29,7 @@ async function entitled(auth: AuthContext): Promise<boolean> {
   }
 }
 
-/** POST: create an image-to-video task → { taskId }. */
+/** POST: create a Veo job → { taskId }. Image optional (text-to-video). */
 export async function POST(req: NextRequest) {
   let auth: AuthContext;
   try {
@@ -42,37 +47,58 @@ export async function POST(req: NextRequest) {
     }
     throw error;
   }
-  if (!klingConfigured()) {
+  if (!veoConfigured()) {
     return NextResponse.json({ error: "Video generation isn't configured yet." }, { status: 500 });
   }
   if (!(await entitled(auth))) {
     return NextResponse.json({ error: "Video is a Pro feature.", upgrade: true }, { status: 403 });
   }
 
-  let body: { image?: unknown; prompt?: unknown; duration?: unknown };
+  let body: {
+    image?: unknown;
+    prompt?: unknown;
+    aspectRatio?: unknown;
+    resolution?: unknown;
+  };
   try {
     body = await req.json();
   } catch {
     return NextResponse.json({ error: "Invalid request body" }, { status: 400 });
   }
+
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
+  if (!prompt) {
+    return NextResponse.json({ error: "A prompt is required for video." }, { status: 400 });
+  }
+  if (prompt.length > 1024) {
+    return NextResponse.json({ error: "Prompt is too long (1024 char max)." }, { status: 400 });
+  }
+
   const image = typeof body.image === "string" ? body.image : "";
-  if (!image) return NextResponse.json({ error: "An image is required to animate" }, { status: 400 });
-  const prompt = typeof body.prompt === "string" ? body.prompt : "";
-  const duration = body.duration === 10 ? 10 : 5;
+  const aspectRatio: VeoAspectRatio =
+    body.aspectRatio === "9:16" || body.aspectRatio === "16:9"
+      ? body.aspectRatio
+      : "16:9";
+  const resolution: VeoResolution =
+    body.resolution === "1080p" || body.resolution === "4k" || body.resolution === "720p"
+      ? body.resolution
+      : "720p";
 
   try {
-    const taskId = await createVideoTask({ image, prompt, durationSeconds: duration });
+    const taskId = await startVeoVideo({
+      prompt,
+      image: image || null,
+      aspectRatio,
+      resolution,
+    });
     return NextResponse.json({ taskId, status: "submitted" });
   } catch (err) {
     const msg = err instanceof Error ? err.message : String(err);
     console.error("[api/generate-video] create failed:", msg);
-    if (msg === "KLING_NO_BALANCE") {
-      return NextResponse.json(
-        { error: "Out of video credits — top up the Kling account to enable video." },
-        { status: 402 },
-      );
-    }
-    return NextResponse.json({ error: "Couldn't start the video. Try again." }, { status: 502 });
+    return NextResponse.json(
+      { error: msg.includes("GEMINI") ? "Video generation isn't configured yet." : "Couldn't start the video. Try again." },
+      { status: 502 },
+    );
   }
 }
 
@@ -87,7 +113,7 @@ export async function GET(req: NextRequest) {
   if (!taskId) return NextResponse.json({ error: "taskId required" }, { status: 400 });
 
   try {
-    const task = await getVideoTask(taskId);
+    const task = await getVeoTask(taskId);
     return NextResponse.json(task);
   } catch (err) {
     console.error("[api/generate-video] poll failed:", err instanceof Error ? err.message : err);

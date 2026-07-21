@@ -82,7 +82,8 @@ export async function POST(req: Request) {
   }
 
   try {
-    if (!(await rateLimit(buildRateLimitKey("ai-captions-image", req.headers as unknown as Headers, auth), 20, 60_000))) {
+    // Bulk schedule queues caption many images serially — allow a bit more headroom.
+    if (!(await rateLimit(buildRateLimitKey("ai-captions-image", req.headers as unknown as Headers, auth), 36, 60_000))) {
       return Response.json({ error: "Too many requests. Please wait a moment." }, { status: 429 });
     }
   } catch (error) {
@@ -139,7 +140,7 @@ export async function POST(req: Request) {
 - If they pasted a finished caption, lightly polish it to match the image and platform — preserve their voice, do not replace it.
 - If they wrote an idea, theme, or scattered thoughts, synthesize those into real captions grounded in what you see.
 - If notes are empty, write from the image and brand voice only.
-Notes are guidance — never claim things not visible in the image.`;
+Notes are guidance — never invent facts that contradict the image.`;
 
   const system = `You write short social captions for local businesses — simple, clear, offer-first.
 Platform: ${platform}. ${PLATFORM_GUIDE[platform]}${brand}
@@ -148,12 +149,15 @@ ${creatorIntent}
 
 Look at the image and write EXACTLY ${count} captions for this post.
 
-STEP 1 — Identify the REAL subject in the photo first:
-- What is actually shown? Product, service moment, place, people, promo graphic, etc.
-- On-image headlines are marketing copy, NOT always the product. Caption the real offer, not a metaphor on the graphic.
+STEP 1 — Read the image like a designer, then write:
+- First check for INTENTIONAL on-image text: headlines, slogans, promo lines, CTAs, designed graphic copy (not tiny watermarks or illegible blur).
+- If that marketing copy is present, it IS the message of the post. Captions must relate to that idea — extend it, echo the vibe, or land the same punch in spoken voice. Do not ignore the headline to describe food/props/people instead.
+- Example: graphic says "IN A ROOM FULL OF SANDWICHES YOU HAVE TO STAND OUT" → captions about standing out / being the one they remember / bold flavor that cuts through — NOT a bland "breakfast sandwich with egg and bacon today."
+- You may lightly paraphrase; do not paste the full headline word-for-word as the entire caption (reads like OCR). Short echoes or reframes are good.
+- If there is NO readable marketing text, caption the real subject/offer you see (product, service, place, people).
 - Never invent details that are not visible or stated in the brand/notes.
 
-STEP 2 — Write captions that sell that offer.
+STEP 2 — Write captions that sell that message.
 
 TARGET STYLE (match this closely):
 "Try our weekend special. #weekend"
@@ -162,11 +166,11 @@ TARGET STYLE (match this closely):
 "New arrivals just dropped. #new"
 
 Rules:
-- One short sentence. Name the actual offer you see.
+- One short sentence. Lead with the message (on-image idea when present, otherwise the offer you see).
 - Friendly, direct, obvious — adapt to the business niche from brand context.
 - End with ONE simple hashtag when it fits. Put it in the hashtags array, not inside the caption string.
-- No artsy observations, no soft preambles, no essays, no rhetorical questions.
-- Never narrate the picture. Never quote on-image text word for word.
+- No artsy photo narration ("golden yolk dripping…"), no soft preambles, no essays, no rhetorical questions.
+- Never narrate the picture as if the reader cannot see it.
 - Vary the angle across the ${count} options but keep the same short shape.
 
 ${CAPTION_ANTI_AI_TELLS}
@@ -176,7 +180,7 @@ Respond with ONLY a JSON array (no prose, no code fences):
 
   const userText = context
     ? `Creator notes:\n${context}`
-    : "Write short offer captions. Identify the real subject in the photo first.";
+    : "Write short captions. If the image has a headline or slogan, make the caption about that message — not a description of the props.";
 
   try {
     const result = await generateText({

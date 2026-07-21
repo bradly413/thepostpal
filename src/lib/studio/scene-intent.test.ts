@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
+  briefNeedsSceneGeography,
   composeSuffixForBrief,
   enrichScenicBrief,
   generationSuffixForBrief,
+  isBrandOutcomeBrief,
   isListingBrief,
   inferPlatformIdFromIntent,
   isMinimalScenicBrief,
@@ -75,5 +77,50 @@ describe("scene-intent", () => {
         "make an instagram post about my new listing 223 victor ct",
       ),
     ).toBe("instagram");
+  });
+
+  it("skips scene geography for product/color briefs", () => {
+    expect(briefNeedsSceneGeography("a picture of vibrant red smoothie")).toBe(false);
+    expect(briefNeedsSceneGeography("vibrant red smoothie on a red background")).toBe(false);
+    expect(briefNeedsSceneGeography("make an instagram post about a vibrant red smoothie")).toBe(
+      false,
+    );
+    expect(briefNeedsSceneGeography("weekend special at our cafe")).toBe(true);
+    expect(briefNeedsSceneGeography("palm tree beach")).toBe(true);
+  });
+
+  it("never treats product-hero briefs as place context even with studio wording", () => {
+    expect(briefNeedsSceneGeography("studio lighting on a red smoothie")).toBe(false);
+    expect(briefNeedsSceneGeography("smoothie on a city patio")).toBe(false);
+  });
+
+  it("treats beauty and portrait briefs as non-place (no café brand leak)", () => {
+    expect(briefNeedsSceneGeography("natural refreshed woman portrait")).toBe(false);
+    expect(briefNeedsSceneGeography("Instagram for Aurora Medical Spa beauty close-up")).toBe(
+      false,
+    );
+    expect(briefNeedsSceneGeography("wellness portrait high-key")).toBe(false);
+    expect(briefNeedsSceneGeography("team photo at our spa")).toBe(true);
+  });
+
+  it("detects brand-outcome briefs so compose does not invent product bottles", () => {
+    expect(isBrandOutcomeBrief("create an image for Aurora Med Spa")).toBe(true);
+    expect(isBrandOutcomeBrief("make an instagram post for Aurora Medical Spa Des Peres")).toBe(
+      true,
+    );
+    expect(isBrandOutcomeBrief("Aurora Med Spa")).toBe(true);
+    expect(isBrandOutcomeBrief("radiant glowing skin beauty close-up for Aurora Med Spa")).toBe(
+      false,
+    );
+    expect(isBrandOutcomeBrief("Aurora Med Spa skincare bottles flat lay")).toBe(false);
+    expect(isBrandOutcomeBrief("vibrant red smoothie")).toBe(false);
+  });
+
+  it("keeps product generation suffixes short and fidelity-first", () => {
+    const suffix = generationSuffixForBrief("vibrant red smoothie", false);
+    expect(suffix).toMatch(/real photograph/i);
+    expect(suffix).toMatch(/only what the brief names|no invented garnish/i);
+    expect(suffix).toMatch(/no text|watermark/i);
+    expect(suffix.length).toBeLessThan(320);
   });
 });

@@ -7,7 +7,6 @@ import { isUploadableMediaFile, UPLOAD_ACCEPT_MEDIA } from "@/lib/upload-mime";
 import { useActiveLocation } from "@/lib/use-active-location";
 import {
   fetchDashboardPhotos,
-  createDashboardPhoto,
   deleteDashboardPhoto,
   formatDashboardApiMessage,
   type DashboardPhotoRecord,
@@ -145,13 +144,21 @@ export default function PhotosPage() {
         ]);
 
         try {
-          const url = await uploadMediaToS3(file);
-          const created = await createDashboardPhoto({
+          const url = await uploadMediaToS3(file, {
+            locationId,
+            alt: file.name,
+          });
+          // Library row is created by uploadMediaToS3 — refresh to pick up the id.
+          const records = await fetchDashboardPhotos(locationId);
+          const created = records.find((r) => r.url === url) ?? {
+            id: tempId,
+            organizationId: "",
             locationId,
             url,
             mimeType: file.type || null,
             alt: file.name,
-          });
+            createdAt: new Date().toISOString(),
+          };
           setMedia((prev) => prev.map((p) => (p.id === tempId ? toDisplay(created) : p)));
         } catch (err) {
           setMedia((prev) => prev.filter((p) => p.id !== tempId));

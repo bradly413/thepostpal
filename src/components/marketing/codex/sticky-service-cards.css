@@ -1,0 +1,661 @@
+/* =========================================================
+   STICKY SERVICE CARDS — "What We Build" stack.
+   Split cards with layout rhythm breaks (hero, invert, band,
+   manifesto). Copy top-aligned; softer sticky exit dim.
+   ========================================================= */
+
+.cx .ssc {
+  position: relative;
+  width: 100%;
+}
+
+.cx .ssc-card {
+  position: sticky;
+  top: 7vh;
+  height: 86vh;
+  width: 100%;
+  margin-bottom: 7vh;
+  overflow: hidden;
+  display: grid;
+  grid-template-columns: minmax(280px, 1fr) minmax(340px, 1.35fr);
+  align-items: stretch;
+  background: #ffffff;
+  border: 1px solid rgba(26, 26, 26, 0.07);
+  border-radius: 0;
+  box-shadow: var(--shadow-4);
+  transform-origin: center center;
+}
+
+.cx .ssc-card:last-child {
+  margin-bottom: 0;
+}
+
+/* ---------- layout variants ---------- */
+
+.cx .ssc-card--hero {
+  top: 5vh;
+  height: 92vh;
+}
+
+.cx .ssc-card--hero .ssc-card__title {
+  font-size: clamp(2rem, 3.8vw, 3.35rem);
+}
+
+.cx .ssc-card--invert {
+  grid-template-columns: minmax(340px, 1.35fr) minmax(280px, 1fr);
+}
+
+.cx .ssc-card--invert .ssc-card__text {
+  order: 2;
+}
+
+.cx .ssc-card--invert .ssc-card__media {
+  order: 1;
+}
+
+.cx .ssc-card--band .ssc-card__media {
+  padding: 0;
+  align-items: stretch;
+}
+
+.cx .ssc-card--band .ssc-card__img {
+  object-fit: cover;
+  border-radius: 0;
+}
+
+.cx .ssc-card--manifesto {
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr auto;
+  height: auto;
+  min-height: 78vh;
+}
+
+.cx .ssc-card--manifesto .ssc-card__text {
+  max-width: 640px;
+  padding-bottom: 1.25rem;
+}
+
+.cx .ssc-card--manifesto .ssc-card__media {
+  height: clamp(220px, 30vh, 340px);
+  min-height: 0;
+  border-top: 1px solid rgba(26, 26, 26, 0.07);
+  padding: 0;
+}
+
+.cx .ssc-card--manifesto .ssc-card__img {
+  object-fit: cover;
+}
+
+/* ---------- copy column (left) ---------- */
+
+.cx .ssc-card__text {
+  align-self: start;
+  max-width: 520px;
+  padding: clamp(2.25rem, 4.5vw, 3.75rem) clamp(1rem, 2.5vw, 2rem)
+    clamp(2rem, 4vw, 3rem) clamp(1.8rem, 4vw, 3.5rem);
+}
+
+.cx .ssc-card__seq {
+  margin: 0 0 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--accent, #e1062c);
+}
+
+.cx .ssc-card__kicker {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 10px;
+  margin: 0 0 0.85rem;
+}
+
+.cx .ssc-card__n {
+  font-family: var(--font-mono, monospace);
+  font-size: 0.78rem;
+  letter-spacing: 0.04em;
+  color: var(--accent, #e1062c);
+}
+
+.cx .ssc-card__label {
+  font-family: var(--sans);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: rgba(26, 26, 26, 0.42);
+  margin: 0;
+}
+
+.cx .ssc-card__title {
+  font-family: var(--sans);
+  font-weight: 800;
+  font-size: clamp(1.8rem, 3.4vw, 3rem);
+  letter-spacing: -0.03em;
+  line-height: 1.03;
+  color: #1a1a1a;
+  margin: 0 0 0.75rem;
+}
+
+.cx .ssc-card__outcome {
+  font-size: clamp(15px, 1.15vw, 16px);
+  font-weight: 600;
+  line-height: 1.45;
+  color: rgba(26, 26, 26, 0.72);
+  max-width: 42ch;
+  margin: 0 0 1rem;
+}
+
+.cx .ssc-card__bullets {
+  list-style: none;
+  margin: 0 0 1rem;
+  padding: 0;
+  max-width: 44ch;
+}
+
+.cx .ssc-card__bullets li {
+  position: relative;
+  padding-left: 1.05rem;
+  margin-bottom: 0.45rem;
+  font-size: clamp(14px, 1.1vw, 16px);
+  line-height: 1.5;
+  color: rgba(26, 26, 26, 0.58);
+}
+
+.cx .ssc-card__bullets li::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0.62em;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--accent, #e1062c);
+  opacity: 0.75;
+}
+
+.cx .ssc-card__proof {
+  margin: 0 0 1.1rem;
+  font-family: var(--font-mono, monospace);
+  font-size: 0.68rem;
+  letter-spacing: 0.03em;
+  color: rgba(26, 26, 26, 0.4);
+}
+
+.cx .ssc-card__link {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding-block: 6px;
+  margin-block: -6px;
+  font-size: 0.82rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--accent, #e1062c);
+  text-decoration: none;
+}
+
+.cx .ssc-card__link:hover {
+  text-decoration: underline;
+}
+
+.cx .ssc-card__link i {
+  font-style: normal;
+}
+
+/* ---------- visual column (right) ---------- */
+
+.cx .ssc-card__media {
+  position: relative;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: clamp(1.25rem, 2.5vw, 2.25rem);
+  overflow: hidden;
+}
+
+.cx .ssc-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cx .ssc-monitor {
+  position: relative;
+}
+
+.cx .ssc-monitor__frame {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: min(48vw, 900px);
+  max-height: calc(86vh - 120px);
+  pointer-events: none;
+}
+
+.cx .ssc-card--hero .ssc-monitor__frame {
+  max-height: calc(92vh - 120px);
+}
+
+.cx .ssc-monitor__screen {
+  position: absolute;
+  left: 1.18%;
+  top: 1.65%;
+  width: 97.64%;
+  height: 74.03%;
+  object-fit: cover;
+  object-position: top;
+  border-radius: 0;
+  z-index: 2;
+}
+
+@media (max-width: 900px) {
+  .cx .ssc-card,
+  .cx .ssc-card--hero,
+  .cx .ssc-card--manifesto {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+    top: 9vh;
+    height: auto;
+    min-height: 82vh;
+    margin-bottom: 9vh;
+    border-radius: 0;
+  }
+
+  .cx .ssc-card--invert .ssc-card__text,
+  .cx .ssc-card--invert .ssc-card__media {
+    order: unset;
+  }
+
+  .cx .ssc-card__text {
+    align-self: start;
+    padding: 1.6rem 1.4rem 1.2rem;
+  }
+
+  .cx .ssc-card__media {
+    height: 100%;
+    min-height: 200px;
+    padding: 0 1.25rem 1.25rem;
+  }
+
+  .cx .ssc-card--band .ssc-card__media,
+  .cx .ssc-card--manifesto .ssc-card__media {
+    padding: 0;
+    min-height: 220px;
+    border-top: 1px solid rgba(26, 26, 26, 0.07);
+  }
+
+  .cx .ssc-card--band .ssc-card__img,
+  .cx .ssc-card--manifesto .ssc-card__img {
+    object-fit: cover;
+  }
+
+  .cx .ssc-monitor__frame {
+    max-width: 88vw;
+    max-height: min(34vh, calc(82vh - 380px));
+  }
+}
+
+/* ---------- cover variant (card 01): full-bleed brand flatlay with the
+   copy overlaid on the dark left region (matches slide-01 mockup) ---------- */
+.cx .ssc-card--cover {
+  display: block;
+  /* keep position: sticky from the base .ssc-card — it also serves as the
+     containing block for the absolute media below. (Setting position:relative
+     here broke the sticky stack.) */
+  background: #0f0c09;
+  border-color: rgba(255, 255, 255, 0.08);
+}
+.cx .ssc-card--cover .ssc-card__media {
+  position: absolute;
+  inset: 0;
+  padding: 0;
+  min-height: 0;
+  z-index: 0;
+}
+.cx .ssc-card--cover .ssc-card__img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center right;
+}
+/* left-to-right scrim keeps the copy legible over the photo — the dark holds
+   through the copy zone (~0-45%) before fading into the image */
+.cx .ssc-card--cover .ssc-card__media::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(15, 12, 9, 0.95) 0%,
+    rgba(15, 12, 9, 0.86) 42%,
+    rgba(15, 12, 9, 0.35) 62%,
+    rgba(15, 12, 9, 0) 82%
+  );
+}
+.cx .ssc-card--cover .ssc-card__text {
+  position: relative;
+  z-index: 2;
+  height: 100%;
+  /* narrow measure so the copy stays over the dark scrim, not the photo */
+  max-width: 500px;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: clamp(2.5rem, 5vw, 4.5rem) clamp(1.8rem, 3.2vw, 3.25rem);
+}
+/* keep the running copy on a tight, readable measure within the dark zone */
+.cx .ssc-card--cover .ssc-card__outcome,
+.cx .ssc-card--cover .ssc-card__bullets {
+  max-width: 30ch;
+}
+/* light type over the dark photo (seq, kicker number and bullet dots stay red) */
+.cx .ssc-card--cover .ssc-card__title {
+  color: #fffefa;
+  font-size: clamp(1.6rem, 2.7vw, 2.5rem);
+  max-width: 15ch;
+  /* Prevent a single trailing word (e.g. "phone.") widowing onto its own line.
+     Applies to every cover card; the per-card overrides below still tune width. */
+  text-wrap: pretty;
+}
+/* Staff Training title wraps to a clean two lines at the comma
+   ("…their pocket," / "not a packet.") instead of orphaning "packet." */
+.cx .ssc-card--cover[data-id="staff-tools"] .ssc-card__title {
+  max-width: 24ch;
+}
+/* Menu Systems title: keep "Every format updated." together on line two.
+   balance splits it cleanly ("One menu change." / "Every format updated.")
+   where a plain wrap would either orphan "updated." or split the phrase. */
+.cx .ssc-card--cover[data-id="menu-systems"] .ssc-card__title {
+  max-width: 24ch;
+  text-wrap: balance;
+}
+/* Campaigns: "Launch once. Show up everywhere." — give it room so
+   "Show up everywhere." sits on line two and balance breaks at the period,
+   instead of widowing "everywhere." (text-wrap: pretty won't split it here). */
+.cx .ssc-card--cover[data-id="campaigns"] .ssc-card__title {
+  max-width: 22ch;
+  text-wrap: balance;
+}
+.cx .ssc-card--cover .ssc-card__outcome {
+  color: rgba(255, 254, 250, 0.84);
+}
+.cx .ssc-card--cover .ssc-card__label {
+  color: rgba(255, 254, 250, 0.55);
+}
+.cx .ssc-card--cover .ssc-card__bullets li {
+  color: rgba(255, 254, 250, 0.72);
+}
+.cx .ssc-card--cover .ssc-card__proof {
+  color: rgba(255, 254, 250, 0.42);
+}
+.cx .ssc-card--cover .ssc-card__link {
+  color: #fffefa;
+}
+
+@media (max-width: 900px) {
+  .cx .ssc-card--cover {
+    display: block;
+    height: auto;
+    min-height: 82vh;
+  }
+  .cx .ssc-card--cover .ssc-card__media {
+    position: absolute;
+    inset: 0;
+    padding: 0;
+    min-height: 0;
+  }
+  .cx .ssc-card--cover .ssc-card__img {
+    object-position: center 30%;
+  }
+  /* vertical scrim on mobile: legible copy anchored to the bottom */
+  .cx .ssc-card--cover .ssc-card__media::after {
+    background: linear-gradient(
+      180deg,
+      rgba(15, 12, 9, 0.78) 0%,
+      rgba(15, 12, 9, 0.88) 38%,
+      rgba(15, 12, 9, 0.97) 68%,
+      rgba(15, 12, 9, 1) 100%
+    );
+  }
+  .cx .ssc-card--cover .ssc-card__text {
+    justify-content: flex-end;
+    max-width: none;
+    padding: 1.8rem max(1.4rem, var(--section-inset, 16px)) 2.2rem;
+    z-index: 3;
+    /* solid read zone so decorative mockups in the photo never bleed through */
+    background: linear-gradient(
+      180deg,
+      rgba(15, 12, 9, 0) 0%,
+      rgba(15, 12, 9, 0.55) 18%,
+      rgba(15, 12, 9, 0.94) 42%,
+      rgba(15, 12, 9, 1) 100%
+    );
+  }
+  /* keep mockup art in the upper half; copy sits on the dark lower band */
+  .cx .ssc-card--cover[data-id="staff-tools"] .ssc-card__img,
+  .cx .ssc-card--cover[data-id="menu-systems"] .ssc-card__img,
+  .cx .ssc-card--cover[data-id="operations-hub"] .ssc-card__img {
+    object-position: center 22%;
+  }
+}
+
+/* ---------- cover flip (copy on the right): mirror of the cover variant —
+   text pushed to the right, image weight anchored left, scrim reversed ---- */
+.cx .ssc-card--cover-flip .ssc-card__text {
+  margin-left: auto;
+  text-align: right;
+}
+/* right-aligned bits: pull the max-width blocks and inline rows to the edge,
+   and move the bullet dots to the right so the list reads cleanly */
+/* the title carries a max-width from the cover variant; push it (and the
+   other capped blocks) to the right edge so right-aligned text lands flush */
+.cx .ssc-card--cover-flip .ssc-card__title,
+.cx .ssc-card--cover-flip .ssc-card__outcome,
+.cx .ssc-card--cover-flip .ssc-card__bullets {
+  margin-left: auto;
+}
+/* the kicker + link are flex rows; push their content to the right edge */
+.cx .ssc-card--cover-flip .ssc-card__kicker,
+.cx .ssc-card--cover-flip .ssc-card__link {
+  justify-content: flex-end;
+}
+.cx .ssc-card--cover-flip .ssc-card__bullets li {
+  padding-left: 0;
+  padding-right: 1.05rem;
+}
+.cx .ssc-card--cover-flip .ssc-card__bullets li::before {
+  left: auto;
+  right: 0;
+}
+.cx .ssc-card--cover-flip .ssc-card__img {
+  object-position: center left;
+}
+.cx .ssc-card--cover-flip .ssc-card__media::after {
+  background: linear-gradient(
+    270deg,
+    rgba(15, 12, 9, 0.95) 0%,
+    rgba(15, 12, 9, 0.86) 42%,
+    rgba(15, 12, 9, 0.35) 62%,
+    rgba(15, 12, 9, 0) 82%
+  );
+}
+@media (max-width: 900px) {
+  /* mobile keeps the bottom-anchored vertical scrim; no side flip needed */
+  .cx .ssc-card--cover-flip .ssc-card__text {
+    margin-left: 0;
+    text-align: left;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__title,
+  .cx .ssc-card--cover-flip .ssc-card__outcome,
+  .cx .ssc-card--cover-flip .ssc-card__bullets {
+    margin-left: 0;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__kicker,
+  .cx .ssc-card--cover-flip .ssc-card__link {
+    justify-content: flex-start;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__bullets li {
+    padding-left: 1.05rem;
+    padding-right: 0;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__bullets li::before {
+    left: 0;
+    right: auto;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__img {
+    object-position: center;
+  }
+  .cx .ssc-card--cover-flip .ssc-card__media::after {
+    background: linear-gradient(
+      180deg,
+      rgba(15, 12, 9, 0.78) 0%,
+      rgba(15, 12, 9, 0.88) 38%,
+      rgba(15, 12, 9, 0.97) 68%,
+      rgba(15, 12, 9, 1) 100%
+    );
+  }
+  .cx .ssc-card--cover-flip .ssc-card__text {
+    background: linear-gradient(
+      180deg,
+      rgba(15, 12, 9, 0) 0%,
+      rgba(15, 12, 9, 0.55) 18%,
+      rgba(15, 12, 9, 0.94) 42%,
+      rgba(15, 12, 9, 1) 100%
+    );
+  }
+}
+
+/* ---- scroll index — right-rail numbers; the centred card's number expands
+   with connecting rules. mix-blend keeps it legible over light + dark. ---- */
+.ssc-index {
+  position: fixed;
+  top: 50%;
+  right: clamp(1rem, 2.4vw, 2rem);
+  transform: translateY(-50%);
+  z-index: 30;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0 0 0 0.7rem;
+  list-style: none;
+  mix-blend-mode: difference;
+  opacity: 0;
+  pointer-events: none;
+  /* opacity drives a clean fade in AND out (it's aria-hidden + no pointer
+     events, so visibility isn't needed and it was snapping the fade-out). */
+  transition: opacity 0.6s ease;
+}
+.ssc-index.is-visible {
+  opacity: 1;
+}
+.ssc-index__n {
+  position: relative;
+  /* match the hero (Inter), kept small + quiet */
+  font-family: var(--font-display, "Inter"), sans-serif;
+  font-size: 0.52rem;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  color: #fff;
+  opacity: 0.34;
+  margin: 0.4rem 0;
+  transition: transform 0.5s ease-in-out, margin 0.5s ease-in-out, opacity 0.4s ease;
+}
+.ssc-index__n::before,
+.ssc-index__n::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  width: 1px;
+  height: 0.8rem;
+  background: currentColor;
+  opacity: 0.6;
+  transform: translateX(-50%) scaleY(0);
+  transition: transform 0.5s ease-in-out;
+}
+.ssc-index__n::before {
+  top: -0.9rem;
+  transform-origin: bottom;
+}
+.ssc-index__n::after {
+  bottom: -0.9rem;
+  transform-origin: top;
+}
+.ssc-index__n:first-of-type::before,
+.ssc-index__n:last-of-type::after {
+  content: none;
+}
+.ssc-index__n.is-active {
+  transform: scale(1.8);
+  margin: 1.45rem 0;
+  opacity: 0.9;
+}
+.ssc-index__n.is-active:first-of-type {
+  margin-top: 0;
+}
+.ssc-index__n.is-active:last-of-type {
+  margin-bottom: 0;
+}
+.ssc-index__n.is-active::before,
+.ssc-index__n.is-active::after {
+  transform: translateX(-50%) scaleY(1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .ssc-index__n,
+  .ssc-index__n::before,
+  .ssc-index__n::after {
+    transition: none;
+  }
+}
+@media (max-width: 820px) {
+  .ssc-index {
+    display: none;
+  }
+}
+/* Reserve a right-hand column for the scroll index so it never sits over card
+   text or imagery. Only where the index is shown (desktop). */
+@media (min-width: 821px) {
+  .cx .ssc {
+    padding-right: clamp(3.25rem, 6vw, 5.5rem);
+  }
+}
+
+/* Mobile readability: the cover-card body text (outcome, bullets, proof, label,
+   link) was small and low-contrast on phones. Bump size + contrast under 700px.
+   Same specificity as the base cover rules but later in the file, so it wins. */
+@media (max-width: 700px) {
+  /* Bottom-align the card text — it looked top-heavy with empty image below it. */
+  .cx .ssc-card--cover {
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-end;
+  }
+  .cx .ssc-card--cover .ssc-card__outcome {
+    font-size: 1.02rem;
+    line-height: 1.5;
+    color: rgba(255, 254, 250, 0.94);
+  }
+  .cx .ssc-card--cover .ssc-card__bullets li {
+    font-size: 0.98rem;
+    line-height: 1.55;
+    color: rgba(255, 254, 250, 0.9);
+  }
+  .cx .ssc-card--cover .ssc-card__proof {
+    font-size: 0.82rem;
+    line-height: 1.5;
+    color: rgba(255, 254, 250, 0.66);
+  }
+  .cx .ssc-card--cover .ssc-card__label {
+    font-size: 0.82rem;
+    color: rgba(255, 254, 250, 0.8);
+  }
+  .cx .ssc-card--cover .ssc-card__link {
+    font-size: 1rem;
+  }
+}

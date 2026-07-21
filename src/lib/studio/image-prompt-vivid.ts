@@ -1,30 +1,65 @@
-/** Shared real-photo direction for Studio compose + art-director + Gemini. */
+/** Shared direction for Studio compose + art-director + Gemini.
+ *  Keep this SHORT — long ban lists taught Gemini to ignore everything. */
 
-/** Keeps Gemini from defaulting to dutch tilts and trunk-filling diagonals. */
+/** Keeps Gemini from defaulting to dutch tilts. */
 export const LEVEL_CAMERA_HINT =
-  "Eye-level camera, level and straight — not dutch angle, not dramatic tilt, not extreme low-angle or worm's-eye view unless the brief explicitly requests it.";
+  "Eye-level, level camera — not dutch angle unless asked.";
 
 /**
- * Default look: vivid like hero-ring editorial, but believably human — not
- * stock-catalog polish or AI gloss.
+ * Tiny default look. Prefer positives over FORBIDDEN novels.
  */
-export const REAL_PHOTO_DEFAULT_DIRECTION = `a believable photograph a real local business would actually post today — natural, shot on a modern phone or 35mm in their real space. Natural warm light, true colors, well-exposed but not studio-perfect. ${LEVEL_CAMERA_HINT} Gentle real-world imperfection is fine: slight grain, worn surfaces, lived-in detail. Should feel like a capable human took it for Instagram — NOT AI-generated, NOT CGI, NOT 3D render, NOT glossy stock catalog, NOT over-smoothed, NOT uncanny symmetry, NOT surreal perfection.`;
+export const CLEAN_COMMERCIAL_GRADE =
+  "Bright, clean, vivid commercial photo — punchy true color, polished Instagram ad energy.";
+
+/**
+ * Stop Gemini "finishing" the shot with unrequested garnish / props
+ * (fruit pile on a plain smoothie, etc.).
+ */
+export const BRIEF_FIDELITY_HINT =
+  "Show only what the brief names — no invented garnish, toppings, fruit piles, props, or side dishes.";
+
+/** @deprecated Kept as empty — set locks lived here; they over-constrained Gemini. */
+export const STUDIO_SET_PREAMBLE = "";
+
+/**
+ * Soft venue hint only — do not expand into a ban encyclopedia.
+ */
+export const NO_VENUE_STAGING =
+  "If no place is named, keep the subject on a simple seamless or solid-color backdrop — not a busy invented room.";
+
+/**
+ * Default look for business social — short on purpose.
+ */
+export const REAL_PHOTO_DEFAULT_DIRECTION = `a vivid scroll-stopping commercial photograph for Instagram. ${LEVEL_CAMERA_HINT} ${CLEAN_COMMERCIAL_GRADE} ${BRIEF_FIDELITY_HINT} Real photograph — not CGI, not illustration, no text or watermark in the image.`;
 
 /** Appended to every Gemini image request (non-reference edits). */
 export const REAL_PHOTO_GENERATION_SUFFIX =
-  ` Authentic photograph from a real camera. Natural textures, ${LEVEL_CAMERA_HINT} No AI look, no CGI, no 3D render, no stock photo polish, no plastic skin, no oversaturated HDR, no fake bokeh, no floating objects, no symmetry perfection, no text or watermark.`;
+  ` Real photograph, vivid clean color, bright light. ${LEVEL_CAMERA_HINT} ${BRIEF_FIDELITY_HINT} No CGI, no text or watermark in the image.`;
 
 /** Appended to compose imagePrompt when styleDirected is false. */
 export const REAL_PHOTO_COMPOSE_SUFFIX =
-  " Believable natural photo, eye-level framing, level horizon, real textures — not AI, not CGI, not stock polish, no dutch angle, no text or watermark.";
+  ` Real photograph, vivid clean color, bright light — no dutch angle. ${BRIEF_FIDELITY_HINT} No CGI, no text or watermark.`;
 
-/** Quality retry: lift exposure without pushing stock/AI gloss. */
+/** True when compose (or a prior pass) already art-directed the prompt — skip a second expand. */
+export function looksStudioComposed(prompt: string): boolean {
+  const t = prompt.trim();
+  if (!t) return false;
+  if (t.includes("Vibrant social-ready")) return true;
+  if (t.includes("Believable natural photo")) return true; // legacy compose suffix
+  if (t.includes("Wide aspirational scenic shot")) return true;
+  if (t.includes("A real photograph with true-to-life detail")) return true;
+  if (t.includes("Real photograph, vivid clean color")) return true;
+  if (t.includes("FORBIDDEN unless the brief names that place")) return true; // legacy
+  return false;
+}
+
+/** Quality retry: lift exposure without rewriting the whole brief. */
 export const REAL_PHOTO_EXPOSURE_RETRY_SUFFIX =
-  " Slightly brighter natural daylight, well-exposed. Keep authentic documentary realism — not stock, not CGI, not over-processed.";
+  " Brighter exposure, cleaner color, still a real photograph.";
 
-/** When editing from a reference image — preserve realism. */
+/** When editing from a reference image — preserve subject, keep energy. */
 export const REAL_PHOTO_REFERENCE_SUFFIX =
-  " Preserve photographic realism and natural textures. No AI gloss, no CGI, no stock polish, no text or watermark.";
+  " Preserve the subject. Keep vivid clean photographic quality. No CGI, no text or watermark.";
 
 // Back-compat aliases used across the codebase
 export const VIVID_DEFAULT_IMAGE_DIRECTION = REAL_PHOTO_DEFAULT_DIRECTION;

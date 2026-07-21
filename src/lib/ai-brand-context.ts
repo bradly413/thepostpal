@@ -3,6 +3,7 @@ import "server-only";
 import type { AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
 import type { TenantDbClient } from "@/lib/db";
+import { resolveAccess } from "@/lib/authz";
 import { readBrandEngineImageContext } from "@/lib/brand-engine-dna";
 import { findTenantBrandBook } from "@/lib/brand-book-db";
 import type { BrandBook } from "@/lib/brand-book-schema";
@@ -63,6 +64,10 @@ export async function buildTenantBrandContext(
 ): Promise<string> {
   try {
     return await withTenantDb(auth, async (tx) => {
+      if (opts?.locationId) {
+        const access = await resolveAccess(auth.userId, opts.locationId, tx);
+        if (!access.hasAccess) return "";
+      }
       const org = await tx.organization.findUnique({
         where: { id: auth.tenantId },
         select: { brandEngine: true, name: true, businessType: true },
@@ -112,6 +117,10 @@ export async function buildTenantImageBrandContext(
 ): Promise<string> {
   try {
     return await withTenantDb(auth, async (tx) => {
+      if (opts?.locationId) {
+        const access = await resolveAccess(auth.userId, opts.locationId, tx);
+        if (!access.hasAccess) return "";
+      }
       const found = await findTenantBrandBook(tx, auth.tenantId, opts?.locationId ?? null);
       const book = found.brandBook;
       if (!book) return "";

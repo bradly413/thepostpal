@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useEffect, useCallback, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
+import { useRef, useEffect, useCallback, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 import { buildFallbackEditPrompt, shouldEditFromReference } from "@/lib/studio/reprompt-delta";
 import { inferPlatformIdFromIntent, isListingBrief } from "@/lib/studio/scene-intent";
 import { resolveStudioImageRoute } from "@/lib/studio/studio-image-routing";
@@ -72,6 +72,8 @@ export type UseStudioGenerationParams = {
   resetEdit: () => void;
   setActiveEdit: Dispatch<SetStateAction<null | "scale" | "move" | "rotate" | "adjust">>;
   pushHistory: (url: string, promptText: string) => void;
+  /** Clear the compose field after a successful generate so review mode shows “Describe changes…”. */
+  onAfterGenerateSuccess?: () => void;
 };
 
 export function useStudioGeneration({
@@ -101,9 +103,20 @@ export function useStudioGeneration({
   resetEdit,
   setActiveEdit,
   pushHistory,
+  onAfterGenerateSuccess,
 }: UseStudioGenerationParams) {
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastGenPromptRef = useRef("");
+  const [lastGenPrompt, setLastGenPromptState] = useState("");
+  const rememberGenPrompt = useCallback((promptText: string) => {
+    const next = promptText.trim();
+    lastGenPromptRef.current = next;
+    setLastGenPromptState(next);
+  }, []);
+  const onAfterGenerateSuccessRef = useRef(onAfterGenerateSuccess);
+  useEffect(() => {
+    onAfterGenerateSuccessRef.current = onAfterGenerateSuccess;
+  }, [onAfterGenerateSuccess]);
 
   useEffect(
     () => () => {
@@ -144,6 +157,8 @@ export function useStudioGeneration({
         referenceImage?: string | null;
         sourceIntent?: string;
         listingMode?: boolean;
+        /** Prompt already came from /api/studio/compose — skip a second expand. */
+        composed?: boolean;
         signal: AbortSignal;
       },
     ) => {
@@ -156,6 +171,7 @@ export function useStudioGeneration({
           ...(opts.referenceImage ? { referenceImage: opts.referenceImage } : {}),
           ...(opts.sourceIntent ? { sourceIntent: opts.sourceIntent } : {}),
           ...(opts.listingMode ? { listingMode: true } : {}),
+          ...(opts.composed ? { composed: true } : {}),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
           ...(businessType ? { businessType } : {}),
@@ -232,8 +248,9 @@ export function useStudioGeneration({
         setProgress(100);
         setGeneratedUrl(data.image);
         pushHistory(data.image, savedPrompt);
-        lastGenPromptRef.current = savedPrompt;
+        rememberGenPrompt(savedPrompt);
         setGenState("done");
+        onAfterGenerateSuccessRef.current?.();
       } catch (err) {
         await holdFloor(startedAt);
         stopProgressTimer();
@@ -274,11 +291,12 @@ export function useStudioGeneration({
       holdFloor,
       setGeneratedUrl,
       pushHistory,
+      rememberGenPrompt,
     ],
   );
 
-  const composeFromIntent = useCallback(async () => {
-    const intent = composerBrief;
+  const composeFromIntent = useCallback(async (overrideBrief?: string) => {
+    const intent = (overrideBrief ?? composerBrief).trim();
     if (!intent || genState === "generating") {
       inputRef.current?.focus();
       return;
@@ -341,11 +359,12 @@ export function useStudioGeneration({
         setProgress(100);
         setGeneratedUrl(fitted);
         pushHistory(fitted, intent);
-        lastGenPromptRef.current = intent;
+        rememberGenPrompt(intent);
         setCaptionText("");
         setCaptionTags("");
         setCaptionState("idle");
         setGenState("done");
+        onAfterGenerateSuccessRef.current?.();
         clearTimeout(timeoutId);
         return;
       }
@@ -368,38 +387,43 @@ export function useStudioGeneration({
         } else {
           imagePrompt = buildFallbackEditPrompt(intent);
         }
-      } else {
-      const cRes = await fetch("/api/studio/compose", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          intent,
-          hasReferenceImage: !!refForGen,
-          ...(locationId ? { locationId } : {}),
-        }),
-        signal: ctrl.signal,
-      });
-      const brief = await cRes.json();
-      if (!cRes.ok || brief.error) {
-        stopProgressTimer();
-        setCaptionState("idle");
-        clearTimeout(timeoutId);
-        if (brief.code === "listing_photo_required") {
-          setError(brief.error || "Add your listing photo first.");
-          setGenState(isReprompt ? "done" : "idle");
-          return;
+      } else if (imageRoute === "compose_generate") {
+        const cRes = await fetch("/api/studio/compose", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            intent,
+            hasReferenceImage: !!refForGen,
+            ...(locationId ? { locationId } : {}),
+          }),
+          signal: ctrl.signal,
+        });
+        const brief = await cRes.json();
+        if (!cRes.ok || brief.error) {
+          if (brief.code === "listing_photo_required") {
+            stopProgressTimer();
+            setCaptionState("idle");
+            clearTimeout(timeoutId);
+            setError(brief.error || "Add your listing photo first.");
+            setGenState(isReprompt ? "done" : "idle");
+            return;
+          }
+          // Compose failed — fall through with the raw intent.
+          imagePrompt = intent;
+        } else {
+          const textNamesPlatform =
+            /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
+          const idx = platforms.findIndex((p) => p.id === brief.platform);
+          const pIdx =
+            idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
+          if (textNamesPlatform) platformPinRef.current = false;
+          setPlatformIdx(pIdx);
+          aspect = platforms[pIdx].genAspect;
+          imagePrompt = brief.imagePrompt;
         }
-        await generate(intent, isReprompt ? "done" : "idle");
-        return;
-      }
-
-      const textNamesPlatform = /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
-      const idx = platforms.findIndex((p) => p.id === brief.platform);
-      const pIdx = idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
-      if (textNamesPlatform) platformPinRef.current = false;
-      setPlatformIdx(pIdx);
-      aspect = platforms[pIdx].genAspect;
-      imagePrompt = brief.imagePrompt;
+      } else {
+        // direct_generate — owner already wrote a visual brief
+        imagePrompt = intent;
       }
 
       const iData = await requestGenerateImage(imagePrompt || intent, {
@@ -407,6 +431,10 @@ export function useStudioGeneration({
         referenceImage: refForGen,
         sourceIntent: intent,
         listingMode: isListingBrief(intent) && !!refForGen,
+        composed:
+          imageRoute === "compose_generate" ||
+          imageRoute === "reprompt_edit" ||
+          imageRoute === "direct_generate",
         signal: ctrl.signal,
       });
       if (iData.error || !iData.image) {
@@ -427,11 +455,12 @@ export function useStudioGeneration({
       setProgress(100);
       setGeneratedUrl(iData.image);
       pushHistory(iData.image, historyLabel);
-      lastGenPromptRef.current = historyLabel;
+      rememberGenPrompt(historyLabel);
       setCaptionText("");
       setCaptionTags("");
       setCaptionState("idle");
       setGenState("done");
+      onAfterGenerateSuccessRef.current?.();
     } catch (err) {
       stopProgressTimer();
       setProgress(0);
@@ -474,11 +503,31 @@ export function useStudioGeneration({
     pushHistory,
     requestGenerateImage,
     generate,
+    rememberGenPrompt,
   ]);
 
-  const setLastGenPrompt = useCallback((promptText: string) => {
-    lastGenPromptRef.current = promptText.trim();
-  }, []);
+  const regenerateLast = useCallback(async () => {
+    const last = lastGenPromptRef.current.trim();
+    if (!last) {
+      inputRef.current?.focus();
+      return;
+    }
+    await composeFromIntent(last);
+  }, [composeFromIntent, inputRef]);
 
-  return { generate, composeFromIntent, resizeToExact, setLastGenPrompt };
+  const setLastGenPrompt = useCallback(
+    (promptText: string) => {
+      rememberGenPrompt(promptText);
+    },
+    [rememberGenPrompt],
+  );
+
+  return {
+    generate,
+    composeFromIntent,
+    regenerateLast,
+    resizeToExact,
+    setLastGenPrompt,
+    lastGenPrompt,
+  };
 }

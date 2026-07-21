@@ -5,6 +5,7 @@ import { ImagePlus, Sparkles } from "lucide-react";
 
 interface Props {
   disabled?: boolean;
+  locationId?: string | null;
   onUploaded?: (url: string) => void;
   /** Called with the AI-elevated caption + hashtags so the studio can populate its composer. */
   onElevated?: (caption: string, hashtags: string[]) => void;
@@ -14,6 +15,7 @@ interface Props {
 
 export default function TrashToTreasureUploadZone({
   disabled,
+  locationId,
   onUploaded,
   onElevated,
   variant = "card",
@@ -74,6 +76,8 @@ export default function TrashToTreasureUploadZone({
       try {
         const form = new FormData();
         form.append("file", file);
+        if (locationId) form.append("locationId", locationId);
+        form.append("alt", file.name);
         const res = await fetch("/api/upload", {
           method: "POST",
           credentials: "same-origin",
@@ -91,7 +95,7 @@ export default function TrashToTreasureUploadZone({
         setUploading(false);
       }
     },
-    [disabled, onUploaded, uploading],
+    [disabled, locationId, onUploaded, uploading],
   );
 
   // icon variant: upload, then auto-elevate in one shot. card variant: upload only (manual elevate).

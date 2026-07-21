@@ -1,6 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { buildTenantImageBrandContext } from "@/lib/ai-brand-context";
+import { withTenantDb } from "@/lib/db";
+import { resolveAccess } from "@/lib/authz";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { isInlineReferenceImage } from "@/lib/reference-image";
 import { loadVisionJpegBase64 } from "@/lib/studio/vision-image-input";
@@ -80,6 +82,16 @@ export async function POST(req: Request) {
   }
 
   const locationId = typeof body.locationId === "string" ? body.locationId : null;
+  if (locationId) {
+    const allowed = await withTenantDb(auth, async (tx) => {
+      const access = await resolveAccess(auth.userId, locationId, tx);
+      return access.hasAccess;
+    });
+    if (!allowed) {
+      return Response.json({ error: "Forbidden" }, { status: 403 });
+    }
+  }
+
   const imageB64 = await loadVisionJpegBase64(
     typeof referenceImage === "string" ? referenceImage : "",
   );

@@ -7,7 +7,37 @@ export type StudioImageRoute =
   | "blocked_listing_no_photo"
   | "listing_passthrough"
   | "reprompt_edit"
-  | "compose_generate";
+  | "compose_generate"
+  | "direct_generate";
+
+/**
+ * Outcome phrasing ("make a post about…") still gets a thin Claude rewrite.
+ * Concrete image briefs go straight to Gemini — no compose, no art director.
+ */
+export function needsComposeRewrite(intent: string): boolean {
+  const t = intent.trim();
+  if (!t) return false;
+  if (
+    /\b(make|create|generate|design)\s+(an?\s+)?(instagram\s+|facebook\s+|tiktok\s+|linkedin\s+)?(post|image|photo|graphic)\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  if (/\b(post|image|photo)\s+about\b/i.test(t)) return true;
+  if (/\bfor\s+(my|our|the)\s+\w+/i.test(t) && t.split(/\s+/).length <= 8) return true;
+  // Very short vague outcomes without a clear visual noun
+  const words = t.split(/\s+/).filter(Boolean);
+  if (
+    words.length <= 4 &&
+    !/\b(smoothie|burger|sandwich|portrait|beach|palm|listing|bottle|skincare|coffee|pizza|salad|woman|man|dog|cat|house|car)\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
 
 export function resolveStudioImageRoute(args: {
   intent: string;
@@ -37,7 +67,11 @@ export function resolveStudioImageRoute(args: {
     return "reprompt_edit";
   }
 
-  return "compose_generate";
+  if (needsComposeRewrite(args.intent)) {
+    return "compose_generate";
+  }
+
+  return "direct_generate";
 }
 
 /** Compose API gate — listing briefs require an attached photo. */

@@ -20,52 +20,49 @@ function prefersReducedMotion(): boolean {
 export default function FeedbackWidget() {
   const pathname = usePathname();
   const isStudio = Boolean(pathname?.startsWith("/dashboard/studio"));
-  const isCalendar = Boolean(pathname?.startsWith("/dashboard/calendar"));
+  // Schedule owns the bottom-right FAB (CalendarAssistant).
+  const hidden = Boolean(pathname?.startsWith("/dashboard/calendar"));
+
   const [open, setOpen] = useState(false);
   const [type, setType] = useState<"bug" | "feature" | "other">("bug");
   const [message, setMessage] = useState("");
   const [sent, setSent] = useState(false);
-  const [labelExpanded, setLabelExpanded] = useState(!isCalendar);
+  const [labelExpanded, setLabelExpanded] = useState(true);
   const dialogRef = useRef<HTMLDivElement>(null);
   const triggerRef = useRef<HTMLButtonElement>(null);
   const labelRef = useRef<HTMLSpanElement>(null);
   const labelTweenRef = useRef<gsap.core.Tween | null>(null);
 
-  const labelText = isCalendar ? "Feedback" : "Beta feedback";
-
-  const setLabelVisible = useCallback(
-    (expanded: boolean, immediate = false) => {
-      const label = labelRef.current;
-      if (!label) return;
-      labelTweenRef.current?.kill();
-      const labelW = Math.ceil(label.scrollWidth) || 1;
-      const reduced = prefersReducedMotion();
-      const dur = immediate || reduced ? 0 : 0.32;
-      labelTweenRef.current = gsap.to(label, {
-        maxWidth: expanded ? labelW : 0,
-        autoAlpha: expanded ? 1 : 0,
-        marginLeft: expanded ? 8 : 0,
-        duration: dur,
-        ease: expanded ? "power3.out" : "power2.inOut",
-      });
-      setLabelExpanded(expanded);
-    },
-    [],
-  );
+  const setLabelVisible = useCallback((expanded: boolean, immediate = false) => {
+    const label = labelRef.current;
+    if (!label) return;
+    labelTweenRef.current?.kill();
+    const labelW = Math.ceil(label.scrollWidth) || 1;
+    const reduced = prefersReducedMotion();
+    const dur = immediate || reduced ? 0 : 0.32;
+    labelTweenRef.current = gsap.to(label, {
+      maxWidth: expanded ? labelW : 0,
+      autoAlpha: expanded ? 1 : 0,
+      marginLeft: expanded ? 8 : 0,
+      duration: dur,
+      ease: expanded ? "power3.out" : "power2.inOut",
+    });
+    setLabelExpanded(expanded);
+  }, []);
 
   useEffect(() => {
     const label = labelRef.current;
-    if (!label) return;
+    if (!label || hidden) return;
     const labelW = Math.ceil(label.scrollWidth) || 1;
     gsap.set(label, {
-      maxWidth: isCalendar ? 0 : labelW,
-      autoAlpha: isCalendar ? 0 : 1,
-      marginLeft: isCalendar ? 0 : 8,
+      maxWidth: labelW,
+      autoAlpha: 1,
+      marginLeft: 8,
       overflow: "hidden",
       display: "inline-block",
     });
-    setLabelExpanded(!isCalendar);
-  }, [isCalendar]);
+    setLabelExpanded(true);
+  }, [hidden]);
 
   useEffect(() => {
     return () => {
@@ -77,6 +74,8 @@ export default function FeedbackWidget() {
     setOpen(false);
     window.setTimeout(() => triggerRef.current?.focus(), 300);
   }, []);
+
+  if (hidden) return null;
 
   function openFeedback() {
     const btn = triggerRef.current;
@@ -118,15 +117,7 @@ export default function FeedbackWidget() {
         type="button"
         onClick={openFeedback}
         onMouseEnter={() => setLabelVisible(true)}
-        onMouseLeave={() => {
-          if (!isCalendar) return;
-          setLabelVisible(false);
-        }}
         onFocus={() => setLabelVisible(true)}
-        onBlur={() => {
-          if (!isCalendar) return;
-          setLabelVisible(false);
-        }}
         aria-label="Send beta feedback"
         aria-haspopup="dialog"
         className={`fixed z-[60] flex h-[38px] items-center rounded-full border border-white/70 bg-white/90 px-4 py-2.5 text-xs font-semibold text-[#1c1c1e] shadow-[0_18px_48px_-24px_rgba(20,20,40,0.45)] backdrop-blur-md transition-shadow hover:shadow-[0_22px_52px_-22px_rgba(20,20,40,0.5)] active:scale-[0.98] ${
@@ -139,7 +130,7 @@ export default function FeedbackWidget() {
           className="inline-block overflow-hidden whitespace-nowrap will-change-[max-width,opacity]"
           aria-hidden={!labelExpanded}
         >
-          {labelText}
+          Beta feedback
         </span>
       </button>
 

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  needsComposeRewrite,
   resolveStudioImageRoute,
   validateListingComposeRequest,
 } from "@/lib/studio/studio-image-routing";
@@ -32,10 +33,22 @@ describe("resolveStudioImageRoute", () => {
     ).toBe("listing_passthrough");
   });
 
-  it("routes scenic briefs through compose+generate", () => {
+  it("routes concrete visual briefs straight to Gemini", () => {
     expect(
       resolveStudioImageRoute({
         intent: "a palm tree on the beach",
+        refImage: null,
+        generatedUrl: null,
+        genState: "idle",
+        lastGenPrompt: "",
+      }),
+    ).toBe("direct_generate");
+  });
+
+  it("routes outcome phrasing through thin compose", () => {
+    expect(
+      resolveStudioImageRoute({
+        intent: "make an instagram post about our weekend happy hour",
         refImage: null,
         generatedUrl: null,
         genState: "idle",
@@ -66,6 +79,20 @@ describe("resolveStudioImageRoute", () => {
         lastGenPrompt: LISTING_PROMPT,
       }),
     ).toBe("reprompt_edit");
+  });
+});
+
+describe("needsComposeRewrite", () => {
+  it("flags outcome language", () => {
+    expect(needsComposeRewrite("make an instagram post about cold brew")).toBe(true);
+    expect(needsComposeRewrite("create an image for Aurora Med Spa")).toBe(true);
+    expect(needsComposeRewrite("fall promo")).toBe(true);
+  });
+
+  it("skips concrete image briefs", () => {
+    expect(needsComposeRewrite("vibrant red smoothie on a red background")).toBe(false);
+    expect(needsComposeRewrite("a palm tree on the beach")).toBe(false);
+    expect(needsComposeRewrite("natural beauty portrait soft white backdrop")).toBe(false);
   });
 });
 

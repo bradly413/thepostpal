@@ -32,6 +32,10 @@ import {
   isCalendarPostQueued,
   todayDateKeyLocal,
 } from "@/lib/dashboard-post-helpers";
+import {
+  handoffPlatformToForm,
+  takeStudioScheduleHandoff,
+} from "@/lib/studio/schedule-handoff";
 import LocationSwitcher from "@/components/LocationSwitcher";
 import { usePlan, usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import PostPreview, {
@@ -56,6 +60,7 @@ import {
   ChevronRight,
   Check,
   X,
+  Wand2,
 } from "lucide-react";
 import { LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
@@ -345,10 +350,18 @@ export default function CalendarPage() {
   const [captionIndex, setCaptionIndex] = useState(0);
   const [captionFade, setCaptionFade] = useState<"in" | "out">("in");
   const [captionUserEdited, setCaptionUserEdited] = useState(false);
+  const [captionQueueBusy, setCaptionQueueBusy] = useState(false);
   const skipNextCaptionGenRef = useRef(false);
   const captionGenIdRef = useRef(0);
   const captionRotateTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const captionFadeTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  /** Serial caption jobs — avoids slamming /api/ai/captions-from-image on bulk upload. */
+  const captionQueueRef = useRef<string[]>([]);
+  const captioningUrlRef = useRef<string | null>(null);
+  const captionDrainRunningRef = useRef(false);
+  const mediaUrlRef = useRef("");
+  const mediaItemsRef = useRef<ComposerMediaItem[]>([]);
+  const autoGenerateCaptionsRef = useRef(false);
   const [showScheduleMenu, setShowScheduleMenu] = useState(false);
   const [showSchedulePicker, setShowSchedulePicker] = useState(false);
   const [calendarSearch, setCalendarSearch] = useState("");
@@ -369,11 +382,14 @@ export default function CalendarPage() {
   const [mediaIndex, setMediaIndex] = useState(0);
   const mediaUrl = mediaItems[mediaIndex]?.url ?? "";
   const mediaType = mediaItems[mediaIndex]?.type ?? "image";
+  mediaUrlRef.current = mediaUrl;
+  mediaItemsRef.current = mediaItems;
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
   const [showPostSettings, setShowPostSettings] = useState(false);
-  const [autoGenerateCaptions, setAutoGenerateCaptions] = useState(true);
+  const [autoGenerateCaptions, setAutoGenerateCaptions] = useState(false);
+  autoGenerateCaptionsRef.current = autoGenerateCaptions;
   const [showBulkList, setShowBulkList] = useState(false);
   const [bulkListScheduleIndex, setBulkListScheduleIndex] = useState<number | null>(null);
   const [bulkUploading, setBulkUploading] = useState(false);
@@ -381,6 +397,10 @@ export default function CalendarPage() {
   const bulkInputRef = useRef<HTMLInputElement>(null);
   const addComposerInputRef = useRef<HTMLInputElement>(null);
   const isBulkQueue = mediaItems.length > 1;
+  const captionImageTotal = mediaItems.filter((i) => i.type === "image").length;
+  const captionImageDone = mediaItems.filter(
+    (i) => i.type === "image" && Boolean(i.caption?.trim()),
+  ).length;
 
   function stopCaptionRotation() {
     if (captionRotateTimerRef.current) {
@@ -430,6 +450,29 @@ export default function CalendarPage() {
     setMediaIndex(0);
   }
 
+  // Studio → Schedule: seed composer with the generated asset (one-shot).
+  useEffect(() => {
+    const handoff = takeStudioScheduleHandoff();
+    if (!handoff) return;
+    setComposerMediaSingle(
+      handoff.mediaUrl,
+      handoff.mediaType === "video" ? "video" : "image",
+    );
+    setFormPlatform(handoffPlatformToForm(handoff.platformId));
+    if (handoff.caption?.trim()) {
+      skipNextCaptionGenRef.current = true;
+      setFormCaption(handoff.caption.trim());
+      setCaptionUserEdited(true);
+    }
+    setSelectedDate(todayDateKeyLocal());
+    requestAnimationFrame(() => {
+      document.getElementById("post-composer")?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+    });
+  }, []);
+
   function updateBulkItemSchedule(index: number, nextDate: string, nextTime: string) {
     const date = isPastDateKey(nextDate, todayDateKeyLocal()) ? todayDateKeyLocal() : nextDate;
     let time = nextTime;
@@ -472,9 +515,11 @@ export default function CalendarPage() {
       skipNextCaptionGenRef.current = true;
       setFormCaption(target.caption);
       setCaptionUserEdited(true);
+      setCaptionLoading(false);
     } else {
       setFormCaption("");
       setCaptionUserEdited(false);
+      setCaptionLoading(captioningUrlRef.current === target.url);
     }
   }
 
@@ -503,7 +548,10 @@ export default function CalendarPage() {
     const inferred = inferMediaContentType(file.name, file.type);
     const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
     try {
-      const publicUrl = await uploadMediaToS3(file);
+      const publicUrl = await uploadMediaToS3(file, {
+        locationId,
+        alt: file.name,
+      });
       setCaptionUserEdited(false);
       setCaptionOptions([]);
       setCaptionGenError(null);
@@ -536,7 +584,10 @@ export default function CalendarPage() {
     const inferred = inferMediaContentType(file.name, file.type);
     const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
     try {
-      const publicUrl = await uploadMediaToS3(file);
+      const publicUrl = await uploadMediaToS3(file, {
+        locationId,
+        alt: file.name,
+      });
       const scheduleDate =
         !selectedDate || isPastDateKey(selectedDate, todayDateKeyLocal())
           ? todayDateKeyLocal()
@@ -617,7 +668,10 @@ export default function CalendarPage() {
         const file = files[i];
         const inferred = inferMediaContentType(file.name, file.type);
         const type: "image" | "video" = inferred && isVideoContentType(inferred) ? "video" : "image";
-        const publicUrl = await uploadMediaToS3(file);
+        const publicUrl = await uploadMediaToS3(file, {
+          locationId,
+          alt: file.name,
+        });
         uploaded.push({ url: publicUrl, type });
         setBulkUploadProgress({ done: i + 1, total: files.length });
       }
@@ -636,14 +690,22 @@ export default function CalendarPage() {
         date: slots[i]?.date ?? startDate,
         time: slots[i]?.time ?? nextScheduleTime(),
       }));
+      // Captions are opt-in — only queue if Auto-generate is on in post settings.
+      skipNextCaptionGenRef.current = !autoGenerateCaptionsRef.current;
+      captionQueueRef.current = [];
       setMediaItems(queued);
       setMediaIndex(0);
+      mediaItemsRef.current = queued;
       if (queued[0]?.date) setSelectedDate(queued[0].date);
       if (queued[0]?.time) {
         setFormTime(queued[0].time);
         setScheduleTimeTouched(true);
       }
       setShowBulkUpload(false);
+      if (autoGenerateCaptionsRef.current) {
+        const imageUrls = queued.filter((i) => i.type === "image").map((i) => i.url);
+        enqueueCaptionJobs(imageUrls, true);
+      }
     } catch (err) {
       if (uploaded.length > 0) {
         const startDate =
@@ -651,16 +713,24 @@ export default function CalendarPage() {
             ? todayDateKeyLocal()
             : selectedDate;
         const slots = staggerBulkSlots(uploaded.length, startDate, nextScheduleTime());
-        setMediaItems(
-          uploaded.map((item, i) => ({
-            ...item,
-            caption: "",
-            date: slots[i]?.date ?? startDate,
-            time: slots[i]?.time ?? nextScheduleTime(),
-          })),
-        );
+        const partial = uploaded.map((item, i) => ({
+          ...item,
+          caption: "",
+          date: slots[i]?.date ?? startDate,
+          time: slots[i]?.time ?? nextScheduleTime(),
+        }));
+        skipNextCaptionGenRef.current = !autoGenerateCaptionsRef.current;
+        captionQueueRef.current = [];
+        setMediaItems(partial);
+        mediaItemsRef.current = partial;
         setMediaIndex(0);
         setShowBulkUpload(false);
+        if (autoGenerateCaptionsRef.current) {
+          enqueueCaptionJobs(
+            partial.filter((i) => i.type === "image").map((i) => i.url),
+            true,
+          );
+        }
       }
       setMediaError(
         err instanceof DashboardUploadError ? err.message : "Some uploads failed. Please try again.",
@@ -1072,14 +1142,67 @@ export default function CalendarPage() {
     // never allow zero channels — ignore the toggle that would clear the last one
   }
 
-  async function generateCaptionsFromImage(imageUrl: string) {
-    if (!imageUrl) return;
+  function sleep(ms: number) {
+    return new Promise<void>((resolve) => {
+      window.setTimeout(resolve, ms);
+    });
+  }
+
+  function enqueueCaptionJobs(urls: string[], prioritizeFirst = false) {
+    let added = 0;
+    for (const url of urls) {
+      if (!url) continue;
+      const existing = mediaItemsRef.current.find((i) => i.url === url);
+      if (existing?.type === "video") continue;
+      if (existing?.caption?.trim()) continue;
+      if (captioningUrlRef.current === url) continue;
+      if (captionQueueRef.current.includes(url)) continue;
+      captionQueueRef.current.push(url);
+      added += 1;
+    }
+    if (prioritizeFirst && urls[0]) {
+      const head = urls[0];
+      captionQueueRef.current = [
+        head,
+        ...captionQueueRef.current.filter((u) => u !== head),
+      ];
+    }
+    if (added > 0 || captionQueueRef.current.length > 0) {
+      setCaptionQueueBusy(true);
+      void drainCaptionQueue();
+    }
+  }
+
+  /** Explicit click — caption the active image only. */
+  function requestCaptionForActive() {
+    if (!mediaUrl || mediaType !== "image" || uploadingMedia || bulkUploading) return;
+    if (captionLoading || captioningUrlRef.current === mediaUrl) return;
+    void generateCaptionForUrl(mediaUrl);
+  }
+
+  /** Explicit click — caption every image in the bulk queue that still needs one. */
+  function requestCaptionsForQueue() {
+    const urls = mediaItemsRef.current
+      .filter((i) => i.type === "image" && !i.caption?.trim())
+      .map((i) => i.url);
+    if (mediaUrl && mediaType === "image") {
+      enqueueCaptionJobs([mediaUrl, ...urls.filter((u) => u !== mediaUrl)], true);
+    } else {
+      enqueueCaptionJobs(urls, true);
+    }
+  }
+
+  async function generateCaptionForUrl(imageUrl: string): Promise<boolean> {
     const genId = ++captionGenIdRef.current;
-    setCaptionLoading(true);
-    setCaptionGenError(null);
-    setCaptionOptions([]);
-    setFormCaption("");
-    stopCaptionRotation();
+    const showInComposer = () => mediaUrlRef.current === imageUrl;
+
+    if (showInComposer()) {
+      setCaptionLoading(true);
+      setCaptionGenError(null);
+      setCaptionOptions([]);
+      stopCaptionRotation();
+    }
+
     try {
       const platform = formPlatform === "both" ? "instagram" : formPlatform;
       const body = JSON.stringify({
@@ -1088,13 +1211,21 @@ export default function CalendarPage() {
         count: 3,
         locationId,
       });
-      let data: { variants?: CaptionOption[]; compliance?: { blocked?: boolean; message?: string } } | null = null;
+      let data: {
+        variants?: CaptionOption[];
+        compliance?: { blocked?: boolean; message?: string };
+      } | null = null;
       let blocked: string | null = null;
       let lastError = "Couldn't generate captions. Try again.";
-      for (let attempt = 0; attempt < 2; attempt++) {
-        if (genId !== captionGenIdRef.current) return;
+
+      for (let attempt = 0; attempt < 3; attempt++) {
+        if (genId !== captionGenIdRef.current && showInComposer()) {
+          // Newer active-slide request superseded this one for the UI, but still
+          // finish writing the caption onto the queue item when possible.
+        }
         const res = await fetch("/api/ai/captions-from-image", {
           method: "POST",
+          credentials: "same-origin",
           headers: { "Content-Type": "application/json" },
           body,
         });
@@ -1107,45 +1238,106 @@ export default function CalendarPage() {
           data = json;
           break;
         }
+        if (res.status === 429) {
+          lastError = "Caption service is busy — waiting, then retrying…";
+          if (showInComposer()) setCaptionGenError(lastError);
+          await sleep(4000 + attempt * 2000);
+          continue;
+        }
         if (typeof json?.error === "string" && json.error.trim()) {
           lastError = json.error.trim();
         } else if (!res.ok) {
           lastError = `Caption service error (${res.status}). Try again.`;
         }
+        if (attempt < 2) await sleep(800);
       }
-      if (genId !== captionGenIdRef.current) return;
+
       if (blocked) {
-        setCaptionGenError(blocked);
-        return;
+        if (showInComposer()) setCaptionGenError(blocked);
+        return false;
       }
+
       const variants: CaptionOption[] = data?.variants ?? [];
-      if (variants.length === 0) throw new Error(lastError);
-      setCaptionOptions(variants);
-      setCaptionUserEdited(false);
-      applyCaptionOption(variants[0], 0);
-      startCaptionRotation(variants);
+      if (variants.length === 0) {
+        if (showInComposer()) setCaptionGenError(lastError);
+        return false;
+      }
+
+      const text = formatCaptionOption(variants[0]);
+      setMediaItems((prev) =>
+        prev.map((item) => (item.url === imageUrl ? { ...item, caption: text } : item)),
+      );
+
+      if (showInComposer()) {
+        setCaptionOptions(variants);
+        setCaptionUserEdited(false);
+        setCaptionIndex(0);
+        setFormCaption(text);
+        setCaptionGenError(null);
+        // Rotating options is noisy in a bulk queue — keep it for single posts.
+        if (mediaItemsRef.current.length <= 1) {
+          startCaptionRotation(variants);
+        }
+      }
+      return true;
     } catch (err) {
-      if (genId !== captionGenIdRef.current) return;
-      setCaptionGenError(err instanceof Error ? err.message : "Couldn't generate captions.");
+      if (showInComposer()) {
+        setCaptionGenError(
+          err instanceof Error ? err.message : "Couldn't generate captions.",
+        );
+      }
+      return false;
     } finally {
-      if (genId === captionGenIdRef.current) setCaptionLoading(false);
+      if (showInComposer()) setCaptionLoading(false);
     }
   }
 
-  // Auto-generate captions whenever a new image lands in the composer.
+  async function drainCaptionQueue() {
+    if (captionDrainRunningRef.current) return;
+    captionDrainRunningRef.current = true;
+    setCaptionQueueBusy(true);
+    try {
+      while (captionQueueRef.current.length > 0) {
+        const url = captionQueueRef.current.shift()!;
+        const existing = mediaItemsRef.current.find((i) => i.url === url);
+        if (!existing || existing.type === "video" || existing.caption?.trim()) {
+          continue;
+        }
+        captioningUrlRef.current = url;
+        await generateCaptionForUrl(url);
+        captioningUrlRef.current = null;
+        // Stay under the captions-from-image rate limit on large batches.
+        if (captionQueueRef.current.length > 0) {
+          await sleep(2200);
+        }
+      }
+    } finally {
+      captioningUrlRef.current = null;
+      captionDrainRunningRef.current = false;
+      setCaptionQueueBusy(captionQueueRef.current.length > 0);
+    }
+  }
+
+  // Auto-generate captions for the active slide (queued — never parallel stampede).
   useEffect(() => {
     if (skipNextCaptionGenRef.current) {
       skipNextCaptionGenRef.current = false;
       return;
     }
     if (!autoGenerateCaptions) return;
-    if (!mediaUrl || mediaType !== "image" || uploadingMedia) return;
-    void generateCaptionsFromImage(mediaUrl);
+    if (!mediaUrl || mediaType !== "image" || uploadingMedia || bulkUploading) return;
+    const current = mediaItems[mediaIndex];
+    if (current?.caption?.trim()) return;
+    // Active slide jumps to the front of the queue so swiping feels responsive.
+    enqueueCaptionJobs([mediaUrl], true);
     // eslint-disable-next-line react-hooks/exhaustive-deps -- only re-run on media change / toggle
-  }, [mediaUrl, mediaType, autoGenerateCaptions]);
+  }, [mediaUrl, mediaType, autoGenerateCaptions, uploadingMedia, bulkUploading, mediaIndex]);
 
   useEffect(() => {
-    return () => stopCaptionRotation();
+    return () => {
+      stopCaptionRotation();
+      captionQueueRef.current = [];
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -1483,11 +1675,19 @@ export default function CalendarPage() {
         </div>
       )}
 
-      <div className="pb-cal-grid grid min-h-0 grid-cols-1 gap-3 sm:gap-4 lg:grid-cols-[minmax(260px,320px)_minmax(0,1fr)] lg:gap-4 xl:grid-cols-[minmax(320px,400px)_minmax(0,1fr)] xl:gap-5 2xl:grid-cols-[minmax(360px,440px)_minmax(0,1fr)] 2xl:gap-6">
+      <div
+        className={`pb-cal-grid grid min-h-0 grid-cols-1 gap-3 sm:gap-4 lg:gap-4 xl:gap-5 2xl:gap-6 ${
+          isBulkQueue
+            ? "lg:grid-cols-[minmax(340px,420px)_minmax(0,1fr)] xl:grid-cols-[minmax(400px,520px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(440px,580px)_minmax(0,1fr)]"
+            : "lg:grid-cols-[minmax(300px,380px)_minmax(0,1fr)] xl:grid-cols-[minmax(380px,480px)_minmax(0,1fr)] 2xl:grid-cols-[minmax(420px,540px)_minmax(0,1fr)]"
+        }`}
+      >
         {/* Create Schedule — left composer card */}
         <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[16px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)] sm:rounded-[20px]">
           <div className="flex shrink-0 items-center justify-between px-3 pt-3 pb-1.5 sm:px-4 sm:pt-4 sm:pb-2">
-            <h2 className="text-[15px] font-semibold tracking-tight text-black">Create Post</h2>
+            <h2 className="text-[15px] font-semibold tracking-tight text-black">
+              {isBulkQueue ? "Create Posts" : "Create Post"}
+            </h2>
           </div>
 
           <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-0 sm:px-4">
@@ -1502,17 +1702,17 @@ export default function CalendarPage() {
             )}
 
             <div className="mb-2 flex shrink-0 items-center justify-between gap-2">
-              <button
-                type="button"
-                aria-label={accountHandle}
+              <div
+                className="flex shrink-0 items-center gap-2 rounded-xl py-0.5 pr-1"
                 title={accountHandle}
-                className="flex shrink-0 items-center gap-0.5 rounded-xl py-0.5 pr-1 text-left hover:bg-black/[0.03]"
               >
                 <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#ee2532] to-[#c81e2a] text-[11px] font-bold text-white">
                   {workspaceInitials}
                 </span>
-                <ChevronDown size={14} className="shrink-0 text-black/35" aria-hidden />
-              </button>
+                <span className="max-w-[9rem] truncate text-xs font-medium text-black/55">
+                  {accountHandle}
+                </span>
+              </div>
               <div className="flex items-center gap-1.5">
                 {(["facebook", "instagram"] as const).map((ch) => {
                   const on = formPlatform === ch || formPlatform === "both";
@@ -1582,15 +1782,6 @@ export default function CalendarPage() {
               >
                 Bulk Upload <Plus size={14} strokeWidth={2.5} aria-hidden />
               </button>
-              {isBulkQueue && (
-                <button
-                  type="button"
-                  onClick={() => setShowBulkList(true)}
-                  className="-mb-px ml-auto flex items-center gap-1 border-b-2 border-transparent pb-2 text-[13px] font-semibold text-black/45 transition-colors hover:text-[#ee2532]"
-                >
-                  <List size={15} aria-hidden /> List view
-                </button>
-              )}
               {editingPost && !isBulkQueue && (
                 <button
                   type="button"
@@ -1601,6 +1792,53 @@ export default function CalendarPage() {
                 </button>
               )}
             </div>
+
+            {isBulkQueue && (
+              <div className="mb-2 flex shrink-0 items-center justify-between gap-2 rounded-xl bg-[#f6f6f7] px-2.5 py-1.5">
+                <div className="min-w-0">
+                  <p className="truncate text-[12px] font-medium text-black/60">
+                    <span className="tabular-nums text-black/80">
+                      {mediaIndex + 1}
+                    </span>
+                    <span className="text-black/35"> / </span>
+                    <span className="tabular-nums text-black/80">
+                      {mediaItems.length}
+                    </span>
+                    <span className="text-black/45"> in queue</span>
+                  </p>
+                  {captionQueueBusy && captionImageTotal > 0 ? (
+                    <p className="mt-0.5 truncate text-[11px] text-black/40">
+                      Writing captions {Math.min(captionImageDone, captionImageTotal)}/
+                      {captionImageTotal}…
+                    </p>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => requestCaptionsForQueue()}
+                    disabled={
+                      captionQueueBusy ||
+                      captionLoading ||
+                      uploadingMedia ||
+                      bulkUploading ||
+                      captionImageDone >= captionImageTotal
+                    }
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-[#ee2532] transition-colors hover:bg-[#ee2532]/10 disabled:opacity-40"
+                    title="Write AI captions for images still missing one"
+                  >
+                    <Wand2 size={14} aria-hidden /> Captions
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowBulkList(true)}
+                    className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-[12px] font-semibold text-[#ee2532] transition-colors hover:bg-[#ee2532]/10"
+                  >
+                    <List size={14} aria-hidden /> List
+                  </button>
+                </div>
+              </div>
+            )}
 
             <PostPreview
               platform={formPlatform}
@@ -1618,8 +1856,8 @@ export default function CalendarPage() {
               onCarouselIndexChange={goCarouselTo}
             />
 
-            {/* Caption block — slightly taller on phones for easier editing. */}
-            <div className="mb-2 flex h-[72px] shrink-0 flex-col overflow-hidden sm:mb-3 sm:h-[66px]">
+            {/* Caption block — spaced below the preview so it doesn’t crowd the image. */}
+            <div className="mb-2 mt-3 flex h-[72px] shrink-0 flex-col overflow-hidden sm:mb-3 sm:mt-4 sm:h-[66px]">
               <div className="relative h-[44px] shrink-0 overflow-hidden sm:h-[40px]">
                 {captionLoading ? (
                   <p className="h-full overflow-hidden text-[13px] font-medium leading-snug text-[#ee2532] animate-pulse">
@@ -1653,6 +1891,21 @@ export default function CalendarPage() {
                 )}
               </div>
               <div className="mt-1.5 flex h-[18px] shrink-0 items-center gap-2 overflow-hidden">
+                {mediaUrl && mediaType === "image" ? (
+                  <button
+                    type="button"
+                    onClick={() => requestCaptionForActive()}
+                    disabled={captionLoading || uploadingMedia || bulkUploading || captionQueueBusy}
+                    className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#ee2532] transition-colors hover:text-[#c81e2a] disabled:opacity-40"
+                  >
+                    <Wand2 size={12} aria-hidden />
+                    {captionLoading
+                      ? "Writing…"
+                      : formCaption.trim()
+                        ? "Rewrite caption"
+                        : "Write caption"}
+                  </button>
+                ) : null}
                 {captionOptions.length > 1 && !captionUserEdited && !captionLoading ? (
                   <>
                     <div className="flex items-center gap-1.5">
@@ -2215,7 +2468,7 @@ export default function CalendarPage() {
             <div className="min-w-0">
               <p className="text-sm font-semibold text-black">Auto-generate captions</p>
               <p className="mt-0.5 text-[12px] text-black/45">
-                When on, new images get AI caption options automatically
+                Off by default. When on, new images get AI captions without clicking Write caption
               </p>
             </div>
             <button

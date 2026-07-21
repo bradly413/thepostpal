@@ -22,6 +22,7 @@ import {
 import { useDashboardPhotos } from "@/lib/use-dashboard-photos";
 import { useActiveLocation } from "@/lib/use-active-location";
 import { uploadDashboardImage } from "@/lib/dashboard-upload";
+import { LocationGate } from "@/components/dashboard/StateViews";
 
 // Industry-agnostic caption starters shown as rotating placeholders. These are
 // generic prompts that work for any business (bakery, gym, salon, agency, …) —
@@ -165,7 +166,8 @@ function EditorPageInner({
   }, [caption]);
 
   const { meta } = useMetaConnection();
-  const { locationId } = useActiveLocation();
+  const { locationId, loading: locationLoading, error: locationError, refresh } =
+    useActiveLocation();
   const { photos: workspacePhotos, uploadAndCreate } = useDashboardPhotos(locationId);
   const { containerRef, scale } = useCanvasScale(template);
   const storageKey =
@@ -434,6 +436,12 @@ function EditorPageInner({
   }
 
   return (
+    <LocationGate
+      loading={locationLoading}
+      error={locationError}
+      locationId={locationId}
+      onRetry={() => void refresh()}
+    >
     <div className="flex h-full min-h-0 flex-col lg:overflow-hidden">
       <div className="flex shrink-0 items-center justify-between gap-2 border-b border-black/10 px-3 py-2 sm:px-4">
         <Link href="/dashboard/templates" className="inline-flex min-h-11 items-center gap-2 rounded-lg px-1 text-black/55 hover:text-black transition-colors">
@@ -882,6 +890,7 @@ function EditorPageInner({
         </div>
       )}
     </div>
+    </LocationGate>
   );
 }
 

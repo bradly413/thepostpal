@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useState } from "react";
 import {
-  createDashboardPhoto,
   fetchDashboardPhotos,
   formatDashboardApiMessage,
   type DashboardPhotoRecord,
@@ -58,15 +57,16 @@ export function useDashboardPhotos(locationId?: string | null) {
       if (!activeLocationId) {
         throw new Error("Select a workspace location first.");
       }
-      const url = await uploadDashboardImage(file);
-      const created = await createDashboardPhoto({
+      const url = await uploadDashboardImage(file, {
         locationId: activeLocationId,
-        url,
-        mimeType: file.type,
         alt: file.name,
       });
-      const display = toDisplay(created);
-      setPhotos((prev) => [display, ...prev]);
+      const records = await fetchDashboardPhotos(activeLocationId);
+      const created = records.find((r) => r.url === url);
+      const display = created
+        ? toDisplay(created)
+        : { id: `tmp-${Date.now()}`, src: url, name: file.name };
+      setPhotos((prev) => [display, ...prev.filter((p) => p.src !== url)]);
       return display;
     },
     [activeLocationId],

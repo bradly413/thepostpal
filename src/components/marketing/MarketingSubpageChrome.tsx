@@ -4,9 +4,9 @@ import { CONTACT_EMAIL } from "@/lib/site";
 import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
 
 const LINKS = [
-  { href: "/#product", label: "Product" },
+  { href: "/#how", label: "How it works" },
+  { href: "/#teams", label: "For teams" },
   { href: "/pricing", label: "Pricing" },
-  { href: "/#solution", label: "How it works" },
 ] as const;
 
 export default function MarketingSubpageChrome({
@@ -27,6 +27,9 @@ export default function MarketingSubpageChrome({
             ))}
             <Link href="/sign-in" className="pb-nav-sign-in">
               Sign in
+            </Link>
+            <Link href={SIGNUP_ONBOARDING_URL} className="pb-btn-primary">
+              Start free trial
             </Link>
           </nav>
         </div>

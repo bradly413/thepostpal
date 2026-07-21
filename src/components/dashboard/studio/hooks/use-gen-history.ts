@@ -62,16 +62,21 @@ export function useGenHistory({
           const file = new File([bytes], `generation-${entry.at}.${ext}`, { type: m[1] });
           const fd = new FormData();
           fd.append("file", file);
+          fd.append("locationId", locationId);
+          fd.append("alt", entry.prompt || "Studio generation");
           const res = await fetch("/api/upload", { method: "POST", credentials: "same-origin", body: fd });
-          const data = (await res.json()) as { url?: string; error?: string };
+          const data = (await res.json()) as { url?: string; photoId?: string; error?: string };
           if (!res.ok || !data.url) throw new Error(data.error || "upload failed");
           const hostedUrl = data.url;
-          await createDashboardPhoto({
-            locationId,
-            url: hostedUrl,
-            mimeType: m[1],
-            alt: entry.prompt || "Studio generation",
-          });
+          // Fallback if the upload route couldn't register the library row.
+          if (!data.photoId) {
+            await createDashboardPhoto({
+              locationId,
+              url: hostedUrl,
+              mimeType: m[1],
+              alt: entry.prompt || "Studio generation",
+            });
+          }
           savedToMediaRef.current.add(hostedUrl);
           setGenHistory((h) => h.map((e) => (e.url === entry.url ? { ...e, url: hostedUrl } : e)));
         } catch {
@@ -91,8 +96,9 @@ export function useGenHistory({
     );
   }, []);
 
+  // Persist every session generation into the media library (Content/Media).
   useEffect(() => {
-    genHistory.filter((e) => e.source === "session").slice(4).forEach(saveGenerationToMedia);
+    genHistory.filter((e) => e.source === "session").forEach(saveGenerationToMedia);
   }, [genHistory, saveGenerationToMedia]);
 
   useEffect(() => {

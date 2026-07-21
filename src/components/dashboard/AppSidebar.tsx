@@ -7,13 +7,13 @@ import {
   Plus,
   CalendarDays,
   FileText,
-  Image as ImageIcon,
   Megaphone,
   Building2,
   PenLine,
   Hexagon,
   Settings,
   Globe,
+  LayoutTemplate,
 } from "lucide-react";
 import { usePlan } from "@/components/dashboard/PlanProvider";
 
@@ -29,13 +29,13 @@ const NAV_TOP: NavLink[] = [
   { label: "Create", href: "/dashboard/studio", Icon: Plus },
   { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays },
   { label: "Content", href: "/dashboard/drafts", Icon: FileText },
-  { label: "Media", href: "/dashboard/photos", Icon: ImageIcon },
   { label: "Ads", href: "/dashboard/ads", Icon: Megaphone, gate: "metaAds" },
   { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup" },
 ];
 
 const NAV_BOTTOM: NavLink[] = [
   { label: "Editor", href: "/dashboard/editor", Icon: PenLine },
+  { label: "Templates", href: "/dashboard/templates", Icon: LayoutTemplate },
   { label: "Brand", href: "/dashboard/brand", Icon: Hexagon },
   { label: "Settings", href: "/dashboard/settings", Icon: Settings },
   { label: "View site", href: "/", Icon: Globe },

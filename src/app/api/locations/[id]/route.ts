@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { withTenantDb } from "@/lib/db";
+import { requireAuthContext } from "@/lib/api-auth";
 import { requireLocationAccess } from "@/lib/location-api";
 import { syncLocationBilling } from "@/lib/location-billing";
 import { handleRouteError } from "@/lib/route-errors";
@@ -11,8 +12,9 @@ interface Params {
 export async function GET(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    const { auth } = await requireLocationAccess(id);
+    const auth = await requireAuthContext();
     return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { dbClient: tx });
       const location = await tx.location.findFirst({
         where: { id, organizationId: auth.tenantId },
         include: { approvalRule: true },
@@ -28,7 +30,7 @@ export async function GET(_: NextRequest, { params }: Params) {
 export async function PUT(request: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    const { auth } = await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN" });
+    const auth = await requireAuthContext();
 
     let body: Record<string, unknown>;
     try {
@@ -38,6 +40,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
     }
 
     return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN", dbClient: tx });
       const updated = await tx.location.update({
         where: { id },
         data: {
@@ -63,8 +66,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 export async function DELETE(_: NextRequest, { params }: Params) {
   const { id } = await params;
   try {
-    const { auth } = await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN" });
+    const auth = await requireAuthContext();
     return await withTenantDb(auth, async (tx) => {
+      await requireLocationAccess(id, { minimumRole: "LOCATION_ADMIN", dbClient: tx });
       const archived = await tx.location.update({
         where: { id },
         data: { status: "ARCHIVED", archivedAt: new Date() },

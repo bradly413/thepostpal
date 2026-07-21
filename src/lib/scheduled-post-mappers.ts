@@ -103,11 +103,12 @@ export function mapCalendarPostToCreateInput(
   templateId: string | null;
   pillar: string | null;
 } {
+  // UI "scheduled" = cron queue. Persist as approved — cron never claims legacy "scheduled".
   const status: DraftStatus =
     post.status === "published"
       ? "published"
       : post.status === "scheduled"
-        ? "scheduled"
+        ? "approved"
         : "draft";
 
   return {

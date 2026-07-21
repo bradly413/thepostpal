@@ -18,6 +18,7 @@ import {
   CloudLightning,
   CloudFog,
   User,
+  BarChart3,
 } from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCoverflow, Autoplay, Pagination, A11y, Keyboard } from "swiper/modules";
@@ -353,6 +354,7 @@ export default function DashboardHome() {
     { label: "Create", sub: "Design a new post", href: "/dashboard/studio", Icon: Plus },
     { label: "Schedule", sub: "Queue & calendar", href: "/dashboard/calendar", Icon: CalendarPlus },
     { label: "Drafts", sub: "Saved copy & ideas", href: "/dashboard/drafts", Icon: FileText },
+    { label: "Reports", sub: "Reach & engagement", href: "/dashboard/settings?tab=reports", Icon: BarChart3 },
   ];
 
   return (

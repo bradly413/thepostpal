@@ -4,6 +4,7 @@ import {
   photoDirectionForBrief,
   scenicSettingForBrief,
 } from "@/lib/studio/scene-intent";
+import { verticalAestheticBlock } from "@/lib/studio/vertical-aesthetics";
 
 // Hidden "art director" step for the studio. The user types a short brief
 // ("fall promo", "make an instagram post about cold brew"); this expands it
@@ -11,25 +12,33 @@ import {
 // Invisible to the user — there is no UI for it. On ANY failure it returns the
 // original brief unchanged so image generation never blocks on this step.
 
-const ART_DIRECTOR_BUSINESS_SYSTEM = `You are an art director for a small local business's social media. Turn a short content brief into ONE specific, believable image-generation prompt for a text-to-image model.
+const ART_DIRECTOR_BUSINESS_SYSTEM = `You are an art director for local-business Instagram. Turn a short content brief into ONE vivid, post-worthy image-generation prompt for a text-to-image model.
 
 Return ONLY the prompt text — no preamble, no quotes, no explanation, no options, no markdown.
 
 Write a single dense paragraph (40–90 words) that specifies:
-- Subject & setting grounded in the brief — a REAL place with lived-in detail (wear, clutter, steam, crumbs, scuffs).
-- Composition: natural eye-level framing with a level horizon — straightforward and balanced, not dutch angle, not dramatic tilt, not worm's-eye or extreme low-angle unless the brief asks.
-- Lighting: natural window light or warm daylight, well-exposed, not studio strobes or cinematic noir.
-- Camera: modern phone or 35mm documentary — shallow depth of field only if natural, never fake bokeh halos.
-- Specific textures (worn oak, linen napkin, condensation on glass, flour dust).
+- The HERO subject named in the brief first (product, food, drink, skin, beauty, person) — large and scroll-stopping in frame.
+- Setting: ONLY if the brief names a place/venue. Otherwise you MUST describe an isolated commercial shot on a seamless paper backdrop or flat solid-color fill matching the brief (e.g. red smoothie → solid red or pure white seamless; med spa / beauty → soft white or ivory seamless). Explicitly say "seamless backdrop" or "solid color background" in the prompt.
+- NEVER write restaurant, cafe, bakery, table, marble, countertop, brick wall, kraft paper, rustic ceramic, dining room, kitchen, patio, waterfront, skyline, Gateway Arch, or any tourist landmark unless those words appear in the brief. No table of any material. No local monuments. No cozy café lifestyle filler.
+- If a "Business:" line is present, that is niche context ONLY — it is NOT permission to invent that business's interior as the set (especially not a café when the brief is beauty, wellness, or product).
+- Honor the Vertical aesthetic block in the user message (industry look) without dulling vibrancy or inventing venues.
+- Composition: confident eye-level framing, level horizon — not dutch angle unless asked.
+- Lighting & grade: bright, clean, high-key commercial beauty — soft white / ivory / pearl. NEVER rustic brown, sepia, muddy earth tones, warm dim café tungsten, or documentary-muted.
+- Color: vibrant and saturated like a great Instagram ad — honor color words in the brief.
+- Include one lens mm/aperture cue and one concrete light cue.
+- Textures that make the subject look premium and fresh.
 
 - Default photographic look (unless the brief directs otherwise): see Photography direction in the user message.
 
 Hard rules:
-- Must read as a photograph a human took — NOT illustration, NOT 3D render, NOT stock-photo staging, NOT AI gloss.
+- Must read as a photograph — NOT illustration, NOT 3D render, NOT cartoon.
 - NO text, words, letters, logos, watermarks, signage, or UI in the image.
-- NEVER invent brand names or proper nouns the brief didn't give — keep specifics real but unnamed ("a pilsner on a worn oak bar", not a made-up brewery).
-- REAL PROPERTY RULE: if the brief is about a specific property, listing, address, or a home that sold, you CANNOT know what that property looks like — never depict an invented house/building or substitute generic keys-on-table lifestyle scenes. The owner must attach their listing photo.
-- If brand visual direction is provided, honor its photography style and let the palette influence accents naturally.
+- NEVER invent brand names or proper nouns the brief didn't give.
+- Product-forward, beauty, and med-spa briefs stay clean commercial — no lifestyle venue filler.
+- BRAND HERO: if the brief is "create an image for [business]" / a spa or clinic name without naming a product, feature a person (radiant skin / confident client portrait) on white/ivory seamless — NEVER invent skincare bottles, serum droppers, product flat-lays, or unlabeled packaging.
+- REAL PROPERTY RULE: if the brief is about a specific property/listing/address, never invent the building — the owner must attach their photo.
+- If brand visual direction is provided, honor it without dulling the energy or forcing a café/wood set.
+- If geography is provided, match region — never tropical/coastal unless asked. Never invent famous local landmarks unless named.
 - Keep every concrete detail the owner specified; never contradict the brief.
 - One coherent scene. No collage, no split panels, no borders.`;
 
@@ -38,8 +47,8 @@ const ART_DIRECTOR_SCENIC_SYSTEM = `You are an art director for aspirational tra
 Return ONLY the prompt text — no preamble, no quotes, no explanation, no options, no markdown.
 
 Write a single dense paragraph (40–90 words) that specifies:
-- Subject in a beautiful natural setting — default to pristine tropical beach (white sand, turquoise water, blue sky, horizon) when the brief names palms, beaches, or nature without a specific urban place.
-- Composition: wide scenic establishing shot, level horizon, full environment visible — sky, water, and sand all readable when applicable.
+- Subject in a beautiful natural setting. Prefer the place implied by the brief or geography. Only use pristine tropical beach (white sand, turquoise water) when the brief explicitly names palms, beaches, tropical, or coastal — never as a default for every nature word.
+- Composition: wide scenic establishing shot, level horizon, full environment visible when applicable.
 - Lighting: bright natural daylight, vivid but believable colors, well-exposed.
 - Camera: professional travel photography — natural proportions, no dutch angle, no dramatic tilt.
 
@@ -48,6 +57,7 @@ Write a single dense paragraph (40–90 words) that specifies:
 Hard rules:
 - Aspirational Instagram travel aesthetic — polished, inviting, like a real vacation photo on a premium social account.
 - NEVER suburban neighborhoods, city streets, sidewalks, parked cars, houses, apartment blocks, power lines, chain-link fences, or urban grit unless the brief explicitly requests them.
+- If geography is provided, match that region — do not force Caribbean tropics onto inland or Midwestern locations.
 - Palms must be natural proportion on a beach or tropical coast — NOT oversized CGI trees planted on a city block.
 - Must read as a photograph — NOT illustration, NOT 3D render, NOT AI gloss.
 - NO text, words, letters, logos, watermarks, or signage in the image.
@@ -60,8 +70,10 @@ export async function expandImageBrief(opts: {
   businessType?: string;
   /** Compact visual brand direction (photography style, palette accents). */
   brandContext?: string;
+  /** City/region so scenes match the tenant's market. */
+  geography?: string;
 }): Promise<string> {
-  const { brief, aspectRatio, businessType, brandContext } = opts;
+  const { brief, aspectRatio, businessType, brandContext, geography } = opts;
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return brief;
 
@@ -73,9 +85,11 @@ export async function expandImageBrief(opts: {
     const user = [
       businessType && !scenic ? `Business: ${businessType}` : null,
       aspectRatio ? `Aspect ratio: ${aspectRatio}` : null,
+      geography ? `Geography (match architecture, vegetation, light): ${geography}` : null,
       brandContext ? `Brand visual direction (honor this):\n${brandContext}` : null,
+      !scenic ? `Vertical aesthetic:\n${verticalAestheticBlock(brief, businessType)}` : null,
       `Photography direction: ${photoDirectionForBrief(brief)}`,
-      defaultSetting ? `Default setting (use unless the brief contradicts): ${defaultSetting}` : null,
+      defaultSetting ? `Default setting (use unless the brief or geography contradicts): ${defaultSetting}` : null,
       `Brief: ${brief}`,
     ]
       .filter(Boolean)

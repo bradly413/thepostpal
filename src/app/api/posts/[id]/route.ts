@@ -4,21 +4,27 @@ import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
 import { isSafeMediaUrl } from "@/lib/safe-media-url";
+import type { DraftStatus } from "@/lib/posterboy-types";
 
 interface Params {
   params: Promise<{ id: string }>;
 }
 
-const VALID_STATUSES = new Set([
+const VALID_STATUSES = new Set<string>([
   "draft",
   "needs_review",
   "approved",
-  "scheduled",
   "published",
   "skipped",
   "needs_revision",
   "failed",
 ]);
+
+/** Accept legacy client "scheduled" but always write cron-queue "approved". */
+function normalizeWriteStatus(status: string): DraftStatus {
+  if (status === "scheduled") return "approved";
+  return status as DraftStatus;
+}
 
 const VALID_MEDIA_TYPES = new Set(["image", "video"]);
 
@@ -73,8 +79,9 @@ export async function PUT(request: NextRequest, { params }: Params) {
 
       const body = await request.json();
       const nextStatus =
-        typeof body.status === "string" && VALID_STATUSES.has(body.status)
-          ? body.status
+        typeof body.status === "string" &&
+        VALID_STATUSES.has(normalizeWriteStatus(body.status))
+          ? normalizeWriteStatus(body.status)
           : undefined;
 
       const updated = await tx.scheduledPost.update({

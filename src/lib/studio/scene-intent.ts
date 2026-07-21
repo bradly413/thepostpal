@@ -13,7 +13,53 @@ const SCENIC_RE =
 
 /** Brief names a place the business owns — keep documentary realism. */
 const BUSINESS_CONTEXT_RE =
-  /\b(our|my|at\s+the|restaurant|store|shop|office|salon|cafe|bar|gym|studio|business|neighborhood|street|city|downtown|home|house|building|storefront|patio|lobby|interior|kitchen|menu|staff|team|customer|client|property|listing|open\s+house)\b/i;
+  /\b(our|my|at\s+the|restaurant|store|shop|office|salon|cafe|bar|gym|yoga\s+studio|photo\s+studio|business|neighborhood|street|downtown|home|house|building|storefront|patio|lobby|interior|kitchen|menu|staff|team|customer|client|property|listing|open\s+house)\b/i;
+
+/**
+ * Food / drink / product / beauty heroes — never attach tenant geography or landmarks.
+ * Bare "studio"/"city" used to false-trigger place context and pull in the Arch.
+ * Portraits & med-spa beauty also stay commercial-studio (demo café books otherwise
+ * leak brick/wood/mug lifestyle into every headshot).
+ */
+const PRODUCT_HERO_RE =
+  /\b(smoothie|milkshake|coffee|latte|espresso|cappuccino|cocktail|mocktail|wine|beer|burger|pizza|taco|sushi|salad|soup|pasta|steak|sandwich|dessert|cake|cookie|pastry|donut|bagel|juice|tea|matcha|acai|bowl|plate|dish|meal|food|drink|beverage|bottle|candle|lipstick|skincare|serum|soap|shampoo|perfume|sneakers|handbag|product|portrait|headshot|beauty|glowing?\s+skin|skin\s+glow|wellness|med(?:ical)?\s*spa|injectable|botox|filler|facial|cosmetic|makeup|close-?up)\b/i;
+
+export function isProductHeroBrief(text: string): boolean {
+  return PRODUCT_HERO_RE.test(text.trim());
+}
+
+/** Explicit product packaging — owner asked for a bottle/flat-lay, not a brand hero. */
+const EXPLICIT_PRODUCT_SHOT_RE =
+  /\b(bottle|serum|dropper|flat[\s-]?lay|product\s+shot|skincare\s+(bottle|jar|tube)|packaging|jar\s+of|tube\s+of)\b/i;
+
+/**
+ * "Create an image for Aurora Med Spa" / bare spa brand asks — NOT a catalog
+ * product shot. Compose must pick a person/glow brand hero, not invent bottles.
+ */
+const BRAND_OUTCOME_RE =
+  /\b((create|make|generate|design)\s+(an?\s+)?(image|photo|picture|post|instagram\s+post|facebook\s+post)\s+(for|about)|(?:image|photo|picture|post)\s+for)\b/i;
+
+const SPA_BRAND_RE =
+  /\b(med(?:ical)?\s*spa|beauty\s+(clinic|spa)|wellness\s+(spa|clinic|center)|aesthetic\s+clinic|dermatolog(?:y|ist)?)\b/i;
+
+export function isBrandOutcomeBrief(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (EXPLICIT_PRODUCT_SHOT_RE.test(t)) return false;
+  if (BRAND_OUTCOME_RE.test(t)) return true;
+  // Bare spa/clinic name with no concrete visual subject → brand hero, not bottles.
+  if (SPA_BRAND_RE.test(t)) {
+    if (
+      /\b(portrait|headshot|close-?up|glowing|skin\s+glow|woman|man|facial|injectable|botox|filler|treatment|client)\b/i.test(
+        t,
+      )
+    ) {
+      return false;
+    }
+    return true;
+  }
+  return false;
+}
 
 /** Specific property / listing / address — needs the owner's photo, not an AI guess. */
 const LISTING_BRIEF_RE =
@@ -31,6 +77,24 @@ export function isListingBrief(text: string): boolean {
   if (STREET_ADDRESS_RE.test(t)) return true;
   if (/\b(listing|property|open\s+house)\b/i.test(t) && LISTING_ZIP_RE.test(t)) return true;
   return false;
+}
+
+/**
+ * True when the brief implies a real place / venue / scenic setting.
+ * Product/color-only briefs ("vibrant red smoothie") should NOT get geography
+ * or "match regional architecture" anchors — those push dull cafe kitchens
+ * and local landmarks (e.g. Gateway Arch for St. Louis tenants).
+ */
+export function briefNeedsSceneGeography(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (isListingBrief(t)) return true;
+  // Product heroes stay product-forward unless the owner explicitly names a venue.
+  if (isProductHeroBrief(t) && !/\b(our|my|at\s+the|in\s+our|at\s+our)\b/i.test(t)) {
+    return false;
+  }
+  if (isScenicBrief(t)) return true;
+  return BUSINESS_CONTEXT_RE.test(t);
 }
 
 const PLATFORM_FROM_INTENT_RE: Array<{ id: string; re: RegExp }> = [
@@ -99,13 +163,13 @@ export function enrichScenicBrief(brief: string): string {
 }
 
 /** Wide travel/nature — full postcard scenes, not tight object crops. */
-export const SCENIC_PHOTO_DIRECTION = `aspirational travel and lifestyle photography for a polished Instagram post — vivid, inviting, beautiful like a real vacation photo, not documentary urban grit. Wide establishing shot with the FULL scene in frame: sky, horizon, and environment visible. Level camera, natural proportions. When the brief names a nature subject without a specific place (palm tree, beach, sunset), default to a pristine tropical beach with white sand, turquoise water, and blue sky — NEVER a suburban street, neighborhood, sidewalk, parked cars, houses, or power lines unless the brief explicitly asks. ${LEVEL_CAMERA_HINT} NOT an extreme close-up, NOT oversized CGI props, NOT illustration, NOT 3D render.`;
+export const SCENIC_PHOTO_DIRECTION = `aspirational travel and lifestyle photography for a polished Instagram post — vivid, inviting, beautiful like a real vacation photo, not documentary urban grit. Wide establishing shot with the FULL scene in frame: sky, horizon, and environment visible. Level camera, natural proportions. Only use pristine tropical beach when the brief names palms, beach, ocean, tropical, or coastal — otherwise prefer a general natural vista that can match the owner's region. NEVER a suburban street, neighborhood, sidewalk, parked cars, houses, or power lines unless the brief explicitly asks. ${LEVEL_CAMERA_HINT} NOT an extreme close-up, NOT oversized CGI props, NOT illustration, NOT 3D render.`;
 
 export const SCENIC_COMPOSE_SUFFIX =
-  " Wide aspirational scenic shot, tropical beach or natural vista when appropriate, level horizon, vivid travel photography — not suburban street, not urban neighborhood, not extreme close-up, no watermark, no dreamstime, no text.";
+  " Wide aspirational scenic shot, natural vista (tropical only if the brief asks), level horizon, vivid travel photography — not suburban street, not urban neighborhood, not extreme close-up, no watermark, no dreamstime, no text.";
 
 export const SCENIC_GENERATION_SUFFIX =
-  ` Wide establishing travel photograph with sky and horizon visible. Level camera, natural proportions, aspirational Instagram aesthetic. Pristine natural setting — not suburban street, not neighborhood houses, not parked cars, not power lines, not oversized fake palms. ${LEVEL_CAMERA_HINT} No watermark, no stock watermark, no dreamstime, no getty, no shutterstock text, no text overlay.`;
+  ` Wide establishing travel photograph with sky and horizon visible. Level camera, natural proportions, aspirational Instagram aesthetic. Match the brief's place — tropical only when asked. Not suburban street, not neighborhood houses, not parked cars, not power lines, not oversized fake palms. ${LEVEL_CAMERA_HINT} No watermark, no stock watermark, no dreamstime, no getty, no shutterstock text, no text overlay.`;
 
 export const ANTI_WATERMARK_SUFFIX =
   " No watermark, no stock photo watermark, no dreamstime, no getty, no shutterstock, no text in image.";
@@ -127,6 +191,8 @@ export function composeSuffixForBrief(brief: string, styleDirected: boolean): st
 export function generationSuffixForBrief(brief: string, hasReference: boolean): string {
   if (hasReference && isListingBrief(brief)) return LISTING_REFERENCE_GENERATION_SUFFIX;
   if (hasReference) return REAL_PHOTO_REFERENCE_SUFFIX;
-  const base = isScenicBrief(brief) ? SCENIC_GENERATION_SUFFIX : REAL_PHOTO_GENERATION_SUFFIX;
-  return base + ANTI_WATERMARK_SUFFIX;
+  // Scenic keeps the longer anti-urban + watermark block; commercial already
+  // carries a short no-text/watermark line in REAL_PHOTO_GENERATION_SUFFIX.
+  if (isScenicBrief(brief)) return SCENIC_GENERATION_SUFFIX + ANTI_WATERMARK_SUFFIX;
+  return REAL_PHOTO_GENERATION_SUFFIX;
 }

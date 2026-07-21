@@ -32,8 +32,8 @@ export interface PlanFeatures {
   composerPrimaryAction: "schedule" | "submit";
   /** Meta Ads builder + Marketing API (Command tier + META_ADS_ENABLED). */
   metaAds: boolean;
-  /** Pro image model (Nano Banana Pro / gemini-3-pro-image) in the studio.
-   *  Upgrade option — multi-location tiers for now; a Stripe add-on will refine. */
+  /** Nano Banana Pro (`gemini-3-pro-image`) in Studio vs Flash (`gemini-3.1-flash-image`).
+   *  Entitled for every plan; Stripe add-on remains for billing later if needed. */
   proImageModel: boolean;
 }
 
@@ -50,7 +50,7 @@ export function planFeatures(plan: PlanTier): PlanFeatures {
     locationRollup: multi,
     composerPrimaryAction: multi ? "submit" : "schedule",
     metaAds: multi,
-    proImageModel: multi,
+    proImageModel: true,
   };
 }
 

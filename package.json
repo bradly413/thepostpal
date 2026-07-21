@@ -17,7 +17,10 @@
     "tokens:migrate:social": "export $(grep -h -E '^(DATABASE_URL|TOKEN_ENC_KEY)=' .env.local | sed 's/\"//g') && tsx scripts/migrate-social-account-tokens.ts",
     "seed:verticals": "tsx scripts/seed-verticals.ts",
     "addon:pro-images": "export $(grep -h '^DATABASE_URL=' .env.local | sed 's/\"//g') && tsx scripts/set-pro-images-addon.ts",
-    "claude:sync": "bash scripts/generate-claude-catchup.sh"
+    "claude:sync": "bash scripts/generate-claude-catchup.sh",
+    "remotion:studio": "remotion studio src/remotion/posterboy-slideshow/index.ts",
+    "remotion:compositions": "remotion compositions src/remotion/posterboy-slideshow/index.ts",
+    "remotion:render": "bash scripts/render-posterboy-slideshow.sh"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.81",
@@ -28,7 +31,11 @@
     "@prisma/client": "^6.19.0",
     "@react-three/drei": "^10.7.7",
     "@react-three/fiber": "^9.6.1",
-    "@remotion/player": "^4.0.464",
+    "@remotion/bundler": "4.0.464",
+    "@remotion/cli": "4.0.464",
+    "@remotion/media-utils": "4.0.464",
+    "@remotion/player": "4.0.464",
+    "@remotion/renderer": "4.0.464",
     "@sentry/nextjs": "^10.57.0",
     "@splinetool/react-spline": "^4.1.0",
     "@splinetool/runtime": "^1.12.92",
@@ -46,7 +53,7 @@
     "react": "19.2.4",
     "react-dom": "19.2.4",
     "react-markdown": "^10.1.0",
-    "remotion": "^4.0.464",
+    "remotion": "4.0.464",
     "server-only": "^0.0.1",
     "stripe": "^17.7.0",
     "swiper": "^12.2.0",

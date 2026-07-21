@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import { uploadDashboardVideo } from "@/lib/dashboard-upload";
+import {
+  startAndPollVideo,
+  type VideoGenAspect,
+} from "@/lib/studio/generate-video-client";
 
 export type VideoAspectPreset = "9:16" | "1:1" | "4:5";
 
@@ -15,6 +19,8 @@ interface Props {
   onComplete: (publicUrl: string) => void;
   onError: (message: string) => void;
   initialUrl?: string | null;
+  /** Veo aspect for AI generation (upload export can still use other presets). */
+  aspectHint?: VideoGenAspect;
 }
 
 function formatTime(seconds: number): string {
@@ -23,7 +29,12 @@ function formatTime(seconds: number): string {
   return `${m}:${s.toString().padStart(2, "0")}`;
 }
 
-export default function VideoComposer({ onComplete, onError, initialUrl }: Props) {
+export default function VideoComposer({
+  onComplete,
+  onError,
+  initialUrl,
+  aspectHint = "9:16",
+}: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(initialUrl ?? null);
   const [duration, setDuration] = useState(0);
@@ -33,6 +44,10 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
   const [aspect, setAspect] = useState<VideoAspectPreset>("9:16");
   const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [aiBusy, setAiBusy] = useState(false);
+  const [aiStatus, setAiStatus] = useState("");
+  const aiAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     return () => {
@@ -165,10 +180,78 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
     }
   };
 
-  const busy = exporting || uploading;
+  const busy = exporting || uploading || aiBusy;
+
+  const generateAiVideo = async () => {
+    const brief = aiPrompt.trim();
+    if (!brief) {
+      onError("Describe the video you want.");
+      return;
+    }
+    aiAbortRef.current?.abort();
+    const ctrl = new AbortController();
+    aiAbortRef.current = ctrl;
+    setAiBusy(true);
+    setAiStatus("Starting video…");
+    try {
+      const { videoUrl } = await startAndPollVideo({
+        prompt: brief,
+        aspectRatio: aspectHint,
+        signal: ctrl.signal,
+        onStatus: (s) => {
+          if (s.phase === "starting") setAiStatus("Starting video…");
+          if (s.phase === "processing") {
+            const sec = Math.round(s.elapsedMs / 1000);
+            setAiStatus(sec < 20 ? "Generating video…" : `Still generating… ${sec}s`);
+          }
+        },
+      });
+      onComplete(videoUrl);
+    } catch (err) {
+      if (!(err instanceof DOMException && err.name === "AbortError")) {
+        onError(err instanceof Error ? err.message : "Video generation failed.");
+      }
+    } finally {
+      setAiBusy(false);
+      setAiStatus("");
+      aiAbortRef.current = null;
+    }
+  };
 
   return (
     <div className="pb-video-composer">
+      <div className="pb-video-ai">
+        <p className="pb-video-ai-label">AI Video (Veo)</p>
+        <p className="pb-video-ai-sub">8s clip with audio — or upload your own below.</p>
+        <textarea
+          className="pb-video-ai-prompt"
+          rows={3}
+          placeholder="A chef plating a vibrant dish, soft kitchen light, gentle camera push-in…"
+          value={aiPrompt}
+          onChange={(e) => setAiPrompt(e.target.value)}
+          disabled={aiBusy}
+        />
+        <div className="pb-video-ai-actions">
+          <button
+            type="button"
+            className="pb-video-export"
+            disabled={aiBusy || !aiPrompt.trim()}
+            onClick={() => void generateAiVideo()}
+          >
+            {aiBusy ? aiStatus || "Generating…" : "Generate with Veo"}
+          </button>
+          {aiBusy ? (
+            <button
+              type="button"
+              className="pb-video-ai-cancel"
+              onClick={() => aiAbortRef.current?.abort()}
+            >
+              Cancel
+            </button>
+          ) : null}
+        </div>
+      </div>
+
       {!sourceUrl ? (
         <label className="pb-video-drop">
           <span>Upload MP4 or MOV</span>
@@ -258,15 +341,24 @@ export default function VideoComposer({ onComplete, onError, initialUrl }: Props
         </>
       )}
 
-      {process.env.NEXT_PUBLIC_FEATURE_AI_VIDEO === "true" ? (
-        <div className="pb-video-ai-stub">
-          <p className="pb-video-ai-label">AI Video (beta)</p>
-          <p className="pb-video-ai-sub">Coming soon — generate short clips from a brief.</p>
-        </div>
-      ) : null}
-
       <style>{`
         .pb-video-composer { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; }
+        .pb-video-ai {
+          display: flex; flex-direction: column; gap: 8px;
+          padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.72);
+          border: 1px solid rgba(0,0,0,0.06);
+        }
+        .pb-video-ai-label { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(22,22,28,0.7); }
+        .pb-video-ai-sub { margin: 0; font-size: 12px; color: rgba(22,22,28,0.5); }
+        .pb-video-ai-prompt {
+          width: 100%; resize: vertical; min-height: 72px; padding: 10px 12px; border-radius: 10px;
+          border: 1px solid rgba(0,0,0,0.1); background: #fff; font-size: 13px; line-height: 1.4;
+        }
+        .pb-video-ai-actions { display: flex; gap: 8px; align-items: center; }
+        .pb-video-ai-cancel {
+          border: none; background: transparent; font-size: 12px; font-weight: 600;
+          color: #c41e2a; cursor: pointer; text-decoration: underline;
+        }
         .pb-video-drop {
           display: flex; align-items: center; justify-content: center;
           min-height: 120px; border: 2px dashed rgba(0,0,0,0.12); border-radius: 14px;

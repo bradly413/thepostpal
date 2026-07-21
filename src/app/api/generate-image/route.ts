@@ -2,26 +2,25 @@ import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
+import { resolveAccess } from "@/lib/authz";
 import { isProImageEntitled } from "@/lib/plan-features";
-import { expandImageBrief } from "@/lib/studio/art-director";
-import { buildTenantImageBrandContext } from "@/lib/ai-brand-context";
-import { enrichScenicBrief, generationSuffixForBrief, isListingBrief } from "@/lib/studio/scene-intent";
+import {
+  enrichScenicBrief,
+  generationSuffixForBrief,
+  isListingBrief,
+} from "@/lib/studio/scene-intent";
 import { REAL_PHOTO_EXPOSURE_RETRY_SUFFIX } from "@/lib/studio/image-prompt-vivid";
 import { isImageTooDark } from "@/lib/studio/image-quality-gate";
 import { referenceImageToGeminiInline } from "@/lib/studio/vision-image-input";
+import {
+  generateNanoBananaImage,
+  type NanoBananaImageSize,
+  type NanoBananaQuality,
+} from "@/lib/studio/nano-banana";
 
-// Image model routing — standard for everyone; Pro (Nano Banana Pro) is the
-// plan-gated upgrade: sharper detail, better reference fidelity, 2K output.
-// Standard = Nano Banana 2 (gemini-3.1-flash-image): Pro-level quality at
-// Flash speed, ~$0.067/image — the same model Artlist's toolkit runs.
-const IMAGE_MODELS = {
-  standard: "gemini-3.1-flash-image",
-  pro: "gemini-3-pro-image-preview",
-} as const;
-type ImageQuality = keyof typeof IMAGE_MODELS;
+// Studio: Standard = Nano Banana 2, Pro = Nano Banana Pro (Interactions API).
 
 export async function POST(req: NextRequest) {
-  // Require an authenticated session — this route spends Gemini quota.
   let auth: AuthContext;
   try {
     auth = await requireAuthContext();
@@ -50,6 +49,7 @@ export async function POST(req: NextRequest) {
     imageSize?: unknown;
     businessType?: unknown;
     locationId?: unknown;
+    composed?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -62,28 +62,53 @@ export async function POST(req: NextRequest) {
   const sourceIntent =
     typeof parsed.sourceIntent === "string" ? parsed.sourceIntent.slice(0, 1000) : "";
   const listingMode = parsed.listingMode === true || (!!sourceIntent && isListingBrief(sourceIntent));
+  const locationId = typeof parsed.locationId === "string" ? parsed.locationId : null;
+  const quality: NanoBananaQuality = parsed.quality === "pro" ? "pro" : "standard";
 
-  // Resolve quality: "pro" requires plan entitlement (server-side gate — never
-  // trust the client). Unentitled requests gracefully fall back to standard.
-  let quality: ImageQuality = parsed.quality === "pro" ? "pro" : "standard";
-  if (quality === "pro") {
+  if (quality === "pro" || locationId) {
     try {
-      const entitled = await withTenantDb(auth, async (tx) => {
-        const org = await tx.organization.findUnique({
-          where: { id: auth.tenantId },
-          select: { plan: true, brandEngine: true },
-        });
-        return org ? isProImageEntitled(org.plan, org.brandEngine) : false;
+      const gate = await withTenantDb(auth, async (tx) => {
+        if (locationId) {
+          const access = await resolveAccess(auth.userId, locationId, tx);
+          if (!access.hasAccess) return { ok: false as const, reason: "forbidden" as const };
+        }
+        if (quality === "pro") {
+          const org = await tx.organization.findUnique({
+            where: { id: auth.tenantId },
+            select: { plan: true, brandEngine: true },
+          });
+          const entitled = org ? isProImageEntitled(org.plan, org.brandEngine) : false;
+          if (!entitled) return { ok: false as const, reason: "pro_required" as const };
+        }
+        return { ok: true as const };
       });
-      if (!entitled) quality = "standard";
+      if (!gate.ok) {
+        if (gate.reason === "forbidden") {
+          return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+        }
+        return NextResponse.json(
+          {
+            error: "Pro image model requires an eligible plan.",
+            code: "PRO_REQUIRED",
+          },
+          { status: 403 },
+        );
+      }
     } catch {
-      quality = "standard";
+      return NextResponse.json(
+        { error: "Could not verify plan entitlements" },
+        { status: 503 },
+      );
     }
   }
-  const imageSize =
-    quality === "pro" && (parsed.imageSize === "2K" || parsed.imageSize === "1K")
-      ? parsed.imageSize
+
+  const requestedSize =
+    parsed.imageSize === "4K" || parsed.imageSize === "2K" || parsed.imageSize === "1K"
+      ? (parsed.imageSize as NanoBananaImageSize)
       : null;
+  // Pro defaults to 2K; Flash can take an explicit size (defaults to API 1K).
+  const imageSize: NanoBananaImageSize | null =
+    requestedSize ?? (quality === "pro" ? "2K" : null);
 
   if (!prompt || typeof prompt !== "string") {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -106,10 +131,6 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
   }
 
-  const geminiKey = apiKey;
-
-  const parts: Record<string, unknown>[] = [];
-
   const refInline =
     typeof referenceImage === "string" && referenceImage.trim()
       ? await referenceImageToGeminiInline(referenceImage)
@@ -130,127 +151,46 @@ export async function POST(req: NextRequest) {
       { status: 422 },
     );
   }
-  if (refInline) {
-    parts.push({
-      inlineData: {
-        mimeType: refInline.mimeType,
-        data: refInline.data,
-      },
-    });
-  }
 
-  // Hidden art-director pass: expand the short brief into a rich, on-brand
-  // image prompt before the model runs (no UI — invisible to the user). Skip it
-  // for reference edits (follow the user's literal direction so we don't fight
-  // the source photo) and for already-detailed briefs (>320 chars = the user
-  // art-directed it themselves). Falls back to the raw brief on any failure.
-  const businessType =
-    typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 80) : undefined;
-  const locationId = typeof parsed.locationId === "string" ? parsed.locationId : null;
   const hasReference = !!refInline;
-  // Brand book visual direction (photography style + palette) — "" if no book.
-  const brandContext =
-    hasReference || prompt.length > 320
-      ? ""
-      : await buildTenantImageBrandContext(auth, { locationId });
-  const promptForModel =
-    hasReference || prompt.length > 320
-      ? prompt
-      : await expandImageBrief({
-          brief: enrichScenicBrief(prompt),
-          aspectRatio,
-          businessType,
-          brandContext,
-        });
+  let promptForModel = hasReference ? prompt : enrichScenicBrief(prompt);
 
-  // Gemini image gen has no aspectRatio config field — hint it in the prompt
-  // so portrait/landscape platform formats aren't all returned square.
-  const ratioHint =
-    aspectRatio && aspectRatio !== "1:1" ? ` Compose the image in a ${aspectRatio} aspect ratio.` : "";
+  const listingRef = refInline && (listingMode || isListingBrief(sourceIntent || prompt));
+  const refPreamble = listingRef
+    ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
+    : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
 
-  async function runGeneration(promptText: string, vividHint: string) {
-    const requestParts: Record<string, unknown>[] = [...parts];
-    const listingRef = refInline && (listingMode || isListingBrief(sourceIntent || prompt));
-    const refPreamble = listingRef
-      ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
-      : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
-    requestParts.push({
-      text:
-        (refInline ? `${refPreamble}${promptText}` : promptText) + ratioHint + vividHint,
+  const vividHint = hasReference
+    ? generationSuffixForBrief(sourceIntent || promptForModel, true)
+    : generationSuffixForBrief(sourceIntent || promptForModel, false);
+
+  async function runGeneration(promptText: string) {
+    const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;
+    return generateNanoBananaImage({
+      apiKey: apiKey!,
+      quality,
+      prompt: fullPrompt,
+      aspectRatio,
+      imageSize,
+      reference: refInline
+        ? { mimeType: refInline.mimeType, data: refInline.data }
+        : null,
     });
-
-    const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models/${IMAGE_MODELS[quality]}:generateContent`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "x-goog-api-key": geminiKey },
-        body: JSON.stringify({
-          contents: [{ parts: requestParts }],
-          generationConfig: {
-            responseModalities: ["TEXT", "IMAGE"],
-            responseMimeType: "text/plain",
-            ...(quality === "pro"
-              ? { imageConfig: { aspectRatio, ...(imageSize ? { imageSize } : {}) } }
-              : {}),
-          },
-        }),
-      },
-    );
-
-    if (!res.ok) {
-      return { ok: false as const, status: res.status, error: "Image generation failed" };
-    }
-
-    const data = await res.json();
-    const responseParts = data.candidates?.[0]?.content?.parts || [];
-
-    let imageData: string | null = null;
-    let mimeType = "image/png";
-    let textResponse = "";
-
-    for (const part of responseParts) {
-      if (part.inlineData) {
-        imageData = part.inlineData.data;
-        mimeType = part.inlineData.mimeType || "image/png";
-      }
-      if (part.text) {
-        textResponse += part.text;
-      }
-    }
-
-    if (!imageData) {
-      return {
-        ok: false as const,
-        status: 422,
-        error: "No image was generated. Try a different prompt.",
-        text: textResponse,
-      };
-    }
-
-    return {
-      ok: true as const,
-      image: `data:${mimeType};base64,${imageData}`,
-      text: textResponse,
-      rawBase64: imageData,
-    };
   }
 
   try {
-    const vividHint = hasReference
-      ? generationSuffixForBrief(sourceIntent || promptForModel, true)
-      : generationSuffixForBrief(promptForModel, false);
-    let result = await runGeneration(promptForModel, vividHint);
+    let result = await runGeneration(promptForModel);
 
     if (!result.ok) {
       return NextResponse.json(
         { error: result.error, ...(result.text ? { text: result.text } : {}) },
-        { status: result.status },
+        { status: result.status >= 400 && result.status < 600 ? result.status : 502 },
       );
     }
 
     let retriedForQuality = false;
     if (!hasReference && (await isImageTooDark(result.rawBase64))) {
-      const retry = await runGeneration(promptForModel + REAL_PHOTO_EXPOSURE_RETRY_SUFFIX, vividHint);
+      const retry = await runGeneration(promptForModel + REAL_PHOTO_EXPOSURE_RETRY_SUFFIX);
       if (retry.ok) {
         result = retry;
         retriedForQuality = true;
@@ -258,15 +198,17 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      image: result.image,
+      image: result.imageDataUrl,
       text: result.text,
       model: quality,
+      modelId: result.model,
+      imageSize: imageSize ?? "1K",
       ...(retriedForQuality ? { retriedForQuality: true } : {}),
     });
   } catch {
     return NextResponse.json(
       { error: "Failed to generate image" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

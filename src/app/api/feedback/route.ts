@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getRedis } from "@/lib/redis";
-import { requireAuthContext } from "@/lib/api-auth";
+import { requireSuperadminContext } from "@/lib/api-auth";
 import { handleRouteError } from "@/lib/route-errors";
 
 const KEY = "beta-feedback";
 
-// Reading or deleting beta feedback is an authenticated admin action.
+// Reading or deleting beta feedback is superadmin-only.
 // Submitting (POST) stays open so the in-app feedback widget works for any tester.
 export async function GET() {
   try {
-    await requireAuthContext();
+    await requireSuperadminContext();
     const redis = getRedis();
     if (!redis) return NextResponse.json({ items: [] });
     const items = (await redis.lrange(KEY, 0, -1)) || [];
@@ -49,7 +49,7 @@ export async function POST(req: NextRequest) {
 
 export async function DELETE(req: NextRequest) {
   try {
-    await requireAuthContext();
+    await requireSuperadminContext();
     const redis = getRedis();
     if (!redis) return NextResponse.json({ success: true });
 

@@ -1,5 +1,6 @@
 "use client";
 
+import { createDashboardPhoto } from "@/lib/dashboard-api";
 import {
   inferMediaContentType,
   isVideoContentType,
@@ -15,6 +16,14 @@ export interface PresignedUploadResponse {
   key?: string;
   expiresIn?: number;
 }
+
+export type UploadMediaOptions = {
+  /** When set (and saveToLibrary !== false), also create a PhotoAsset for Content/Media. */
+  locationId?: string | null;
+  alt?: string | null;
+  /** Default true when locationId is provided. */
+  saveToLibrary?: boolean;
+};
 
 export class DashboardUploadError extends Error {
   status?: number;
@@ -38,6 +47,7 @@ async function readErrorMessage(response: Response, fallback: string): Promise<s
 /**
  * Upload a file directly to S3 via a short-lived presigned PUT URL.
  * Bypasses the Next.js request body limit entirely.
+ * When `locationId` is provided, also registers the file in the media library.
  */
 function maxBytesForFile(file: File): number {
   const contentType = inferMediaContentType(file.name, file.type);
@@ -46,7 +56,28 @@ function maxBytesForFile(file: File): number {
     : MAX_IMAGE_BYTES;
 }
 
-export async function uploadMediaToS3(file: File): Promise<string> {
+async function registerInLibrary(
+  locationId: string,
+  url: string,
+  mimeType: string,
+  alt: string | null | undefined,
+) {
+  try {
+    await createDashboardPhoto({
+      locationId,
+      url,
+      mimeType,
+      alt: alt ?? null,
+    });
+  } catch {
+    // Best-effort — composer/studio must still get the public URL.
+  }
+}
+
+export async function uploadMediaToS3(
+  file: File,
+  options?: UploadMediaOptions,
+): Promise<string> {
   if (!file || file.size <= 0) {
     throw new DashboardUploadError("Choose a file to upload.");
   }
@@ -100,6 +131,16 @@ export async function uploadMediaToS3(file: File): Promise<string> {
     throw new DashboardUploadError(
       `Direct upload to storage failed (${uploadRes.status}).`,
       uploadRes.status,
+    );
+  }
+
+  const locationId = options?.locationId?.trim();
+  if (locationId && options?.saveToLibrary !== false) {
+    await registerInLibrary(
+      locationId,
+      payload.publicUrl,
+      contentType,
+      options?.alt ?? file.name,
     );
   }
 
