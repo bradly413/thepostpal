@@ -45,6 +45,13 @@ export function StudioStyles() {
     max-width: none;
     margin: 0;
     align-items: stretch;
+  }.pb-studio .studio-error.studio-soft-notice {
+    border-color: rgba(26, 26, 46, 0.12);
+    background: rgba(255, 255, 255, 0.88);
+  }
+  .pb-studio .studio-error.studio-soft-notice p {
+    color: rgba(26, 26, 46, 0.72);
+  }
   }.pb-studio .studio-error {
     position: absolute;
     top: 80px;

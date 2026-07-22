@@ -85,6 +85,7 @@ import {
   recentAsksHint,
   type PromptMemoryEntry,
 } from "@/lib/studio/prompt-memory";
+import { canStartStudioChatTurn } from "@/lib/studio/studio-chat-guards";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -263,6 +264,8 @@ export default function PosterboyStudio() {
   // Chat thread + bottom aspect / format controls
   const [chatMessages, setChatMessages] = useState<StudioChatMessage[]>([]);
   const pendingAssistantIdRef = useRef<string | null>(null);
+  const composeInFlightRef = useRef(false);
+  const pendingPromptMemoryRef = useRef<Omit<PromptMemoryEntry, "at"> | null>(null);
   const [aspectOverride, setAspectOverride] = useState<StudioChatAspect | null>(null);
   const aspectPinRef = useRef(false);
   const [aspectMenuOpen, setAspectMenuOpen] = useState(false);
@@ -272,6 +275,7 @@ export default function PosterboyStudio() {
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
   const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
+  const [softNotice, setSoftNotice] = useState("");
 
   const { locationId, locations, loading: locationLoading, error: locationError, refresh } =
     useActiveLocation();
@@ -553,6 +557,20 @@ export default function PosterboyStudio() {
     setActiveEdit,
     pushHistory,
     onAfterGenerateSuccess: clearComposeFieldForReview,
+    onAfterGenerateFailure: (message) => {
+      const aid = pendingAssistantIdRef.current;
+      if (!aid) return;
+      setChatMessages((prev) =>
+        prev.map((m) =>
+          m.id === aid && m.role === "assistant"
+            ? { ...m, status: "error" as const, text: message }
+            : m,
+        ),
+      );
+      pendingAssistantIdRef.current = null;
+      pendingPromptMemoryRef.current = null;
+      composeInFlightRef.current = false;
+    },
   });
 
   // Finalize chat assistant bubble when generation succeeds (image stays in live slot).
@@ -571,26 +589,19 @@ export default function PosterboyStudio() {
                   ? `Here’s slide 1 of ${m.carouselCount ?? 3} — a hero for your carousel.`
                   : "Here’s your image.",
               aspect: effectiveAspect,
+              imageUrl: generatedUrl,
             }
           : m,
       ),
     );
+    const mem = pendingPromptMemoryRef.current;
+    if (mem) {
+      setRecentPrompts(pushPromptMemory(locationId, mem));
+      pendingPromptMemoryRef.current = null;
+    }
     pendingAssistantIdRef.current = null;
-  }, [genState, generatedUrl, effectiveAspect]);
-
-  useEffect(() => {
-    if (genState !== "idle" && genState !== "done") return;
-    if (!error || !pendingAssistantIdRef.current) return;
-    const aid = pendingAssistantIdRef.current;
-    setChatMessages((prev) =>
-      prev.map((m) =>
-        m.id === aid && m.role === "assistant"
-          ? { ...m, status: "error" as const, text: error }
-          : m,
-      ),
-    );
-    pendingAssistantIdRef.current = null;
-  }, [error, genState]);
+    composeInFlightRef.current = false;
+  }, [genState, generatedUrl, effectiveAspect, locationId]);
 
   const resolveWebsiteBrand = useCallback(
     async (
@@ -660,16 +671,26 @@ export default function PosterboyStudio() {
     [composerBrief, prompt],
   );
 
-  const runComposeFromIntent = useCallback(async () => {
+  const runComposeFromIntent = useCallback(async (overrideUserText?: string) => {
     let nextRef = refImage;
     let briefOverride: string | undefined;
     const sourceText = `${prompt}\n${composerBrief}`;
     const pageUrl = extractWebsiteUrl(sourceText);
-    const userText = (composerBrief || prompt).trim();
-    if (!userText) {
+    const userText = (overrideUserText ?? composerBrief ?? prompt).trim();
+    const gate = canStartStudioChatTurn({
+      genState,
+      refImageLoading,
+      composeInFlight: composeInFlightRef.current,
+      userText,
+    });
+    if (!gate.ok) {
       inputRef.current?.focus();
       return;
     }
+
+    composeInFlightRef.current = true;
+    setSoftNotice("");
+    setError("");
 
     // Archive current live image onto the previous assistant before a new turn.
     if (generatedUrl && genState === "done") {
@@ -691,31 +712,30 @@ export default function PosterboyStudio() {
       aspect: effectiveAspect,
     });
     pendingAssistantIdRef.current = working.id;
+    pendingPromptMemoryRef.current = {
+      text: userText,
+      aspect: effectiveAspect,
+      format: postFormat,
+      carouselCount: postFormat === "carousel" ? carouselCount : undefined,
+    };
     setChatMessages((prev) => [...prev, userMsg, working]);
-
-    setRecentPrompts(
-      pushPromptMemory(locationId, {
-        text: userText,
-        aspect: effectiveAspect,
-        format: postFormat,
-        carouselCount: postFormat === "carousel" ? carouselCount : undefined,
-      }),
-    );
 
     if (!nextRef) {
       const url = extractReferenceImageUrl(prompt) || extractReferenceImageUrl(composerBrief);
-      if (url && attachReferenceFromUrl(url)) nextRef = url;
+      if (url && looksLikeDirectImageUrl(url) && attachReferenceFromUrl(url)) nextRef = url;
     }
 
     // Website link (socelle.com) → fetch og:image + brand copy for compose.
     if (pageUrl) {
       const site = await resolveWebsiteBrand(sourceText);
+      // Re-check in-flight: user may have navigated away; still finish this turn.
       if (site.enrichedIntent) briefOverride = site.enrichedIntent;
       if (!nextRef && site.imageUrl && attachReferenceFromUrl(site.imageUrl)) {
         nextRef = site.imageUrl;
         if (site.label) setRefName(site.label);
       } else if (!nextRef && site.error) {
-        setError(`${site.error}. Generating from your prompt instead.`);
+        // Soft notice — never marks the assistant bubble as failed.
+        setSoftNotice(`${site.error}. Generating from your prompt instead.`);
       }
     }
 
@@ -727,7 +747,7 @@ export default function PosterboyStudio() {
       intent = withAsks.length > 980 ? withAsks.slice(0, 980) : withAsks;
     }
 
-    return composeFromIntent(intent, nextRef);
+    await composeFromIntent(intent, nextRef);
   }, [
     attachReferenceFromUrl,
     carouselCount,
@@ -740,6 +760,7 @@ export default function PosterboyStudio() {
     postFormat,
     prompt,
     refImage,
+    refImageLoading,
     resolveWebsiteBrand,
   ]);
 
@@ -1231,7 +1252,7 @@ export default function PosterboyStudio() {
         const { buildMetaPublishPayload } = await import("@/lib/meta-publish-payload");
         const exactPublish = isVideo
           ? generatedUrl
-          : await resizeToExact(generatedUrl as string, platform.w, platform.h);
+          : await resizeToExact(generatedUrl as string, frameDims.w, frameDims.h);
         const payload = await buildMetaPublishPayload({
           platform: metaTarget,
           caption: fullCaption,
@@ -1286,7 +1307,7 @@ export default function PosterboyStudio() {
       const { resolvePublicImageUrl } = await import("@/lib/upload-public-image");
       const exact =
         mediaKind === "image"
-          ? await resizeToExact(generatedUrl, platform.w, platform.h)
+          ? await resizeToExact(generatedUrl, frameDims.w, frameDims.h)
           : generatedUrl;
       const mediaPublicUrl = exact ? await resolvePublicImageUrl(exact) : null;
       writeStudioScheduleHandoff({
@@ -1375,6 +1396,9 @@ export default function PosterboyStudio() {
                             onClick={() => {
                               setPlatformIdx(i);
                               platformPinRef.current = true;
+                              // Manual platform pick clears aspect pin so crop matches platform.
+                              aspectPinRef.current = false;
+                              setAspectOverride(null);
                               setPlatformMenuOpen(false);
                             }}
                           >
@@ -1504,6 +1528,7 @@ export default function PosterboyStudio() {
           <StudioChatThread
             messages={chatMessages}
             welcome={STUDIO_CHAT_WELCOME}
+            liveImageUrl={generatedUrl}
             liveSlot={
               genState === "idle" &&
               !generatedUrl &&
@@ -1751,6 +1776,11 @@ export default function PosterboyStudio() {
               ) : null}
               <button type="button" onClick={() => setError("")}>Dismiss</button>
             </div>
+          ) : softNotice ? (
+            <div className="studio-error studio-soft-notice">
+              <p>{softNotice}</p>
+              <button type="button" onClick={() => setSoftNotice("")}>Dismiss</button>
+            </div>
           ) : null}
 
           {historyOpen ? (
@@ -1848,7 +1878,14 @@ export default function PosterboyStudio() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (genState !== "generating" && composerMode === "image") void runComposeFromIntent();
+                      if (
+                        genState !== "generating" &&
+                        !refImageLoading &&
+                        !composeInFlightRef.current &&
+                        composerMode === "image"
+                      ) {
+                        void runComposeFromIntent();
+                      }
                     }
                   }}
                   placeholder={selectedIntent.detailPlaceholder}
@@ -1897,15 +1934,23 @@ export default function PosterboyStudio() {
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (genState !== "generating" && composerMode === "image") {
-                        if (!refImage) {
-                          const url = extractReferenceImageUrl(prompt);
-                          if (url && looksLikeDirectImageUrl(url)) {
-                            attachReferenceFromUrl(url);
-                          }
-                        }
-                        void runComposeFromIntent();
+                      if (
+                        genState === "generating" ||
+                        refImageLoading ||
+                        composeInFlightRef.current ||
+                        composerMode !== "image"
+                      ) {
+                        return;
                       }
+                      if (listingBrief && !refImage) {
+                        refFileRef.current?.click();
+                        return;
+                      }
+                      const url = extractReferenceImageUrl(prompt);
+                      if (url && looksLikeDirectImageUrl(url)) {
+                        attachReferenceFromUrl(url);
+                      }
+                      void runComposeFromIntent();
                     }
                   }}
                   placeholder={STUDIO_PROMPT_PLACEHOLDERS[placeholderIdx]}
@@ -2206,13 +2251,16 @@ export default function PosterboyStudio() {
                             else startCaptionGeneration();
                           } else if (composerMode === "video") {
                             void runVeo({ prompt: composerBrief });
-                          } else {
-                            if (composerBrief) void runComposeFromIntent();
-                            else void regenerateLast();
+                          } else if (composerBrief) {
+                            void runComposeFromIntent();
+                          } else if (lastGenPrompt) {
+                            void runComposeFromIntent(lastGenPrompt);
                           }
                         }}
                         disabled={
-                          refImageLoading || videoBusy
+                          // During generate the bar unmounts; composeInFlight covers
+                          // the website-preview await before genState flips.
+                          refImageLoading || videoBusy || composeInFlightRef.current
                             ? true
                             : finishReady
                               ? publishing

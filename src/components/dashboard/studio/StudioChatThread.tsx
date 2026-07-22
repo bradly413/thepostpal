@@ -8,6 +8,8 @@ type Props = {
   welcome: string;
   /** Live generation / preview slot (current frame) — sits at end of thread. */
   liveSlot?: ReactNode;
+  /** When set, hide thread image cards that match the live preview (no duplicate). */
+  liveImageUrl?: string | null;
   className?: string;
 };
 
@@ -17,20 +19,32 @@ function formatBadge(msg: Extract<StudioChatMessage, { role: "assistant" }>): st
   return `Carousel · ${n} slides`;
 }
 
+function scrollKey(messages: StudioChatMessage[]): string {
+  const last = messages[messages.length - 1];
+  if (!last) return "0";
+  if (last.role === "user") return `${messages.length}:${last.id}`;
+  return `${messages.length}:${last.id}:${last.status}`;
+}
+
 export default function StudioChatThread({
   messages,
   welcome,
   liveSlot,
+  liveImageUrl = null,
   className = "",
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
   const scrollerRef = useRef<HTMLDivElement>(null);
+  const key = scrollKey(messages);
 
   useEffect(() => {
     const el = endRef.current;
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [messages, liveSlot]);
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "end" });
+  }, [key]);
 
   return (
     <div
@@ -57,6 +71,10 @@ export default function StudioChatThread({
           }
 
           const badge = formatBadge(msg);
+          const showCard =
+            !!msg.imageUrl &&
+            msg.status === "done" &&
+            !(liveImageUrl && msg.imageUrl === liveImageUrl);
           return (
             <div
               key={msg.id}
@@ -70,10 +88,10 @@ export default function StudioChatThread({
                   <span className="studio-chat-aspect-badge">{msg.aspect}</span>
                 ) : null}
               </div>
-              {msg.imageUrl && msg.status === "done" ? (
+              {showCard ? (
                 <div className="studio-chat-image-card">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={msg.imageUrl} alt="" />
+                  <img src={msg.imageUrl!} alt="" />
                   {badge ? <span className="studio-chat-format-badge on-image">{badge}</span> : null}
                 </div>
               ) : null}

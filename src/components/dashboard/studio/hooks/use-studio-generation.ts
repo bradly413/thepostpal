@@ -77,6 +77,8 @@ export type UseStudioGenerationParams = {
   pushHistory: (url: string, promptText: string) => void;
   /** Clear the compose field after a successful generate so review mode shows “Describe changes…”. */
   onAfterGenerateSuccess?: () => void;
+  /** Fatal generate/compose failure (not soft notices). */
+  onAfterGenerateFailure?: (message: string) => void;
 };
 
 export function useStudioGeneration({
@@ -109,6 +111,7 @@ export function useStudioGeneration({
   setActiveEdit,
   pushHistory,
   onAfterGenerateSuccess,
+  onAfterGenerateFailure,
 }: UseStudioGenerationParams) {
   const resolveAspect = useCallback(() => {
     if (aspectPinRef.current && aspectOverride) return aspectOverride;
@@ -123,9 +126,17 @@ export function useStudioGeneration({
     setLastGenPromptState(next);
   }, []);
   const onAfterGenerateSuccessRef = useRef(onAfterGenerateSuccess);
+  const onAfterGenerateFailureRef = useRef(onAfterGenerateFailure);
   useEffect(() => {
     onAfterGenerateSuccessRef.current = onAfterGenerateSuccess;
   }, [onAfterGenerateSuccess]);
+  useEffect(() => {
+    onAfterGenerateFailureRef.current = onAfterGenerateFailure;
+  }, [onAfterGenerateFailure]);
+  const failGenerate = useCallback((message: string) => {
+    setError(message);
+    onAfterGenerateFailureRef.current?.(message);
+  }, [setError]);
 
   useEffect(
     () => () => {
@@ -244,7 +255,7 @@ export function useStudioGeneration({
           stopProgressTimer();
           setProgress(0);
           const msg = data.error || "Generation failed";
-          setError(
+          failGenerate(
             msg.includes("not configured")
               ? "Image generation is not available yet. API key needs to be configured."
               : msg,
@@ -264,7 +275,7 @@ export function useStudioGeneration({
         await holdFloor(startedAt);
         stopProgressTimer();
         setProgress(0);
-        setError(
+        failGenerate(
           err instanceof DOMException && err.name === "AbortError"
             ? "Generation timed out. Please try again."
             : "Network error. Please try again.",
@@ -287,7 +298,7 @@ export function useStudioGeneration({
       locationId,
       inputRef,
       setGenState,
-      setError,
+      failGenerate,
       setProgress,
       setShowTemplate,
       setCaptionState,
@@ -321,7 +332,7 @@ export function useStudioGeneration({
       genState,
       lastGenPrompt: lastGenPromptRef.current,
     }) === "blocked_listing_no_photo") {
-      setError("Add your listing photo first — we can't show your property from an address alone.");
+      failGenerate("Add your listing photo first — we can't show your property from an address alone.");
       inputRef.current?.focus();
       return;
     }
@@ -417,7 +428,7 @@ export function useStudioGeneration({
             stopProgressTimer();
             setCaptionState("idle");
             clearTimeout(timeoutId);
-            setError(brief.error || "Add your listing photo first.");
+            failGenerate(brief.error || "Add your listing photo first.");
             setGenState(isReprompt ? "done" : "idle");
             return;
           }
@@ -458,7 +469,7 @@ export function useStudioGeneration({
         setProgress(0);
         setCaptionState("idle");
         const msg = iData.error || "Generation failed";
-        setError(
+        failGenerate(
           msg.includes("not configured")
             ? "Image generation is not available yet. API key needs to be configured."
             : msg,
@@ -481,7 +492,7 @@ export function useStudioGeneration({
       stopProgressTimer();
       setProgress(0);
       setCaptionState("idle");
-      setError(
+      failGenerate(
         err instanceof DOMException && err.name === "AbortError"
           ? "Timed out. Please try again."
           : "Network error. Please try again.",
@@ -507,7 +518,7 @@ export function useStudioGeneration({
     locationId,
     inputRef,
     setGenState,
-    setError,
+    failGenerate,
     setProgress,
     setShowTemplate,
     setCaptionState,
@@ -521,7 +532,6 @@ export function useStudioGeneration({
     setGeneratedUrl,
     pushHistory,
     requestGenerateImage,
-    generate,
     rememberGenPrompt,
   ]);
 
