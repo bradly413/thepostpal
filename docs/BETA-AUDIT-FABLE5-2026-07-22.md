@@ -19,7 +19,7 @@ step 1 of the tester script. Fix that, redeploy, invite.
 
 ## Blockers
 
-- [ ] **Studio composer: generate button off-screen at ≤~1360px viewports (first-run state).**
+- [x] **Studio composer: generate button off-screen at ≤~1360px viewports (first-run state).**
   Measured on prod at a 1180px viewport: prompt input right edge 1323px, composer bar right edge
   1342px, "Make a post" button at x 1212–1327 — fully outside the viewport, and the container
   clips (no horizontal scroll). A tester in a 1280px browser window types a prompt and has **no
@@ -35,29 +35,29 @@ step 1 of the tester script. Fix that, redeploy, invite.
 
 ## Should fix before/soon after invites
 
-- [ ] **Voice Architect input is animation-gated with no failsafe.** The answer field mounts
+- [x] **Voice Architect input is animation-gated with no failsafe.** The answer field mounts
   `visibility:hidden` and is revealed only by the GSAP entrance timeline. If frames are throttled
   (background tab, low-power mode), the question renders but can never be answered. Same bug
   class was already fixed in marketing `Hero.tsx` with a setTimeout progress failsafe — port that
   pattern to `VoiceArchitect.tsx` (reveal logic ~line 224). Not reproducible in normal foreground
   browsing, but it is the front door of the product.
-- [ ] **Dashboard home "Coming up" lists past-dated items** ("Scheduled for Jul 14/15/16 at
+- [x] **Dashboard home "Coming up" lists past-dated items** ("Scheduled for Jul 14/15/16 at
   9:00 AM" — a week ago) while "Next up" correctly says "Nothing scheduled yet." Filter the list
   to future-dated queue items or relabel past ones. (Observed on demo-org; the logic ships to all
   tenants.)
-- [ ] **Marketing beta-copy alignment** — prod still says "Start free trial" (hero secondary,
+- [x] **Marketing beta-copy alignment** — prod still says "Start free trial" (hero secondary,
   nav); the local tree already has the fix ("Join free beta", "Closed beta · free · no card
   required.", beta FAQ, pricing "Price shown is post-beta Solo"). Ship that batch; include
   `ChatbotWidget.tsx`, which still pitches "free trial."
-- [ ] **Pricing feature names don't match the product testers see.** Solo lists "Calm Room
+- [x] **Pricing feature names don't match the product testers see.** Solo lists "Calm Room
   content workspace" and "Visual Grid Planner" — neither appears in the dashboard (nav is
   Create/Schedule/Library). Rename to the real surfaces: Creator Studio, auto captions, bulk
   scheduling, calendar. (`src/lib/pricing.ts` features array.)
-- [ ] **Studio "Video" tab is prominent while video publish is beta-blocked.** The block error is
+- [x] **Studio "Video" tab is prominent while video publish is beta-blocked.** The block error is
   clear and verified ("Video publish is not available in closed beta.", `calendar/page.tsx:1074`),
   but the equal-weight Video tab invites testers into a dead end — consider a "Soon" badge
   matching the Settings platform treatment.
-- [ ] **`/onboarding` has no `h1`** (question text is styled spans). Minor a11y/SEO; one-line fix.
+- [x] **`/onboarding` has no `h1`** (question text is styled spans). Minor a11y/SEO; one-line fix.
 - [ ] **1 failed prod post** on demo-org (`cmrfd6gdw0001k1049cam4mv1`, Graph API "reduce the
   amount of data") — Retry/Skip from the dashboard when convenient; not tester-visible.
 
@@ -124,3 +124,7 @@ Live functional checks this audit: `/api/generate-image` 200 (real generation),
 4. **fix(home): filter "Coming up" to future-dated items** (or relabel past ones).
 5. **chore(studio): "Soon" badge on the Video tab** during beta.
 6. After 1–2 land: redeploy → launch-check → Brad's incognito signup walk → send invites.
+
+## Follow-up (same day)
+
+Code fixes landed in-tree after this audit: Studio composer viewport centering (CSS left/right/margin; GSAP y-only), Voice Architect reveal failsafe + h1, Coming up future-only filter, pricing feature rename, Video Soon badge, marketing Join free beta batch. Remaining: Meta App Testers (ops), Brad incognito signup walk, push/redeploy, send invites.
