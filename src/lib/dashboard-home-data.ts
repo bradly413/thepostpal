@@ -4,6 +4,8 @@ import {
 } from "@/lib/brand-book-document";
 import {
   fetchDashboardLocations,
+  fetchDashboardMetaConnection,
+  fetchDashboardMetaInsights,
   fetchDashboardPosts,
   type DashboardLocationRecord,
   type DashboardPostRecord,
@@ -18,6 +20,7 @@ import {
   type DashboardWeeklyOverview,
 } from "@/lib/dashboard-post-helpers";
 import type { DraftStatus } from "@/lib/posterboy-types";
+import type { MetaTopPost } from "@/lib/meta-insights-types";
 
 export type { DashboardWeeklyOverview } from "@/lib/dashboard-post-helpers";
 
@@ -26,6 +29,15 @@ const HERO_IMAGES = [
   "https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=900&q=80",
   "https://images.unsplash.com/photo-1600566753190-17f0baa2a6a3?auto=format&fit=crop&w=900&q=80",
 ];
+
+export interface DashboardHomeTopPerforming {
+  id: string;
+  platform: "facebook" | "instagram";
+  imageUrl: string | null;
+  likes: number;
+  comments: number;
+  message: string;
+}
 
 export interface DashboardHomeSnapshot {
   userName: string;
@@ -41,6 +53,14 @@ export interface DashboardHomeSnapshot {
   hoursSaved: number;
   everythingInSync: boolean;
   weeklyOverview: DashboardWeeklyOverview;
+  /** Meta connected for the active location. */
+  metaConnected: boolean;
+  /** Total followers (FB + IG when available). */
+  audienceFollowers: number | null;
+  /** Net follower change over the insights window (≈28d). */
+  audienceGrowth28d: number | null;
+  /** Highest-engagement published Meta post, or null. */
+  topPerforming: DashboardHomeTopPerforming | null;
 }
 
 function formatScheduleLabel(draft: DashboardPostRecord): string {
@@ -93,14 +113,55 @@ function pickCurrentLocation(
   return locations[0] ?? null;
 }
 
-function readStoredUser(): { firstName?: string; lastName?: string; accountName?: string } | null {
+function readStoredUser(): {
+  firstName?: string;
+  lastName?: string;
+  accountName?: string;
+} | null {
   if (typeof window === "undefined") return null;
   try {
     const raw = window.localStorage.getItem("postpal-user");
-    return raw ? JSON.parse(raw) as { firstName?: string; lastName?: string; accountName?: string } : null;
+    return raw
+      ? (JSON.parse(raw) as {
+          firstName?: string;
+          lastName?: string;
+          accountName?: string;
+        })
+      : null;
   } catch {
     return null;
   }
+}
+
+function initialsFromName(parts: string[]): string {
+  return parts
+    .filter(Boolean)
+    .map((w) => w[0] ?? "")
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+/** page_fans series is usually cumulative — growth ≈ last − first. */
+function followerGrowthFromSeries(
+  points: { date: string; value: number }[],
+): number | null {
+  if (points.length < 2) return null;
+  const first = points[0]?.value;
+  const last = points[points.length - 1]?.value;
+  if (typeof first !== "number" || typeof last !== "number") return null;
+  return last - first;
+}
+
+function mapTopPost(post: MetaTopPost): DashboardHomeTopPerforming {
+  return {
+    id: post.id,
+    platform: post.platform,
+    imageUrl: post.imageUrl ?? null,
+    likes: post.likes,
+    comments: post.comments,
+    message: post.message,
+  };
 }
 
 export async function loadDashboardHomeSnapshot(
@@ -149,21 +210,47 @@ export async function loadDashboardHomeSnapshot(
   // handled (created/scheduled/published) — tied to real counts, not invented.
   const hoursSaved = Math.round(totalHandled * 0.25);
   const storedUser = readStoredUser();
-  const userName =
-    storedUser?.accountName ??
-    currentLocation?.name ??
+  const displayName =
+    [storedUser?.firstName, storedUser?.lastName].filter(Boolean).join(" ") ||
+    storedUser?.accountName ||
+    currentLocation?.name ||
     "Your workspace";
+  const userName = displayName;
   const userRole = currentLocation ? "Workspace" : "Owner";
+  const userInitials =
+    initialsFromName(
+      storedUser?.firstName || storedUser?.lastName
+        ? [storedUser.firstName ?? "", storedUser.lastName ?? ""]
+        : displayName.split(/\s+/),
+    ) || "PB";
+
+  let metaConnected = false;
+  let audienceFollowers: number | null = null;
+  let audienceGrowth28d: number | null = null;
+  let topPerforming: DashboardHomeTopPerforming | null = null;
+
+  if (currentLocation?.id) {
+    try {
+      const connection = await fetchDashboardMetaConnection(currentLocation.id);
+      metaConnected = Boolean(connection?.connected);
+      if (metaConnected) {
+        const insights = await fetchDashboardMetaInsights(currentLocation.id);
+        const fb = insights.summary.pageFollowers ?? 0;
+        const ig = insights.summary.igFollowers ?? 0;
+        audienceFollowers = fb + ig > 0 ? fb + ig : fb || ig || null;
+        audienceGrowth28d = followerGrowthFromSeries(insights.series.followers);
+        const best = insights.topPosts[0];
+        if (best) topPerforming = mapTopPost(best);
+      }
+    } catch {
+      /* Home still works without insights — show empty Meta cards. */
+    }
+  }
 
   return {
     userName,
     userRole,
-    userInitials: userName
-      .split(/\s+/)
-      .map((w) => w[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase(),
+    userInitials,
     brandVoiceLine,
     brandVoiceSub: "Your voice. Your neighborhood. Your expertise.",
     nextUp,
@@ -175,6 +262,10 @@ export async function loadDashboardHomeSnapshot(
     hoursSaved,
     everythingInSync: pending.length === 0,
     weeklyOverview: buildWeeklyOverview(scopedPosts),
+    metaConnected,
+    audienceFollowers,
+    audienceGrowth28d,
+    topPerforming,
   };
 }
 

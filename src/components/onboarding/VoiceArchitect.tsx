@@ -399,7 +399,7 @@ function VoiceArchitectInner() {
       markOnboardingComplete();
 
       if (data.authMode === "guest") {
-        router.push("/sign-in?next=%2Fdashboard%2Fstudio");
+        router.push("/sign-in?next=%2Fdashboard");
         return;
       }
 
@@ -420,7 +420,7 @@ function VoiceArchitectInner() {
         /* ignore */
       }
 
-      router.push("/dashboard/studio");
+      router.push("/dashboard");
     } catch {
       buildStarted.current = false;
       setError("Couldn't build your voice. Check your connection and try again.");

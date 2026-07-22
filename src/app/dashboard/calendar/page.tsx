@@ -1383,6 +1383,14 @@ function CalendarPageContent() {
       return;
     }
 
+    if (savingAsScheduled && !meta?.connected) {
+      setPublishResult({
+        type: "error",
+        message: "Connect Facebook & Instagram in Settings before scheduling — otherwise the post won’t publish.",
+      });
+      return;
+    }
+
     // Keep the month grid on the day we're scheduling onto.
     const [sy, sm] = scheduleDate.split("-").map(Number);
     if (sy && sm) {

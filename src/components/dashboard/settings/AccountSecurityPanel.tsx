@@ -264,18 +264,14 @@ export default function AccountSecurityPanel({
                   {
                     id: "linkedin",
                     label: "Connect LinkedIn",
-                    href: locationId
-                      ? `/api/auth/linkedin/login?locationId=${encodeURIComponent(locationId)}&returnTo=settings`
-                      : null,
-                    ready: Boolean(locationId),
+                    href: null,
+                    ready: false,
                   },
                   {
                     id: "tiktok",
                     label: "Connect TikTok",
-                    href: locationId
-                      ? `/api/auth/tiktok/login?locationId=${encodeURIComponent(locationId)}&returnTo=settings`
-                      : null,
-                    ready: Boolean(locationId),
+                    href: null,
+                    ready: false,
                   },
                   { id: "x", label: "Connect X", href: null, ready: false },
                   { id: "youtube", label: "Connect YouTube", href: null, ready: false },
@@ -294,15 +290,11 @@ export default function AccountSecurityPanel({
                     key={row.id}
                     type="button"
                     disabled
-                    title={
-                      row.ready === false && !row.href
-                        ? "Coming soon"
-                        : "Choose a workspace location first"
-                    }
+                    title="Coming soon — Facebook & Instagram publish in this beta"
                     className="pb-btn-secondary w-full flex items-center justify-center gap-2 text-xs py-2.5 opacity-45 cursor-not-allowed"
                   >
                     {row.label}
-                    {!row.href ? <span className="opacity-70">· Soon</span> : null}
+                    <span className="opacity-70">· Soon</span>
                   </button>
                 ),
               )}

@@ -26,18 +26,8 @@ import {
 } from "@/lib/dashboard-home-data";
 import { buildHeroHolidaySlides, type HeroHolidaySlide } from "@/lib/hero-holiday-slides";
 
-const TOP_PERFORMING_IMAGE = "/marketing/dashboard/top-performing-salad.jpg";
 const TOP_PERFORMING_DUPE_BRIEF =
-  "Create a fresh Instagram variation of this top-performing salad post — same vibrant food energy and ingredients, new angle and plating, vivid commercial food photography, no text overlay.";
-const AVATAR =
-  "https://images.unsplash.com/photo-1573496359142-b8d87734a5a2?auto=format&fit=crop&w=120&q=80&crop=faces";
-
-const HOLIDAY_FALLBACK: Record<number, string> = {
-  0: "https://images.unsplash.com/photo-1513151233558-d860c5398176?auto=format&fit=crop&w=900&q=80",
-  1: "https://images.unsplash.com/photo-1482514197908-c3e7e5c3e0b7?auto=format&fit=crop&w=900&q=80",
-  2: "https://images.unsplash.com/photo-1464349095431-e9a21285b5f3?auto=format&fit=crop&w=900&q=80",
-  3: "https://images.unsplash.com/photo-1514525253161-7a46d19cd819?auto=format&fit=crop&w=900&q=80",
-};
+  "Create a fresh Instagram variation of this top-performing post — same subject and energy, new composition, vivid commercial photography, no text overlay.";
 const CSS = `
 .pb-fig {
   --ink: #1a1a2e;
@@ -129,8 +119,19 @@ const CSS = `
   border: 0; background: transparent; cursor: pointer;
   color: inherit; font: inherit; text-decoration: none;
 }
-.pb-fig-user img {
+.pb-fig-user img,
+.pb-fig-user .pb-fig-avatar {
   width: 34px; height: 34px; border-radius: 50%; object-fit: cover;
+}
+.pb-fig-user .pb-fig-avatar {
+  display: grid; place-items: center;
+  background: #1a1a2e;
+  color: #fff;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  flex-shrink: 0;
 }
 .pb-fig-user span {
   font-size: 13.5px; font-weight: 600; color: var(--ink);
@@ -211,6 +212,7 @@ const CSS = `
   min-height: 148px;
   color: #fff;
   isolation: isolate;
+  background: #1a1a2e;
 }
 .pb-fig-top-perf .bg {
   position: absolute;
@@ -289,6 +291,34 @@ const CSS = `
 .pb-fig-top-perf .dupe:focus-visible {
   outline: 2px solid #ee2532;
   outline-offset: 2px;
+}
+.pb-fig-top-perf--empty {
+  background: var(--soft);
+  color: var(--ink);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 18px 16px;
+  min-height: 148px;
+}
+.pb-fig-top-perf--empty .kicker {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.pb-fig-top-perf--empty p {
+  margin: 0 0 12px;
+  font-size: 13.5px;
+  line-height: 1.45;
+  color: var(--ink);
+  max-width: 28ch;
+}
+.pb-fig-top-perf--empty a {
+  font-size: 12.5px;
+  font-weight: 650;
+  color: var(--red);
+  text-decoration: none;
 }
 
 .pb-fig-nextup {
@@ -665,7 +695,7 @@ a.pb-fig-nextup:hover {
   .pb-fig-user {
     margin-left: 2px;
   }
-  .pb-fig-user span,
+  .pb-fig-user span:not(.pb-fig-avatar),
   .pb-fig-user svg {
     display: none;
   }
@@ -829,9 +859,8 @@ function postTitle(copy: string | null | undefined): string {
   return t.length > 42 ? `${t.slice(0, 42)}…` : t;
 }
 
-function holidayImage(slide: HeroHolidaySlide): string {
-  if (slide.img) return slide.img;
-  return HOLIDAY_FALLBACK[slide.grad % 4] ?? HOLIDAY_FALLBACK[0];
+function holidayImage(slide: HeroHolidaySlide): string | null {
+  return slide.img || null;
 }
 
 function nextUpCountdown(scheduledFor: string | null | undefined): string {
@@ -959,7 +988,10 @@ export default function DashboardHome() {
   const slide = holidays[holidayIndex] ?? holidays[0];
 
   const shortName =
-    workspaceName.trim().split(/\s+/).slice(0, 2).join(" ") || "Brad N.";
+    data?.userName?.trim().split(/\s+/).slice(0, 2).join(" ") ||
+    workspaceName.trim().split(/\s+/).slice(0, 2).join(" ") ||
+    "Account";
+  const userInitials = data?.userInitials || "PB";
 
   const submitSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -971,7 +1003,7 @@ export default function DashboardHome() {
     try {
       setData(await loadDashboardHomeSnapshot(locationId));
     } catch {
-      /* keep mock-friendly empty state */
+      /* keep empty-friendly home if snapshot fails */
     }
   }, [locationId]);
 
@@ -1074,9 +1106,10 @@ export default function DashboardHome() {
               >
                 <MessageCircle size={17} />
               </a>
-              <Link href="/dashboard/settings" className="pb-fig-user">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={AVATAR} alt="" />
+              <Link href="/dashboard/settings" className="pb-fig-user" aria-label="Account settings">
+                <span className="pb-fig-avatar" aria-hidden>
+                  {userInitials}
+                </span>
                 <span>{shortName}</span>
                 <ChevronDown aria-hidden />
               </Link>
@@ -1103,36 +1136,82 @@ export default function DashboardHome() {
                   </div>
                   <div className="pb-fig-stat">
                     <div className="label">Audience</div>
-                    <div className="value">113</div>
-                    <div className="sub">New Followers</div>
+                    <div className="value">
+                      {data == null
+                        ? "—"
+                        : data.audienceGrowth28d != null
+                          ? `${data.audienceGrowth28d > 0 ? "+" : ""}${data.audienceGrowth28d.toLocaleString()}`
+                          : data.audienceFollowers != null
+                            ? data.audienceFollowers.toLocaleString()
+                            : "—"}
+                    </div>
+                    <div className="sub">
+                      {!data
+                        ? "Followers"
+                        : !data.metaConnected
+                          ? "Connect Meta"
+                          : data.audienceGrowth28d != null
+                            ? "New Followers (28d)"
+                            : data.audienceFollowers != null
+                              ? "Followers"
+                              : "No data yet"}
+                    </div>
                   </div>
                 </div>
 
                 <div className="pb-fig-mid">
-                  <div className="pb-fig-top-perf">
-                    <div className="bg" aria-hidden>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img src={TOP_PERFORMING_IMAGE} alt="" />
+                  {data?.topPerforming ? (
+                    <div className="pb-fig-top-perf">
+                      <div className="bg" aria-hidden>
+                        {data.topPerforming.imageUrl ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img src={data.topPerforming.imageUrl} alt="" />
+                        ) : null}
+                      </div>
+                      <div className="shade" aria-hidden />
+                      <div className="copy">
+                        <div className="kicker">Top Performing</div>
+                        <div className="likes">
+                          {data.topPerforming.likes.toLocaleString()}
+                          <small>Likes</small>
+                        </div>
+                        <div className="comments">
+                          {data.topPerforming.comments.toLocaleString()}
+                          <small>Comments</small>
+                        </div>
+                      </div>
+                      <Link
+                        href={
+                          data.topPerforming.imageUrl
+                            ? `/dashboard/studio?dupe=${encodeURIComponent(data.topPerforming.imageUrl)}&brief=${encodeURIComponent(TOP_PERFORMING_DUPE_BRIEF)}`
+                            : `/dashboard/studio?brief=${encodeURIComponent(TOP_PERFORMING_DUPE_BRIEF)}`
+                        }
+                        className="dupe"
+                      >
+                        Dupe Post
+                      </Link>
                     </div>
-                    <div className="shade" aria-hidden />
-                    <div className="copy">
+                  ) : (
+                    <div className="pb-fig-top-perf pb-fig-top-perf--empty">
                       <div className="kicker">Top Performing</div>
-                      <div className="likes">
-                        216
-                        <small>Likes</small>
-                      </div>
-                      <div className="comments">
-                        46
-                        <small>Comments</small>
-                      </div>
+                      <p>
+                        {!data
+                          ? "Loading engagement…"
+                          : !data.metaConnected
+                            ? "Connect Facebook & Instagram to see your top post here."
+                            : "Publish a few posts — top likes and comments will show up here."}
+                      </p>
+                      <Link
+                        href={
+                          data && !data.metaConnected
+                            ? "/dashboard/settings?tab=account"
+                            : "/dashboard/studio"
+                        }
+                      >
+                        {data && !data.metaConnected ? "Connect Meta" : "Open Studio"}
+                      </Link>
                     </div>
-                    <Link
-                      href={`/dashboard/studio?dupe=${encodeURIComponent(TOP_PERFORMING_IMAGE)}&brief=${encodeURIComponent(TOP_PERFORMING_DUPE_BRIEF)}`}
-                      className="dupe"
-                    >
-                      Dupe Post
-                    </Link>
-                  </div>
+                  )}
 
                   {data?.nextUp ? (
                     <Link
@@ -1243,14 +1322,24 @@ export default function DashboardHome() {
                 <section className="pb-fig-promo" ref={promoRef} aria-roledescription="carousel">
                   {slide ? (
                     <>
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        key={slide.dateKey || slide.title}
-                        ref={imgRef}
-                        className="slide-img"
-                        src={holidayImage(slide)}
-                        alt=""
-                      />
+                      {holidayImage(slide) ? (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          key={slide.dateKey || slide.title}
+                          ref={imgRef}
+                          className="slide-img"
+                          src={holidayImage(slide) || undefined}
+                          alt=""
+                        />
+                      ) : (
+                        <div
+                          className="slide-img"
+                          aria-hidden
+                          style={{
+                            background: `linear-gradient(145deg, hsl(${210 + (slide.grad % 5) * 28} 28% 28%), hsl(${210 + (slide.grad % 5) * 28} 18% 14%))`,
+                          }}
+                        />
+                      )}
                       <div className="shade" aria-hidden />
                       <div className="inner">
                         <div className="copy">

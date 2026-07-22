@@ -64,7 +64,8 @@ export default function BillingSettingsPanel({ accountEmail }: Props) {
     <div className="pb-panel">
       <h2 className="pb-panel-h">Billing</h2>
       <p className="text-sm opacity-65 mb-6">
-        Manage your posterboy plan and Stripe subscription.
+        Closed beta — no card required. You&apos;re on Solo for free while we learn with you.
+        Paid checkout stays available when you&apos;re ready.
       </p>
 
       <div className="rounded-2xl border border-black/10 bg-white/70 p-5 mb-6">
@@ -72,6 +73,7 @@ export default function BillingSettingsPanel({ accountEmail }: Props) {
           Current plan
         </p>
         <p className="text-xl font-semibold">{planName}</p>
+        <p className="text-sm opacity-55 mt-1">Beta access · no charge</p>
         {onCommand && locationCount > 0 ? (
           <p className="text-sm opacity-55 mt-1">
             {locationCount} active location{locationCount !== 1 ? "s" : ""}
@@ -126,8 +128,11 @@ export default function BillingSettingsPanel({ accountEmail }: Props) {
               disabled={checkoutLoading}
               onClick={() => void handleSubscribeSolo()}
             >
-              {checkoutLoading ? "Redirecting…" : `Subscribe to Solo (${interval})`}
+              {checkoutLoading ? "Redirecting…" : `Start paid Solo (${interval})`}
             </button>
+            <p className="text-xs opacity-50">
+              Optional — beta stays free. Paid Solo unlocks formal billing when you&apos;re ready.
+            </p>
           </div>
         </div>
       ) : (
