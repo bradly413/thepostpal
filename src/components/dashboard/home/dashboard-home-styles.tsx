@@ -111,6 +111,15 @@ export function DashboardHomeStyles() {
       .pb-home2--fixed .pb-cal-grid { grid-template-rows: none; }
       .pb-home2--fixed .pb-cal-grid > * { height: auto; min-height: 0; overflow: visible; }
     }
+    /* AppMobileNav is fixed below 768 — keep Schedule/Studio footers clear of it. */
+    @media (max-width: 768px) {
+      .pb-home2--fixed .pb-app {
+        padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+      }
+      .pb-home2--fixed .pb-cal-grid > #post-composer {
+        margin-bottom: 0.5rem;
+      }
+    }
 
     /* Utility bar */
     .topbar2 { position: relative; z-index: 60; display: flex; justify-content: flex-end; align-items: center; gap: 12px; height: 6px; margin-bottom: 6px; }

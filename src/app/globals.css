@@ -1213,6 +1213,13 @@ html[data-theme] body {
   -webkit-font-smoothing: antialiased;
 }
 
+@media (max-width: 768px) {
+  /* Clear AppMobileNav so sticky footers (Schedule, etc.) stay tappable */
+  .pb-app {
+    padding-bottom: calc(5.25rem + env(safe-area-inset-bottom, 0px));
+  }
+}
+
 .pb-app-header {
   margin-bottom: 2rem;
 }
