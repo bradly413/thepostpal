@@ -86,6 +86,8 @@ Optional / niche: `AUTH_STORE_DIR`, `JWT_SECRET`/`NEXTAUTH_SECRET` (fallbacks fo
 
 **Superadmin ops:** `POSTERBOY_SUPERADMIN_EMAILS` — comma-separated login emails that receive cross-tenant admin (RLS bypass). See `docs/ADMIN-PROVISIONING.md`. Set before the admin signs up (or have them re-login after you add their email). Redeploy required.
 
+**Beta feedback email:** `RESEND_API_KEY` — required for in-app feedback widget → email. Default recipient is `brad@posterboysocial.com` (`FEEDBACK_NOTIFY_EMAIL` to override). Optional `EMAIL_FROM` (e.g. `Posterboy <noreply@posterboysocial.com>` once the domain is verified in Resend; otherwise Resend’s `onboarding@resend.dev` works for delivery to the Resend account owner).
+
 ---
 
 ## Recommended deploy order

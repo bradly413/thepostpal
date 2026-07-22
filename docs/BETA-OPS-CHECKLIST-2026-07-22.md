@@ -10,15 +10,27 @@
 - [x] Marketing CTAs show "Join free beta" on live
 - [x] Fresh signup account created + landed on Voice Architect (`beta+whbztw@posterboysocial.com`) — personality→dashboard automation incomplete (CTA readiness / connect steps)
 
-## Brad must finish in Meta App Dashboard
+## Meta App Dashboard (agent pass 2026-07-22)
 
-Facebook Developers → your Posterboy app:
+App: Posterboy Social (`4470114259980817`)
 
-1. **App mode:** Development (closed beta) or Live. If Development, every invitee must be a **Tester** (or Admin/Developer) and must **accept** the invite in their Facebook notifications.
-2. **Valid OAuth Redirect URIs** must include exactly:
-   - `https://www.posterboysocial.com/api/auth/meta/callback` (canonical — `META_AUTH_REDIRECT_URI`)
-   - optionally also `https://www.posterboysocial.com/api/meta/callback` (legacy route still exists)
-3. Confirm `NEXT_PUBLIC_META_APP_ID` / `META_APP_SECRET` match this app.
+### Done
+- [x] **App mode:** **Published** (Brad requested 2026-07-22) — invitees can Connect without being Testers for permissions Meta allows in Live; advanced Page/IG permissions may still need App Review if Connect prompts for restricted scopes
+- [x] **App settings → Basic:** Privacy `https://www.posterboysocial.com/privacy`, Terms `https://www.posterboysocial.com/terms`, Data deletion instructions `https://www.posterboysocial.com/data-deletion`, App domain `posterboysocial.com`
+- [x] **Facebook Login for Business → Settings:** Valid OAuth Redirect URI includes canonical  
+  `https://www.posterboysocial.com/api/auth/meta/callback`  
+  (Client OAuth login + Web OAuth login = Yes; Enforce HTTPS = Yes)
+- [x] Roles page open; only **Brad Nichols = Administrator** so far
+
+### Still needs Brad (human identity resolve)
+- [ ] Add each invitee as **App roles → Roles → Add People → Tester**
+  - Do **not** use **Test users** (fake accounts; Meta disabled create)
+  - Do **not** enter Brad’s Facebook ID (`1307610784` triggered “move all admins”)
+  - Prefer: invitee’s FB email / numeric profile ID, then **select their person card** from autocomplete before Add
+  - Invitee must **Accept** (Facebook → Settings → Apps and Websites → Requests)
+  - If autocomplete never finds them: have them register at developers.facebook.com, then retry
+- [ ] Optional: also list legacy redirect `https://www.posterboysocial.com/api/meta/callback` (chip commit flaky in Meta UI; canonical alone is enough for prod)
+- [ ] Confirm Vercel prod `NEXT_PUBLIC_META_APP_ID` = `4470114259980817` and secret matches this app
 
 ## Remaining product verification
 

@@ -5,7 +5,9 @@ Closed beta for friendly testers. Things will be rough; this guide is what to tr
 **Live site:** [https://www.posterboysocial.com](https://www.posterboysocial.com)
 
 **Invite link (create your own account):**  
-[https://www.posterboysocial.com/sign-in?mode=signup&next=%2Fonboarding&plan=solo](https://www.posterboysocial.com/sign-in?mode=signup&next=%2Fonboarding&plan=solo)
+[https://www.posterboysocial.com/signup](https://www.posterboysocial.com/signup)
+
+(Same as `/sign-in?mode=signup&next=%2Fonboarding&plan=solo`.)
 
 No card required. You’re on Solo for free during beta.
 
@@ -82,7 +84,7 @@ Hi —
 You're invited to try Posterboy Social (create, caption, schedule, publish to Facebook & Instagram).
 
 Create your account here (free, no card):
-https://www.posterboysocial.com/sign-in?mode=signup&next=%2Fonboarding&plan=solo
+https://www.posterboysocial.com/signup
 
 Quick path:
 1) Sign up + short onboarding with your real business

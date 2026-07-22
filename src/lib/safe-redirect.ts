@@ -21,3 +21,6 @@ export const SIGNUP_ONBOARDING_URL =
 /** Solo plan signup → Voice Architect (canonical onboarding). */
 export const SIGNUP_SOLO_URL =
   "/sign-in?mode=signup&next=%2Fonboarding&plan=solo";
+
+/** Short invite URL (proxy + next.config redirect to SIGNUP_SOLO_URL). */
+export const SIGNUP_SHORT_URL = "/signup";

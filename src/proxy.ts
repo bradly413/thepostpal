@@ -3,6 +3,7 @@ import { jwtVerify, type JWTPayload } from "jose";
 import {
   safeRedirectPath,
   SIGNIN_NEXT_DEFAULT,
+  SIGNUP_SOLO_URL,
 } from "@/lib/safe-redirect";
 import { getAuthSecretBytes } from "@/lib/auth-secret";
 
@@ -11,6 +12,8 @@ const AUTH_SECRET_BYTES = getAuthSecretBytes();
 const PUBLIC_EXACT = [
   "/",
   "/sign-in",
+  // Short invite URL → solo signup + Voice Architect (see proxy redirect).
+  "/signup",
   "/privacy",
   "/terms",
   // Meta / App Store compliance — must be reachable logged-out.
@@ -82,6 +85,12 @@ function hasRequiredTenantScope(payload: JWTPayload): boolean {
 
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
+
+  // Short invite link for closed beta / marketing.
+  if (pathname === "/signup") {
+    return NextResponse.redirect(new URL(SIGNUP_SOLO_URL, request.url));
+  }
+
   const token = request.cookies.get("session")?.value;
 
   let sessionValid = false;

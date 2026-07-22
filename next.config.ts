@@ -14,6 +14,15 @@ const nextConfig: NextConfig = {
   outputFileTracingExcludes: {
     "*": ["./public/**"],
   },
+  async redirects() {
+    return [
+      {
+        source: "/signup",
+        destination: "/sign-in?mode=signup&next=%2Fonboarding&plan=solo",
+        permanent: false,
+      },
+    ];
+  },
   async headers() {
     return [
       {
