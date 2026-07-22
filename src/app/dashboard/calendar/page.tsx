@@ -1718,7 +1718,7 @@ function CalendarPageContent() {
         }`}
       >
         {/* Create Schedule — left composer card */}
-        <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden rounded-[16px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)] sm:rounded-[20px] max-md:mb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]">
+        <div id="post-composer" className="flex min-h-0 flex-col overflow-hidden max-md:overflow-visible rounded-[16px] border border-black/[0.06] bg-white shadow-[0_8px_30px_-18px_rgba(20,20,40,0.35)] sm:rounded-[20px] max-md:mb-[calc(4.75rem+env(safe-area-inset-bottom,0px))]">
           <div className="flex shrink-0 items-center justify-between px-3 pt-3 pb-1.5 sm:px-4 sm:pt-4 sm:pb-2">
             <h2 className="text-[15px] font-semibold tracking-tight text-black">
               {isBulkQueue ? "Create Posts" : "Create Post"}
