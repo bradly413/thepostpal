@@ -295,15 +295,19 @@ export function useStudioGeneration({
     ],
   );
 
-  const composeFromIntent = useCallback(async (overrideBrief?: string) => {
+  const composeFromIntent = useCallback(async (
+    overrideBrief?: string,
+    overrideRefImage?: string | null,
+  ) => {
     const intent = (overrideBrief ?? composerBrief).trim();
+    const activeRef = overrideRefImage !== undefined ? overrideRefImage : refImage;
     if (!intent || genState === "generating") {
       inputRef.current?.focus();
       return;
     }
     if (resolveStudioImageRoute({
       intent,
-      refImage,
+      refImage: activeRef,
       generatedUrl,
       genState,
       lastGenPrompt: lastGenPromptRef.current,
@@ -336,7 +340,7 @@ export function useStudioGeneration({
 
       const editingFromCanvas =
         isReprompt && !!generatedUrl && shouldEditFromReference(intent, lastGenPromptRef.current, true);
-      const refForGen = editingFromCanvas ? generatedUrl : refImage;
+      const refForGen = editingFromCanvas ? generatedUrl : activeRef;
       const imageRoute = resolveStudioImageRoute({
         intent,
         refImage: refForGen,

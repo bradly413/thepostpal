@@ -55,6 +55,10 @@ import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
 import { isListingBrief } from "@/lib/studio/scene-intent";
+import {
+  extractReferenceImageUrl,
+  looksLikeStandaloneImageUrl,
+} from "@/lib/studio/reference-url";
 import { writeStudioScheduleHandoff } from "@/lib/studio/schedule-handoff";
 import {
   startAndPollVideo,
@@ -249,6 +253,20 @@ export default function PosterboyStudio() {
     }, 4200);
     return () => window.clearInterval(id);
   }, [prompt, genState, selectedIntentId, promptMode]);
+
+  const attachReferenceFromUrl = useCallback((rawUrl: string) => {
+    const url = extractReferenceImageUrl(rawUrl) || rawUrl.trim();
+    if (!/^https:\/\//i.test(url)) return false;
+    try {
+      const host = new URL(url).hostname.replace(/^www\./, "");
+      setRefImage(url);
+      setRefName(host);
+      setError("");
+      return true;
+    } catch {
+      return false;
+    }
+  }, []);
 
   const onRefFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -495,7 +513,14 @@ export default function PosterboyStudio() {
     onAfterGenerateSuccess: clearComposeFieldForReview,
   });
 
-  const runComposeFromIntent = useCallback(() => composeFromIntent(), [composeFromIntent]);
+  const runComposeFromIntent = useCallback(() => {
+    let nextRef = refImage;
+    if (!nextRef) {
+      const url = extractReferenceImageUrl(prompt) || extractReferenceImageUrl(composerBrief);
+      if (url && attachReferenceFromUrl(url)) nextRef = url;
+    }
+    return composeFromIntent(undefined, nextRef);
+  }, [attachReferenceFromUrl, composeFromIntent, composerBrief, prompt, refImage]);
 
   const startCaptionGeneration = () => {
     const b = captionBrief.trim() || composerBrief.trim() || lastGenPrompt.trim();
@@ -1599,13 +1624,49 @@ export default function PosterboyStudio() {
                   className={`pb-bar-textarea${placeholderFading ? " is-placeholder-fading" : ""}`}
                   value={prompt}
                   onChange={(e) => {
-                    setPrompt(e.target.value);
+                    const next = e.target.value;
+                    setPrompt(next);
                     syncPromptHeight();
+                    // Paste/type a listing photo URL → attach as reference (not just text).
+                    if (!refImage && !refImageLoading && composerMode === "image") {
+                      const url = extractReferenceImageUrl(next);
+                      if (url && (looksLikeStandaloneImageUrl(next) || /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(url))) {
+                        attachReferenceFromUrl(url);
+                      }
+                    }
+                  }}
+                  onPaste={(e) => {
+                    const pasted = e.clipboardData.getData("text")?.trim() || "";
+                    if (!pasted || refImageLoading || composerMode !== "image") return;
+                    const url = extractReferenceImageUrl(pasted);
+                    if (!url) return;
+                    // Prefer attaching image/CDN URLs as the reference photo.
+                    if (
+                      looksLikeStandaloneImageUrl(pasted) ||
+                      /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(url) ||
+                      /images?\.|cdn\.|cloudfront|mls|listing|photo/i.test(url)
+                    ) {
+                      e.preventDefault();
+                      attachReferenceFromUrl(url);
+                      if (!looksLikeStandaloneImageUrl(pasted)) {
+                        setPrompt((prev) => {
+                          const next = `${prev}${prev && !/\s$/.test(prev) ? " " : ""}${pasted}`.trim();
+                          return next;
+                        });
+                        window.setTimeout(() => syncPromptHeight(), 0);
+                      }
+                    }
                   }}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();
-                      if (genState !== "generating" && composerMode === "image") void runComposeFromIntent();
+                      if (genState !== "generating" && composerMode === "image") {
+                        if (!refImage) {
+                          const url = extractReferenceImageUrl(prompt);
+                          if (url) attachReferenceFromUrl(url);
+                        }
+                        void runComposeFromIntent();
+                      }
                     }
                   }}
                   placeholder={STUDIO_PROMPT_PLACEHOLDERS[placeholderIdx]}
@@ -1636,8 +1697,8 @@ export default function PosterboyStudio() {
               </button>
             ) : null}
 
-            {/* Source truth when a reference is attached (hide once the result is up) */}
-            {composerMode === "image" && promptMode !== "caption" && refImage && genState !== "done" ? (
+            {/* Source truth when a reference is attached — keep remove available after generate */}
+            {composerMode === "image" && promptMode !== "caption" && refImage ? (
               <div className="pb-media-row">
                 <div className="pb-using-source" title={refName || "Reference photo"}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}

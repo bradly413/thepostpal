@@ -89,10 +89,27 @@ describe("needsComposeRewrite", () => {
     expect(needsComposeRewrite("fall promo")).toBe(true);
   });
 
+  it("flags casual / typo / story / announce phrasing", () => {
+    expect(needsComposeRewrite("mak an ig post for our taco tuesday deal")).toBe(true);
+    expect(needsComposeRewrite("make an instagram story about our flash sale")).toBe(true);
+    expect(needsComposeRewrite("design a 3-slide carousel announcing spring menu")).toBe(true);
+    expect(needsComposeRewrite("announce our $99 facial package on instagram")).toBe(true);
+    expect(
+      needsComposeRewrite(
+        "I need something for social. We want more bookings. Soft calm vibes for the spa.",
+      ),
+    ).toBe(true);
+  });
+
   it("skips concrete image briefs", () => {
     expect(needsComposeRewrite("vibrant red smoothie on a red background")).toBe(false);
     expect(needsComposeRewrite("a palm tree on the beach")).toBe(false);
     expect(needsComposeRewrite("natural beauty portrait soft white backdrop")).toBe(false);
+    expect(
+      needsComposeRewrite(
+        "pour-over coffee being poured into a clear carafe, steam, warm cafe light",
+      ),
+    ).toBe(false);
   });
 });
 
