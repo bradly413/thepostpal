@@ -686,7 +686,7 @@ export function StudioStyles() {
   .prompt-bar {
     position: absolute;
     bottom: 28px;
-    /* Transform-free horizontal center — GSAP only owns vertical `y` for hero↔bottom.
+    /* Transform-free horizontal center — GSAP only owns vertical y for hero↔bottom.
        left:50% + no translate was clipping "Create post" off-screen below ~1360px. */
     left: 0;
     right: 0;
@@ -1567,7 +1567,7 @@ export function StudioStyles() {
     left: 0;
     right: 0;
     margin-inline: auto;
-    /* GSAP owns vertical `y` only — horizontal center is CSS (left/right/margin). */
+    /* GSAP owns vertical y only — horizontal center is CSS (left/right/margin). */
     transform: none;
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(1.65);
@@ -1730,9 +1730,28 @@ export function StudioStyles() {
      re-assert phone layout here, last. Clears AppMobileNav (~72px). */
   @media (max-width: 768px) {
     .pb-studio .prompt-bar {
+      left: 0;
+      right: 0;
+      margin-inline: auto;
       bottom: calc(72px + env(safe-area-inset-bottom, 0px));
       width: min(94%, calc(100% - 20px));
+      max-width: calc(100% - 20px);
       z-index: 25;
+    }
+    .pb-studio .pb-bar-controls {
+      flex-wrap: wrap;
+      row-gap: 8px;
+      justify-content: flex-start;
+    }
+    .pb-studio .pb-bar-extras {
+      flex-wrap: wrap;
+      min-width: 0;
+      flex: 1 1 auto;
+    }
+    .pb-studio .pb-generate,
+    .pb-studio .pb-generate-primary {
+      flex: 0 0 auto;
+      margin-left: auto;
     }
     /* Edit tools → horizontal tray above the prompt (clears tab bar). */
     .pb-studio .tool-rail,

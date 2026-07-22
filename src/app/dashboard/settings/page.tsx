@@ -86,6 +86,11 @@ function SettingsContent() {
   }, [searchParams, router, reloadMeta]);
 
   useEffect(() => {
+    const el = document.getElementById(`settings-tab-${activeTab}`);
+    el?.scrollIntoView({ inline: "center", block: "nearest", behavior: "smooth" });
+  }, [activeTab]);
+
+  useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
@@ -207,8 +212,8 @@ function SettingsContent() {
           <nav
             role="tablist"
             aria-label="Settings sections"
-            className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible"
-            style={{ scrollbarWidth: "none" }}
+            className="flex lg:flex-col gap-1 overflow-x-auto lg:overflow-x-visible scroll-smooth snap-x snap-mandatory"
+            style={{ scrollbarWidth: "none", WebkitOverflowScrolling: "touch" }}
           >
             {tabs.map((tab) => (
               <button
@@ -219,7 +224,7 @@ function SettingsContent() {
                 aria-selected={activeTab === tab.id}
                 aria-controls={`settings-panel-${tab.id}`}
                 onClick={() => setActiveTab(tab.id)}
-                className={`pb-tab ${activeTab === tab.id ? "pb-tab-active" : ""}`}
+                className={`pb-tab shrink-0 snap-center ${activeTab === tab.id ? "pb-tab-active" : ""}`}
               >
                 {tab.label}
               </button>

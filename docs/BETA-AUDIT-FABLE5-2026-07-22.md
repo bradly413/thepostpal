@@ -128,3 +128,12 @@ Live functional checks this audit: `/api/generate-image` 200 (real generation),
 ## Follow-up (same day)
 
 Code fixes landed in-tree after this audit: Studio composer viewport centering (CSS left/right/margin; GSAP y-only), Voice Architect reveal failsafe + h1, Coming up future-only filter, pricing feature rename, Video Soon badge, marketing Join free beta batch. Remaining: Meta App Testers (ops), Brad incognito signup walk, push/redeploy, send invites.
+
+## Go-live audit follow-up (ChatGPT — 2026-07-22)
+
+A second pass marked **NOT READY** against prod still on `82cd419`. Local follow-up
+(pre-deploy) addressed: studio-styles template backticks (build break), video schedule
+gate (UI + posts API + cron + regression test), mobile Studio/Schedule hit targets,
+public `/data-deletion`, marketing nav overflow, Settings tab scroll-into-view.
+**Do not treat Fable checkboxes as production-verified until this commit is on
+`origin/main`, launch-check passes, and mobile hit targets are remeasured.**

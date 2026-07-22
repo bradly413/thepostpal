@@ -1383,6 +1383,14 @@ function CalendarPageContent() {
       return;
     }
 
+    if (savingAsScheduled && mediaType === "video") {
+      setPublishResult({
+        type: "error",
+        message: "Video publish is not available in closed beta.",
+      });
+      return;
+    }
+
     if (savingAsScheduled && !meta?.connected) {
       setPublishResult({
         type: "error",
@@ -1963,7 +1971,7 @@ function CalendarPageContent() {
 
           </div>
 
-          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
+          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] max-md:pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] sm:px-4">
             <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
               <button
                 type="button"
@@ -1981,7 +1989,8 @@ function CalendarPageContent() {
                   <button
                     type="button"
                     onClick={() => void handleSavePost(true)}
-                    disabled={publishing || uploadingMedia}
+                    disabled={publishing || uploadingMedia || mediaType === "video"}
+                    title={mediaType === "video" ? "Video publish is not available in closed beta." : undefined}
                     className="min-h-11 bg-[#ee2532] px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-[#c81e2a] disabled:opacity-50 sm:min-h-0 sm:px-5"
                   >
                     {publishing ? "Scheduling…" : editingPost ? "Update" : "Schedule"}

@@ -766,6 +766,8 @@ html[data-theme] body {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 0.75rem;
+  min-width: 0;
 }
 
 .pb-brand-logo,
@@ -821,6 +823,26 @@ html[data-theme] body {
   align-items: center;
   gap: 1.75rem;
   font-size: 0.875rem;
+  min-width: 0;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+@media (max-width: 480px) {
+  .pb-marketing-nav-inner {
+    padding: 0.85rem 1rem;
+  }
+  .pb-marketing-links {
+    gap: 0.65rem;
+  }
+  .pb-marketing-links a:not(.pb-btn-primary):not(.pb-nav-sign-in) {
+    display: none;
+  }
+  .pb-marketing-links .pb-btn-primary {
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    white-space: nowrap;
+  }
 }
 
 .pb-marketing-links a {

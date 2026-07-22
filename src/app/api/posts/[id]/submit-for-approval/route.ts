@@ -3,6 +3,10 @@ import { withTenantDb } from "@/lib/db";
 import { requireAuthContext } from "@/lib/api-auth";
 import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
+import {
+  blocksClosedBetaVideoPublish,
+  CLOSED_BETA_VIDEO_MESSAGE,
+} from "@/lib/closed-beta-publish";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -35,6 +39,9 @@ export async function POST(_: NextRequest, { params }: Params) {
       if (!requiresApproval) {
         // "approved" = the internal cron publish queue (same status the
         // approval flow sets). "scheduled" is never dispatched by the cron.
+        if (blocksClosedBetaVideoPublish(post.mediaType, "approved")) {
+          return NextResponse.json({ error: CLOSED_BETA_VIDEO_MESSAGE }, { status: 400 });
+        }
         const scheduled = await tx.scheduledPost.update({
           where: { id: post.id },
           data: { status: "approved" },

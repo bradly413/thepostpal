@@ -5,6 +5,10 @@ import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
 import { isSafeMediaUrl } from "@/lib/safe-media-url";
 import type { DraftStatus } from "@/lib/posterboy-types";
+import {
+  blocksClosedBetaVideoPublish,
+  CLOSED_BETA_VIDEO_MESSAGE,
+} from "@/lib/closed-beta-publish";
 
 interface Params {
   params: Promise<{ id: string }>;
@@ -84,6 +88,21 @@ export async function PUT(request: NextRequest, { params }: Params) {
           ? normalizeWriteStatus(body.status)
           : undefined;
 
+      const nextMediaType =
+        body.mediaType === null
+          ? null
+          : typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
+            ? body.mediaType
+            : undefined;
+
+      const effectiveStatus = nextStatus ?? post.status;
+      const effectiveMediaType =
+        nextMediaType !== undefined ? nextMediaType : post.mediaType;
+
+      if (blocksClosedBetaVideoPublish(effectiveMediaType, effectiveStatus)) {
+        return NextResponse.json({ error: CLOSED_BETA_VIDEO_MESSAGE }, { status: 400 });
+      }
+
       const updated = await tx.scheduledPost.update({
         where: { id: post.id },
         data: {
@@ -128,12 +147,7 @@ export async function PUT(request: NextRequest, { params }: Params) {
             : body.mediaUrls === null
               ? null
               : undefined,
-          mediaType:
-            body.mediaType === null
-              ? null
-              : typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
-                ? body.mediaType
-                : undefined,
+          mediaType: nextMediaType,
         },
       });
 

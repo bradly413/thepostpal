@@ -5,6 +5,10 @@ import { resolveAccess } from "@/lib/authz";
 import { handleRouteError } from "@/lib/route-errors";
 import { isSafeMediaUrl } from "@/lib/safe-media-url";
 import type { DraftStatus } from "@/lib/posterboy-types";
+import {
+  blocksClosedBetaVideoPublish,
+  CLOSED_BETA_VIDEO_MESSAGE,
+} from "@/lib/closed-beta-publish";
 
 const VALID_STATUSES = new Set<string>([
   "draft",
@@ -81,6 +85,15 @@ export async function POST(request: NextRequest) {
         ? normalizeWriteStatus(rawStatus)
         : "draft";
 
+      const mediaType =
+        typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
+          ? body.mediaType
+          : null;
+
+      if (blocksClosedBetaVideoPublish(mediaType, requestedStatus)) {
+        return NextResponse.json({ error: CLOSED_BETA_VIDEO_MESSAGE }, { status: 400 });
+      }
+
       const post = await tx.scheduledPost.create({
         data: {
           organizationId: auth.tenantId,
@@ -101,10 +114,7 @@ export async function POST(request: NextRequest) {
                 (url: unknown): url is string => typeof url === "string" && isSafeMediaUrl(url),
               )
             : null,
-          mediaType:
-            typeof body.mediaType === "string" && VALID_MEDIA_TYPES.has(body.mediaType)
-              ? body.mediaType
-              : null,
+          mediaType,
         },
       });
 

@@ -10,6 +10,8 @@ interface FakeRow {
   publishedPlatforms: string[];
   publishResults: Record<string, unknown> | null;
   updatedAt: Date;
+  mediaType?: string | null;
+  platforms?: string[];
 }
 
 // In-memory ScheduledPost store implementing the exact where-clauses the cron
@@ -215,6 +217,21 @@ describe("processDueScheduledPosts", () => {
     expect(metaMocks.state.attempts).toEqual([]);
     expect(result.processed).toBe(0);
     expect(getRow("native").status).toBe("scheduled");
+  });
+
+  it("fails closed-beta video posts without calling Meta", async () => {
+    store.state.rows = [
+      Object.assign(row({ id: "vid-1", mediaType: "video" }), {
+        platforms: ["facebook", "instagram"],
+      }),
+    ];
+
+    const result = await processDueScheduledPosts();
+
+    expect(metaMocks.state.attempts).toEqual([]);
+    expect(result.failed).toBe(1);
+    expect(getRow("vid-1").status).toBe("failed");
+    expect(getRow("vid-1").errorLog).toMatch(/closed beta/i);
   });
 
   it("skips a post claimed by a concurrent run instead of double-publishing", async () => {

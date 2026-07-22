@@ -6,6 +6,10 @@ import { MetaApiError, publishToMetaPerPlatform } from "@/lib/meta-api";
 import type { SocialPlatform } from "@prisma/client";
 import { loadMetaBundleSecretsForCron } from "@/lib/meta-social-db";
 import { withCronDb } from "@/lib/db";
+import {
+  blocksClosedBetaVideoPublish,
+  CLOSED_BETA_VIDEO_MESSAGE,
+} from "@/lib/closed-beta-publish";
 
 export interface CronPublishResult {
   processed: number;
@@ -152,6 +156,14 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
 
   for (const post of pending) {
     const locationId = post.locationId!;
+
+    // Closed beta: never dispatch video — mark failed so the queue does not retry forever.
+    if (blocksClosedBetaVideoPublish(post.mediaType, post.status)) {
+      await markStatus(post.id, "failed", CLOSED_BETA_VIDEO_MESSAGE);
+      result.failed += 1;
+      result.errors.push({ postId: post.id, message: CLOSED_BETA_VIDEO_MESSAGE });
+      continue;
+    }
 
     if (!(await claimPost(post.id))) {
       result.skipped += 1;

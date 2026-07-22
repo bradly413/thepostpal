@@ -13,6 +13,8 @@ const PUBLIC_EXACT = [
   "/sign-in",
   "/privacy",
   "/terms",
+  // Meta / App Store compliance — must be reachable logged-out.
+  "/data-deletion",
   // Crawler/metadata files must be reachable unauthenticated.
   "/sitemap.xml",
   "/robots.txt",
