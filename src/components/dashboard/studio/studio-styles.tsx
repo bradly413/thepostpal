@@ -428,7 +428,159 @@ export function StudioStyles() {
     border: 1px solid var(--line-2);
     border-radius: 5px;
     padding: 1px 5px;
-  }.pb-studio /* Frame sits in the clear band between top chrome and prompt bar. */
+  }.pb-studio /* Chat thread — bubbles + live image slot */
+  .studio-chat-thread {
+    position: absolute;
+    inset: 72px 0 200px 0;
+    z-index: 8;
+    overflow-x: hidden;
+    overflow-y: auto;
+    padding: 8px 16px 24px;
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+  .pb-studio .canvas:has(.canvas-top.has-actions) .studio-chat-thread {
+    inset-block-start: 100px;
+  }
+  .pb-studio .studio-chat-inner {
+    max-width: min(560px, 100%);
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    min-height: min-content;
+    padding-bottom: 12px;
+  }
+  .pb-studio .studio-chat-bubble {
+    max-width: min(420px, 92%);
+    padding: 10px 14px;
+    border-radius: 16px;
+    font-size: 14px;
+    line-height: 1.45;
+    color: var(--ink, #1a1a2e);
+    animation: pbsChatIn 0.35s cubic-bezier(0.2, 0.7, 0.2, 1) both;
+  }
+  @keyframes pbsChatIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .pb-studio .studio-chat-bubble { animation: none; }
+  }
+  .pb-studio .studio-chat-bubble--user {
+    align-self: flex-end;
+    background: rgba(238, 37, 50, 0.1);
+    border: 1px solid rgba(238, 37, 50, 0.18);
+    border-bottom-right-radius: 6px;
+  }
+  .pb-studio .studio-chat-bubble--assistant {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.78);
+    border: 1px solid rgba(26, 26, 46, 0.08);
+    border-bottom-left-radius: 6px;
+    backdrop-filter: blur(12px);
+  }
+  .pb-studio .studio-chat-welcome {
+    max-width: min(460px, 96%);
+    color: rgba(26, 26, 46, 0.72);
+  }
+  .pb-studio .studio-chat-msg-asst {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+  .pb-studio .studio-chat-msg-asst.is-working .studio-chat-bubble--assistant {
+    color: rgba(26, 26, 46, 0.55);
+  }
+  .pb-studio .studio-chat-format-badge,
+  .pb-studio .studio-chat-aspect-badge {
+    display: inline-block;
+    margin-top: 6px;
+    margin-right: 6px;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    color: rgba(26, 26, 46, 0.55);
+    background: rgba(0, 0, 0, 0.04);
+    border-radius: 999px;
+    padding: 2px 8px;
+  }
+  .pb-studio .studio-chat-image-card {
+    position: relative;
+    width: min(280px, 70vw);
+    border-radius: 14px;
+    overflow: hidden;
+    box-shadow: 0 12px 32px -16px rgba(20, 20, 40, 0.45);
+    border: 1px solid rgba(255, 255, 255, 0.7);
+  }
+  .pb-studio .studio-chat-image-card img {
+    display: block;
+    width: 100%;
+    height: auto;
+    vertical-align: middle;
+  }
+  .pb-studio .studio-chat-format-badge.on-image {
+    position: absolute;
+    left: 8px;
+    bottom: 8px;
+    margin: 0;
+    background: rgba(255, 255, 255, 0.9);
+  }
+  .pb-studio .studio-chat-live-slot {
+    display: flex;
+    justify-content: center;
+    width: 100%;
+    margin-top: 4px;
+    min-height: 0;
+  }
+  .pb-studio .studio-chat-live-slot .frame-wrap {
+    position: relative;
+    top: auto;
+    left: auto;
+    transform: none;
+    max-height: min(52vh, 520px);
+    margin: 0 auto;
+  }
+  .pb-studio .studio-recent-prompts {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 10px 12px 0;
+    scrollbar-width: none;
+  }
+  .pb-studio .studio-recent-prompts::-webkit-scrollbar { display: none; }
+  .pb-studio .studio-recent-chip {
+    flex: 0 0 auto;
+    max-width: 200px;
+    padding: 5px 10px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: rgba(26, 26, 46, 0.72);
+    background: rgba(255, 255, 255, 0.65);
+    border: 1px solid rgba(26, 26, 46, 0.08);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    transition: background 0.15s ease, border-color 0.15s ease;
+  }
+  .pb-studio .studio-recent-chip:hover {
+    background: #fff;
+    border-color: rgba(238, 37, 50, 0.28);
+  }
+  .pb-studio .pb-aspect-chip,
+  .pb-studio .pb-format-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    cursor: pointer;
+  }
+  .pb-studio .pb-aspect-chip.is-pinned {
+    border-color: rgba(238, 37, 50, 0.35);
+    color: #c81e2a;
+  }
+  .pb-studio /* Frame sits in the clear band between top chrome and prompt bar. */
   .frame-wrap {
     --studio-top-chrome: 72px;
     --studio-prompt-reserve: 168px;
@@ -686,8 +838,7 @@ export function StudioStyles() {
   .prompt-bar {
     position: absolute;
     bottom: 28px;
-    /* Transform-free horizontal center — GSAP only owns vertical y for hero↔bottom.
-       left:50% + no translate was clipping "Create post" off-screen below ~1360px. */
+    /* Sticky bottom composer for chat UX. */
     left: 0;
     right: 0;
     margin-inline: auto;
@@ -710,12 +861,15 @@ export function StudioStyles() {
       0 1px 0 rgba(255, 255, 255, 0.9) inset;
     z-index: 15;
     overflow: hidden;
-    max-height: min(42vh, calc(100% - 96px));
+    max-height: min(48vh, calc(100% - 96px));
     transition:
       box-shadow var(--duration-moderate) var(--ease-standard),
       width 0.45s cubic-bezier(0.65, 0, 0.35, 1),
       max-height 0.45s cubic-bezier(0.65, 0, 0.35, 1),
       background 0.2s ease;
+  }
+  .pb-studio .prompt-bar.is-chat {
+    width: min(680px, calc(100% - 40px));
   }
   .pb-studio .prompt-bar.is-review {
     width: min(560px, 88%);

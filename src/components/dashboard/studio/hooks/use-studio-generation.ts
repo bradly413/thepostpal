@@ -59,6 +59,9 @@ export type UseStudioGenerationParams = {
   /** Active location — lets the server pull the brand book for art direction. */
   locationId?: string | null;
   platformPinRef: MutableRefObject<boolean>;
+  /** When true, aspectOverride wins over platform.genAspect / compose inference. */
+  aspectPinRef: MutableRefObject<boolean>;
+  aspectOverride: string | null;
   inputRef: RefObject<HTMLTextAreaElement | null>;
   setGenState: Dispatch<SetStateAction<GenState>>;
   setGeneratedUrl: Dispatch<SetStateAction<string | null>>;
@@ -90,6 +93,8 @@ export function useStudioGeneration({
   businessType,
   locationId,
   platformPinRef,
+  aspectPinRef,
+  aspectOverride,
   inputRef,
   setGenState,
   setGeneratedUrl,
@@ -105,6 +110,10 @@ export function useStudioGeneration({
   pushHistory,
   onAfterGenerateSuccess,
 }: UseStudioGenerationParams) {
+  const resolveAspect = useCallback(() => {
+    if (aspectPinRef.current && aspectOverride) return aspectOverride;
+    return platform.genAspect;
+  }, [aspectOverride, aspectPinRef, platform.genAspect]);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastGenPromptRef = useRef("");
   const [lastGenPrompt, setLastGenPromptState] = useState("");
@@ -226,7 +235,7 @@ export function useStudioGeneration({
         const refForGen = editingFromCanvas ? generatedUrl : refImage;
 
         const data = await requestGenerateImage(savedPrompt, {
-          aspect: platform.genAspect,
+          aspect: resolveAspect(),
           referenceImage: refForGen,
           signal: ctrl.signal,
         });
@@ -268,7 +277,7 @@ export function useStudioGeneration({
     [
       prompt,
       genState,
-      platform.genAspect,
+      resolveAspect,
       refImage,
       generatedUrl,
       requestGenerateImage,
@@ -335,7 +344,7 @@ export function useStudioGeneration({
     const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
     try {
       let imagePrompt: string | null = null;
-      let aspect = platform.genAspect;
+      let aspect = resolveAspect();
       const historyLabel = intent;
 
       const editingFromCanvas =
@@ -422,7 +431,10 @@ export function useStudioGeneration({
             idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
           if (textNamesPlatform) platformPinRef.current = false;
           setPlatformIdx(pIdx);
-          aspect = platforms[pIdx].genAspect;
+          aspect =
+            aspectPinRef.current && aspectOverride
+              ? aspectOverride
+              : platforms[pIdx].genAspect;
           imagePrompt = brief.imagePrompt;
         }
       } else {
@@ -485,6 +497,9 @@ export function useStudioGeneration({
     platformIdx,
     platforms,
     platformPinRef,
+    aspectPinRef,
+    aspectOverride,
+    resolveAspect,
     refImage,
     imageQuality,
     imageSize,

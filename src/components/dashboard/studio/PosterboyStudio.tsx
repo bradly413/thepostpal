@@ -66,6 +66,24 @@ import {
   startAndPollVideo,
   veoAspectForPlatform,
 } from "@/lib/studio/generate-video-client";
+import StudioChatThread from "@/components/dashboard/studio/StudioChatThread";
+import {
+  STUDIO_ASPECT_OPTIONS,
+  STUDIO_CHAT_WELCOME,
+  enrichIntentWithFormat,
+  makeUserMessage,
+  makeWorkingAssistant,
+  platformIdxForAspect,
+  type StudioChatAspect,
+  type StudioChatMessage,
+  type StudioPostFormat,
+} from "@/lib/studio/studio-chat";
+import {
+  loadPromptMemory,
+  pushPromptMemory,
+  recentAsksHint,
+  type PromptMemoryEntry,
+} from "@/lib/studio/prompt-memory";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -241,8 +259,27 @@ export default function PosterboyStudio() {
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [placeholderFading, setPlaceholderFading] = useState(false);
 
+  // Chat thread + bottom aspect / format controls
+  const [chatMessages, setChatMessages] = useState<StudioChatMessage[]>([]);
+  const pendingAssistantIdRef = useRef<string | null>(null);
+  const [aspectOverride, setAspectOverride] = useState<StudioChatAspect | null>(null);
+  const aspectPinRef = useRef(false);
+  const [aspectMenuOpen, setAspectMenuOpen] = useState(false);
+  const aspectMenuRef = useRef<HTMLDivElement>(null);
+  const [postFormat, setPostFormat] = useState<StudioPostFormat>("single");
+  const [carouselCount, setCarouselCount] = useState(3);
+  const [formatMenuOpen, setFormatMenuOpen] = useState(false);
+  const formatMenuRef = useRef<HTMLDivElement>(null);
+  const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
+
   const { locationId, locations, loading: locationLoading, error: locationError, refresh } =
     useActiveLocation();
+
+  useEffect(() => {
+    setRecentPrompts(loadPromptMemory(locationId));
+  }, [locationId]);
+
+  const effectiveAspect = aspectOverride || PLATFORMS[platformIdx].genAspect;
 
   useEffect(() => {
     if (prompt.trim() || genState !== "idle" || selectedIntentId || promptMode === "caption") return;
@@ -499,6 +536,8 @@ export default function PosterboyStudio() {
     businessType: businessType ?? undefined,
     locationId,
     platformPinRef,
+    aspectPinRef,
+    aspectOverride,
     inputRef,
     setGenState,
     setGeneratedUrl,
@@ -514,6 +553,43 @@ export default function PosterboyStudio() {
     pushHistory,
     onAfterGenerateSuccess: clearComposeFieldForReview,
   });
+
+  // Finalize chat assistant bubble when generation succeeds (image stays in live slot).
+  useEffect(() => {
+    if (genState !== "done" || !generatedUrl) return;
+    const aid = pendingAssistantIdRef.current;
+    if (!aid) return;
+    setChatMessages((prev) =>
+      prev.map((m) =>
+        m.id === aid && m.role === "assistant"
+          ? {
+              ...m,
+              status: "done" as const,
+              text:
+                m.format === "carousel"
+                  ? `Here’s slide 1 of ${m.carouselCount ?? 3} — a hero for your carousel.`
+                  : "Here’s your image.",
+              aspect: effectiveAspect,
+            }
+          : m,
+      ),
+    );
+    pendingAssistantIdRef.current = null;
+  }, [genState, generatedUrl, effectiveAspect]);
+
+  useEffect(() => {
+    if (genState !== "idle" && genState !== "done") return;
+    if (!error || !pendingAssistantIdRef.current) return;
+    const aid = pendingAssistantIdRef.current;
+    setChatMessages((prev) =>
+      prev.map((m) =>
+        m.id === aid && m.role === "assistant"
+          ? { ...m, status: "error" as const, text: error }
+          : m,
+      ),
+    );
+    pendingAssistantIdRef.current = null;
+  }, [error, genState]);
 
   const resolveWebsiteBrand = useCallback(
     async (
@@ -588,6 +664,42 @@ export default function PosterboyStudio() {
     let briefOverride: string | undefined;
     const sourceText = `${prompt}\n${composerBrief}`;
     const pageUrl = extractWebsiteUrl(sourceText);
+    const userText = (composerBrief || prompt).trim();
+    if (!userText) {
+      inputRef.current?.focus();
+      return;
+    }
+
+    // Archive current live image onto the previous assistant before a new turn.
+    if (generatedUrl && genState === "done") {
+      setChatMessages((prev) => {
+        const lastAsst = [...prev].reverse().find((m) => m.role === "assistant");
+        if (!lastAsst || lastAsst.imageUrl) return prev;
+        return prev.map((m) =>
+          m.id === lastAsst.id && m.role === "assistant"
+            ? { ...m, imageUrl: generatedUrl, status: "done" as const }
+            : m,
+        );
+      });
+    }
+
+    const userMsg = makeUserMessage(userText);
+    const working = makeWorkingAssistant({
+      format: postFormat,
+      carouselCount,
+      aspect: effectiveAspect,
+    });
+    pendingAssistantIdRef.current = working.id;
+    setChatMessages((prev) => [...prev, userMsg, working]);
+
+    setRecentPrompts(
+      pushPromptMemory(locationId, {
+        text: userText,
+        aspect: effectiveAspect,
+        format: postFormat,
+        carouselCount: postFormat === "carousel" ? carouselCount : undefined,
+      }),
+    );
 
     if (!nextRef) {
       const url = extractReferenceImageUrl(prompt) || extractReferenceImageUrl(composerBrief);
@@ -606,11 +718,25 @@ export default function PosterboyStudio() {
       }
     }
 
-    return composeFromIntent(briefOverride, nextRef);
+    let intent = briefOverride || userText;
+    intent = enrichIntentWithFormat(intent, postFormat, carouselCount);
+    const asks = recentAsksHint(loadPromptMemory(locationId), 3);
+    if (asks && !intent.includes("Recent asks:")) {
+      const withAsks = `${intent}\n\n${asks}`;
+      intent = withAsks.length > 980 ? withAsks.slice(0, 980) : withAsks;
+    }
+
+    return composeFromIntent(intent, nextRef);
   }, [
     attachReferenceFromUrl,
+    carouselCount,
     composeFromIntent,
     composerBrief,
+    effectiveAspect,
+    genState,
+    generatedUrl,
+    locationId,
+    postFormat,
     prompt,
     refImage,
     resolveWebsiteBrand,
@@ -712,16 +838,27 @@ export default function PosterboyStudio() {
     }, 150);
   }, [searchParams, router]);
 
-  // Platform chip menu: outside-click + Escape to close.
+  // Platform / aspect / format menus: outside-click + Escape to close.
   useEffect(() => {
-    if (!platformMenuOpen) return;
+    if (!platformMenuOpen && !aspectMenuOpen && !formatMenuOpen) return;
     const onDown = (e: MouseEvent) => {
-      if (platformMenuRef.current && !platformMenuRef.current.contains(e.target as Node)) {
+      const t = e.target as Node;
+      if (platformMenuRef.current && !platformMenuRef.current.contains(t)) {
         setPlatformMenuOpen(false);
+      }
+      if (aspectMenuRef.current && !aspectMenuRef.current.contains(t)) {
+        setAspectMenuOpen(false);
+      }
+      if (formatMenuRef.current && !formatMenuRef.current.contains(t)) {
+        setFormatMenuOpen(false);
       }
     };
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setPlatformMenuOpen(false);
+      if (e.key === "Escape") {
+        setPlatformMenuOpen(false);
+        setAspectMenuOpen(false);
+        setFormatMenuOpen(false);
+      }
     };
     document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", onKey);
@@ -729,79 +866,30 @@ export default function PosterboyStudio() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [platformMenuOpen]);
+  }, [platformMenuOpen, aspectMenuOpen, formatMenuOpen]);
 
-  // Hero composer: empty room → bar centered; first generate → glide to bottom.
-  const composerHeroInit = useRef(false);
-  const heroMountAtRef = useRef(0);
-  const heroTweensRef = useRef<gsap.core.Tween[]>([]);
+  // Chat UX: composer stays sticky at the bottom (no centered hero bar).
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
-    if (!heroMountAtRef.current) heroMountAtRef.current = performance.now();
     const bar = canvas.querySelector<HTMLElement>(".prompt-bar");
     if (!bar) return;
+    bar.classList.remove("is-hero");
+    gsap.set(bar, { x: 0, xPercent: 0, y: 0 });
+  }, []);
 
-    const heroIdle =
-      genState === "idle" &&
-      composerMode === "image" &&
-      !generatedUrl &&
-      !showTemplate;
-    bar.classList.toggle("is-hero", heroIdle);
-
+  // Animate live image slot upward when a new assistant turn starts.
+  useEffect(() => {
+    const slot = frameWrapRef.current;
+    if (!slot || genState !== "generating") return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    const justMounted = performance.now() - heroMountAtRef.current < 600;
-
-    const killHero = () => {
-      heroTweensRef.current.forEach((t) => t.kill());
-      heroTweensRef.current = [];
-    };
-
-    /** y from CSS resting spot (bottom) that centers the bar in the canvas. */
-    const heroY = () => {
-      const currentY = Number(gsap.getProperty(bar, "y")) || 0;
-      const canvasRect = canvas.getBoundingClientRect();
-      const barRect = bar.getBoundingClientRect();
-      if (canvasRect.height < 80 || barRect.height < 8) return currentY;
-      const barCenterInCanvas = barRect.top + barRect.height / 2 - canvasRect.top;
-      const restingCenter = barCenterInCanvas - currentY;
-      return canvasRect.height / 2 - restingCenter;
-    };
-
-    const place = (y: number, animate: boolean) => {
-      killHero();
-      // Horizontal center is CSS (left/right/margin-inline). GSAP only moves `y`.
-      const props = { x: 0, xPercent: 0, y, overwrite: true as const };
-      if (!animate || reduce) {
-        gsap.set(bar, props);
-        return;
-      }
-      heroTweensRef.current.push(
-        gsap.to(bar, { ...props, duration: 0.85, ease: "power3.inOut" }),
-      );
-    };
-
-    if (heroIdle) {
-      // First paint / resize: snap centered. Returning to idle: glide up.
-      place(heroY(), composerHeroInit.current && !justMounted);
-    } else {
-      // Leaving idle (generate): glide down to resting bottom.
-      place(0, composerHeroInit.current && !justMounted);
-    }
-    composerHeroInit.current = true;
-
-    const onResize = () => {
-      if (!heroIdle) return;
-      gsap.set(bar, { x: 0, xPercent: 0, y: heroY() });
-    };
-    window.addEventListener("resize", onResize);
-
-    return () => {
-      window.removeEventListener("resize", onResize);
-      killHero();
-      bar.classList.remove("is-hero");
-    };
-  }, [genState, composerMode, generatedUrl, showTemplate]);
+    if (reduce) return;
+    gsap.fromTo(
+      slot,
+      { y: 28, opacity: 0.85 },
+      { y: 0, opacity: 1, duration: 0.55, ease: "power2.out" },
+    );
+  }, [genState, chatMessages.length]);
 
 
   // Track the canvas size so the board can be sized in exact pixels — both
@@ -887,18 +975,26 @@ export default function PosterboyStudio() {
     { dependencies: [showTemplate, genState], scope: frameWrapRef },
   );
 
-  const frameRatio = platform.w / platform.h;
+  const ASPECT_FRAME: Record<string, { w: number; h: number }> = {
+    "1:1": { w: 1080, h: 1080 },
+    "4:5": { w: 1080, h: 1350 },
+    "9:16": { w: 1080, h: 1920 },
+    "16:9": { w: 1280, h: 720 },
+  };
+  const frameDims =
+    (aspectOverride && ASPECT_FRAME[aspectOverride]) || { w: platform.w, h: platform.h };
+  const frameRatio = frameDims.w / frameDims.h;
 
   const frameWrapStyle: CSSProperties = (() => {
     const { w: cw, h: ch } = canvasSize;
     if (!cw || !ch) {
       return frameRatio >= 1
-        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxHeight: "48%" }
-        : { height: "min(48%, 480px)", width: "auto", aspectRatio: `${platform.w} / ${platform.h}`, maxWidth: "56%" };
+        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${frameDims.w} / ${frameDims.h}`, maxHeight: "48%" }
+        : { height: "min(48%, 480px)", width: "auto", aspectRatio: `${frameDims.w} / ${frameDims.h}`, maxWidth: "56%" };
     }
     const fitW = Math.min(cw * 0.58, 600);
-    // height capped tighter so the image clears the lifted prompt bar
-    const fitH = Math.min(ch * 0.52, 520);
+    // height capped tighter so the image clears the sticky chat composer
+    const fitH = Math.min(ch * 0.42, 480);
     let w = fitW;
     let h = fitW / frameRatio;
     if (h > fitH) {
@@ -1197,6 +1293,8 @@ export default function PosterboyStudio() {
         mediaType: mediaKind,
         caption: buildPostCaption(captionText, captionTags, prompt),
         platformId: platform.id,
+        format: postFormat,
+        carouselCount: postFormat === "carousel" ? carouselCount : undefined,
       });
       router.push("/dashboard/calendar?from=studio");
     } catch (err) {
@@ -1402,6 +1500,15 @@ export default function PosterboyStudio() {
             </div>
           </div>
 
+          <StudioChatThread
+            messages={chatMessages}
+            welcome={STUDIO_CHAT_WELCOME}
+            liveSlot={
+              genState === "idle" &&
+              !generatedUrl &&
+              !showTemplate &&
+              composerMode === "image" &&
+              chatMessages.length === 0 ? undefined : (
           <div
             ref={frameWrapRef}
             className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}`}
@@ -1530,6 +1637,9 @@ export default function PosterboyStudio() {
               </div>
             )}
           </div>
+              )
+            }
+          />
 
           {/* Image edit tools */}
           {genState === "done" && !showTemplate && (
@@ -1658,9 +1768,42 @@ export default function PosterboyStudio() {
           <div
             className={`prompt-bar${genState === "generating" ? " is-generating" : ""}${
               hasCaptionReady && genState === "done" ? " is-finish" : ""
-            }`}
+            } is-chat`}
           >
-            {/* Same composer field before and after generate — image lives on the canvas */}
+            {promptMode !== "caption" && recentPrompts.length > 0 ? (
+              <div className="studio-recent-prompts" role="list" aria-label="Recent prompts">
+                {recentPrompts.slice(0, 8).map((entry) => (
+                  <button
+                    key={`${entry.at}-${entry.text.slice(0, 24)}`}
+                    type="button"
+                    role="listitem"
+                    className="studio-recent-chip"
+                    title={entry.text}
+                    onClick={() => {
+                      setPrompt(entry.text);
+                      if (entry.aspect && STUDIO_ASPECT_OPTIONS.includes(entry.aspect as StudioChatAspect)) {
+                        setAspectOverride(entry.aspect as StudioChatAspect);
+                        aspectPinRef.current = true;
+                        setPlatformIdx(platformIdxForAspect(entry.aspect, PLATFORMS));
+                      }
+                      if (entry.format === "carousel") {
+                        setPostFormat("carousel");
+                        if (entry.carouselCount) setCarouselCount(entry.carouselCount);
+                      } else if (entry.format === "single") {
+                        setPostFormat("single");
+                      }
+                      window.setTimeout(() => {
+                        syncPromptHeight();
+                        inputRef.current?.focus();
+                      }, 0);
+                    }}
+                  >
+                    {entry.text.length > 36 ? `${entry.text.slice(0, 34)}…` : entry.text}
+                  </button>
+                ))}
+              </div>
+            ) : null}
+            {/* Same composer field before and after generate — image lives in the chat thread */}
             {promptMode === "caption" && genState === "done" ? (
             <div className="pb-bar-input">
               <textarea
@@ -1862,8 +2005,100 @@ export default function PosterboyStudio() {
                     <div className="pb-bar-extras">
                       {composerMode === "image" ? (
                         <>
-                          <span className="pb-dim-chip" title="Aspect ratio follows the selected platform">
-                            {platform.genAspect}
+                          <span className="pb-pill-model" ref={aspectMenuRef}>
+                            <button
+                              type="button"
+                              className={`pb-dim-chip pb-aspect-chip${aspectOverride ? " is-pinned" : ""}`}
+                              onClick={() => {
+                                setAspectMenuOpen((o) => !o);
+                                setFormatMenuOpen(false);
+                              }}
+                              aria-expanded={aspectMenuOpen}
+                              aria-haspopup="listbox"
+                              aria-label={`Aspect ratio: ${effectiveAspect}`}
+                              title="Change aspect ratio"
+                            >
+                              {effectiveAspect}
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {aspectMenuOpen ? (
+                              <div className="pb-tools-pop pb-model-pop" role="listbox" aria-label="Aspect ratio">
+                                {STUDIO_ASPECT_OPTIONS.map((a) => (
+                                  <button
+                                    key={a}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={effectiveAspect === a}
+                                    onClick={() => {
+                                      setAspectOverride(a);
+                                      aspectPinRef.current = true;
+                                      setPlatformIdx(platformIdxForAspect(a, PLATFORMS));
+                                      platformPinRef.current = true;
+                                      setAspectMenuOpen(false);
+                                    }}
+                                  >
+                                    <span className="pb-model-name">{a}</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
+                          </span>
+                          <span className="pb-pill-model" ref={formatMenuRef}>
+                            <button
+                              type="button"
+                              className="pb-dim-chip pb-format-chip"
+                              onClick={() => {
+                                setFormatMenuOpen((o) => !o);
+                                setAspectMenuOpen(false);
+                              }}
+                              aria-expanded={formatMenuOpen}
+                              aria-haspopup="listbox"
+                              aria-label={
+                                postFormat === "carousel"
+                                  ? `Carousel, ${carouselCount} slides`
+                                  : "Single image"
+                              }
+                              title="Post format"
+                            >
+                              {postFormat === "carousel" ? `Carousel · ${carouselCount}` : "Single"}
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {formatMenuOpen ? (
+                              <div className="pb-tools-pop pb-model-pop" role="listbox" aria-label="Post format">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={postFormat === "single"}
+                                  onClick={() => {
+                                    setPostFormat("single");
+                                    setFormatMenuOpen(false);
+                                  }}
+                                >
+                                  <span className="pb-model-name">Single</span>
+                                  <span className="pb-model-sub">One image</span>
+                                </button>
+                                {[2, 3, 4, 5].map((n) => (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    role="option"
+                                    aria-selected={postFormat === "carousel" && carouselCount === n}
+                                    onClick={() => {
+                                      setPostFormat("carousel");
+                                      setCarouselCount(n);
+                                      setFormatMenuOpen(false);
+                                    }}
+                                  >
+                                    <span className="pb-model-name">Carousel · {n}</span>
+                                    <span className="pb-model-sub">Hero slide 1 of {n} (v1)</span>
+                                  </button>
+                                ))}
+                              </div>
+                            ) : null}
                           </span>
                           <span className="pb-pill-model" ref={modelMenuRef}>
                             <button

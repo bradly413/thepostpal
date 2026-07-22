@@ -8,6 +8,9 @@ export type StudioScheduleHandoff = {
   caption?: string;
   /** Studio platform id — mapped to calendar formPlatform on intake. */
   platformId?: string;
+  /** v1: UI intent only — calendar can open ready for multi-upload later. */
+  format?: "single" | "carousel";
+  carouselCount?: number;
 };
 
 export function writeStudioScheduleHandoff(payload: StudioScheduleHandoff): void {
