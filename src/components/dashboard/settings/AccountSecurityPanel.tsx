@@ -246,8 +246,12 @@ export default function AccountSecurityPanel({
                   ) : (
                     <>
                       Manage your workspace in{" "}
-                      <Link href="/dashboard/settings" className="text-[#ee2532] hover:underline">
-                        Settings
+                      <Link href="/dashboard/settings?tab=profile" className="text-[#ee2532] hover:underline">
+                        Profile
+                      </Link>
+                      {" · "}
+                      <Link href="/dashboard/settings?tab=account" className="text-[#ee2532] hover:underline">
+                        Connect channels
                       </Link>
                     </>
                   )}

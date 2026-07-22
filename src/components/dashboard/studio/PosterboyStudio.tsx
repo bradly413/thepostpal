@@ -15,7 +15,6 @@ import {
   Tag,
   Wand2,
   Send,
-  Check,
   Crop,
   Maximize2,
   Move,
@@ -494,7 +493,7 @@ export default function PosterboyStudio() {
     resetEdit,
     setActiveEdit,
     pushHistory,
-    onAfterGenerateSuccess: undefined,
+    onAfterGenerateSuccess: clearComposeFieldForReview,
   });
 
   const runComposeFromIntent = useCallback(() => composeFromIntent(), [composeFromIntent]);
@@ -538,11 +537,45 @@ export default function PosterboyStudio() {
     router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
   }, [searchParams, router]);
 
+  // ?dupe= — Top Performing (and similar) handoffs: attach as reference + auto-generate.
+  const consumedDupeParam = useRef(false);
+  const pendingDupeBrief = useRef<string | null>(null);
+  useEffect(() => {
+    if (consumedDupeParam.current) return;
+    const dupe = searchParams.get("dupe");
+    if (!dupe) return;
+    consumedDupeParam.current = true;
+    const brief =
+      searchParams.get("brief")?.trim() ||
+      "Create a fresh Instagram variation of this top-performing post — same subject and energy, new composition, vivid commercial photography, no text overlay.";
+    const clipped = brief.slice(0, 300);
+    setComposerMode("image");
+    setMediaKind("image");
+    setRefImage(dupe);
+    setRefName("Top performing");
+    setPrompt(clipped);
+    pendingDupeBrief.current = clipped;
+    const next = new URLSearchParams(searchParams.toString());
+    next.delete("dupe");
+    next.delete("brief");
+    const qs = next.toString();
+    router.replace(qs ? `/dashboard/studio?${qs}` : "/dashboard/studio", { scroll: false });
+  }, [searchParams, router]);
+
+  useEffect(() => {
+    const brief = pendingDupeBrief.current;
+    if (!brief || !refImage || genState !== "idle") return;
+    pendingDupeBrief.current = null;
+    void generate(brief);
+  }, [refImage, genState, generate]);
+
   // ?brief= — arrive with the composer pre-filled (home week rail, holiday
   // suggestions). Prefill only: the user still pulls the trigger.
   const consumedBriefParam = useRef(false);
   useEffect(() => {
     if (consumedBriefParam.current) return;
+    // Owned by the ?dupe= handoff above.
+    if (searchParams.get("dupe")) return;
     const brief = searchParams.get("brief");
     if (!brief) return;
     consumedBriefParam.current = true;
@@ -600,8 +633,7 @@ export default function PosterboyStudio() {
       genState === "idle" &&
       composerMode === "image" &&
       !generatedUrl &&
-      !showTemplate &&
-      sessionFeed.length === 0;
+      !showTemplate;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
     // distance from the group's resting spot (bottom-anchored) to room center
@@ -643,7 +675,7 @@ export default function PosterboyStudio() {
       heroTweensRef.current.forEach((t) => t.kill());
       heroTweensRef.current = [];
     };
-  }, [genState, composerMode, generatedUrl, showTemplate, sessionFeed.length]);
+  }, [genState, composerMode, generatedUrl, showTemplate]);
 
 
   // Track the canvas size so the board can be sized in exact pixels — both
@@ -1076,7 +1108,7 @@ export default function PosterboyStudio() {
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
 
-          <div className="canvas-top">
+          <div className={`canvas-top${genState === "done" ? " has-actions" : ""}`}>
             <div className="top-left">
               {/* Platform is INFERRED from the prompt (default Instagram) — no
                   pre-deciding. The chip appears once work exists, to switch. */}
@@ -1162,55 +1194,60 @@ export default function PosterboyStudio() {
                   <span>Video</span>
                 </button>
               </div>
-              {genState === "done" && mediaKind === "image" ? (
-                <button
-                  type="button"
-                  className="preview-toggle"
-                  onClick={() => void animateCurrentImage()}
-                  disabled={publishing || schedulingNav || videoBusy}
-                  title="Animate this image with Veo"
-                >
-                  <Clapperboard size={15} />
-                  <span>{videoBusy ? "Animating…" : "Animate"}</span>
-                </button>
-              ) : null}
-              {genState === "done" ? (
-                <>
-                  <button
-                    type="button"
-                    className="preview-toggle"
-                    onClick={() => void publish()}
-                    disabled={publishing || schedulingNav || videoBusy}
-                    title="Publish immediately"
-                  >
-                    <Send size={15} />
-                    <span>{publishing ? "Posting…" : "Post now"}</span>
-                  </button>
-                  <button
-                    type="button"
-                    className="preview-toggle"
-                    onClick={() => void goToSchedule()}
-                    disabled={publishing || schedulingNav || videoBusy}
-                    title="Open Schedule with this post"
-                  >
-                    <Calendar size={15} />
-                    <span>{schedulingNav ? "Opening…" : "Schedule"}</span>
-                  </button>
-                </>
-              ) : null}
-              {genState === "done" && mediaKind !== "video" ? (
-                <button
-                  type="button"
-                  className="preview-toggle"
-                  onClick={() => setShowTemplate((v) => !v)}
-                  aria-pressed={showTemplate}
-                  title={showTemplate ? "Back to edit" : "Preview as post"}
-                >
-                  {showTemplate ? <Pencil size={15} /> : <Eye size={15} />}
-                  <span>{showTemplate ? "Edit" : "Preview"}</span>
-                </button>
-              ) : null}
             </div>
+
+            {genState === "done" ? (
+              <div className="top-actions" role="group" aria-label="Post actions">
+                {mediaKind === "image" ? (
+                  <button
+                    type="button"
+                    className="preview-toggle"
+                    onClick={() => void animateCurrentImage()}
+                    disabled={publishing || schedulingNav || videoBusy}
+                    title="Animate this image with Veo"
+                  >
+                    <Clapperboard size={15} />
+                    <span>{videoBusy ? "Animating…" : "Animate"}</span>
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className="preview-toggle"
+                  onClick={() => void publish()}
+                  disabled={publishing || schedulingNav || videoBusy}
+                  title="Publish immediately"
+                >
+                  <Send size={15} />
+                  <span>{publishing ? "Posting…" : "Post now"}</span>
+                </button>
+                <button
+                  type="button"
+                  className="preview-toggle"
+                  onClick={() => void goToSchedule()}
+                  disabled={publishing || schedulingNav || videoBusy}
+                  title="Open Schedule with this post"
+                >
+                  <Calendar size={15} />
+                  <span>{schedulingNav ? "Opening…" : "Schedule"}</span>
+                </button>
+                {mediaKind !== "video" ? (
+                  <button
+                    type="button"
+                    className="preview-toggle"
+                    onClick={() => {
+                      if (showTemplate) setShowTemplate(false);
+                      else confirmToTemplate();
+                    }}
+                    aria-pressed={showTemplate}
+                    title={showTemplate ? "Back to edit" : "Preview as post"}
+                  >
+                    {showTemplate ? <Pencil size={15} /> : <Eye size={15} />}
+                    <span>{showTemplate ? "Edit" : "Preview"}</span>
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+
             <div className="top-toggles">
               <button
                 type="button"
@@ -1463,26 +1500,6 @@ export default function PosterboyStudio() {
                 )}
               </div>
 
-              <span className="rail-div" />
-              <button
-                type="button"
-                className={`rail-ico rail-publish${publishState === "published" ? " published" : ""}`}
-                onClick={() => void publish()}
-                disabled={publishing}
-                title={publishState === "published" ? "Published" : "Publish"}
-                aria-label="Publish this post"
-              >
-                {publishState === "published" ? <Check size={19} strokeWidth={2.5} /> : <Send size={19} />}
-              </button>
-              <button
-                type="button"
-                className="rail-ico rail-confirm"
-                onClick={confirmToTemplate}
-                title="Confirm — preview as post"
-                aria-label="Confirm — preview as post"
-              >
-                <Check size={19} strokeWidth={2.5} />
-              </button>
             </div>
           )}
 
@@ -1491,8 +1508,12 @@ export default function PosterboyStudio() {
               <p>{error}</p>
               {/* "not connected" errors get a real path to the fix, not a hint */}
               {/connect/i.test(error) && /meta|facebook|instagram/i.test(error) ? (
-                <a className="studio-error-cta" href="/dashboard/settings">
+                <a className="studio-error-cta" href="/dashboard/settings?tab=account">
                   Connect Facebook
+                </a>
+              ) : /pro feature|upgrade to unlock/i.test(error) ? (
+                <a className="studio-error-cta" href="/dashboard/settings?tab=billing">
+                  Upgrade plan
                 </a>
               ) : null}
               <button type="button" onClick={() => setError("")}>Dismiss</button>
@@ -1612,8 +1633,8 @@ export default function PosterboyStudio() {
               </button>
             ) : null}
 
-            {/* Source truth when a reference is attached */}
-            {composerMode === "image" && promptMode !== "caption" && refImage ? (
+            {/* Source truth when a reference is attached (hide once the result is up) */}
+            {composerMode === "image" && promptMode !== "caption" && refImage && genState !== "done" ? (
               <div className="pb-media-row">
                 <div className="pb-using-source" title={refName || "Reference photo"}>
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -1718,9 +1739,13 @@ export default function PosterboyStudio() {
                                   type="button"
                                   role="option"
                                   aria-selected={imageQuality === "pro"}
-                                  disabled={!canUseProImage}
+                                  aria-disabled={!canUseProImage}
                                   onClick={() => {
-                                    if (!canUseProImage) return;
+                                    if (!canUseProImage) {
+                                      setModelMenuOpen(false);
+                                      router.push("/dashboard/settings?tab=billing");
+                                      return;
+                                    }
                                     setImageQuality("pro");
                                     setModelMenuOpen(false);
                                   }}
@@ -1729,7 +1754,7 @@ export default function PosterboyStudio() {
                                   <span className="pb-model-sub">
                                     {canUseProImage
                                       ? "Nano Banana Pro — 2K, best adherence"
-                                      : "Upgrade to unlock"}
+                                      : "Upgrade to unlock — open Billing"}
                                   </span>
                                 </button>
                               </div>

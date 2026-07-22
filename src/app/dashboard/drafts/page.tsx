@@ -1,7 +1,8 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo, Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import StatusBadge from "@/components/StatusBadge";
 import HumanityBadge from "@/components/dashboard/HumanityBadge";
 import LocationSwitcher from "@/components/LocationSwitcher";
@@ -39,7 +40,17 @@ function isVideoAsset(photo: DashboardPhotoRecord): boolean {
 }
 
 export default function DraftsPage() {
+  return (
+    <Suspense fallback={<div className="pb-app p-6 text-sm opacity-60">{MICROCOPY.loading}</div>}>
+      <DraftsPageContent />
+    </Suspense>
+  );
+}
+
+function DraftsPageContent() {
   const features = usePlanFeatures();
+  const searchParams = useSearchParams();
+  const searchQ = (searchParams.get("q") || "").trim().toLowerCase();
   const { locationId, loading: locationLoading, error: locationError, setLocationId, refresh: refreshLocations } = useActiveLocation();
   const [drafts, setDrafts] = useState<DashboardPostRecord[]>([]);
   const [media, setMedia] = useState<DashboardPhotoRecord[]>([]);
@@ -147,7 +158,15 @@ export default function DraftsPage() {
     }
   }
 
-  const count = drafts.length;
+  const visibleDrafts = useMemo(() => {
+    if (!searchQ) return drafts;
+    return drafts.filter((d) => {
+      const hay = `${d.copy || ""} ${d.note || ""} ${d.status} ${(d.platforms || []).join(" ")}`.toLowerCase();
+      return hay.includes(searchQ);
+    });
+  }, [drafts, searchQ]);
+
+  const count = visibleDrafts.length;
   const headline = features.approvalPipeline
     ? count === 0
       ? "Content"
@@ -305,7 +324,7 @@ export default function DraftsPage() {
                 />
               ) : (
                 <div className={`pb-draft-list${loading ? " opacity-50 pointer-events-none" : ""}`}>
-                  {drafts.map((draft) => (
+                  {visibleDrafts.map((draft) => (
                     <article key={draft.id} className="pb-draft-card">
                       <div className="pb-draft-meta">{formatSchedule(draft)}</div>
                       <div>

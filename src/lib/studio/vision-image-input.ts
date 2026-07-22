@@ -125,11 +125,28 @@ async function assertSafeHttpsFetchUrl(urlString: string): Promise<URL> {
   return url;
 }
 
-async function readLocalUploadBytes(trimmed: string): Promise<Buffer | null> {
-  if (!trimmed.startsWith("/uploads/")) return null;
+/** Local public assets safe to load as vision/reference inputs (no path traversal). */
+const LOCAL_PUBLIC_REF_PREFIXES = [
+  "/uploads/",
+  "/marketing/",
+  "/hero/",
+  "/hero-ring/",
+  "/images/",
+] as const;
+
+async function readLocalPublicBytes(trimmed: string): Promise<Buffer | null> {
+  if (!trimmed.startsWith("/") || trimmed.includes("..") || trimmed.includes("\0")) {
+    return null;
+  }
+  if (!LOCAL_PUBLIC_REF_PREFIXES.some((prefix) => trimmed.startsWith(prefix))) {
+    return null;
+  }
   const relative = trimmed.replace(/^\/+/, "");
-  const filePath = path.join(process.cwd(), "public", relative);
-  if (!filePath.startsWith(path.join(process.cwd(), "public", "uploads"))) return null;
+  const publicRoot = path.join(process.cwd(), "public");
+  const filePath = path.resolve(publicRoot, relative);
+  if (filePath !== publicRoot && !filePath.startsWith(publicRoot + path.sep)) {
+    return null;
+  }
   try {
     const buf = await readFile(filePath);
     return buf.length > 0 && buf.length <= MAX_BYTES ? buf : null;
@@ -145,8 +162,8 @@ export async function loadVisionJpegBase64(source: string): Promise<string | nul
 
   try {
     let input: Buffer;
-    if (trimmed.startsWith("/uploads/")) {
-      const local = await readLocalUploadBytes(trimmed);
+    if (trimmed.startsWith("/")) {
+      const local = await readLocalPublicBytes(trimmed);
       if (!local) return null;
       input = local;
     } else if (isInlineReferenceImage(trimmed)) {

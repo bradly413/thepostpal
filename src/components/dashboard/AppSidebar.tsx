@@ -3,130 +3,155 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  Home,
+  LayoutGrid,
   Plus,
   CalendarDays,
-  FileText,
+  FolderOpen,
+  Settings,
+  Headphones,
   Megaphone,
   Building2,
-  PenLine,
-  Hexagon,
-  Settings,
-  Globe,
-  LayoutTemplate,
+  FileText,
 } from "lucide-react";
 import { usePlan } from "@/components/dashboard/PlanProvider";
 
 interface NavLink {
   label: string;
   href: string;
-  Icon: typeof Home;
+  Icon: typeof LayoutGrid;
   gate?: "metaAds" | "locationRollup";
+  match?: "exact" | "prefix";
 }
 
-const NAV_TOP: NavLink[] = [
-  { label: "Home", href: "/dashboard", Icon: Home },
-  { label: "Create", href: "/dashboard/studio", Icon: Plus },
-  { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays },
-  { label: "Content", href: "/dashboard/drafts", Icon: FileText },
-  { label: "Ads", href: "/dashboard/ads", Icon: Megaphone, gate: "metaAds" },
-  { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup" },
+const NAV_MAIN: NavLink[] = [
+  { label: "Dashboard", href: "/dashboard", Icon: LayoutGrid, match: "exact" },
+  { label: "Create", href: "/dashboard/studio", Icon: Plus, match: "prefix" },
+  { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays, match: "prefix" },
+  { label: "Library", href: "/dashboard/photos", Icon: FolderOpen, match: "prefix" },
 ];
 
-const NAV_BOTTOM: NavLink[] = [
-  { label: "Editor", href: "/dashboard/editor", Icon: PenLine },
-  { label: "Templates", href: "/dashboard/templates", Icon: LayoutTemplate },
-  { label: "Brand", href: "/dashboard/brand", Icon: Hexagon },
-  { label: "Settings", href: "/dashboard/settings", Icon: Settings },
-  { label: "View site", href: "/", Icon: Globe },
+const NAV_OTHER: NavLink[] = [
+  { label: "Content", href: "/dashboard/drafts", Icon: FileText, match: "prefix" },
+  { label: "Support", href: "mailto:hello@posterboysocial.com", Icon: Headphones },
+  { label: "Settings", href: "/dashboard/settings", Icon: Settings, match: "prefix" },
+  { label: "Ads", href: "/dashboard/ads", Icon: Megaphone, gate: "metaAds", match: "prefix" },
+  { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup", match: "prefix" },
 ];
 
 const SIDEBAR_CSS = `
 .pb-side {
-  --ink: #1c1c1e;
-  --ink-soft: #76767e;
+  --ink: #1a1a2e;
+  --ink-soft: #8b8b9a;
   --red: #ee2532;
-  --line: rgba(20,20,30,0.07);
-  position: sticky; top: 22px; align-self: start; height: calc(100dvh - 44px);
-  display: flex; flex-direction: column; padding: 26px 20px;
-  border-radius: 28px; background: rgba(255,255,255,0.78);
-  backdrop-filter: blur(26px) saturate(1.5); -webkit-backdrop-filter: blur(26px) saturate(1.5);
-  border: 1px solid rgba(255,255,255,0.65);
-  box-shadow: 0 24px 60px -38px rgba(20,20,40,0.4), inset 0 1px 0 rgba(255,255,255,0.7);
+  position: relative;
+  align-self: stretch;
+  height: 100%;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  width: 200px;
+  flex-shrink: 0;
+  padding: 26px 16px 20px;
+  background: #f2f2f5;
+  border-right: 1px solid rgba(26,26,46,0.06);
+  border-radius: 0;
+  box-shadow: none;
+  backdrop-filter: none;
 }
 .pb-side .logo {
   font-family: var(--font-playfair, var(--font-instrument-serif, Georgia, serif));
-  font-size: 30px; font-weight: 500; letter-spacing: -0.5px; color: var(--ink);
-  text-decoration: none; margin-bottom: 34px; display: inline-flex; align-items: baseline; line-height: 1;
+  font-size: 24px;
+  font-weight: 500;
+  font-style: italic;
+  letter-spacing: -0.03em;
+  color: var(--ink);
+  text-decoration: none;
+  margin: 0 0 28px 8px;
+  display: block;
+  line-height: 1;
 }
-.pb-side .logo em { font-style: italic; font-weight: 500; }
-.pb-side .logo .tm { font-style: normal; font-size: 0.3em; font-weight: 500; transform: translateY(-0.9em); margin-left: 2px; }
-.pb-side nav { display: flex; flex-direction: column; gap: 3px; }
-.pb-side nav .grp-gap { height: 22px; margin: 8px 0; border-top: 1px solid var(--line); }
+.pb-side .nav-section-label {
+  margin: 0 0 8px 10px;
+  font-size: 11px;
+  font-weight: 500;
+  color: var(--ink-soft);
+}
+.pb-side nav {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-height: 0;
+}
+.pb-side nav .grp-gap { height: 22px; }
 .pb-side nav a {
-  display: flex; align-items: center; gap: 13px; padding: 11px 13px; border-radius: 14px;
-  color: var(--ink-soft); text-decoration: none; font-size: var(--text-body); font-weight: 600;
-  letter-spacing: 0.6px; text-transform: uppercase; transition: var(--transition-color);
+  display: flex;
+  align-items: center;
+  gap: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
+  color: var(--ink);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  transition: color 0.15s ease, background 0.15s ease;
 }
-.pb-side nav a svg { width: 18px; height: 18px; opacity: .85; flex-shrink: 0; }
-.pb-side nav a:hover { color: var(--ink); background: rgba(20,20,40,0.04); }
-.pb-side nav a.active { color: #fff; background: #c81e2a; box-shadow: 0 12px 26px -14px rgba(200,30,42,0.55); }
-.pb-side nav a.active svg { color: #fff; opacity: 1; }
-.pb-side .spacer { flex: 1; }
-.pb-side .foot {
-  display: flex; align-items: center; gap: 11px; margin-top: 16px; padding-top: 16px;
-  border-top: 1px solid var(--line); background: none; border-left: 0; border-right: 0; border-bottom: 0;
-  cursor: pointer; width: 100%; text-align: left; text-decoration: none;
+.pb-side nav a svg {
+  width: 17px;
+  height: 17px;
+  color: currentColor;
+  opacity: 0.75;
+  flex-shrink: 0;
 }
-.pb-side .foot .av {
-  width: 34px; height: 34px; border-radius: 11px; background: linear-gradient(135deg, var(--red), #c81e2a);
-  color: #fff; font-size: var(--text-caption); font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0;
+.pb-side nav a:hover { background: rgba(26,26,46,0.04); }
+.pb-side nav a.active {
+  color: var(--red);
+  background: transparent;
+  box-shadow: none;
+  font-weight: 600;
 }
-.pb-side .foot .nm { font-size: var(--text-body-sm); font-weight: 600; color: var(--ink); }
-.pb-side .foot .rl { font-size: var(--text-label); color: var(--ink-soft); }
+.pb-side nav a.active svg { opacity: 1; }
+.pb-side .spacer { flex: 1; min-height: 8px; }
+.pb-side .foot { display: none; }
 
-/* Route-collapsed rail (dense pages like the calendar) — icon-only at desktop.
-   At <=980px the media query below collapses everything anyway. */
 .pb-side--collapsed {
-  padding: 18px 6px; align-items: center; width: 52px; border-radius: 22px;
+  padding: 16px 6px;
+  align-items: center;
+  width: 60px;
 }
-.pb-side--collapsed .logo { display: none; }
-.pb-side--collapsed nav { width: 100%; gap: 2px; }
+.pb-side--collapsed .logo,
+.pb-side--collapsed .nav-section-label { display: none; }
 .pb-side--collapsed nav a {
-  justify-content: center; gap: 0; min-height: 40px; padding: 10px 0;
-  letter-spacing: 0; border-radius: 12px;
+  justify-content: center;
+  gap: 0;
+  min-height: 40px;
+  padding: 10px 0;
 }
-.pb-side--collapsed nav a svg { width: 16px; height: 16px; }
 .pb-side--collapsed nav a .nav-label {
-  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
-  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  position: absolute;
+  width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
 }
-.pb-side--collapsed nav .grp-gap { margin: 6px 6px; width: calc(100% - 12px); height: 16px; }
-.pb-side--collapsed .foot { justify-content: center; gap: 0; margin-top: 12px; padding-top: 12px; }
-.pb-side--collapsed .foot .av { width: 28px; height: 28px; border-radius: 9px; font-size: 10px; }
-.pb-side--collapsed .foot .foot-text, .pb-side--collapsed .foot .foot-chevron { display: none; }
 
-/* Tablet: slim icon rail. Phones use AppMobileNav bottom bar instead. */
 @media (max-width: 980px) and (min-width: 769px) {
   .pb-side {
-    top: 12px; height: calc(100dvh - 24px); padding: 16px 6px; align-items: center;
-    width: 52px; border-radius: 22px;
+    width: 60px;
+    padding: 16px 6px;
+    align-items: center;
   }
-  .pb-side .logo { display: none; }
-  .pb-side nav { width: 100%; gap: 2px; }
+  .pb-side .logo,
+  .pb-side .nav-section-label { display: none; }
   .pb-side nav a {
-    justify-content: center; gap: 0; min-height: 40px; padding: 10px 0;
-    letter-spacing: 0; border-radius: 12px;
+    justify-content: center;
+    gap: 0;
+    min-height: 40px;
+    padding: 10px 0;
   }
-  .pb-side nav a svg { width: 16px; height: 16px; }
   .pb-side nav a .nav-label {
-    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden;
-    clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+    position: absolute;
+    width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
   }
-  .pb-side nav .grp-gap { margin: 6px 6px; width: calc(100% - 12px); height: 16px; }
-  .pb-side .foot { justify-content: center; gap: 0; margin-top: 12px; padding-top: 12px; }
-  .pb-side .foot .av { width: 28px; height: 28px; border-radius: 9px; font-size: 10px; }
-  .pb-side .foot .foot-text, .pb-side .foot .foot-chevron { display: none; }
 }
 
 @media (max-width: 768px) {
@@ -142,7 +167,7 @@ function NavItem({
 }: {
   label: string;
   href: string;
-  Icon: typeof Home;
+  Icon: typeof LayoutGrid;
   active: boolean;
 }) {
   return (
@@ -155,13 +180,14 @@ function NavItem({
 
 export default function AppSidebar() {
   const pathname = usePathname();
-  const { features, workspaceName, workspaceInitials, roleLabel } = usePlan();
-
-  // Dense pages (the calendar composer+grid) collapse the rail to icons.
+  const { features } = usePlan();
   const collapsed = pathname.startsWith("/dashboard/calendar");
 
-  const isActive = (href: string) =>
-    href === "/dashboard" || href === "/" ? pathname === href : pathname.startsWith(href);
+  const isActive = (item: NavLink) => {
+    if (item.href.startsWith("mailto:")) return false;
+    if (item.match === "exact" || item.href === "/dashboard") return pathname === item.href;
+    return pathname.startsWith(item.href);
+  };
 
   const showItem = (item: NavLink) => {
     if (item.gate === "metaAds") return features.metaAds;
@@ -173,32 +199,32 @@ export default function AppSidebar() {
     <aside className={collapsed ? "pb-side pb-side--collapsed" : "pb-side"}>
       <style>{SIDEBAR_CSS}</style>
       <Link href="/dashboard" className="logo" aria-label="Posterboy home">
-        poster<em>boy</em>
-        <span className="tm">®</span>
+        posterboy
       </Link>
       <nav aria-label="Dashboard">
-        {NAV_TOP.filter(showItem).map(({ label, href, Icon }) => (
-          <NavItem key={label} label={label} href={href} Icon={Icon} active={isActive(href)} />
+        <p className="nav-section-label">Main Menu</p>
+        {NAV_MAIN.map((item) => (
+          <NavItem
+            key={item.label}
+            label={item.label}
+            href={item.href}
+            Icon={item.Icon}
+            active={isActive(item)}
+          />
         ))}
         <div className="grp-gap" role="presentation" />
-        {NAV_BOTTOM.map(({ label, href, Icon }) => (
-          <NavItem key={label} label={label} href={href} Icon={Icon} active={isActive(href)} />
+        <p className="nav-section-label">Other</p>
+        {NAV_OTHER.filter(showItem).map((item) => (
+          <NavItem
+            key={item.label}
+            label={item.label}
+            href={item.href}
+            Icon={item.Icon}
+            active={isActive(item)}
+          />
         ))}
       </nav>
       <div className="spacer" />
-      <Link
-        href="/dashboard/settings"
-        className="foot"
-        aria-label={`Account settings for ${workspaceName}`}
-      >
-        <span className="av" aria-hidden>
-          {workspaceInitials}
-        </span>
-        <span className="foot-text">
-          <div className="nm">{workspaceName}</div>
-          <div className="rl">{roleLabel}</div>
-        </span>
-      </Link>
     </aside>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { useRouter } from "next/navigation";
+import { useState, useEffect, useCallback, useMemo, useRef, Suspense } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { templates } from "@/lib/templates";
 import { type ScheduledPost } from "@/lib/schedule-store";
 import { uploadMediaToS3, DashboardUploadError } from "@/lib/dashboard-upload";
@@ -298,8 +298,17 @@ function formatCaptionOption(v: CaptionOption): string {
 }
 
 export default function CalendarPage() {
+  return (
+    <Suspense fallback={null}>
+      <CalendarPageContent />
+    </Suspense>
+  );
+}
+
+function CalendarPageContent() {
   useEffect(() => { document.title = `Schedule | ${SITE_NAME}`; }, []);
   const router = useRouter();
+  const searchParams = useSearchParams();
   const modalRef = useRef<HTMLDivElement>(null);
   const postSettingsRef = useRef<HTMLDivElement>(null);
   const bulkListRef = useRef<HTMLDivElement>(null);
@@ -472,6 +481,16 @@ export default function CalendarPage() {
       });
     });
   }, []);
+
+  // Home month calendar → Schedule deep-link (?date=YYYY-MM-DD).
+  useEffect(() => {
+    const date = searchParams.get("date");
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) return;
+    const parsed = new Date(`${date}T12:00:00`);
+    if (Number.isNaN(parsed.getTime())) return;
+    setSelectedDate(date);
+    setCurrentDate(parsed);
+  }, [searchParams]);
 
   function updateBulkItemSchedule(index: number, nextDate: string, nextTime: string) {
     const date = isPastDateKey(nextDate, todayDateKeyLocal()) ? todayDateKeyLocal() : nextDate;

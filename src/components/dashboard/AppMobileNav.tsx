@@ -11,8 +11,6 @@ import {
   Settings,
   MoreHorizontal,
   Image as ImageIcon,
-  PenLine,
-  Hexagon,
   Megaphone,
   Building2,
   BarChart3,
@@ -24,13 +22,11 @@ const MOBILE_PRIMARY = [
   { label: "Home", href: "/dashboard", Icon: Home, match: "exact" as const },
   { label: "Schedule", href: "/dashboard/calendar", Icon: CalendarDays, match: "prefix" as const },
   { label: "Create", href: "/dashboard/studio", Icon: Plus, match: "prefix" as const, emphasize: true },
-  { label: "Content", href: "/dashboard/drafts", Icon: FileText, match: "prefix" as const },
+  { label: "Library", href: "/dashboard/photos", Icon: ImageIcon, match: "prefix" as const },
 ];
 
 const MORE_LINKS = [
-  { label: "Media", href: "/dashboard/photos", Icon: ImageIcon },
-  { label: "Editor", href: "/dashboard/editor", Icon: PenLine },
-  { label: "Brand", href: "/dashboard/brand", Icon: Hexagon },
+  { label: "Content", href: "/dashboard/drafts", Icon: FileText },
   { label: "Reports", href: "/dashboard/settings?tab=reports", Icon: BarChart3 },
   { label: "Settings", href: "/dashboard/settings", Icon: Settings },
 ] as const;
@@ -196,7 +192,7 @@ export default function AppMobileNav() {
 
   const moreActive =
     pathname.startsWith("/dashboard/settings") ||
-    pathname.startsWith("/dashboard/photos") ||
+    pathname.startsWith("/dashboard/drafts") ||
     pathname.startsWith("/dashboard/editor") ||
     pathname.startsWith("/dashboard/brand") ||
     pathname.startsWith("/dashboard/ads") ||

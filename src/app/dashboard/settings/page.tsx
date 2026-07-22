@@ -64,6 +64,14 @@ function SettingsContent() {
       setActiveTab("reports");
     } else if (tab === "account") {
       setActiveTab("account");
+    } else if (tab === "brand") {
+      setActiveTab("brand");
+    } else if (tab === "compliance") {
+      setActiveTab("compliance");
+    } else if (tab === "legal") {
+      setActiveTab("legal");
+    } else if (tab === "profile") {
+      setActiveTab("profile");
     }
     if (connected) {
       void reloadMeta();

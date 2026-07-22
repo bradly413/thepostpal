@@ -146,13 +146,120 @@ export function StudioStyles() {
   }.pb-studio /* Canvas top toolbar */
   .canvas-top {
     position: absolute;
-    top: 20px;
-    left: 20px;
-    right: 20px;
+    top: 14px;
+    left: 14px;
+    right: 14px;
     display: flex;
-    justify-content: space-between;
+    flex-wrap: wrap;
     align-items: center;
+    justify-content: space-between;
+    gap: 8px 10px;
     z-index: 20;
+    pointer-events: none;
+  }
+  .pb-studio .canvas-top > * {
+    pointer-events: auto;
+  }
+  .pb-studio .canvas-top .top-left {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    flex: 1 1 auto;
+    order: 1;
+  }
+  .pb-studio .canvas-top .top-toggles {
+    flex: 0 0 auto;
+    order: 2;
+    margin-left: auto;
+  }
+  .pb-studio .canvas-top .top-actions {
+    display: none;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    width: 100%;
+    order: 3;
+  }
+  .pb-studio .canvas-top.has-actions .top-actions {
+    display: flex;
+  }
+  .pb-studio .canvas-top .top-actions[aria-hidden="true"] {
+    display: none;
+  }
+  .pb-studio .canvas-top.has-actions {
+    top: 12px;
+  }
+  /* Wide desktop: keep actions on the first row, centered between sides */
+  @media (min-width: 1280px) {
+    .pb-studio .canvas-top.has-actions {
+      display: grid;
+      grid-template-columns: minmax(180px, 1fr) auto minmax(120px, 1fr);
+      align-items: center;
+    }
+    .pb-studio .canvas-top.has-actions .top-left {
+      order: unset;
+      flex: unset;
+    }
+    .pb-studio .canvas-top.has-actions .top-actions {
+      order: unset;
+      width: auto;
+      max-width: none;
+      justify-self: center;
+    }
+    .pb-studio .canvas-top.has-actions .top-toggles {
+      order: unset;
+      margin-left: 0;
+      justify-self: end;
+    }
+  }
+  /* Tablet / mid desktop: icon-only actions + drop platform dimensions */
+  @media (max-width: 1279px) {
+    .pb-studio .dim-chip .post-meta {
+      display: none;
+    }
+    .pb-studio .top-actions .preview-toggle {
+      padding: 8px;
+      min-width: 40px;
+      justify-content: center;
+    }
+    .pb-studio .top-actions .preview-toggle span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+  }
+  @media (max-width: 1100px) {
+    .pb-studio .studio-mode-toggle .preview-toggle {
+      padding: 8px;
+      min-width: 40px;
+      justify-content: center;
+    }
+    .pb-studio .studio-mode-toggle .preview-toggle span {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    .pb-studio .dim-chip .post-label {
+      display: none;
+    }
+    .pb-studio .canvas:has(.canvas-top.has-actions) .frame-wrap {
+      --studio-top-chrome: 108px;
+    }
   }.pb-studio .dim-chip {
     display: inline-flex;
     align-items: center;
@@ -195,24 +302,24 @@ export function StudioStyles() {
     font-size: var(--text-body);
     color: var(--ink);
     transition: var(--transition-color);
-  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: var(--text-caption); font-variant-numeric: tabular-nums; }.pb-studio .top-toggles {
+  }.pb-studio .post-option:hover { background: rgba(0,0,0,0.05); }.pb-studio .post-option.active { background: rgba(0,0,0,0.06); font-weight: 600; }.pb-studio .post-option .po-dim { color: var(--muted); font-size: var(--text-caption); font-variant-numeric: tabular-nums;   }.pb-studio .top-toggles {
     display: flex;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(12px) saturate(160%);
-    -webkit-backdrop-filter: blur(12px) saturate(160%);
-    border: 1px solid rgba(255,255,255,0.4);
+    background: rgba(255,255,255,0.92);
+    backdrop-filter: blur(14px) saturate(160%);
+    -webkit-backdrop-filter: blur(14px) saturate(160%);
+    border: 1px solid rgba(26,26,46,0.1);
     border-radius: 12px;
     padding: 4px;
     gap: 2px;
-    box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    box-shadow: 0 4px 16px rgba(20,20,40,0.1);
   }.pb-studio .top-toggles button {
-    width: 36px; height: 30px;
+    width: 36px; height: 32px;
     display: grid;
     place-items: center;
     border-radius: 8px;
-    color: var(--ink-2);
+    color: #3a3a42;
     transition: var(--transition-color);
-  }.pb-studio .top-toggles button.active { background: white; box-shadow: 0 1px 2px rgba(0,0,0,0.06); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(255,255,255,0.5); }.pb-studio .top-toggles button svg { width: 16px; height: 16px; }.pb-studio .preview-toggle {
+  }.pb-studio .top-toggles button.active { background: #fff; color: #151528; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }.pb-studio .top-toggles button:not(.active):hover { background: rgba(0,0,0,0.05); color: #151528; }.pb-studio .top-toggles button svg { width: 16px; height: 16px; stroke-width: 2; }.pb-studio .preview-toggle {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 8px 14px; border-radius: 12px;
     background: rgba(255,255,255,0.7);
@@ -320,18 +427,30 @@ export function StudioStyles() {
     border: 1px solid var(--line-2);
     border-radius: 5px;
     padding: 1px 5px;
-  }.pb-studio /* The glowing magic frame — center in the band between the top
-     toolbar (~80px) and the floating prompt bar (~280px with context/tweaks)
-     so tall 4:5 frames don't sit flush under the platform chips. */
+  }.pb-studio /* Frame sits in the clear band between top chrome and prompt bar. */
   .frame-wrap {
+    --studio-top-chrome: 72px;
+    --studio-prompt-reserve: 168px;
     position: absolute;
-    top: calc(80px + (100% - 80px - 280px) / 2);
+    top: calc(var(--studio-top-chrome) + (100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)) / 2);
     left: 50%;
     transform: translate(-50%, -50%);
     z-index: 10;
     display: grid;
     place-items: center;
+    max-height: calc(100% - var(--studio-top-chrome) - var(--studio-prompt-reserve));
     transition: width 0.5s cubic-bezier(0.65, 0, 0.35, 1), height 0.5s cubic-bezier(0.65, 0, 0.35, 1);
+  }
+  .pb-studio .canvas:has(.canvas-top.has-actions) .frame-wrap {
+    --studio-top-chrome: 120px;
+  }
+  @media (min-width: 1280px) {
+    .pb-studio .canvas:has(.canvas-top.has-actions) .frame-wrap {
+      --studio-top-chrome: 80px;
+    }
+  }
+  .pb-studio .canvas:has(.edit-rail) .frame-wrap {
+    --studio-prompt-reserve: 188px;
   }.pb-studio /* Glow spill behind the frame */
   .frame-wrap::before {
     content: '';
@@ -562,31 +681,35 @@ export function StudioStyles() {
     box-shadow: none;
     animation: none;
     background: #161616;
-  }.pb-studio /* Prompt bar — ElevenLabs-style writing surface */
+  }.pb-studio /* Prompt bar — frosted glass writing surface */
   .prompt-bar {
     position: absolute;
-    bottom: 40px;
+    bottom: 28px;
     left: 50%;
     transform: translateX(-50%);
-    width: min(720px, 86%);
-    background: #ffffff;
-    border: none;
-    border-radius: 18px;
+    width: min(640px, calc(100% - 48px));
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(28px) saturate(1.65);
+    -webkit-backdrop-filter: blur(28px) saturate(1.65);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    border-radius: 20px;
     display: flex;
     flex-direction: column;
     align-items: stretch;
     padding: 0;
     gap: 0;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.08),
-      0 1px 3px rgba(0, 0, 0, 0.04);
+      0 22px 56px -26px rgba(20, 20, 40, 0.42),
+      0 0 0 1px rgba(26, 26, 46, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
     z-index: 15;
     overflow: hidden;
-    max-height: min(82vh, calc(100% - 48px));
+    max-height: min(42vh, calc(100% - 96px));
     transition:
       box-shadow var(--duration-moderate) var(--ease-standard),
       width 0.45s cubic-bezier(0.65, 0, 0.35, 1),
-      max-height 0.45s cubic-bezier(0.65, 0, 0.35, 1);
+      max-height 0.45s cubic-bezier(0.65, 0, 0.35, 1),
+      background 0.2s ease;
   }
   .pb-studio .prompt-bar.is-review {
     width: min(560px, 88%);
@@ -657,9 +780,11 @@ export function StudioStyles() {
   }
   .pb-studio .prompt-bar::before { display: none; }
   .pb-studio .prompt-bar:focus-within {
+    background: rgba(255, 255, 255, 0.7);
     box-shadow:
-      0 6px 28px rgba(0, 0, 0, 0.1),
-      0 0 0 3px rgba(0, 0, 0, 0.04);
+      0 22px 56px -26px rgba(20, 20, 40, 0.48),
+      0 0 0 3px rgba(238, 37, 50, 0.12),
+      0 1px 0 rgba(255, 255, 255, 0.92) inset;
   }
 
   /* Growing card: prompt above image; card sizes to content (ChatGPT-style). */
@@ -748,9 +873,10 @@ export function StudioStyles() {
   .pb-studio .pb-bar-input {
     display: flex;
     align-items: stretch;
-    min-height: 72px;
-    padding: 20px 22px 10px;
+    min-height: 56px;
+    padding: 16px 18px 8px;
     flex: none;
+    background: transparent;
   }
   .pb-studio .pb-bar-input--pill {
     align-items: center;
@@ -882,8 +1008,8 @@ export function StudioStyles() {
     gap: 8px;
     min-width: 0;
     padding: 10px 14px 14px;
-    border-top: 1px solid rgba(0, 0, 0, 0.06);
-    background: #fff;
+    border-top: 1px solid rgba(26, 26, 46, 0.08);
+    background: transparent;
   }
   .pb-studio .pb-bar-controls--review {
     gap: 10px;
@@ -1425,16 +1551,19 @@ export function StudioStyles() {
       border-color 0.6s ease;
   }
 
-  /* composer floats in on entry; lifted to make room for the intent strip below */
+  /* composer floats in on entry — frosted, clear of the image band */
   .pb-studio .prompt-bar {
-    bottom: 96px;
-    background: #ffffff;
-    border: none;
-    transition: box-shadow var(--duration-moderate) var(--ease-standard);
+    bottom: 28px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(28px) saturate(1.65);
+    -webkit-backdrop-filter: blur(28px) saturate(1.65);
+    border: 1px solid rgba(255, 255, 255, 0.78);
+    transition: box-shadow var(--duration-moderate) var(--ease-standard), background 0.2s ease;
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
     box-shadow:
-      0 4px 24px rgba(0, 0, 0, 0.08),
-      0 1px 3px rgba(0, 0, 0, 0.04);
+      0 22px 56px -26px rgba(20, 20, 40, 0.42),
+      0 0 0 1px rgba(26, 26, 46, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
   }
   .pb-studio .prompt-bar.is-grown {
     top: 50%;
@@ -1443,13 +1572,40 @@ export function StudioStyles() {
     transform: translate(-50%, -50%);
     width: min(440px, 92%);
     animation: none;
+    background: rgba(255, 255, 255, 0.62);
   }
+  .pb-studio .edit-rail {
+    top: calc(50% - 36px);
+    transform: translateY(-50%);
+    max-height: calc(100% - 220px);
+    overflow-y: auto;
+    overflow-x: visible;
+    scrollbar-width: none;
+    padding: 6px;
+    border-radius: 18px;
+    background: rgba(255, 255, 255, 0.55);
+    backdrop-filter: blur(16px) saturate(1.4);
+    -webkit-backdrop-filter: blur(16px) saturate(1.4);
+    border: 1px solid rgba(255, 255, 255, 0.65);
+    box-shadow: 0 12px 32px -20px rgba(20, 20, 40, 0.4);
+  }
+  .pb-studio .edit-rail::-webkit-scrollbar { display: none; }
   @keyframes pbsBarIn {
     from { opacity: 0; filter: blur(10px); }
     to { opacity: 1; filter: blur(0); }
   }
 
-  .pb-studio .top-left { display: flex; align-items: center; gap: 10px; }
+  .pb-studio .preview-toggle {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+  .pb-studio .top-actions .preview-toggle {
+    padding: 7px 12px;
+    font-size: 12.5px;
+  }
+  .pb-studio .studio-mode-toggle {
+    flex-shrink: 0;
+  }
 
   .pb-studio .post-soon {
     font-style: normal; font-size: var(--text-eyebrow); font-weight: 600; letter-spacing: 0.04em;
@@ -1468,7 +1624,7 @@ export function StudioStyles() {
   }
   .pb-studio .gs-card {
     position: absolute;
-    top: calc(80px + (100% - 80px - 280px) / 2);
+    top: calc(72px + (100% - 72px - 168px) / 2);
     left: 50%;
     width: 250px;
     aspect-ratio: 4 / 5;
@@ -1599,18 +1755,37 @@ export function StudioStyles() {
       min-width: 168px;
     }
     .pb-studio .frame-wrap {
-      top: calc(56px + (100% - 56px - 210px) / 2);
-      transform: translate(-50%, -50%);
+      --studio-top-chrome: 64px;
+      --studio-prompt-reserve: 200px;
       max-width: min(78%, 300px);
     }
     .pb-studio .canvas:has(.edit-rail) .frame-wrap {
-      top: calc(56px + (100% - 56px - 248px) / 2);
-      transform: translate(-50%, -50%);
+      --studio-prompt-reserve: 248px;
     }
     .pb-studio .canvas-top {
       top: max(10px, env(safe-area-inset-top, 0px));
       left: 10px;
       right: 10px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .pb-studio .canvas-top .top-left {
+      flex: 1 1 auto;
+      padding-right: 96px; /* room for absolute toggles */
+    }
+    .pb-studio .canvas-top .top-actions {
+      justify-content: flex-start;
+      width: 100%;
+    }
+    .pb-studio .canvas-top .top-toggles {
+      position: absolute;
+      top: 0;
+      right: 0;
+      margin-left: 0;
+    }
+    .pb-studio .canvas:has(.canvas-top.has-actions) .frame-wrap {
+      --studio-top-chrome: 120px;
     }
     .pb-studio .top-toggles button {
       min-width: 44px;
