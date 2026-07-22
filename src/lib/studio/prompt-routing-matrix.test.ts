@@ -269,6 +269,12 @@ const CASES: Case[] = [
     prompt: "generate a linkedin image about our Q2 wins",
     expectCompose: true,
   },
+  {
+    name: "Bruce website link — create images + site → compose",
+    prompt: "can you create images for my website here is the link socelle.com",
+    expectCompose: true,
+    expectRoute: "compose_generate",
+  },
 ];
 
 describe("Studio prompt routing matrix (user-shaped briefs)", () => {

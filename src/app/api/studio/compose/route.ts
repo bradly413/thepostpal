@@ -87,6 +87,12 @@ export async function POST(req: Request) {
   const photoDirection = photoDirectionForBrief(enrichedIntent);
   const scenicBlock = isScenicBrief(enrichedIntent) ? SCENIC_COMPOSE_BLOCK : "";
   const listingBlock = listingBrief && hasReferenceImage ? LISTING_WITH_PHOTO_COMPOSE_BLOCK : "";
+  const websiteBrand =
+    /\bwebsite\s+brand\s+reference\b/i.test(enrichedIntent) ||
+    (/\b(website|site)\b/i.test(enrichedIntent) && hasReferenceImage);
+  const websiteBlock = websiteBrand
+    ? `WEBSITE BRAND: The owner linked their site and may have attached its hero/og image. Match that brand's colors, mood, and subject — scale into a social-ready photograph (Instagram/Facebook crop). Not a browser screenshot or landing-page mockup unless they asked for one. Stay on-brand; do not invent a different business.`
+    : "";
   const brandHeroHint = brandOutcome
     ? `Brand/business ask without a named product: feature a person (beauty/wellness portrait), not invented product bottles.`
     : "";
@@ -95,7 +101,7 @@ export async function POST(req: Request) {
     : `If the request is about a specific listing/address, do not invent the property — the owner must attach a photo.`;
 
   const system = `Rewrite the owner's social outcome into a short image-generation prompt. Keep it light — Gemini does the heavy lifting.
-${scenicBlock}${listingBlock}
+${scenicBlock}${listingBlock}${websiteBlock ? `\n${websiteBlock}` : ""}
 
 Return ONLY JSON (no markdown) with:
 {

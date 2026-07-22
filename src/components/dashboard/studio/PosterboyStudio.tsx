@@ -59,6 +59,8 @@ import {
   extractReferenceImageUrl,
   looksLikeStandaloneImageUrl,
 } from "@/lib/studio/reference-url";
+import { extractWebsiteUrl } from "@/lib/studio/page-url";
+import { enrichIntentWithSiteContext, type OpenGraphMeta } from "@/lib/studio/open-graph";
 import { writeStudioScheduleHandoff } from "@/lib/studio/schedule-handoff";
 import {
   startAndPollVideo,
@@ -513,14 +515,106 @@ export default function PosterboyStudio() {
     onAfterGenerateSuccess: clearComposeFieldForReview,
   });
 
-  const runComposeFromIntent = useCallback(() => {
+  const resolveWebsiteBrand = useCallback(
+    async (
+      sourceText: string,
+    ): Promise<{
+      imageUrl: string | null;
+      enrichedIntent: string | null;
+      label: string | null;
+      error: string | null;
+    }> => {
+      const pageUrl = extractWebsiteUrl(sourceText);
+      if (!pageUrl) {
+        return { imageUrl: null, enrichedIntent: null, label: null, error: null };
+      }
+
+      setRefImageLoading(true);
+      try {
+        const res = await fetch("/api/studio/preview-url", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin",
+          body: JSON.stringify({ url: pageUrl }),
+        });
+        const data = (await res.json()) as OpenGraphMeta & {
+          url?: string;
+          error?: string;
+        };
+        if (!res.ok) {
+          return {
+            imageUrl: null,
+            enrichedIntent: null,
+            label: null,
+            error: data.error || "Could not read that website",
+          };
+        }
+        const meta = {
+          url: data.url || pageUrl,
+          title: data.title ?? null,
+          description: data.description ?? null,
+          imageUrl: data.imageUrl ?? null,
+          siteName: data.siteName ?? null,
+        };
+        const baseIntent = (composerBrief || prompt).trim();
+        const enrichedIntent = enrichIntentWithSiteContext(
+          baseIntent || `Create images for ${meta.url}`,
+          meta,
+        );
+        let host = "website";
+        try {
+          host = new URL(meta.url).hostname.replace(/^www\./, "");
+        } catch {
+          /* keep default */
+        }
+        const label = meta.siteName || meta.title || host;
+        return { imageUrl: meta.imageUrl, enrichedIntent, label, error: null };
+      } catch {
+        return {
+          imageUrl: null,
+          enrichedIntent: null,
+          label: null,
+          error: "Could not read that website",
+        };
+      } finally {
+        setRefImageLoading(false);
+      }
+    },
+    [composerBrief, prompt],
+  );
+
+  const runComposeFromIntent = useCallback(async () => {
     let nextRef = refImage;
+    let briefOverride: string | undefined;
+    const sourceText = `${prompt}\n${composerBrief}`;
+    const pageUrl = extractWebsiteUrl(sourceText);
+
     if (!nextRef) {
       const url = extractReferenceImageUrl(prompt) || extractReferenceImageUrl(composerBrief);
       if (url && attachReferenceFromUrl(url)) nextRef = url;
     }
-    return composeFromIntent(undefined, nextRef);
-  }, [attachReferenceFromUrl, composeFromIntent, composerBrief, prompt, refImage]);
+
+    // Website link (socelle.com) → fetch og:image + brand copy for compose.
+    if (pageUrl) {
+      const site = await resolveWebsiteBrand(sourceText);
+      if (site.enrichedIntent) briefOverride = site.enrichedIntent;
+      if (!nextRef && site.imageUrl && attachReferenceFromUrl(site.imageUrl)) {
+        nextRef = site.imageUrl;
+        if (site.label) setRefName(site.label);
+      } else if (!nextRef && site.error) {
+        setError(`${site.error}. Generating from your prompt instead.`);
+      }
+    }
+
+    return composeFromIntent(briefOverride, nextRef);
+  }, [
+    attachReferenceFromUrl,
+    composeFromIntent,
+    composerBrief,
+    prompt,
+    refImage,
+    resolveWebsiteBrand,
+  ]);
 
   const startCaptionGeneration = () => {
     const b = captionBrief.trim() || composerBrief.trim() || lastGenPrompt.trim();
@@ -1920,7 +2014,7 @@ export default function PosterboyStudio() {
                         ) : null}
                         <span>
                           {refImageLoading
-                            ? "Uploading…"
+                            ? "Reading site…"
                             : videoBusy
                               ? "Generating…"
                               : listingBlocked

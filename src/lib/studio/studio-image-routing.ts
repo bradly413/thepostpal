@@ -22,9 +22,18 @@ export function needsComposeRewrite(intent: string): boolean {
   const t = intent.trim();
   if (!t) return false;
 
-  // Classic: make/create/design a (platform) post|image|photo|graphic|story|reel|carousel
+  // Classic: make/create/design a (platform) post|image(s)|photo|graphic|story|reel|carousel
   if (
-    /\b(make|create|generate|design|craft)\s+(an?\s+)?(instagram\s+|facebook\s+|tiktok\s+|linkedin\s+|ig\s+|fb\s+)?(post|image|photo|graphic|story|stories|reel|reels|carousel|slide|slides)\b/i.test(
+    /\b(make|create|generate|design|craft)\s+(an?\s+)?(instagram\s+|facebook\s+|tiktok\s+|linkedin\s+|ig\s+|fb\s+)?(posts?|images?|photos?|graphics?|story|stories|reels?|carousel|slides?)\b/i.test(
+      t,
+    )
+  ) {
+    return true;
+  }
+
+  // Website brand asks ("images for my website… socelle.com")
+  if (
+    /\b(for\s+(my|our|the)\s+website|my\s+website|our\s+website|our\s+site|my\s+site|here\s+is\s+the\s+link)\b/i.test(
       t,
     )
   ) {

@@ -99,6 +99,11 @@ describe("needsComposeRewrite", () => {
         "I need something for social. We want more bookings. Soft calm vibes for the spa.",
       ),
     ).toBe(true);
+    expect(
+      needsComposeRewrite(
+        "can you create images for my website here is the link socelle.com",
+      ),
+    ).toBe(true);
   });
 
   it("skips concrete image briefs", () => {
