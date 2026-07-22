@@ -1015,10 +1015,17 @@ export default function DashboardHome() {
 
   const comingUp = useMemo(() => {
     if (!data) return [];
+    const now = Date.now();
+    const isFuture = (p: { scheduledFor?: string | null }) => {
+      if (!p.scheduledFor) return false;
+      const t = new Date(p.scheduledFor).getTime();
+      return Number.isFinite(t) && t > now;
+    };
     const items = [];
-    if (data.nextUp) items.push(data.nextUp);
+    if (data.nextUp && isFuture(data.nextUp)) items.push(data.nextUp);
     for (const p of data.recentPosts) {
       if (items.length >= 3) break;
+      if (!isFuture(p)) continue;
       if (!items.some((x) => x.id === p.id)) items.push(p);
     }
     return items.slice(0, 3);

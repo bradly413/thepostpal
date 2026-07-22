@@ -28,14 +28,14 @@ const PUBLIC_PRICING = getPublicTiers()
 
 const MOCK_RESPONSES: Record<string, string> = {
   default:
-    "I'm a demo assistant on the marketing site — not live AI yet. posterboy drafts, schedules, and posts for your business. Want to start a free trial?",
-  pricing: `Our public plans: ${PUBLIC_PRICING}. See full details at /pricing.`,
+    "I'm a demo assistant on the marketing site — not live AI yet. posterboy drafts, schedules, and posts for your business. Want to join the free closed beta?",
+  pricing: `Closed beta is free (no card). After beta, public plans are: ${PUBLIC_PRICING}. See /pricing.`,
   schedule:
-    "With posterboy, content is drafted and queued on your calendar. You tap approve — we handle scheduling. (Beta: workflow runs in your browser until server sync ships.)",
+    "Create in Studio, caption in your voice, schedule on the calendar, then we publish to Facebook and Instagram on schedule — nothing goes out until you approve.",
   trial:
-    "Start at /sign-in with signup — you'll walk through brand onboarding, then the dashboard. This is a beta; features and billing may change.",
+    "Yes — closed beta is free and we do not ask for a card. Start at /sign-in with signup, walk Voice Architect onboarding, then land on the dashboard.",
   posts:
-    "Create as many posts as you want — no per-post cap on any plan. **Solo** ($99/mo) covers 3 social profiles for one operator; **Command** ($249/mo base + $39/location) adds multi-location rollups and approvals; **BRC Custom** (from $3,500) is done-with-you brand + content. Everything follows your brand voice.",
+    "Create as many posts as you want — no per-post cap on any plan. **Solo** ($99/mo after beta) covers 3 social profiles; **Command** ($249/mo base + $39/location) adds multi-location rollups; **BRC Custom** (from $3,500) is done-with-you brand + content.",
   bradly:
     "Bradly built posterboy for his mom, who ran a small business and hated dealing with social media. The product is built for operators who want the week handled.",
 };
@@ -69,7 +69,7 @@ export default function ChatbotWidget() {
     'Tell me about Bradly',
   ];
   const followUpSuggestions = [
-    'Start a free trial',
+    'Join free beta',
     'How many posts per week?',
   ];
 

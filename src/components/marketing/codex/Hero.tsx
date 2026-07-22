@@ -88,10 +88,10 @@ export default function Hero() {
             className="pbv-link"
             onClick={() => track("start_trial_clicked", { location: "hero_secondary" })}
           >
-            Start free trial
+            Join free beta
           </Link>
         </div>
-        <p className="pbv-hero-terms pbv-fade">Free to start. No card required.</p>
+        <p className="pbv-hero-terms pbv-fade">Closed beta · free · no card required.</p>
 
         <div className="pbv-hero-trust pbv-fade" aria-label="Built for local businesses">
           <p className="pbv-hero-trust-line">

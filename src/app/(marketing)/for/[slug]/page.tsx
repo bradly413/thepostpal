@@ -84,14 +84,14 @@ export default async function VerticalPage({
         <p className="pb-hero-sub">{vertical.painPoint}</p>
         <div className="pb-hero-actions">
           <Link href={SIGNUP_ONBOARDING_URL} className="pb-btn-primary">
-            Start free trial
+            Join free beta
           </Link>
           <Link href="/pricing" className="pb-btn-secondary">
             See pricing
           </Link>
         </div>
         <p className="type-caption" style={{ marginTop: "1rem", color: "var(--quiet-sage)" }}>
-          Free to start · No credit card required
+          Closed beta · free · no credit card
         </p>
       </section>
 

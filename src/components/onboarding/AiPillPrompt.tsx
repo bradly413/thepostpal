@@ -90,6 +90,11 @@ export default function AiPillPrompt({
       if (actions) {
         tl.fromTo(actions, { autoAlpha: 0, y: 8 }, { autoAlpha: 1, y: 0, duration: 0.35 }, "-=0.2");
       }
+      // Background-tab / low-power can stall GSAP — never leave the answer field hidden.
+      const failsafe = window.setTimeout(() => {
+        if (tl.progress() < 1) tl.progress(1);
+      }, 2500);
+      return () => window.clearTimeout(failsafe);
     },
     { scope: wrapRef, dependencies: [question] },
   );
@@ -134,9 +139,9 @@ export default function AiPillPrompt({
   return (
     <form className="va-pill-wrap" ref={wrapRef} onSubmit={submit}>
       <div className="va-pill-head">
-        <h2 className="va-pill-question" id="va-pill-label">
+        <h1 className="va-pill-question" id="va-pill-label">
           {question}
-        </h2>
+        </h1>
         {support ? <p className="va-pill-support">{support}</p> : null}
       </div>
 

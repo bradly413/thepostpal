@@ -29,8 +29,8 @@ const FAQS = [
     a: "It is marked failed with an error log and a retry. Partial success is recorded so a retry never double-posts to a platform that already went out.",
   },
   {
-    q: "Is there a free trial?",
-    a: "Yes. Posterboy is free to start and we do not ask for a card. Try a draft, set your voice, and start filling the calendar when you are ready.",
+    q: "Is this free during beta?",
+    a: "Yes. Closed beta is free and we do not ask for a card. Solo and Command prices on the pricing page are what paid plans cost after beta — you are not charged to join now.",
   },
   {
     q: "Can I cancel?",

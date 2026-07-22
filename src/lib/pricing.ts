@@ -44,10 +44,10 @@ export const PRICING_TIERS: PricingTier[] = [
     features: [
       "A private workspace of your own",
       "3 social profiles",
-      "Calm Room content workspace",
-      "Visual Grid Planner",
+      "Creator Studio",
+      "Auto captions that sound like you",
+      "Bulk scheduling + calendar",
       "Brand voice training",
-      "Auto-scheduling",
     ],
     cta: "Start Solo",
     ctaHref: SIGNUP_SOLO_URL,

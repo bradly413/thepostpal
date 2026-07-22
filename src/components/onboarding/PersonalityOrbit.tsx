@@ -78,6 +78,10 @@ export default function PersonalityOrbit({
           { autoAlpha: 1, y: 0, duration: 0.35, stagger: 0.04 },
           "-=0.1",
         );
+      const failsafe = window.setTimeout(() => {
+        if (tl.progress() < 1) tl.progress(1);
+      }, 2500);
+      return () => window.clearTimeout(failsafe);
     },
     { scope: rootRef, dependencies: [reducedMotion, showMore] },
   );

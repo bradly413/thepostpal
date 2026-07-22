@@ -55,7 +55,7 @@ export default function TheAlternatives() {
           <p className="alts-fourth-cost">$99/mo. No meetings. No Sunday nights.</p>
         </div>
         <Link href={SIGNUP_ONBOARDING_URL} className="alts-cta">
-          Start free trial
+          Join free beta
         </Link>
       </div>
     </section>

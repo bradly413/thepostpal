@@ -18,8 +18,8 @@ export default function PricingPage() {
       <section className="pb-hero pb-reveal" style={{ paddingBottom: "2rem" }}>
         <h1 className="pb-hero-in">Pricing</h1>
         <p className="pb-hero-sub pb-hero-in">
-          Two self-serve tiers for premium operators and multi-location brands. BRC Custom when you
-          want the system built with you.
+          Closed beta is free — no card. The tiers below are post-beta paid plans so you know
+          what Solo and Command cost when billing starts.
         </p>
         <p
           className="pb-hero-in"
@@ -36,7 +36,7 @@ export default function PricingPage() {
             fontWeight: 600,
           }}
         >
-          Free to start — no credit card required
+          Closed beta · free · no credit card
         </p>
       </section>
 
@@ -66,7 +66,7 @@ export default function PricingPage() {
             className="pb-btn-primary"
             style={{ display: "inline-flex" }}
           >
-            Start free trial
+            Join free beta
           </Link>
         </p>
       </section>

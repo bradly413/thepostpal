@@ -107,7 +107,7 @@ export default function CodexNav() {
             Sign in
           </Link>
           <Link href={SIGNUP_ONBOARDING_URL} onClick={() => setOpen(false)}>
-            Start free trial
+            Join free beta
           </Link>
           <button type="button" className="pb-cx-nav-cta" onClick={startDemo}>
             {PRIMARY_CTA}

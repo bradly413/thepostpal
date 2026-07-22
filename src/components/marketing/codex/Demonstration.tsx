@@ -305,7 +305,7 @@ export default function Demonstration() {
               className="pbv-link pbv-demo-results-cta"
               onClick={() => track("start_trial_clicked", { location: "demo_result" })}
             >
-              Looks right? Start free trial
+              Looks right? Join free beta
             </Link>
           </div>
         ) : null}

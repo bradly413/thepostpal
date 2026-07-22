@@ -122,7 +122,7 @@ export default function Pricing() {
               </Link>
               <p className="pb-price-terms">
                 {isSolo
-                  ? "Free to start. No credit card required."
+                  ? "Closed beta · free · no card. Price shown is post-beta Solo."
                   : "Set up with our team — walkthrough first, then onboarding."}
               </p>
             </article>

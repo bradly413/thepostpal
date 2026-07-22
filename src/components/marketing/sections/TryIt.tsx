@@ -99,7 +99,7 @@ export default function TryIt() {
               photos, your voice, and a calendar that publishes itself.
             </p>
             <Link href={SIGNUP_ONBOARDING_URL} className="tryit-btn">
-              Start free trial
+              Join free beta
             </Link>
           </div>
         </div>

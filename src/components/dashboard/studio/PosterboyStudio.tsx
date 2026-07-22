@@ -651,8 +651,8 @@ export default function PosterboyStudio() {
 
     const place = (y: number, animate: boolean) => {
       killHero();
-      // x:0 + xPercent:-50 — sole horizontal centering (CSS transform left empty).
-      const props = { x: 0, xPercent: -50, y, overwrite: true as const };
+      // Horizontal center is CSS (left/right/margin-inline). GSAP only moves `y`.
+      const props = { x: 0, xPercent: 0, y, overwrite: true as const };
       if (!animate || reduce) {
         gsap.set(bar, props);
         return;
@@ -673,7 +673,7 @@ export default function PosterboyStudio() {
 
     const onResize = () => {
       if (!heroIdle) return;
-      gsap.set(bar, { x: 0, xPercent: -50, y: heroY() });
+      gsap.set(bar, { x: 0, xPercent: 0, y: heroY() });
     };
     window.addEventListener("resize", onResize);
 
@@ -1190,10 +1190,11 @@ export default function PosterboyStudio() {
                   aria-pressed={composerMode === "video"}
                   onClick={requestVideoMode}
                   disabled={videoBusy}
-                  title="Video mode"
+                  title="Video mode — publish coming soon in closed beta"
                 >
                   <Clapperboard size={15} />
                   <span>Video</span>
+                  <em className="post-soon">Soon</em>
                 </button>
               </div>
             </div>

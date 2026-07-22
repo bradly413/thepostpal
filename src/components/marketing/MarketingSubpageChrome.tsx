@@ -29,7 +29,7 @@ export default function MarketingSubpageChrome({
               Sign in
             </Link>
             <Link href={SIGNUP_ONBOARDING_URL} className="pb-btn-primary">
-              Start free trial
+              Join free beta
             </Link>
           </nav>
         </div>
@@ -48,7 +48,7 @@ export default function MarketingSubpageChrome({
         }}
       >
         <Link href={SIGNUP_ONBOARDING_URL} className="pb-btn-primary">
-          Start free trial
+          Join free beta
         </Link>
         <span className="type-caption" style={{ color: "var(--quiet-sage)" }}>
           <a href={`mailto:${CONTACT_EMAIL}`} style={{ color: "inherit" }}>

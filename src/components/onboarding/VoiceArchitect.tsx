@@ -226,11 +226,15 @@ function VoiceArchitectInner() {
       }
       // Pill / personality run their own entrances; keep panel steps soft.
       if (step === "connect" || step === "analyze" || step === "build") {
-        gsap.fromTo(
+        const tw = gsap.fromTo(
           el,
           { autoAlpha: 0, y: 18 },
           { autoAlpha: 1, y: 0, duration: 0.5, ease: "power3.out" },
         );
+        const failsafe = window.setTimeout(() => {
+          if (tw.progress() < 1) tw.progress(1);
+        }, 2500);
+        return () => window.clearTimeout(failsafe);
       }
     },
     { dependencies: [step, reducedMotion, hydrated] },

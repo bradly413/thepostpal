@@ -53,7 +53,7 @@ export default function FinalCta() {
             href={SIGNUP_ONBOARDING_URL}
             onClick={() => track("start_trial_clicked", { location: "final_cta" })}
           >
-            Start free trial
+            Join free beta
           </Link>
           {" · "}
           <a

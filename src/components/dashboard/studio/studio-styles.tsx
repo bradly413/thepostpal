@@ -686,10 +686,14 @@ export function StudioStyles() {
   .prompt-bar {
     position: absolute;
     bottom: 28px;
-    left: 50%;
-    /* Horizontal centering via GSAP xPercent:-50 — keep CSS transform empty. */
-    transform: none;
+    /* Transform-free horizontal center — GSAP only owns vertical `y` for hero↔bottom.
+       left:50% + no translate was clipping "Create post" off-screen below ~1360px. */
+    left: 0;
+    right: 0;
+    margin-inline: auto;
     width: min(640px, calc(100% - 48px));
+    max-width: calc(100% - 48px);
+    transform: none;
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(1.65);
     -webkit-backdrop-filter: blur(28px) saturate(1.65);
@@ -719,9 +723,12 @@ export function StudioStyles() {
   .pb-studio .prompt-bar.is-grown {
     top: 50%;
     bottom: auto;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    transform: translateY(-50%);
     width: min(440px, 92%);
+    max-width: calc(100% - 48px);
     max-height: min(86vh, calc(100% - 48px));
     display: flex;
     flex-direction: column;
@@ -1009,6 +1016,8 @@ export function StudioStyles() {
     align-items: center;
     gap: 8px;
     min-width: 0;
+    flex-wrap: wrap;
+    row-gap: 8px;
     padding: 10px 14px 14px;
     border-top: 1px solid rgba(26, 26, 46, 0.08);
     background: transparent;
@@ -1473,6 +1482,11 @@ export function StudioStyles() {
   @media (max-width: 980px) and (min-width: 769px) {
     .pb-studio .canvas { min-height: min(620px, calc(100dvh - 120px)); }
   }
+  /* Keep Create-post visible on common laptop widths (sidebar + ~1280 window). */
+  @media (max-width: 1360px) {
+    .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
+    .pb-studio .pb-bar-extras { flex-wrap: wrap; row-gap: 6px; }
+  }
   @media (max-width: 860px) and (min-width: 769px) {
     .pb-studio .canvas { min-height: min(540px, calc(100dvh - 120px)); }
     .pb-studio .pb-bar-controls { flex-wrap: wrap; row-gap: 8px; }
@@ -1550,8 +1564,10 @@ export function StudioStyles() {
   /* composer floats in on entry — frosted, clear of the image band */
   .pb-studio .prompt-bar {
     bottom: 28px;
-    left: 50%;
-    /* GSAP owns transform (xPercent + y) for hero↔bottom. Don't fight it with CSS translate. */
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    /* GSAP owns vertical `y` only — horizontal center is CSS (left/right/margin). */
     transform: none;
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(1.65);
@@ -1574,9 +1590,12 @@ export function StudioStyles() {
   .pb-studio .prompt-bar.is-grown {
     top: 50%;
     bottom: auto;
-    left: 50%;
-    transform: translate(-50%, -50%);
+    left: 0;
+    right: 0;
+    margin-inline: auto;
+    transform: translateY(-50%);
     width: min(440px, 92%);
+    max-width: calc(100% - 48px);
     animation: none;
     background: rgba(255, 255, 255, 0.62);
   }
