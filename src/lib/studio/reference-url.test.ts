@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   extractReferenceImageUrl,
+  looksLikeDirectImageUrl,
   looksLikeStandaloneImageUrl,
 } from "./reference-url";
 
@@ -28,6 +29,26 @@ describe("extractReferenceImageUrl", () => {
   it("returns null when no https url", () => {
     expect(extractReferenceImageUrl("make a post about tacos")).toBeNull();
   });
+
+  it("does not treat website pages as image refs", () => {
+    expect(extractReferenceImageUrl("https://socelle.com")).toBeNull();
+    expect(extractReferenceImageUrl("https://www.socelle.com/")).toBeNull();
+    expect(
+      extractReferenceImageUrl("create images for https://www.socelle.com/about"),
+    ).toBeNull();
+  });
+});
+
+describe("looksLikeDirectImageUrl", () => {
+  it("accepts image extensions and known photo CDNs", () => {
+    expect(looksLikeDirectImageUrl("https://cdn.example.com/a.jpg")).toBe(true);
+    expect(looksLikeDirectImageUrl("https://photos.zillowstatic.com/fp/abc")).toBe(true);
+  });
+
+  it("rejects site homepages", () => {
+    expect(looksLikeDirectImageUrl("https://socelle.com")).toBe(false);
+    expect(looksLikeDirectImageUrl("https://www.socelle.com/")).toBe(false);
+  });
 });
 
 describe("looksLikeStandaloneImageUrl", () => {
@@ -37,7 +58,8 @@ describe("looksLikeStandaloneImageUrl", () => {
     ).toBe(true);
   });
 
-  it("rejects mixed prose", () => {
+  it("rejects website urls and mixed prose", () => {
+    expect(looksLikeStandaloneImageUrl("https://socelle.com")).toBe(false);
     expect(
       looksLikeStandaloneImageUrl("enhance this https://cdn.example.com/a.jpg please"),
     ).toBe(false);

@@ -57,6 +57,7 @@ import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generatio
 import { isListingBrief } from "@/lib/studio/scene-intent";
 import {
   extractReferenceImageUrl,
+  looksLikeDirectImageUrl,
   looksLikeStandaloneImageUrl,
 } from "@/lib/studio/reference-url";
 import { extractWebsiteUrl } from "@/lib/studio/page-url";
@@ -1864,34 +1865,33 @@ export default function PosterboyStudio() {
                     const next = e.target.value;
                     setPrompt(next);
                     syncPromptHeight();
-                    // Paste/type a listing photo URL → attach as reference (not just text).
+                    // Only auto-attach clear direct image URLs — never website pages.
                     if (!refImage && !refImageLoading && composerMode === "image") {
-                      const url = extractReferenceImageUrl(next);
-                      if (url && (looksLikeStandaloneImageUrl(next) || /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(url))) {
-                        attachReferenceFromUrl(url);
+                      if (looksLikeStandaloneImageUrl(next)) {
+                        const url = extractReferenceImageUrl(next);
+                        if (url) attachReferenceFromUrl(url);
                       }
                     }
                   }}
                   onPaste={(e) => {
                     const pasted = e.clipboardData.getData("text")?.trim() || "";
                     if (!pasted || refImageLoading || composerMode !== "image") return;
+                    // Website / page links must paste into the field normally.
+                    // Only intercept clear direct image asset URLs.
+                    if (!looksLikeDirectImageUrl(pasted) && !looksLikeStandaloneImageUrl(pasted)) {
+                      return;
+                    }
                     const url = extractReferenceImageUrl(pasted);
-                    if (!url) return;
-                    // Prefer attaching image/CDN URLs as the reference photo.
-                    if (
-                      looksLikeStandaloneImageUrl(pasted) ||
-                      /\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(url) ||
-                      /images?\.|cdn\.|cloudfront|mls|listing|photo/i.test(url)
-                    ) {
-                      e.preventDefault();
-                      attachReferenceFromUrl(url);
-                      if (!looksLikeStandaloneImageUrl(pasted)) {
-                        setPrompt((prev) => {
-                          const next = `${prev}${prev && !/\s$/.test(prev) ? " " : ""}${pasted}`.trim();
-                          return next;
-                        });
-                        window.setTimeout(() => syncPromptHeight(), 0);
-                      }
+                    if (!url || !looksLikeDirectImageUrl(url)) return;
+                    e.preventDefault();
+                    attachReferenceFromUrl(url);
+                    // Bare image URL → attach only; prose+image URL → keep text in input.
+                    if (!looksLikeStandaloneImageUrl(pasted)) {
+                      setPrompt((prev) => {
+                        const next = `${prev}${prev && !/\s$/.test(prev) ? " " : ""}${pasted}`.trim();
+                        return next;
+                      });
+                      window.setTimeout(() => syncPromptHeight(), 0);
                     }
                   }}
                   onKeyDown={(e) => {
@@ -1900,7 +1900,9 @@ export default function PosterboyStudio() {
                       if (genState !== "generating" && composerMode === "image") {
                         if (!refImage) {
                           const url = extractReferenceImageUrl(prompt);
-                          if (url) attachReferenceFromUrl(url);
+                          if (url && looksLikeDirectImageUrl(url)) {
+                            attachReferenceFromUrl(url);
+                          }
                         }
                         void runComposeFromIntent();
                       }
