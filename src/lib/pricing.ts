@@ -1,5 +1,6 @@
 import type { PlanTier } from "@prisma/client";
 import { CONTACT_EMAIL } from "./site";
+import { SIGNUP_SOLO_URL } from "./safe-redirect";
 
 /** Self-serve and primary commercial tiers (June 2026 business plan). */
 export type PricingTierId = "solo" | "command" | "brc-custom";
@@ -49,7 +50,7 @@ export const PRICING_TIERS: PricingTier[] = [
       "Auto-scheduling",
     ],
     cta: "Start Solo",
-    ctaHref: "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo",
+    ctaHref: SIGNUP_SOLO_URL,
     tier: "public",
   },
   {

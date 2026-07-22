@@ -1,5 +1,5 @@
-import BrandArchitect from "@/components/onboarding/BrandArchitect";
+import VoiceArchitect from "@/components/onboarding/VoiceArchitect";
 
 export default function OnboardingPage() {
-  return <BrandArchitect />;
+  return <VoiceArchitect />;
 }

@@ -4,6 +4,7 @@
 
 ## Read first (agents)
 
+**Architecture (system map):** `docs/ARCHITECTURE.md`  
 **Canonical handoff (production live):** `docs/AGENT-HANDOFF-2026-06-03.md`  
 **Next work:** `docs/PLAN-2026-06-04.md`  
 **Prod env / DB:** `docs/PROD-ENV-CHECKLIST.md`, `docs/PROD-DB-SETUP.md`  
@@ -86,7 +87,7 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 | `/dashboard` | API (home) |
 | `/dashboard/drafts`, `/dashboard/calendar`, `/dashboard/photos` | API |
 | `/dashboard/brand` | Brand book API + cache |
-| `/onboarding` | Brand Architect wizard |
+| `/onboarding` | Voice Architect (warm-light AI pill + personality) |
 | `/dashboard/studio` | Gemini + Leonardo |
 | `/dashboard/analytics`, `/dashboard/editor`, `/dashboard/ads`, `/dashboard/organization`, `/dashboard/settings`, `/dashboard/templates`, `/dashboard/connect/meta` | API (per 2026-07-11 audit: the old localStorage routes `/dispatch`, `/reports`, `/facebook`, `/instagram` NO LONGER EXIST; `schedule-store.ts`/`events-store.ts` are type-only leftovers) |
 
@@ -138,6 +139,7 @@ AI image generation with particle reveal animation. Flow: prompt → `/api/gener
 
 | Doc | Purpose |
 |-----|---------|
+| `docs/ARCHITECTURE.md` | Canonical system map (onboarding → Studio → publish) |
 | `docs/AGENT-HANDOFF-2026-06-03.md` | EOD production handoff |
 | `docs/PLAN-2026-06-04.md` | P0–P3 next steps |
 | `docs/BUSINESS-PLAN-ALIGNMENT-2026-06.md` | Solo/Command commercial alignment |

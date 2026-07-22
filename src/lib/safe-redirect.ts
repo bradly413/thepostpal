@@ -17,3 +17,7 @@ export const SIGNIN_NEXT_DEFAULT = "/dashboard";
 /** Marketing + hero CTAs: create account, then brand onboarding. */
 export const SIGNUP_ONBOARDING_URL =
   "/sign-in?mode=signup&next=%2Fonboarding";
+
+/** Solo plan signup → Voice Architect (canonical onboarding). */
+export const SIGNUP_SOLO_URL =
+  "/sign-in?mode=signup&next=%2Fonboarding&plan=solo";

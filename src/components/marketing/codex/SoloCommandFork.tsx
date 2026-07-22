@@ -8,10 +8,11 @@ import { useGSAP } from "@gsap/react";
 import { useMarketingScroll } from "@/components/marketing/MarketingScrollProvider";
 import { CONTACT_EMAIL } from "@/lib/site";
 import { track } from "@/lib/marketing/track";
+import { SIGNUP_SOLO_URL } from "@/lib/safe-redirect";
 
 gsap.registerPlugin(ScrollTrigger);
 
-const SOLO_HREF = "/sign-in?mode=signup&next=%2Fonboarding%2Fclassic&plan=solo";
+const SOLO_HREF = SIGNUP_SOLO_URL;
 
 /**
  * The fork before pricing: one business (Solo, self-serve) vs multi-location
@@ -58,10 +59,10 @@ export default function SoloCommandFork() {
       <div className="pbv-fork-inner">
         <div className="pbv-fork-col">
           <p className="pbv-kicker">Solo</p>
-          <h2>One business. One clear week.</h2>
+          <h2>One business. Calendar filled.</h2>
           <p className="pbv-fork-copy">
-            For owner-operated businesses and small teams: one brand, three social profiles,
-            drafts in your voice, a simple approve-and-schedule week.
+            For owner-operated businesses and small teams: Creator Studio, auto captions in your
+            voice, bulk schedule as far as you want, and one-click publish to Facebook and Instagram.
           </p>
           <Link
             href={SOLO_HREF}
