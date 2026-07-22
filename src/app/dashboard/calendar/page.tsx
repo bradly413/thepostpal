@@ -1971,7 +1971,7 @@ function CalendarPageContent() {
 
           </div>
 
-          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4">
+          <div className="mt-auto shrink-0 border-t border-black/[0.06] bg-[#f6f6f7] px-3 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] sm:px-4 max-md:sticky max-md:bottom-[calc(4.75rem+env(safe-area-inset-bottom,0px))] max-md:z-30 max-md:shadow-[0_-10px_28px_-18px_rgba(20,20,40,0.35)]">
             <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-3">
               <button
                 type="button"
