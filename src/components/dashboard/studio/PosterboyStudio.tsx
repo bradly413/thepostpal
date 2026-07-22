@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect, useMemo, useCallback, type CSSProperties } from "react";
+import { useState, useRef, useEffect, useLayoutEffect, useMemo, useCallback, type CSSProperties } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import gsap from "gsap";
 import { useGSAP } from "@gsap/react";
@@ -612,67 +612,75 @@ export default function PosterboyStudio() {
     };
   }, [platformMenuOpen]);
 
-  // Hero composer: while the room is empty the bar + intent strip sit dead
-  // center; the moment creation starts they glide down to their working
-  // position at the bottom (GSAP owns their transform).
+  // Hero composer: empty room → bar centered; first generate → glide to bottom.
   const composerHeroInit = useRef(false);
   const heroMountAtRef = useRef(0);
   const heroTweensRef = useRef<gsap.core.Tween[]>([]);
-  useEffect(() => {
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     if (!heroMountAtRef.current) heroMountAtRef.current = performance.now();
     const bar = canvas.querySelector<HTMLElement>(".prompt-bar");
-    const rail = canvas.querySelector<HTMLElement>(".pb-intent-rail");
     if (!bar) return;
-    const els = rail ? [bar, rail] : [bar];
-    heroTweensRef.current.forEach((t) => t.kill());
-    heroTweensRef.current = [];
+
     const heroIdle =
       genState === "idle" &&
       composerMode === "image" &&
       !generatedUrl &&
       !showTemplate;
+    bar.classList.toggle("is-hero", heroIdle);
+
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-
-    // distance from the group's resting spot (bottom-anchored) to room center
-    const heroDelta = () => {
-      const cH = canvas.clientHeight;
-      const topEdge = cH - 96 - bar.offsetHeight;
-      const bottomEdge = rail ? cH - 14 : cH - 96;
-      return cH / 2 - (topEdge + bottomEdge) / 2;
-    };
-
-    // a deep link (?mediaUrl=) flips state right after mount — snap, don't glide
     const justMounted = performance.now() - heroMountAtRef.current < 600;
-    // NB: every set/tween below pins `x: 0` alongside `xPercent: -50`. The CSS
-    // base rule centers the bar with `transform: translateX(-50%)`; GSAP reads
-    // that resolved matrix as an absolute x (≈ -halfWidth px) and would ADD its
-    // own -50% on top → double-shifted off-screen left. Zeroing x makes
-    // xPercent the sole horizontal centering. Do not drop the `x: 0`.
-    if (heroIdle) {
-      if (!composerHeroInit.current || reduce || justMounted) {
-        gsap.set(els, { x: 0, xPercent: -50, y: heroDelta() });
-      } else {
-        heroTweensRef.current.push(
-          gsap.to(els, { x: 0, xPercent: -50, y: heroDelta(), duration: 0.7, ease: "power3.inOut" }),
-        );
-      }
-      composerHeroInit.current = true;
-      const onResize = () => gsap.set(els, { x: 0, xPercent: -50, y: heroDelta() });
-      window.addEventListener("resize", onResize);
-      return () => {
-        window.removeEventListener("resize", onResize);
-        heroTweensRef.current.forEach((t) => t.kill());
-        heroTweensRef.current = [];
-      };
-    }
-    composerHeroInit.current = true;
-    if (reduce || justMounted) gsap.set(els, { x: 0, xPercent: -50, y: 0 });
-    else heroTweensRef.current.push(gsap.to(els, { x: 0, xPercent: -50, y: 0, duration: 0.85, ease: "power3.inOut" }));
-    return () => {
+
+    const killHero = () => {
       heroTweensRef.current.forEach((t) => t.kill());
       heroTweensRef.current = [];
+    };
+
+    /** y from CSS resting spot (bottom) that centers the bar in the canvas. */
+    const heroY = () => {
+      const currentY = Number(gsap.getProperty(bar, "y")) || 0;
+      const canvasRect = canvas.getBoundingClientRect();
+      const barRect = bar.getBoundingClientRect();
+      if (canvasRect.height < 80 || barRect.height < 8) return currentY;
+      const barCenterInCanvas = barRect.top + barRect.height / 2 - canvasRect.top;
+      const restingCenter = barCenterInCanvas - currentY;
+      return canvasRect.height / 2 - restingCenter;
+    };
+
+    const place = (y: number, animate: boolean) => {
+      killHero();
+      // x:0 + xPercent:-50 — sole horizontal centering (CSS transform left empty).
+      const props = { x: 0, xPercent: -50, y, overwrite: true as const };
+      if (!animate || reduce) {
+        gsap.set(bar, props);
+        return;
+      }
+      heroTweensRef.current.push(
+        gsap.to(bar, { ...props, duration: 0.85, ease: "power3.inOut" }),
+      );
+    };
+
+    if (heroIdle) {
+      // First paint / resize: snap centered. Returning to idle: glide up.
+      place(heroY(), composerHeroInit.current && !justMounted);
+    } else {
+      // Leaving idle (generate): glide down to resting bottom.
+      place(0, composerHeroInit.current && !justMounted);
+    }
+    composerHeroInit.current = true;
+
+    const onResize = () => {
+      if (!heroIdle) return;
+      gsap.set(bar, { x: 0, xPercent: -50, y: heroY() });
+    };
+    window.addEventListener("resize", onResize);
+
+    return () => {
+      window.removeEventListener("resize", onResize);
+      killHero();
+      bar.classList.remove("is-hero");
     };
   }, [genState, composerMode, generatedUrl, showTemplate]);
 

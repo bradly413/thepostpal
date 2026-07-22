@@ -687,7 +687,8 @@ export function StudioStyles() {
     position: absolute;
     bottom: 28px;
     left: 50%;
-    transform: translateX(-50%);
+    /* Horizontal centering via GSAP xPercent:-50 — keep CSS transform empty. */
+    transform: none;
     width: min(640px, calc(100% - 48px));
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(1.65);
@@ -1549,6 +1550,9 @@ export function StudioStyles() {
   /* composer floats in on entry — frosted, clear of the image band */
   .pb-studio .prompt-bar {
     bottom: 28px;
+    left: 50%;
+    /* GSAP owns transform (xPercent + y) for hero↔bottom. Don't fight it with CSS translate. */
+    transform: none;
     background: rgba(255, 255, 255, 0.55);
     backdrop-filter: blur(28px) saturate(1.65);
     -webkit-backdrop-filter: blur(28px) saturate(1.65);
@@ -1557,6 +1561,13 @@ export function StudioStyles() {
     animation: pbsBarIn 0.85s cubic-bezier(0.22, 1.12, 0.36, 1) 0.12s both;
     box-shadow:
       0 22px 56px -26px rgba(20, 20, 40, 0.42),
+      0 0 0 1px rgba(26, 26, 46, 0.06),
+      0 1px 0 rgba(255, 255, 255, 0.9) inset;
+  }
+  .pb-studio .prompt-bar.is-hero {
+    /* Visual hint only — vertical position is GSAP y from bottom resting spot */
+    box-shadow:
+      0 28px 64px -24px rgba(20, 20, 40, 0.48),
       0 0 0 1px rgba(26, 26, 46, 0.06),
       0 1px 0 rgba(255, 255, 255, 0.9) inset;
   }
