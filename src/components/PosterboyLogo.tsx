@@ -24,7 +24,7 @@ export default function PosterboyLogo({
 }: Props) {
   const wordmark = (
     <span className={`pb-brand-logo ${SIZE_CLASS[size]} ${className}`.trim()}>
-      poster<em className="pb-brand-logo-boy">boy</em><span className="pb-brand-logo-tm">®</span>
+      poster<em className="pb-brand-logo-boy">boy</em><span className="pb-brand-logo-tm">™</span>
     </span>
   );
 

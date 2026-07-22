@@ -6,15 +6,17 @@ import gsap from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
 import { useGSAP } from "@gsap/react";
 import { useMarketingScroll } from "@/components/marketing/MarketingScrollProvider";
-import { DEMO_CATEGORIES } from "@/components/marketing/codex/demo-feed";
+import { DEMO_CATEGORIES, getDemoCategory } from "@/components/marketing/codex/demo-feed";
 import { track } from "@/lib/marketing/track";
 
 gsap.registerPlugin(ScrollTrigger);
 
+/** Priority verticals for the examples gallery (plan: restaurant, wellness, realtor). */
+const GALLERY_IDS = ["restaurant", "salon", "real-estate"] as const;
+const GALLERY = GALLERY_IDS.map((id) => getDemoCategory(id));
+
 /**
- * "What the week can look like." — sample weeks per business type, drawn from
- * the same central demo config the live engine falls back to. Every example is
- * visibly labeled a product sample; none is presented as customer work.
+ * Category examples gallery — sample posts per vertical, labeled as product demos.
  */
 export default function MadeWith() {
   const rootRef = useRef<HTMLElement | null>(null);
@@ -54,7 +56,6 @@ export default function MadeWith() {
     { scope: rootRef, dependencies: [ready, reducedMotion] },
   );
 
-  // Short crossfade on tab change.
   useGSAP(
     () => {
       const root = rootRef.current;
@@ -71,28 +72,28 @@ export default function MadeWith() {
     e.preventDefault();
     const next =
       e.key === "ArrowRight"
-        ? (active + 1) % DEMO_CATEGORIES.length
-        : (active - 1 + DEMO_CATEGORIES.length) % DEMO_CATEGORIES.length;
+        ? (active + 1) % GALLERY.length
+        : (active - 1 + GALLERY.length) % GALLERY.length;
     setActive(next);
     const btn = rootRef.current?.querySelectorAll<HTMLButtonElement>('[role="tab"]')[next];
     btn?.focus();
   };
 
-  const cat = DEMO_CATEGORIES[active];
+  const cat = GALLERY[active] ?? DEMO_CATEGORIES[0];
 
   return (
     <section className="pbv-mw" id="examples" aria-labelledby="pbv-mw-title" ref={rootRef}>
       <div className="pbv-mw-inner">
         <p className="pbv-kicker pbv-fade">Made with Posterboy</p>
         <h2 id="pbv-mw-title" className="pbv-fade">
-          What the week can look like.
+          Built around the business. Not a template pack.
         </h2>
         <p className="pbv-mw-note pbv-fade">
-          Product samples in the Posterboy voice — not customer campaigns.
+          Product sample captions in the Posterboy voice — not customer campaigns.
         </p>
 
         <div className="pbv-mw-tabs pbv-fade" role="tablist" aria-label="Business types">
-          {DEMO_CATEGORIES.map((c, i) => (
+          {GALLERY.map((c, i) => (
             <button
               key={c.id}
               role="tab"
@@ -103,6 +104,7 @@ export default function MadeWith() {
               className={`pbv-mw-tab${i === active ? " is-active" : ""}`}
               onClick={() => {
                 setActive(i);
+                track("category_example_selected", { tab: c.id, section: "made-with" });
                 track("case_study_tab_selected", { tab: c.id, section: "made-with" });
               }}
               onKeyDown={onTabKey}
@@ -121,7 +123,7 @@ export default function MadeWith() {
           >
             <div className="pbv-mw-week">
               {cat.fallback.posts.map((post, i) => (
-                <article className="pbv-mw-post" key={`${cat.id}-${post.day}`}>
+                <article className="pbv-mw-post" key={`${cat.id}-${post.day}-${i}`}>
                   {i === 0 ? (
                     <Image
                       src={cat.resultImage.src}
@@ -182,8 +184,8 @@ export default function MadeWith() {
         .pbv-mw-tab:focus-visible { outline: 2px solid var(--red); outline-offset: 3px; }
         .pbv-mw-week {
           display: grid;
-          grid-template-columns: repeat(3, minmax(0, 1fr));
-          gap: 14px;
+          grid-template-columns: repeat(5, minmax(0, 1fr));
+          gap: 12px;
         }
         .pbv-mw-post {
           background: #fff;
@@ -192,20 +194,23 @@ export default function MadeWith() {
           overflow: hidden;
           display: flex; flex-direction: column;
         }
-        .pbv-mw-post-img { width: 100%; height: 170px; object-fit: cover; display: block; }
-        .pbv-mw-post-body { padding: 16px 18px; }
+        .pbv-mw-post-img { width: 100%; height: 140px; object-fit: cover; display: block; }
+        .pbv-mw-post-body { padding: 14px 14px 16px; }
         .pbv-mw-post-when {
           display: block;
-          font-size: 10.5px; font-weight: 700;
+          font-size: 10px; font-weight: 700;
           letter-spacing: 0.1em; text-transform: uppercase;
           color: color-mix(in srgb, var(--ink) 45%, transparent);
           margin-bottom: 7px;
         }
-        .pbv-mw-post-copy { margin: 0; font-size: 14.5px; line-height: 1.55; color: var(--ink); }
+        .pbv-mw-post-copy { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--ink); }
         .pbv-mw-summary {
           margin: 18px 2px 0;
           font-size: 13.5px;
           color: color-mix(in srgb, var(--ink) 52%, transparent);
+        }
+        @media (max-width: 1100px) {
+          .pbv-mw-week { grid-template-columns: repeat(3, minmax(0, 1fr)); }
         }
         @media (max-width: 860px) {
           .pbv-mw-week { grid-template-columns: 1fr; }

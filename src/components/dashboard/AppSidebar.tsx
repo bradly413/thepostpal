@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import type { MouseEvent } from "react";
 import {
   LayoutGrid,
   Plus,
@@ -38,12 +38,23 @@ const NAV_OTHER: NavLink[] = [
   { label: "Channels", href: "/dashboard/organization", Icon: Building2, gate: "locationRollup", match: "prefix" },
 ];
 
+/** Full page load — bypasses App Router soft-nav which was stalling from Studio/Schedule. */
+function hardNav(e: MouseEvent<HTMLAnchorElement>, href: string) {
+  if (e.button !== 0) return;
+  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+  if (href.startsWith("mailto:")) return;
+  e.preventDefault();
+  e.stopPropagation();
+  window.location.assign(href);
+}
+
 const SIDEBAR_CSS = `
 .pb-side {
   --ink: #1a1a2e;
   --ink-soft: #8b8b9a;
   --red: #ee2532;
   position: relative;
+  z-index: 40;
   align-self: stretch;
   height: 100%;
   min-height: 0;
@@ -54,21 +65,23 @@ const SIDEBAR_CSS = `
   padding: 26px 16px 20px;
   background: #f2f2f5;
   border-right: 1px solid rgba(26,26,46,0.06);
-  border-radius: 0;
-  box-shadow: none;
-  backdrop-filter: none;
 }
 .pb-side .logo {
-  font-family: var(--font-playfair, var(--font-instrument-serif, Georgia, serif));
-  font-size: 24px;
-  font-weight: 500;
-  font-style: italic;
-  letter-spacing: -0.03em;
-  color: var(--ink);
-  text-decoration: none;
-  margin: 0 0 28px 8px;
   display: block;
-  line-height: 1;
+  margin: 0 0 22px 2px;
+  padding: 2px 0;
+  text-decoration: none;
+  cursor: pointer;
+  line-height: 0;
+  background: transparent;
+  border-radius: 0;
+  overflow: visible;
+}
+.pb-side .logo img {
+  display: block;
+  width: 168px;
+  height: auto;
+  max-width: 100%;
 }
 .pb-side .nav-section-label {
   margin: 0 0 8px 10px;
@@ -81,12 +94,15 @@ const SIDEBAR_CSS = `
   flex-direction: column;
   gap: 1px;
   min-height: 0;
+  width: 100%;
 }
 .pb-side nav .grp-gap { height: 22px; }
 .pb-side nav a {
   display: flex;
   align-items: center;
   gap: 11px;
+  width: 100%;
+  box-sizing: border-box;
   padding: 9px 10px;
   border-radius: 10px;
   color: var(--ink);
@@ -94,6 +110,7 @@ const SIDEBAR_CSS = `
   font-size: 13.5px;
   font-weight: 500;
   letter-spacing: -0.01em;
+  cursor: pointer;
   transition: color 0.15s ease, background 0.15s ease;
 }
 .pb-side nav a svg {
@@ -102,57 +119,17 @@ const SIDEBAR_CSS = `
   color: currentColor;
   opacity: 0.75;
   flex-shrink: 0;
+  pointer-events: none;
 }
+.pb-side nav a .nav-label { pointer-events: none; }
 .pb-side nav a:hover { background: rgba(26,26,46,0.04); }
 .pb-side nav a.active {
   color: var(--red);
   background: transparent;
-  box-shadow: none;
   font-weight: 600;
 }
 .pb-side nav a.active svg { opacity: 1; }
 .pb-side .spacer { flex: 1; min-height: 8px; }
-.pb-side .foot { display: none; }
-
-.pb-side--collapsed {
-  padding: 16px 6px;
-  align-items: center;
-  width: 60px;
-}
-.pb-side--collapsed .logo,
-.pb-side--collapsed .nav-section-label { display: none; }
-.pb-side--collapsed nav a {
-  justify-content: center;
-  gap: 0;
-  min-height: 40px;
-  padding: 10px 0;
-}
-.pb-side--collapsed nav a .nav-label {
-  position: absolute;
-  width: 1px; height: 1px; padding: 0; margin: -1px;
-  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-}
-
-@media (max-width: 980px) and (min-width: 769px) {
-  .pb-side {
-    width: 60px;
-    padding: 16px 6px;
-    align-items: center;
-  }
-  .pb-side .logo,
-  .pb-side .nav-section-label { display: none; }
-  .pb-side nav a {
-    justify-content: center;
-    gap: 0;
-    min-height: 40px;
-    padding: 10px 0;
-  }
-  .pb-side nav a .nav-label {
-    position: absolute;
-    width: 1px; height: 1px; padding: 0; margin: -1px;
-    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
-  }
-}
 
 @media (max-width: 768px) {
   .pb-side { display: none !important; }
@@ -171,17 +148,23 @@ function NavItem({
   active: boolean;
 }) {
   return (
-    <Link href={href} title={label} className={active ? "active" : ""} aria-current={active ? "page" : undefined}>
+    <a
+      href={href}
+      title={label}
+      className={active ? "active" : ""}
+      aria-current={active ? "page" : undefined}
+      onMouseDown={(e) => hardNav(e, href)}
+      onClick={(e) => hardNav(e, href)}
+    >
       <Icon aria-hidden />
       <span className="nav-label">{label}</span>
-    </Link>
+    </a>
   );
 }
 
 export default function AppSidebar() {
   const pathname = usePathname();
   const { features } = usePlan();
-  const collapsed = pathname.startsWith("/dashboard/calendar");
 
   const isActive = (item: NavLink) => {
     if (item.href.startsWith("mailto:")) return false;
@@ -196,11 +179,24 @@ export default function AppSidebar() {
   };
 
   return (
-    <aside className={collapsed ? "pb-side pb-side--collapsed" : "pb-side"}>
+    <aside className="pb-side" data-pb-sidebar="">
       <style>{SIDEBAR_CSS}</style>
-      <Link href="/dashboard" className="logo" aria-label="Posterboy home">
-        posterboy
-      </Link>
+      <a
+        href="/dashboard"
+        className="logo"
+        aria-label="Posterboy home"
+        title="Dashboard"
+        onMouseDown={(e) => hardNav(e, "/dashboard")}
+        onClick={(e) => hardNav(e, "/dashboard")}
+      >
+        {/* eslint-disable-next-line @next/next/no-img-element -- brand lockup */}
+        <img
+          src="/brand/posterboy-wordmark.png?v=6"
+          alt="posterboy™"
+          width={168}
+          height={56}
+        />
+      </a>
       <nav aria-label="Dashboard">
         <p className="nav-section-label">Main Menu</p>
         {NAV_MAIN.map((item) => (

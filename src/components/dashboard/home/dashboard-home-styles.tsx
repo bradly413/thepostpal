@@ -97,6 +97,11 @@ export function DashboardHomeStyles() {
         grid-template-rows: repeat(6, minmax(0, 1fr));
       }
       .pb-home2--fixed .pb-cal-month-grid > * { min-height: 0; }
+      /* Studio fills the fixed shell the same way calendar does. */
+      .pb-home2--fixed .pb-studio {
+        flex: 1; min-height: 0; height: 100%;
+        overflow: hidden; border-radius: 20px;
+      }
     }
 
     /* Phone / tablet portrait: page scrolls; composer preview is height-capped in JS/Tailwind. */

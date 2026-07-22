@@ -35,7 +35,7 @@ export interface DemoCategory {
   /** Tiles this category surfaces in the orbiting field. */
   tiles: DemoTile[];
   /** Complete pre-written demonstration used when live drafting is unavailable. */
-  fallback: { summary: string; posts: [DemoPost, DemoPost, DemoPost] };
+  fallback: { summary: string; posts: DemoPost[] };
 }
 
 export const DEMO_TIMEOUT_MS = 12_000;
@@ -96,10 +96,20 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
       summary: "Dinner-forward week with a brunch payoff on Sunday.",
       posts: [
         {
+          day: "Monday",
+          time: "11:00",
+          copy: "Lunch specials are up. The special is whatever looked best at the market this morning.",
+        },
+        {
           day: "Tuesday",
           time: "16:00",
           copy:
-            "Tuesday dinner doesn't have to be cereal. Kitchen's open at 5 — the special is whatever looked best at the market this morning.",
+            "Tuesday dinner doesn't have to be cereal. Kitchen's open at 5.",
+        },
+        {
+          day: "Thursday",
+          time: "17:00",
+          copy: "Weeknight tables still open. Bring the group chat before Friday books you out.",
         },
         {
           day: "Friday",
@@ -129,13 +139,18 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
       { src: "/hero-ring/16.jpg", alt: "Family celebrating with a sold sign outside their new home" },
     ],
     fallback: {
-      summary: "Listings early, an open house tease, and one win to close the week.",
+      summary: "Listings early, open house midweek, and one win to close.",
       posts: [
         {
           day: "Monday",
           time: "09:00",
           copy:
             "New week, new listings on the way. If you've been waiting for a sign to start looking — this is it, technically.",
+        },
+        {
+          day: "Wednesday",
+          time: "12:00",
+          copy: "Three new photos just landed for this week's favorite listing. Walkthrough reel coming Thursday.",
         },
         {
           day: "Thursday",
@@ -145,6 +160,11 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
         {
           day: "Saturday",
           time: "13:00",
+          copy: "Doors open. Coffee in the kitchen. Questions welcome — pressure isn't.",
+        },
+        {
+          day: "Sunday",
+          time: "16:00",
           copy: "Another set of keys handed over this week. Never gets old.",
         },
       ],
@@ -165,19 +185,28 @@ export const DEMO_CATEGORIES: DemoCategory[] = [
       { src: "/hero-ring/19.jpg", alt: "Beauty editorial portrait with pink sunglasses" },
     ],
     fallback: {
-      summary: "Bookings open, one gentle reminder, one full-house brag.",
+      summary: "Bookings, maintenance, a treatment spotlight, and a full-house Saturday.",
       posts: [
+        {
+          day: "Monday",
+          time: "09:00",
+          copy: "Books just opened for next month. The 4pm Friday slots go first — you know who you are.",
+        },
         {
           day: "Tuesday",
           time: "10:00",
           copy:
-            "Books just opened for next month. The 4pm Friday slots go first — you know who you are.",
+            "A trim you get in March is why your hair behaves in June. Book the maintenance appointment.",
         },
         {
           day: "Thursday",
           time: "14:00",
-          copy:
-            "A trim you get in March is why your hair behaves in June. Book the maintenance appointment.",
+          copy: "New facial slots this week. Quiet room, soft light, zero small talk if you don't want it.",
+        },
+        {
+          day: "Friday",
+          time: "11:00",
+          copy: "Walk-ins welcome until 2. After that we're in appointment mode for the weekend rush.",
         },
         {
           day: "Saturday",

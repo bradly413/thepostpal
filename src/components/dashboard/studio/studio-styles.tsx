@@ -34,15 +34,16 @@ export function StudioStyles() {
     overflow-x: hidden;
     height: 100%;
   }.pb-studio button { font-family: inherit; cursor: pointer; border: none; background: none; color: inherit; }.pb-studio button:disabled { cursor: not-allowed; opacity: 0.45; }.pb-studio input { font-family: inherit; }.pb-studio input:disabled { opacity: 0.6; }.pb-studio .app {
+    /* Canvas-only: AppSidebar lives in DashboardShell (not nested here). */
     display: grid;
-    grid-template-columns: 260px minmax(0, 1fr);
-    grid-template-areas: "sidebar canvas";
-    gap: 18px;
-    padding: 18px;
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas: "canvas";
+    gap: 0;
+    padding: 0;
     min-height: 100%;
     height: 100%;
-    max-width: 1700px;
-    margin: 0 auto;
+    max-width: none;
+    margin: 0;
     align-items: stretch;
   }.pb-studio .studio-error {
     position: absolute;
@@ -69,7 +70,7 @@ export function StudioStyles() {
     border-radius: 9px; background: var(--red-press, #c81e2a); color: #fff;
     font-size: var(--text-caption); font-weight: 600; text-decoration: none;
     transition: var(--transition-color);
-  }.pb-studio .studio-error-cta:hover { background: #a81824; }.pb-studio .sidebar { grid-area: sidebar; min-width: 0; }.pb-studio .canvas { grid-area: canvas;  min-width: 0; }.pb-studio /* ============ CANVAS ============ */
+  }.pb-studio .studio-error-cta:hover { background: #a81824; }.pb-studio .canvas { grid-area: canvas; min-width: 0; }.pb-studio /* ============ CANVAS ============ */
   .canvas {
     position: relative;
     border-radius: var(--radius);
@@ -1466,11 +1467,9 @@ export function StudioStyles() {
     mask-image: radial-gradient(ellipse at center, #000 55%, transparent 92%);
   }.pb-studio .pb-tools-pop-wide { min-width: 220px; padding: 10px; }
   @media (max-width: 1379px) {
-    .pb-studio .app { grid-template-columns: 232px minmax(0, 1fr); }
     .pb-studio .canvas { min-height: 620px; }
   }
   @media (max-width: 980px) and (min-width: 769px) {
-    .pb-studio .app { grid-template-columns: 72px minmax(0, 1fr); gap: 12px; padding: 12px; }
     .pb-studio .canvas { min-height: min(620px, calc(100dvh - 120px)); }
   }
   @media (max-width: 860px) and (min-width: 769px) {
@@ -1479,15 +1478,11 @@ export function StudioStyles() {
     .pb-studio .pb-ref-chip span, .pb-studio .pb-plat-cue span { display: none; }
     .pb-studio .pb-ref-chip { padding: 0 9px; }
   }
-  /* Phone: no sidebar rail — bottom tab bar (AppMobileNav) */
+  /* Phone: bottom tab bar (AppMobileNav) */
   @media (max-width: 768px) {
     .pb-studio .app {
-      grid-template-columns: minmax(0, 1fr);
-      grid-template-areas: "canvas";
-      gap: 0;
       padding: 8px 8px calc(72px + env(safe-area-inset-bottom, 0px));
     }
-    .pb-studio .studio-sidebar { display: none !important; }
     .pb-studio .canvas { min-height: min(420px, calc(100dvh - 160px)); }
     .pb-studio .frame-wrap {
       width: 64%;

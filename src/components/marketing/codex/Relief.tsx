@@ -69,8 +69,8 @@ export default function Relief() {
           Social media stops being one more thing you forgot.
         </h2>
         <p className="pbv-relief-sub pbv-fade">
-          Tell Posterboy what is happening at the business. It turns that into the posts, visuals,
-          and schedule. You review the week in a few minutes instead of building it from scratch.
+          Create in Studio, auto-caption in your voice, and schedule a month out — or further.
+          Approve once. Publish to Facebook and Instagram without rebuilding the calendar from scratch.
         </p>
         <p className="pbv-relief-cloud" aria-label="What Posterboy handles">
           {TAGS.map((tag, i) => (
@@ -88,21 +88,29 @@ export default function Relief() {
         .pbv-relief {
           --red: #ee2532;
           --ink: #141418;
-          padding: clamp(88px, 13vh, 170px) clamp(20px, 3vw, 48px);
-          border-top: 1px solid rgba(20, 20, 24, 0.08);
+          padding: clamp(40px, 7vh, 88px) clamp(16px, 2.5vw, 36px);
         }
-        .pbv-relief-inner { max-width: 880px; margin: 0 auto; text-align: center; }
+        .pbv-relief-inner {
+          max-width: 1080px;
+          margin: 0 auto;
+          text-align: center;
+          padding: clamp(36px, 5vw, 64px) clamp(24px, 4vw, 48px);
+          border-radius: clamp(28px, 3vw, 40px);
+          background: rgba(255, 255, 255, 0.68);
+          border: 1px solid rgba(20, 20, 24, 0.05);
+          box-shadow: 0 24px 64px -44px rgba(20, 20, 40, 0.28);
+        }
         .pbv-relief h2 {
           margin: 0 0 18px;
           font-size: clamp(30px, 4vw, 48px);
-          font-weight: 700;
+          font-weight: 750;
           letter-spacing: -0.03em;
           line-height: 1.06;
           color: var(--ink);
         }
         .pbv-relief-sub {
-          margin: 0 auto 44px;
-          max-width: 58ch;
+          margin: 0 auto 40px;
+          max-width: 54ch;
           font-size: clamp(15.5px, 1.2vw, 18px);
           line-height: 1.6;
           color: color-mix(in srgb, var(--ink) 60%, transparent);
@@ -113,8 +121,8 @@ export default function Relief() {
           gap: 8px 16px;
         }
         .pbv-relief-tag {
-          font-size: clamp(19px, 2.4vw, 30px);
-          font-weight: 700;
+          font-size: clamp(18px, 2.2vw, 28px);
+          font-weight: 750;
           letter-spacing: -0.02em;
           color: color-mix(in srgb, var(--ink) 82%, transparent);
         }

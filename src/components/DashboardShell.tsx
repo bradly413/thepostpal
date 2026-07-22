@@ -12,20 +12,20 @@ import { usePlan } from "@/components/dashboard/PlanProvider";
 //  DashboardShell — the single dashboard frame.
 //
 //  Every page renders inside the home page's .pb-home2 frame with the
-//  shared AppSidebar (frosted glass, serif logo, uppercase nav). Home
-//  and Studio bring their own full-bleed chrome (Studio is a 3-column
-//  canvas app; Home renders its own .pb-home2 frame), so the standard
-//  frame is bypassed for those two routes.
+//  shared AppSidebar. Home brings its own full-bleed chrome (.pb-home2
+//  inside the page), so the standard frame is bypassed there only.
+//  Studio uses the shared sidebar (same as Schedule/Library) so nav
+//  never depends on a nested copy inside the canvas tree.
 // ────────────────────────────────────────────────────────────────
 
 export default function DashboardShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const { planLoadError } = usePlan();
-  const selfFramed =
-    pathname === "/dashboard" || pathname.startsWith("/dashboard/studio");
+  const selfFramed = pathname === "/dashboard";
+  const fixedPane =
+    pathname === "/dashboard/calendar" || pathname.startsWith("/dashboard/studio");
 
   if (selfFramed) {
-    const isHome = pathname === "/dashboard";
     return (
       <div data-pb-dashboard className="flex h-dvh max-h-dvh min-h-0 overflow-hidden bg-[#eceef2]">
         <a
@@ -42,15 +42,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
           )}
           <PageTransition>
             <div className="flex flex-col min-h-0 flex-1 overflow-hidden">
-              <div
-                className={
-                  isHome
-                    ? "flex-1 min-h-0 overflow-hidden"
-                    : "flex-1 min-h-0 overflow-y-auto overscroll-y-contain"
-                }
-              >
-                {children}
-              </div>
+              <div className="flex-1 min-h-0 overflow-hidden">{children}</div>
             </div>
           </PageTransition>
         </main>
@@ -69,7 +61,7 @@ export default function DashboardShell({ children }: { children: React.ReactNode
         Skip to content
       </a>
       <div
-        className={pathname === "/dashboard/calendar" ? "pb-home2 pb-home2--fixed" : "pb-home2"}
+        className={fixedPane ? "pb-home2 pb-home2--fixed" : "pb-home2"}
         style={{ flex: 1, minWidth: 0 }}
       >
         <DashboardHomeStyles />

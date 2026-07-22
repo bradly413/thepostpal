@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Image from "next/image";
 import Link from "next/link";
 import gsap from "gsap";
@@ -11,6 +11,11 @@ import { useFeedDemo } from "@/components/marketing/codex/useFeedDemo";
 import { DEMO_CATEGORIES } from "@/components/marketing/codex/demo-feed";
 import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
 import { track } from "@/lib/marketing/track";
+import {
+  DEMO_INTAKE_EVENT,
+  DEMO_SUBMIT,
+  type DemoIntakeDetail,
+} from "@/lib/marketing/demo-intake";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -35,6 +40,25 @@ export default function Demonstration() {
   const { ready, reducedMotion } = useMarketingScroll();
   const { status, result, submit, retry } = useFeedDemo("hero");
   const [categoryId, setCategoryId] = useState(DEMO_CATEGORIES[0].id);
+  const categoryIdRef = useRef(categoryId);
+  categoryIdRef.current = categoryId;
+
+  useEffect(() => {
+    const onSample = (event: Event) => {
+      const detail = (event as CustomEvent<DemoIntakeDetail>).detail ?? {};
+      const nextId = detail.category && DEMO_CATEGORIES.some((c) => c.id === detail.category)
+        ? detail.category
+        : categoryIdRef.current;
+      setCategoryId(nextId);
+      if (detail.autoStart) {
+        window.setTimeout(() => {
+          void submit(nextId, "");
+        }, 450);
+      }
+    };
+    window.addEventListener(DEMO_INTAKE_EVENT, onSample);
+    return () => window.removeEventListener(DEMO_INTAKE_EVENT, onSample);
+  }, [submit]);
 
   // Scripted artifact assembly — the only typewriter moments on the page.
   useGSAP(
@@ -157,26 +181,27 @@ export default function Demonstration() {
         return;
       }
       void submit(categoryId, "");
+      track("hero_demo_started", { location: "demo_form", category: categoryId });
     },
     [status, retry, submit, categoryId],
   );
 
   const buttonLabel =
     status === "writing"
-      ? "Writing your posts..."
+      ? "Drafting captions..."
       : status === "done"
-        ? "Try another business type."
-        : "Show me my feed";
+        ? "Try another business type"
+        : DEMO_SUBMIT;
 
   return (
     <section className="pbv-demo" id="demo" aria-labelledby="pbv-demo-title" ref={rootRef}>
       <div className="pbv-demo-inner">
         <p className="pbv-kicker pbv-fade">See it work</p>
         <h2 id="pbv-demo-title" className="pbv-fade">
-          Give it the rough version.
+          Auto captions in your voice.
         </h2>
         <p className="pbv-demo-sub pbv-fade">
-          Posterboy turns &ldquo;{ROUGH_NOTE}&rdquo; into something ready to post.
+          Watch a rough note become an approval-ready post — then draft captions for your business type.
         </p>
 
         <div className="pbv-demo-frame">
@@ -202,7 +227,7 @@ export default function Demonstration() {
             <p className="pbv-demo-cap" ref={capRef} aria-hidden />
             <p className="sr-only">{CAPTION}</p>
             <p className="pbv-demo-stamp">
-              <span className="pbv-demo-stamp-dot" aria-hidden /> Scheduled · Saturday · 8:00 AM
+              <span className="pbv-demo-stamp-dot" aria-hidden /> Approved · Saturday · 8:00 AM
             </p>
           </div>
         </div>
@@ -257,7 +282,7 @@ export default function Demonstration() {
           <div className="pbv-demo-results" ref={resultsRef} aria-live="polite">
             <p className="pbv-demo-results-note">
               {result.usedFallback
-                ? "An example week — drafted earlier with this same engine."
+                ? "Example captions — drafted earlier with this same engine."
                 : result.summary}
             </p>
             {result.posts.map((post, i) => (
@@ -280,7 +305,7 @@ export default function Demonstration() {
               className="pbv-link pbv-demo-results-cta"
               onClick={() => track("start_trial_clicked", { location: "demo_result" })}
             >
-              Start free trial — get the whole week
+              Looks right? Start free trial
             </Link>
           </div>
         ) : null}
@@ -290,14 +315,13 @@ export default function Demonstration() {
         .pbv-demo {
           --red: #ee2532;
           --ink: #141418;
-          padding: clamp(88px, 13vh, 170px) clamp(20px, 3vw, 48px);
-          border-top: 1px solid rgba(20, 20, 24, 0.08);
+          padding: clamp(56px, 9vh, 120px) clamp(16px, 2.5vw, 36px);
         }
-        .pbv-demo-inner { max-width: 720px; margin: 0 auto; }
+        .pbv-demo-inner { max-width: 760px; margin: 0 auto; }
         .pbv-demo h2 {
           margin: 0 0 14px;
           font-size: clamp(34px, 4.6vw, 56px);
-          font-weight: 700;
+          font-weight: 750;
           letter-spacing: -0.035em;
           line-height: 1.02;
           color: var(--ink);
@@ -309,16 +333,16 @@ export default function Demonstration() {
           color: color-mix(in srgb, var(--ink) 60%, transparent);
         }
         .pbv-demo-frame {
-          background: rgba(20, 20, 24, 0.04);
-          border: 1px solid rgba(20, 20, 24, 0.07);
-          border-radius: 24px;
-          padding: 8px;
+          background: rgba(255, 255, 255, 0.78);
+          border: 1px solid rgba(20, 20, 24, 0.06);
+          border-radius: 32px;
+          padding: 12px;
+          box-shadow: 0 28px 70px -44px rgba(20, 20, 40, 0.35);
         }
         .pbv-demo-frame-inner {
           background: #fff;
-          border-radius: 17px;
+          border-radius: 22px;
           padding: clamp(18px, 2.5vw, 28px);
-          box-shadow: inset 0 1px 1px rgba(255, 255, 255, 0.5);
         }
         .pbv-demo-notelabel {
           display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;

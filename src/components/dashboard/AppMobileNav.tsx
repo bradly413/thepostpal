@@ -232,6 +232,12 @@ export default function AppMobileNav() {
                   .filter(Boolean)
                   .join(" ")}
                 aria-current={active ? "page" : undefined}
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey || e.button !== 0) return;
+                  if (href.startsWith("mailto:")) return;
+                  e.preventDefault();
+                  window.location.assign(href);
+                }}
               >
                 {emphasize ? (
                   <span className="fab" aria-hidden>

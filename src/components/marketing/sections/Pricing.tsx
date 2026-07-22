@@ -40,7 +40,7 @@ export default function Pricing() {
       <div className="pb-pricing-head">
         <p className="pb-pricing-kicker">Pricing</p>
         <h2 id="pb-pricing-title">Pick the version that matches the business.</h2>
-        <p className="pb-pricing-sub">Less than one Sunday night, every month.</p>
+        <p className="pb-pricing-sub">Studio, captions, calendar, and publish — without the busywork.</p>
 
         <div
           className="pb-billing-toggle"

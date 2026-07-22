@@ -3,53 +3,34 @@
 import { useState } from "react";
 import { track } from "@/lib/marketing/track";
 
-// Answers are grounded in real product behavior: brand-voice onboarding,
-// editable drafts, Facebook + Instagram via Meta, an approval-gated publish
-// queue (nothing publishes without approval), and Command for multi-location.
 const FAQS = [
   {
-    q: "Does it actually sound like me?",
-    a: "That's the whole point. Onboarding builds a brand book and voice profile — tone, phrases, words to avoid — and drafts are written from that, not from generic content-calendar speak. We learn your voice from your edits, not your prompts.",
+    q: "Does Posterboy publish without approval?",
+    a: "No. Nothing goes out until you approve it. Approved posts then publish to Facebook and Instagram on schedule. If a publish fails, it surfaces with a retry instead of disappearing.",
   },
   {
-    q: "What if I don't like a post?",
-    a: "Edit it, rewrite it in Studio, swap the image, or just don't approve it. Nothing publishes without your approval, and the drafts you change teach the next batch to sound more like you.",
+    q: "What if a caption does not sound like us?",
+    a: "Edit it, rewrite it, swap the image, or skip it. The drafts you change teach the next batch. Onboarding builds a brand book — tone, phrases, and words to avoid — so auto captions start closer to your voice.",
   },
   {
-    q: "Which platforms does Posterboy support?",
-    a: "Facebook and Instagram, through Meta. Connect once, then schedule and publish both from the same post. That's the honest list — we'd rather do two platforms well.",
+    q: "Can I schedule a full month at once?",
+    a: "Yes. Create in Studio, generate captions in bulk, and drop posts across the calendar as far ahead as you want — a month out or further.",
   },
   {
-    q: "Do I own the content?",
-    a: "You do. Images and copy you generate or upload are yours to use on your channels, whether or not you keep using Posterboy.",
+    q: "Which social channels are supported now?",
+    a: "Facebook and Instagram through Meta. Connect once, then schedule and publish both from the same post. That is the honest list — we would rather do two platforms well.",
   },
   {
-    q: "How does Posterboy handle multiple locations?",
-    a: "That's Command. One login, per-location brand kits and calendars, centralized approvals, and roll-up visibility — so the brand stays consistent without three managers freelancing the caption.",
+    q: "Can multiple locations approve separately?",
+    a: "Yes, on Command. One login, per-location brand kits and calendars, centralized or local approvals, and roll-up visibility.",
   },
   {
-    q: "How long does setup take?",
-    a: "Connecting Facebook and Instagram takes about two minutes. Brand voice setup is a one-time pass through your menu, your old posts, or a short questionnaire. You can be approving your first drafted week the same day you sign up.",
-  },
-  {
-    q: "Can I write my own captions sometimes?",
-    a: "Always. Write from scratch, paste something in, or edit a draft — Posterboy schedules and publishes it the same way. The AI is there for the weeks you don't feel like typing.",
-  },
-  {
-    q: "What happens if I forget to approve a post?",
-    a: "Nothing goes out. Unapproved drafts simply wait for you — Posterboy never publishes something you haven't approved. Approved posts publish on schedule, and if one fails it surfaces with a retry instead of disappearing.",
-  },
-  {
-    q: "Does Posterboy publish automatically?",
-    a: "Yes — once you approve. Approved posts go to Facebook and Instagram on their scheduled times without you touching anything else. The approval step is the only thing we won't automate.",
-  },
-  {
-    q: "Is Posterboy replacing an agency?",
-    a: "It replaces the work, not the relationship. If you have an agency you love, keep it. Posterboy is for businesses doing it themselves — it creates the posts an agency would, without the meetings or the retainer.",
+    q: "What happens when a post fails to publish?",
+    a: "It is marked failed with an error log and a retry. Partial success is recorded so a retry never double-posts to a platform that already went out.",
   },
   {
     q: "Is there a free trial?",
-    a: "Yes. Posterboy is free to start and we don't ask for a card. Set your voice, draft a week, and see if it sounds like you before anything else.",
+    a: "Yes. Posterboy is free to start and we do not ask for a card. Try a draft, set your voice, and start filling the calendar when you are ready.",
   },
   {
     q: "Can I cancel?",
@@ -57,14 +38,14 @@ const FAQS = [
   },
 ] as const;
 
-/** FAQ accordion — one answer open at a time, real buttons, aria-expanded. */
+/** FAQ accordion — one answer open at a time. */
 export default function Faq() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
     <section className="pb-faq" id="faq" aria-labelledby="pb-faq-title">
       <p className="pb-faq-kicker">FAQ</p>
-      <h2 id="pb-faq-title">Frequently asked questions</h2>
+      <h2 id="pb-faq-title">Before you start</h2>
 
       <div className="pb-faq-list">
         {FAQS.map((item, i) => {

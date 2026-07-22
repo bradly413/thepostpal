@@ -29,7 +29,6 @@ import {
   History,
   Clapperboard,
 } from "lucide-react";
-import AppSidebar from "@/components/dashboard/AppSidebar";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
 import FacebookPreview from "@/components/dashboard/studio/FacebookPreview";
@@ -1083,11 +1082,6 @@ export default function PosterboyStudio() {
     <div className="pb-studio h-full overflow-hidden">
       <StudioStyles />
       <div className="app">
-
-        {/* SIDEBAR — desktop/tablet; phones use AppMobileNav from DashboardShell */}
-        <div className="studio-sidebar" style={{ gridArea: "sidebar", minWidth: 0 }}>
-          <AppSidebar />
-        </div>
 
         <LocationGate
           loading={locationLoading}

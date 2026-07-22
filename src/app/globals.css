@@ -777,7 +777,7 @@ html[data-theme] body {
   color: inherit;
 }
 
-/* Match the dashboard wordmark: "poster" upright, italic "boy", ® superscript. */
+/* Match the dashboard wordmark: "poster" upright, italic "boy", ™ superscript. */
 .pb-brand-logo-boy {
   font-style: italic;
 }

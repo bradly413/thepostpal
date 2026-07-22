@@ -4,17 +4,20 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import PosterboyLogo from "@/components/PosterboyLogo";
 import { SIGNUP_ONBOARDING_URL } from "@/lib/safe-redirect";
+import { goToDemo, PRIMARY_CTA } from "@/lib/marketing/demo-intake";
+import { track } from "@/lib/marketing/track";
 
 const LINKS = [
   { label: "How it works", href: "#how" },
-  { label: "See it work", href: "#demo" },
   { label: "Examples", href: "#examples" },
   { label: "Pricing", href: "#pricing" },
+  { label: "FAQ", href: "#faq" },
 ] as const;
 
-/** Sparse conversion nav — Munch-style link set, Posterboy CTAs. */
+/** Sparse conversion nav — demo + free trial. */
 export default function CodexNav() {
   const [open, setOpen] = useState(false);
+  const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
     document.body.style.overflow = open ? "hidden" : "";
@@ -23,15 +26,28 @@ export default function CodexNav() {
     };
   }, [open]);
 
+  useEffect(() => {
+    const onScroll = () => setScrolled(window.scrollY > 24);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   const go = (href: string) => {
     setOpen(false);
     const id = href.replace("#", "");
     document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
+  const startDemo = () => {
+    setOpen(false);
+    track("hero_demo_started", { location: "nav" });
+    goToDemo();
+  };
+
   return (
     <>
-      <header className="pb-cx-nav">
+      <header className={`pb-cx-nav${scrolled ? " is-scrolled" : ""}`}>
         <PosterboyLogo
           href="#hero"
           size="header"
@@ -53,10 +69,15 @@ export default function CodexNav() {
               {item.label}
             </a>
           ))}
-          <Link href="/sign-in">Sign in</Link>
-          <Link href={SIGNUP_ONBOARDING_URL} className="pb-cx-nav-cta">
-            Start free trial
+          <Link
+            href="/sign-in"
+            onClick={() => track("signin_clicked", { location: "nav" })}
+          >
+            Sign in
           </Link>
+          <button type="button" className="pb-cx-nav-cta" onClick={startDemo}>
+            {PRIMARY_CTA}
+          </button>
         </nav>
         <button
           type="button"
@@ -85,13 +106,12 @@ export default function CodexNav() {
           <Link href="/sign-in" onClick={() => setOpen(false)}>
             Sign in
           </Link>
-          <Link
-            href={SIGNUP_ONBOARDING_URL}
-            className="pb-cx-nav-cta"
-            onClick={() => setOpen(false)}
-          >
+          <Link href={SIGNUP_ONBOARDING_URL} onClick={() => setOpen(false)}>
             Start free trial
           </Link>
+          <button type="button" className="pb-cx-nav-cta" onClick={startDemo}>
+            {PRIMARY_CTA}
+          </button>
         </div>
       ) : null}
     </>
