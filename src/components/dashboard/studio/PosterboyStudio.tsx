@@ -25,9 +25,13 @@ import {
   Undo2,
   ImagePlus,
   X,
-  Paperclip,
   History,
   Clapperboard,
+  Plus,
+  Sparkles,
+  Wand2 as EnhanceIcon,
+  ShoppingBag,
+  Image as ImageTabIcon,
 } from "lucide-react";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
 import InstagramPreview from "@/components/dashboard/studio/InstagramPreview";
@@ -136,6 +140,7 @@ function buildPostCaption(body: string, tags: string, fallback: string): string 
 
 
 const STUDIO_PROMPT_PLACEHOLDERS = [
+  "Describe the image you want to create",
   "Make an Instagram post about…",
   "Create a launch post for…",
   "Post a weekend promo for…",
@@ -285,6 +290,12 @@ export default function PosterboyStudio() {
   const carouselRunIdRef = useRef(0);
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
+  // Composer redesign: engine picker + brand lock + prompt enhance.
+  const [engineMenuOpen, setEngineMenuOpen] = useState(false);
+  const engineMenuRef = useRef<HTMLDivElement>(null);
+  const [imageEngine, setImageEngine] = useState<"auto" | "design">("auto");
+  const [brandLock, setBrandLock] = useState(true);
+  const [enhanceBusy, setEnhanceBusy] = useState(false);
   const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
   const [softNotice, setSoftNotice] = useState("");
 
@@ -404,6 +415,32 @@ export default function PosterboyStudio() {
     [locations, locationId],
   );
   const hasCaptionReady = Boolean(captionText.trim());
+
+  // Sparkle-T: expand a thin brief into a fuller one, in place.
+  const enhancePrompt = async () => {
+    const brief = prompt.trim();
+    if (!brief || enhanceBusy || genState === "generating") return;
+    setEnhanceBusy(true);
+    try {
+      const res = await fetch("/api/enhance-prompt", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ prompt: brief }),
+      });
+      const data = (await res.json()) as { enhanced?: string; error?: string };
+      if (res.ok && data.enhanced?.trim()) {
+        setPrompt(data.enhanced.trim());
+        window.setTimeout(() => {
+          syncPromptHeight();
+          inputRef.current?.focus();
+        }, 0);
+      }
+    } catch {
+      /* leave the brief as typed */
+    } finally {
+      setEnhanceBusy(false);
+    }
+  };
   const structuredBrief = useMemo(
     () => buildStructuredBrief(selectedIntentId, intentDetail),
     [selectedIntentId, intentDetail],
@@ -551,6 +588,8 @@ export default function PosterboyStudio() {
     refImage,
     imageQuality,
     imageSize,
+    imageEngine,
+    brandLock,
     businessType: businessType ?? undefined,
     locationId,
     platformPinRef,
@@ -1000,7 +1039,7 @@ export default function PosterboyStudio() {
 
   // Platform / aspect / format menus: outside-click + Escape to close.
   useEffect(() => {
-    if (!platformMenuOpen && !aspectMenuOpen && !formatMenuOpen) return;
+    if (!platformMenuOpen && !aspectMenuOpen && !formatMenuOpen && !engineMenuOpen) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (platformMenuRef.current && !platformMenuRef.current.contains(t)) {
@@ -1012,12 +1051,16 @@ export default function PosterboyStudio() {
       if (formatMenuRef.current && !formatMenuRef.current.contains(t)) {
         setFormatMenuOpen(false);
       }
+      if (engineMenuRef.current && !engineMenuRef.current.contains(t)) {
+        setEngineMenuOpen(false);
+      }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPlatformMenuOpen(false);
         setAspectMenuOpen(false);
         setFormatMenuOpen(false);
+        setEngineMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", onDown);
@@ -1026,7 +1069,7 @@ export default function PosterboyStudio() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [platformMenuOpen, aspectMenuOpen, formatMenuOpen]);
+  }, [platformMenuOpen, aspectMenuOpen, formatMenuOpen, engineMenuOpen]);
 
   // Chat UX: composer stays sticky at the bottom (no centered hero bar).
   useLayoutEffect(() => {
@@ -2053,10 +2096,47 @@ export default function PosterboyStudio() {
               transform: "none",
               zIndex: 40,
               margin: "6px auto 12px",
-              width: "min(680px, calc(100% - 24px))",
+              width: "min(880px, calc(100% - 24px))",
               flex: "0 0 auto",
             }}
           >
+            {/* Composer head: mode tabs + brand kit (creator-studio card chrome) */}
+            {genState !== "generating" ? (
+              <div className="pb-bar-head">
+                <div className="pb-mode-tabs" role="group" aria-label="Studio mode">
+                  <button
+                    type="button"
+                    className={`pb-mode-tab${composerMode === "image" ? " is-active" : ""}`}
+                    aria-pressed={composerMode === "image"}
+                    title="Image mode"
+                    onClick={() => setComposerMode("image")}
+                  >
+                    <ImageTabIcon size={15} strokeWidth={1.9} aria-hidden />
+                  </button>
+                  <button
+                    type="button"
+                    className={`pb-mode-tab${composerMode === "video" ? " is-active" : ""}`}
+                    aria-pressed={composerMode === "video"}
+                    title="Video mode — publish coming soon in closed beta"
+                    onClick={() => setComposerMode("video")}
+                  >
+                    <Clapperboard size={15} strokeWidth={1.9} aria-hidden />
+                  </button>
+                </div>
+                <button
+                  type="button"
+                  className="pb-brandkit"
+                  title="Your brand kit — palette, voice, photography style"
+                  onClick={() => router.push("/dashboard/brand")}
+                >
+                  <ShoppingBag size={15} strokeWidth={1.9} aria-hidden />
+                  <span>Brand Kit</span>
+                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                    <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                  </svg>
+                </button>
+              </div>
+            ) : null}
             {promptMode !== "caption" && genState !== "generating" && recentPrompts.length > 0 ? (
               <div className="studio-recent-prompts" role="list" aria-label="Recent prompts">
                 {recentPrompts.slice(0, 8).map((entry) => (
@@ -2149,6 +2229,18 @@ export default function PosterboyStudio() {
                   aria-label={`Details for ${selectedIntent.label}`}
                 />
               ) : (
+                <>
+                {composerMode === "image" ? (
+                  <button
+                    type="button"
+                    className="pb-plus"
+                    onClick={() => refFileRef.current?.click()}
+                    title="Attach a reference photo"
+                    aria-label="Attach a reference photo"
+                  >
+                    <Plus size={18} strokeWidth={2} aria-hidden />
+                  </button>
+                ) : null}
                 <textarea
                   ref={inputRef}
                   rows={1}
@@ -2217,6 +2309,19 @@ export default function PosterboyStudio() {
                       : "Describe your post"
                   }
                 />
+                {composerMode === "image" ? (
+                  <button
+                    type="button"
+                    className={`pb-enhance${enhanceBusy ? " is-busy" : ""}`}
+                    onClick={() => void enhancePrompt()}
+                    disabled={enhanceBusy || !prompt.trim()}
+                    title="Enhance my prompt"
+                    aria-label="Enhance my prompt"
+                  >
+                    <EnhanceIcon size={16} strokeWidth={1.9} aria-hidden />
+                  </button>
+                ) : null}
+                </>
               )}
             </div>
             )}
@@ -2294,20 +2399,58 @@ export default function PosterboyStudio() {
                   </button>
                 ) : (
                   <>
-                    {composerMode === "image" ? (
-                      <button
-                        type="button"
-                        className="pb-attach"
-                        onClick={() => refFileRef.current?.click()}
-                        title="Attach a reference photo"
-                        aria-label="Attach a reference photo"
-                      >
-                        <Paperclip size={18} strokeWidth={1.75} />
-                      </button>
-                    ) : null}
                     <div className="pb-bar-extras">
                       {composerMode === "image" ? (
                         <>
+                          <span className="pb-pill-model" ref={engineMenuRef}>
+                            <button
+                              type="button"
+                              className={`pb-dim-chip pb-engine-chip${imageEngine === "design" ? " is-design" : ""}`}
+                              onClick={() => {
+                                setEngineMenuOpen((o) => !o);
+                                setAspectMenuOpen(false);
+                                setFormatMenuOpen(false);
+                              }}
+                              aria-expanded={engineMenuOpen}
+                              aria-haspopup="listbox"
+                              aria-label={`Style engine: ${imageEngine === "design" ? "Design Studio" : "Posterboy Visual"}`}
+                              title="Style engine"
+                            >
+                              <Sparkles size={13} strokeWidth={2} aria-hidden />
+                              {imageEngine === "design" ? "Design Studio" : "Posterboy Visual"}
+                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
+                                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
+                              </svg>
+                            </button>
+                            {engineMenuOpen ? (
+                              <div className="pb-tools-pop pb-model-pop" role="listbox" aria-label="Style engine">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={imageEngine === "auto"}
+                                  onClick={() => {
+                                    setImageEngine("auto");
+                                    setEngineMenuOpen(false);
+                                  }}
+                                >
+                                  <span className="pb-model-name">Posterboy Visual</span>
+                                  <span className="pb-model-sub">Photo-real, brand-aware — routes itself</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={imageEngine === "design"}
+                                  onClick={() => {
+                                    setImageEngine("design");
+                                    setEngineMenuOpen(false);
+                                  }}
+                                >
+                                  <span className="pb-model-name">Design Studio</span>
+                                  <span className="pb-model-sub">Layouts & typography — promos, flyers, ads</span>
+                                </button>
+                              </div>
+                            ) : null}
+                          </span>
                           <span className="pb-pill-model" ref={aspectMenuRef}>
                             <button
                               type="button"
@@ -2365,7 +2508,7 @@ export default function PosterboyStudio() {
                               }
                               title="Post format"
                             >
-                              {postFormat === "carousel" ? `Carousel · ${carouselCount}` : "Single"}
+                              {postFormat === "carousel" ? `${carouselCount} images` : "1 image"}
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                                 <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
@@ -2410,9 +2553,9 @@ export default function PosterboyStudio() {
                               onClick={() => setModelMenuOpen((o) => !o)}
                               aria-expanded={modelMenuOpen}
                               aria-haspopup="listbox"
-                              aria-label={`Image model: ${imageQuality === "pro" ? "Pro" : "Flash"}`}
+                              aria-label={`Image quality: ${imageQuality === "pro" ? "High" : "Standard"}`}
                             >
-                              {imageQuality === "pro" ? "Pro" : "Flash"}
+                              {imageQuality === "pro" ? "High" : "Standard"}
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                                 <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
@@ -2428,8 +2571,8 @@ export default function PosterboyStudio() {
                                     setModelMenuOpen(false);
                                   }}
                                 >
-                                  <span className="pb-model-name">Flash</span>
-                                  <span className="pb-model-sub">Nano Banana 2 — fast</span>
+                                  <span className="pb-model-name">Standard</span>
+                                  <span className="pb-model-sub">Fast — great for drafts</span>
                                 </button>
                                 <button
                                   type="button"
@@ -2446,10 +2589,10 @@ export default function PosterboyStudio() {
                                     setModelMenuOpen(false);
                                   }}
                                 >
-                                  <span className="pb-model-name">Pro</span>
+                                  <span className="pb-model-name">High</span>
                                   <span className="pb-model-sub">
                                     {canUseProImage
-                                      ? "Nano Banana Pro — 2K, best adherence"
+                                      ? "2K, best detail & adherence"
                                       : "Upgrade to unlock — open Billing"}
                                   </span>
                                 </button>
@@ -2461,6 +2604,20 @@ export default function PosterboyStudio() {
                     </div>
                   </>
                 )}
+                {genState !== "done" || promptMode !== "caption" ? (
+                  <label className="pb-brandlock" title="Keep colors, styling, and voice locked to your brand kit">
+                    <button
+                      type="button"
+                      role="switch"
+                      aria-checked={brandLock}
+                      className={`pb-brandlock-switch${brandLock ? " is-on" : ""}`}
+                      onClick={() => setBrandLock((v) => !v)}
+                    >
+                      <span className="pb-brandlock-knob" />
+                    </button>
+                    <span className="pb-brandlock-label">Brand locked</span>
+                  </label>
+                ) : null}
                 <span className="pb-bar-spacer" />
                 {(() => {
                   const inCaption = genState === "done" && promptMode === "caption";
@@ -2552,7 +2709,9 @@ export default function PosterboyStudio() {
                           <ImagePlus size={16} />
                         ) : composerMode === "video" ? (
                           <Clapperboard size={16} />
-                        ) : null}
+                        ) : (
+                          <Sparkles size={16} />
+                        )}
                         <span>
                           {refImageLoading
                             ? "Reading site…"
@@ -2568,7 +2727,7 @@ export default function PosterboyStudio() {
                                     ? "Captions"
                                     : composerMode === "video"
                                       ? "Create video"
-                                      : "Create post"}
+                                      : "Generate"}
                         </span>
                       </button>
                     </>

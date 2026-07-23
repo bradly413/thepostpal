@@ -54,6 +54,10 @@ export type UseStudioGenerationParams = {
   refImage: string | null;
   imageQuality: "standard" | "pro";
   imageSize: "1K" | "2K";
+  /** "design" forces the GPT layout engine; "auto" lets the Director route. */
+  imageEngine?: "auto" | "design";
+  /** OFF = creative freedom: brand palette/style context is not injected. */
+  brandLock?: boolean;
   /** Tenant business type — a hint for the hidden art-director prompt expansion. */
   businessType?: string;
   /** Active location — lets the server pull the brand book for art direction. */
@@ -92,6 +96,8 @@ export function useStudioGeneration({
   refImage,
   imageQuality,
   imageSize,
+  imageEngine = "auto",
+  brandLock = true,
   businessType,
   locationId,
   platformPinRef,
@@ -195,6 +201,8 @@ export function useStudioGeneration({
           ...(opts.listingMode ? { listingMode: true } : {}),
           ...(opts.composed ? { composed: true } : {}),
           ...(opts.allowText ? { allowText: true } : {}),
+          ...(imageEngine === "design" ? { engine: "gpt" } : {}),
+          ...(brandLock ? {} : { brandLock: false }),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
           ...(businessType ? { businessType } : {}),
@@ -208,7 +216,7 @@ export function useStudioGeneration({
         retriedForQuality?: boolean;
       }>;
     },
-    [imageQuality, imageSize, businessType, locationId],
+    [imageQuality, imageSize, imageEngine, brandLock, businessType, locationId],
   );
 
   const generate = useCallback(
@@ -431,6 +439,8 @@ export function useStudioGeneration({
               ...(lastGenPromptRef.current ? { lastGenPrompt: lastGenPromptRef.current } : {}),
               ...(businessType ? { businessType } : {}),
               ...(locationId ? { locationId } : {}),
+              ...(brandLock ? {} : { brandLock: false }),
+              ...(imageEngine === "design" ? { designLane: true } : {}),
             }),
             signal: ctrl.signal,
           });
@@ -488,6 +498,7 @@ export function useStudioGeneration({
               intent,
               hasReferenceImage: !!refForGen,
               ...(locationId ? { locationId } : {}),
+              ...(brandLock ? {} : { brandLock: false }),
             }),
             signal: ctrl.signal,
           });
@@ -580,6 +591,8 @@ export function useStudioGeneration({
     composerBrief,
     genState,
     generatedUrl,
+    imageEngine,
+    brandLock,
     platformIdx,
     platforms,
     platformPinRef,

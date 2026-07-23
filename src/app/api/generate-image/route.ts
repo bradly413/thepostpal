@@ -63,6 +63,7 @@ export async function POST(req: NextRequest) {
     composed?: unknown;
     allowText?: unknown;
     engine?: unknown;
+    brandLock?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -176,7 +177,9 @@ export async function POST(req: NextRequest) {
     const businessType =
       typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 120) : undefined;
     const [brandContext, geography] = await Promise.all([
-      buildTenantImageBrandContext(auth, { locationId }),
+      parsed.brandLock === false
+        ? Promise.resolve("")
+        : buildTenantImageBrandContext(auth, { locationId }),
       buildTenantGeography(auth, locationId),
     ]);
     promptForModel = await expandImageBrief({

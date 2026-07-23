@@ -55,9 +55,9 @@ export async function POST(req: Request) {
     return Response.json({ error: "AI service not configured" }, { status: 500 });
   }
 
-  let body: { intent?: string; locationId?: string; hasReferenceImage?: boolean };
+  let body: { intent?: string; locationId?: string; hasReferenceImage?: boolean; brandLock?: boolean };
   try {
-    body = (await req.json()) as { intent?: string; locationId?: string; hasReferenceImage?: boolean };
+    body = (await req.json()) as typeof body;
   } catch {
     return Response.json({ error: "Invalid JSON body" }, { status: 400 });
   }
@@ -109,7 +109,9 @@ export async function POST(req: Request) {
   // the FIRST generation already looks like this business. Both loaders return
   // "" on any failure — compose never blocks on brand data.
   const [brandContext, geography] = await Promise.all([
-    buildTenantImageBrandContext(auth, { locationId }),
+    body.brandLock === false
+      ? Promise.resolve("")
+      : buildTenantImageBrandContext(auth, { locationId }),
     buildTenantGeography(auth, locationId),
   ]);
   const brandBlock = brandContext

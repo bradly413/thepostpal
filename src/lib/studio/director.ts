@@ -117,6 +117,8 @@ export async function runDirector(opts: {
   /** Previous generation prompt — light thread continuity. */
   lastGenPrompt?: string;
   hasReferenceImage?: boolean;
+  /** User picked the Design Studio engine — favor a designed layout. */
+  designLane?: boolean;
 }): Promise<DirectorDecision | null> {
   const key = process.env.ANTHROPIC_API_KEY;
   if (!key) return null;
@@ -135,6 +137,9 @@ export async function runDirector(opts: {
       : null,
     opts.hasReferenceImage
       ? `A reference photo IS attached — the prompt should direct an edit/staging of it, keeping its subject identical.`
+      : null,
+    opts.designLane
+      ? `The owner selected the DESIGN engine: treat this as a designed social graphic. Prefer allowText=true with the brief's key words as overlayText, and art-direct a full layout (headline placement, accent color, clean composition) — not a plain photo.`
       : null,
     opts.lastGenPrompt ? `Previous post's image prompt (continuity context only): ${opts.lastGenPrompt.slice(0, 400)}` : null,
     `Brief: ${opts.intent}`,

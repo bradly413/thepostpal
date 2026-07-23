@@ -60,6 +60,8 @@ export async function POST(req: Request) {
     lastGenPrompt?: unknown;
     businessType?: unknown;
     locationId?: unknown;
+    brandLock?: unknown;
+    designLane?: unknown;
   };
   try {
     body = (await req.json()) as typeof body;
@@ -98,8 +100,12 @@ export async function POST(req: Request) {
     );
   }
 
+  // Brand lock OFF = creative freedom: skip the palette/style injection.
+  // Geography stays — it's factual market truth, not brand styling.
+  const brandLock = body.brandLock !== false;
+  const designLane = body.designLane === true;
   const [brandContext, geography] = await Promise.all([
-    buildTenantImageBrandContext(auth, { locationId }),
+    brandLock ? buildTenantImageBrandContext(auth, { locationId }) : Promise.resolve(""),
     buildTenantGeography(auth, locationId),
   ]);
 
@@ -110,6 +116,7 @@ export async function POST(req: Request) {
     geography: geography || undefined,
     lastGenPrompt,
     hasReferenceImage,
+    designLane,
   });
 
   if (!decision) {
