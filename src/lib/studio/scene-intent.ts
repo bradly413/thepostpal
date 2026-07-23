@@ -42,9 +42,44 @@ const BRAND_OUTCOME_RE =
 const SPA_BRAND_RE =
   /\b(med(?:ical)?\s*spa|beauty\s+(clinic|spa)|wellness\s+(spa|clinic|center)|aesthetic\s+clinic|dermatolog(?:y|ist)?)\b/i;
 
+/** Product launch / marketing-ad asks — designed graphic, not a beauty portrait. */
+const PRODUCT_AD_RE =
+  /\b(new|launch|introducing|announce|promo|promotion|advertisement|marketing\s+(image|post|graphic)|product\s+ad|ad\s+for)\b/i;
+
+const SITE_URL_BRIEF_RE = /\buse\s+\S+\.(?:com|net|org|co|io)\b/i;
+
+export function isProductAdBrief(text: string): boolean {
+  const t = text.trim();
+  if (!t) return false;
+  if (EXPLICIT_PRODUCT_SHOT_RE.test(t) && !PRODUCT_AD_RE.test(t) && !SITE_URL_BRIEF_RE.test(t)) {
+    return false;
+  }
+  if (PRODUCT_AD_RE.test(t) && (isProductHeroBrief(t) || SITE_URL_BRIEF_RE.test(t))) return true;
+  if (SITE_URL_BRIEF_RE.test(t) && isProductHeroBrief(t)) return true;
+  if (
+    BRAND_OUTCOME_RE.test(t) &&
+    isProductHeroBrief(t) &&
+    /\b(our|the)\s+(new|latest)\b/i.test(t)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/** OpenAI-style product-ad brief — multimodal refs carry the product look. */
+export function buildProductAdPrompt(enrichedBrief: string): string {
+  return [
+    "Generate a polished vertical social-media product advertisement using the reference product images and the brand facts below.",
+    enrichedBrief,
+    "Layout: hero product photography (match tubes/packaging from references when shown), elegant headline with product name, 3–4 benefit rows with minimal icons, optional consumer-study statistics row, premium beauty-brand typography — all correctly spelled.",
+    "Use the brand's known palette and world knowledge when you recognize the brand. Dark editorial or brand-appropriate background unless the brief says otherwise.",
+  ].join(" ");
+}
+
 export function isBrandOutcomeBrief(text: string): boolean {
   const t = text.trim();
   if (!t) return false;
+  if (isProductAdBrief(t)) return false;
   if (EXPLICIT_PRODUCT_SHOT_RE.test(t)) return false;
   if (BRAND_OUTCOME_RE.test(t)) return true;
   // Bare spa/clinic name with no concrete visual subject → brand hero, not bottles.
@@ -188,7 +223,12 @@ export function composeSuffixForBrief(brief: string, styleDirected: boolean): st
   return isScenicBrief(brief) ? SCENIC_COMPOSE_SUFFIX : REAL_PHOTO_COMPOSE_SUFFIX;
 }
 
-export function generationSuffixForBrief(brief: string, hasReference: boolean): string {
+export function generationSuffixForBrief(
+  brief: string,
+  hasReference: boolean,
+  designLane = false,
+): string {
+  if (designLane) return "";
   if (hasReference && isListingBrief(brief)) return LISTING_REFERENCE_GENERATION_SUFFIX;
   if (hasReference) return REAL_PHOTO_REFERENCE_SUFFIX;
   // Scenic keeps the longer anti-urban + watermark block; commercial already

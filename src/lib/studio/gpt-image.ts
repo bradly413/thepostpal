@@ -1,30 +1,33 @@
 import "server-only";
 
+import {
+  buildResponsesInput,
+  loadImageBytesForEdit,
+  type OpenAiInputImagePart,
+  type OpenAiVisionDetail,
+} from "@/lib/studio/openai-vision-input";
+
 /**
  * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
  *
- * Primary path: Responses API + image_generation tool (world-knowledge aware
- * orchestrator → gpt-image-2). Fallback: Images API /v1/images/generations.
+ * Primary: Responses API + image_generation tool (gpt-5.6 orchestrator, multimodal
+ * input_image support, generate + edit). Fallback: Images API generations/edits.
  *
- * Reference-photo edits stay on Gemini (nano-banana.ts). Same result contract
- * as generateNanoBananaImage so the generate route stays engine-blind.
+ * Listing-photo edits stay on Gemini in the generate route.
  */
 
 export const GPT_IMAGE_MODEL = "gpt-image-2";
 
-/** Orchestrator for Responses API image_generation tool calls. Override via env. */
+/** Orchestrator for Responses API — world-knowledge + vision routing. */
 export const GPT_RESPONSES_MODEL =
-  process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-4.1-mini";
+  process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-5.6";
+
+export type GptImageAction = "auto" | "generate" | "edit";
 
 export function gptImageConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
 }
 
-/**
- * Map Studio aspect ratios to the model's supported sizes. The client
- * cover-crops to exact platform dimensions afterwards (resizeToExact), so
- * nearest-shape is all we need.
- */
 export function gptImageSizeForAspect(aspectRatio: string | undefined): string {
   switch ((aspectRatio || "1:1").trim()) {
     case "16:9":
@@ -51,10 +54,12 @@ type ResponsesOutputItem = {
   type?: string;
   result?: string;
   status?: string;
+  content?: Array<{ type?: string; text?: string }>;
 };
 
 type ResponsesApiResponse = {
   output?: ResponsesOutputItem[];
+  output_text?: string;
   error?: { message?: string } | null;
 };
 
@@ -65,7 +70,6 @@ export function gptImageErrorMessage(data: GptImageResponse, fallback = "Image g
   return fallback;
 }
 
-/** Pull base64 JPEG from a completed Responses API image_generation_call. */
 export function extractImageFromResponsesResponse(data: ResponsesApiResponse): string | null {
   const items = data.output ?? [];
   for (let i = items.length - 1; i >= 0; i--) {
@@ -93,15 +97,39 @@ function okResult(b64: string) {
   };
 }
 
+type GptRunResult =
+  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
+  | { ok: false; status: number; error: string; text?: string };
+
 async function generateGptImageViaResponses(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
   quality: "standard" | "pro";
-}): Promise<
-  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
-  | { ok: false; status: number; error: string; text?: string }
-> {
+  visionImages?: OpenAiInputImagePart[];
+  action?: GptImageAction;
+  forceImageTool?: boolean;
+}): Promise<GptRunResult> {
+  const action = opts.action ?? (opts.visionImages?.length ? "auto" : "generate");
+  const input = buildResponsesInput(opts.prompt, opts.visionImages ?? []);
+  const body: Record<string, unknown> = {
+    model: GPT_RESPONSES_MODEL,
+    input,
+    tools: [
+      {
+        type: "image_generation",
+        action,
+        model: GPT_IMAGE_MODEL,
+        size: gptImageSizeForAspect(opts.aspectRatio),
+        quality: opts.quality === "pro" ? "high" : "medium",
+        output_format: "jpeg",
+      },
+    ],
+  };
+  if (opts.forceImageTool) {
+    body.tool_choice = { type: "image_generation" };
+  }
+
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/responses", {
@@ -110,20 +138,7 @@ async function generateGptImageViaResponses(opts: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${opts.apiKey}`,
       },
-      body: JSON.stringify({
-        model: GPT_RESPONSES_MODEL,
-        input: opts.prompt,
-        tools: [
-          {
-            type: "image_generation",
-            action: "generate",
-            model: GPT_IMAGE_MODEL,
-            size: gptImageSizeForAspect(opts.aspectRatio),
-            quality: opts.quality === "pro" ? "high" : "medium",
-            output_format: "jpeg",
-          },
-        ],
-      }),
+      body: JSON.stringify(body),
       signal: AbortSignal.timeout(85_000),
     });
   } catch (err) {
@@ -157,7 +172,16 @@ async function generateGptImageViaResponses(opts: {
 
   const b64 = extractImageFromResponsesResponse(data);
   if (!b64) {
-    return { ok: false, status: 422, error: "No image was generated. Try a different prompt." };
+    const hint =
+      typeof data.output_text === "string" && data.output_text.trim()
+        ? data.output_text.trim().slice(0, 200)
+        : undefined;
+    return {
+      ok: false,
+      status: 422,
+      error: "No image was generated. Try a different prompt.",
+      ...(hint ? { text: hint } : {}),
+    };
   }
 
   return okResult(b64);
@@ -168,10 +192,7 @@ async function generateGptImageViaImagesApi(opts: {
   prompt: string;
   aspectRatio?: string;
   quality: "standard" | "pro";
-}): Promise<
-  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
-  | { ok: false; status: number; error: string; text?: string }
-> {
+}): Promise<GptRunResult> {
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -224,18 +245,112 @@ async function generateGptImageViaImagesApi(opts: {
   return okResult(b64);
 }
 
+async function editGptImageViaImagesApi(opts: {
+  apiKey: string;
+  prompt: string;
+  aspectRatio?: string;
+  quality: "standard" | "pro";
+  imageSource: string;
+}): Promise<GptRunResult> {
+  const bytes = await loadImageBytesForEdit(opts.imageSource);
+  if (!bytes) {
+    return { ok: false, status: 422, error: "Could not read the reference image for editing." };
+  }
+
+  const form = new FormData();
+  form.append("model", GPT_IMAGE_MODEL);
+  form.append("prompt", opts.prompt);
+  form.append("n", "1");
+  form.append("size", gptImageSizeForAspect(opts.aspectRatio));
+  form.append("quality", opts.quality === "pro" ? "high" : "medium");
+  form.append("output_format", "jpeg");
+  form.append("image", new Blob([new Uint8Array(bytes)], { type: "image/jpeg" }), "reference.jpg");
+
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/images/edits", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${opts.apiKey}` },
+      body: form,
+      signal: AbortSignal.timeout(85_000),
+    });
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return {
+      ok: false,
+      status: timedOut ? 504 : 502,
+      error: timedOut ? "Image edit timed out. Try again." : "Could not reach the image edit service.",
+    };
+  }
+
+  let data: GptImageResponse;
+  try {
+    data = (await res.json()) as GptImageResponse;
+  } catch {
+    return {
+      ok: false,
+      status: res.status || 502,
+      error: res.ok ? "Invalid edit response." : "Image edit failed",
+    };
+  }
+
+  if (!res.ok) {
+    return { ok: false, status: res.status, error: gptImageErrorMessage(data, "Image edit failed") };
+  }
+
+  const b64 = data.data?.[0]?.b64_json;
+  if (!b64) {
+    return { ok: false, status: 422, error: "No edited image was returned." };
+  }
+
+  return okResult(b64);
+}
+
 export async function generateGptImage(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  /** Studio quality tier → model quality. */
   quality: "standard" | "pro";
-}): Promise<
-  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
-  | { ok: false; status: number; error: string; text?: string }
-> {
-  const viaResponses = await generateGptImageViaResponses(opts);
+  /** Multimodal reference / inspiration images (Responses input_image). */
+  visionImages?: OpenAiInputImagePart[];
+  visionDetail?: OpenAiVisionDetail;
+  /** generate | edit | auto — edit when refining an on-canvas image. */
+  action?: GptImageAction;
+  /** Force the image_generation tool (product ads, design lane). */
+  forceImageTool?: boolean;
+  /** Images API edit fallback source (https / data URL). */
+  editImageSource?: string | null;
+}): Promise<GptRunResult> {
+  const viaResponses = await generateGptImageViaResponses({
+    apiKey: opts.apiKey,
+    prompt: opts.prompt,
+    aspectRatio: opts.aspectRatio,
+    quality: opts.quality,
+    visionImages: opts.visionImages,
+    action: opts.action,
+    forceImageTool: opts.forceImageTool,
+  });
   if (viaResponses.ok) return viaResponses;
-  // Legacy Images API fallback when Responses is unavailable or misconfigured.
-  return generateGptImageViaImagesApi(opts);
+
+  if (opts.action === "edit" && opts.editImageSource) {
+    const viaEdit = await editGptImageViaImagesApi({
+      apiKey: opts.apiKey,
+      prompt: opts.prompt,
+      aspectRatio: opts.aspectRatio,
+      quality: opts.quality,
+      imageSource: opts.editImageSource,
+    });
+    if (viaEdit.ok) return viaEdit;
+  }
+
+  if (opts.action === "generate" || !opts.visionImages?.length) {
+    return generateGptImageViaImagesApi({
+      apiKey: opts.apiKey,
+      prompt: opts.prompt,
+      aspectRatio: opts.aspectRatio,
+      quality: opts.quality,
+    });
+  }
+
+  return viaResponses;
 }

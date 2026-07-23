@@ -29,7 +29,19 @@ const BROWSER_HEADERS = {
   "Accept-Language": "en-US,en;q=0.9",
 };
 
-/** Best-effort Shopify /products.json pull — null when not a Shopify store. */
+function collectImageUrls(...candidates: (string | null | undefined)[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of candidates) {
+    const u = raw?.trim();
+    if (!u || seen.has(u) || !/^https:\/\//i.test(u)) continue;
+    seen.add(u);
+    out.push(u);
+    if (out.length >= 4) break;
+  }
+  return out;
+}
+
 async function tryShopifyProducts(pageUrl: string): Promise<ShopifyPull | null> {
   try {
     const origin = new URL(pageUrl).origin;
@@ -138,6 +150,7 @@ export async function POST(req: Request) {
       title: shop.title,
       description: description || null,
       imageUrl,
+      imageUrls: collectImageUrls(imageUrl, ...shop.images.map((i) => i.url)),
       siteName: intel?.brandName ?? host ?? null,
     });
   };
@@ -159,6 +172,7 @@ export async function POST(req: Request) {
       title: intel.brandName ?? host,
       description: `Key facts from web search: ${intel.facts.join("; ")}.`.slice(0, 700),
       imageUrl: null,
+      imageUrls: [],
       siteName: intel.brandName ?? host,
     });
   };
@@ -195,6 +209,7 @@ export async function POST(req: Request) {
           title: null,
           description: null,
           imageUrl: normalized,
+          imageUrls: [normalized],
           siteName: null,
         });
       }
@@ -227,6 +242,8 @@ export async function POST(req: Request) {
       bodyText: extractReadableText(html),
       images: extractImageCandidates(html, finalUrl),
     });
+    const candidateUrls = extractImageCandidates(html, finalUrl).map((c) => c.url);
+
     if (intel) {
       if (intel.bestImageUrl) {
         try {
@@ -246,6 +263,8 @@ export async function POST(req: Request) {
       }
       if (intel.brandName && !meta.siteName) meta.siteName = intel.brandName;
     }
+
+    const imageUrls = collectImageUrls(meta.imageUrl, intel?.bestImageUrl, ...candidateUrls);
 
     // No product-worthy image from the page (bot-walled HTML often parses but
     // is a challenge shell) → the Shopify products API usually still delivers.
@@ -275,6 +294,7 @@ export async function POST(req: Request) {
       title: meta.title,
       description: meta.description,
       imageUrl: meta.imageUrl,
+      imageUrls,
       siteName: meta.siteName,
     });
   } catch (err) {

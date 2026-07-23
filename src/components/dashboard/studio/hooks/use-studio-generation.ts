@@ -2,7 +2,12 @@
 
 import { useRef, useEffect, useCallback, useState, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 import { buildFallbackEditPrompt, shouldEditFromReference } from "@/lib/studio/reprompt-delta";
-import { inferPlatformIdFromIntent, isListingBrief } from "@/lib/studio/scene-intent";
+import {
+  buildProductAdPrompt,
+  inferPlatformIdFromIntent,
+  isListingBrief,
+  isProductAdBrief,
+} from "@/lib/studio/scene-intent";
 import { resolveStudioImageRoute } from "@/lib/studio/studio-image-routing";
 
 type GenState = "idle" | "generating" | "done";
@@ -207,6 +212,9 @@ export function useStudioGeneration({
         allowText?: boolean;
         /** Director classified this as a designed graphic → GPT layout engine. */
         designLane?: boolean;
+        /** Multimodal GPT vision inputs (site product shots — not Gemini edits). */
+        inputImages?: string[];
+        visionDetail?: "auto" | "low" | "high" | "original";
         signal: AbortSignal;
       },
     ) => {
@@ -221,6 +229,9 @@ export function useStudioGeneration({
           ...(opts.listingMode ? { listingMode: true } : {}),
           ...(opts.composed ? { composed: true } : {}),
           ...(opts.allowText ? { allowText: true } : {}),
+          ...(opts.designLane ? { designLane: true } : {}),
+          ...(opts.inputImages?.length ? { inputImages: opts.inputImages } : {}),
+          ...(opts.visionDetail ? { visionDetail: opts.visionDetail } : {}),
           ...(imageEngine === "design" || opts.designLane ? { engine: "gpt" } : {}),
           ...(brandLock ? {} : { brandLock: false }),
           quality: imageQuality,
@@ -230,13 +241,29 @@ export function useStudioGeneration({
         }),
         signal: opts.signal,
       });
-      return res.json() as Promise<{
+      let data: {
         image?: string;
         error?: string;
         modelId?: string;
         engineFallback?: "gemini";
         retriedForQuality?: boolean;
-      }>;
+      };
+      try {
+        data = (await res.json()) as typeof data;
+      } catch {
+        return {
+          error: res.ok
+            ? "Generation returned an invalid response. Try again."
+            : `Generation failed (${res.status}). Try again.`,
+        };
+      }
+      if (!res.ok && !data.error) {
+        data.error =
+          res.status === 504
+            ? "Generation timed out on the server. Try Standard quality or a shorter brief."
+            : `Generation failed (${res.status}). Try again.`;
+      }
+      return data;
     },
     [imageQuality, imageSize, imageEngine, brandLock, businessType, locationId],
   );
@@ -310,7 +337,11 @@ export function useStudioGeneration({
         failGenerate(
           err instanceof DOMException && err.name === "AbortError"
             ? "Generation timed out. Please try again."
-            : "Network error. Please try again.",
+            : err instanceof TypeError
+              ? "Lost connection to the server. Hard-refresh and try again."
+              : err instanceof Error && err.message
+                ? err.message
+                : "Network error. Please try again.",
         );
         setGenState("idle");
       } finally {
@@ -350,7 +381,7 @@ export function useStudioGeneration({
   const composeFromIntent = useCallback(async (
     overrideBrief?: string,
     overrideRefImage?: string | null,
-    opts?: { siteGrounded?: boolean },
+    opts?: { siteGrounded?: boolean; siteImageUrls?: string[] },
   ) => {
     const intent = (overrideBrief ?? composerBrief).trim();
     const activeRef = overrideRefImage !== undefined ? overrideRefImage : refImage;
@@ -461,7 +492,16 @@ export function useStudioGeneration({
             aspectPinRef.current && aspectOverride
               ? aspectOverride
               : platforms[pIdx].genAspect;
-          imagePrompt = intent;
+          // Site pull already enriched the brief — skip the server-side art-director
+          // expand (extra Claude hop that caused Vercel 90s kills → "Network error").
+          directorComposed = true;
+          const productAd = isProductAdBrief(intent);
+          if (productAd) {
+            directorWantsDesign = true;
+            imagePrompt = buildProductAdPrompt(intent);
+          } else {
+            imagePrompt = intent;
+          }
         } else {
         // Studio Director: one Claude turn that classifies the ask AND
         // art-directs a brand-aware prompt (platform, text-on-image, clarify).
@@ -583,20 +623,22 @@ export function useStudioGeneration({
 
       planAbort.clear();
       genAbort = abortAfter(STUDIO_GENERATE_CLIENT_MS);
+      const productAdTurn = isProductAdBrief(intent);
+      const siteVisionUrls = opts?.siteImageUrls?.filter(Boolean) ?? [];
+      const useVisionInputs = productAdTurn && siteVisionUrls.length > 0;
       const iData = await requestGenerateImage(imagePrompt || intent, {
         aspect,
-        referenceImage: refForGen,
+        referenceImage: useVisionInputs ? null : refForGen,
         sourceIntent: intent,
         listingMode: isListingBrief(intent) && !!refForGen,
-        // Composed = a Claude step (Director/compose/reprompt) already shaped
-        // this prompt. Site-grounded briefs skip Director but still need the
-        // server expand when there is no reference photo.
         composed:
           directorComposed ||
-          (imageRoute === "reprompt_edit") ||
-          (imageRoute === "compose_generate" && !opts?.siteGrounded),
+          imageRoute === "reprompt_edit",
         allowText: allowTextOnImage,
         designLane: directorWantsDesign,
+        ...(useVisionInputs
+          ? { inputImages: siteVisionUrls, visionDetail: "high" as const }
+          : {}),
         signal: genAbort.signal,
       });
       if (iData.error || !iData.image) {
@@ -636,7 +678,11 @@ export function useStudioGeneration({
       failGenerate(
         err instanceof DOMException && err.name === "AbortError"
           ? "Timed out. Please try again."
-          : "Network error. Please try again.",
+          : err instanceof TypeError
+            ? "Lost connection to the server. Hard-refresh and try again."
+            : err instanceof Error && err.message
+              ? err.message
+              : "Network error. Please try again.",
       );
       setGenState(isReprompt ? "done" : "idle");
     } finally {

@@ -10,6 +10,7 @@ import {
   isListingBrief,
 } from "@/lib/studio/scene-intent";
 import {
+  GPT_DESIGN_SUFFIX,
   REAL_PHOTO_EXPOSURE_RETRY_SUFFIX,
   TEXT_ON_IMAGE_SUFFIX,
 } from "@/lib/studio/image-prompt-vivid";
@@ -21,15 +22,20 @@ import {
   type NanoBananaQuality,
 } from "@/lib/studio/nano-banana";
 import { expandImageBrief } from "@/lib/studio/art-director";
-import { generateGptImage, gptImageConfigured } from "@/lib/studio/gpt-image";
+import { generateGptImage, gptImageConfigured, type GptImageAction } from "@/lib/studio/gpt-image";
+import {
+  resolveOpenAiVisionInputs,
+  uniqueHttpsUrls,
+  type OpenAiVisionDetail,
+} from "@/lib/studio/openai-vision-input";
 import {
   buildTenantImageBrandContext,
   buildTenantGeography,
 } from "@/lib/ai-brand-context";
 
-// Studio: GPT Image 2 (primary when OPENAI_API_KEY set) · Gemini fallback · ref edits → Gemini.
+// Studio: GPT Image 2 (Responses multimodal + edit) · Gemini fallback for listings.
 
-export const maxDuration = 90; // art-director expand + Pro 2K generation + quality retry
+export const maxDuration = 120; // GPT Image 2 + optional Gemini fallback on Pro/High
 
 export async function POST(req: NextRequest) {
   let auth: AuthContext;
@@ -62,6 +68,9 @@ export async function POST(req: NextRequest) {
     locationId?: unknown;
     composed?: unknown;
     allowText?: unknown;
+    designLane?: unknown;
+    inputImages?: unknown;
+    visionDetail?: unknown;
     engine?: unknown;
     brandLock?: unknown;
   };
@@ -153,31 +162,42 @@ export async function POST(req: NextRequest) {
     typeof referenceImage === "string" && referenceImage.trim()
       ? await referenceImageToGeminiInline(referenceImage)
       : null;
-  if (
-    typeof referenceImage === "string" &&
-    referenceImage.trim() &&
-    !refInline
-  ) {
+  const hasAttachedReference =
+    typeof referenceImage === "string" && referenceImage.trim().length > 0;
+  if (hasAttachedReference && !refInline && listingMode) {
     return NextResponse.json(
       { error: "Could not read your listing photo. Try a smaller JPG or PNG." },
       { status: 422 },
     );
   }
-  if (listingMode && !refInline) {
+  if (listingMode && !hasAttachedReference) {
     return NextResponse.json(
       { error: "Listing posts need your property photo attached." },
       { status: 422 },
     );
   }
 
-  const hasReference = !!refInline;
-  let promptForModel = hasReference ? prompt : enrichScenicBrief(prompt);
+  const hasGeminiReference = !!refInline;
+  let promptForModel = hasGeminiReference ? prompt : enrichScenicBrief(prompt);
+
+  const inputImages = uniqueHttpsUrls(
+    Array.isArray(parsed.inputImages)
+      ? parsed.inputImages.filter((u): u is string => typeof u === "string")
+      : [],
+  );
+  const visionDetail: OpenAiVisionDetail =
+    parsed.visionDetail === "low" ||
+    parsed.visionDetail === "high" ||
+    parsed.visionDetail === "original" ||
+    parsed.visionDetail === "auto"
+      ? parsed.visionDetail
+      : "auto";
 
   // Direct briefs (no compose/reprompt Claude step, no reference photo) get the
   // hidden art-director expansion: brand palette, vertical aesthetic, geography.
   // expandImageBrief returns the original brief on any failure — never blocks.
   const alreadyComposed = parsed.composed === true;
-  if (!hasReference && !alreadyComposed) {
+  if (!hasGeminiReference && !alreadyComposed) {
     const businessType =
       typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 120) : undefined;
     const [brandContext, geography] = await Promise.all([
@@ -195,40 +215,67 @@ export async function POST(req: NextRequest) {
     });
   }
 
-  const listingRef = refInline && (listingMode || isListingBrief(sourceIntent || prompt));
+  const listingRef =
+    hasGeminiReference && (listingMode || isListingBrief(sourceIntent || prompt));
   const refPreamble = listingRef
     ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
     : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
 
-  // Engine: GPT Image 2 is the default for net-new generation when OpenAI is
-  // configured. Reference edits always stay Gemini. `engine=gemini` forces
-  // Gemini for bake-off testing; `engine=gpt` forces GPT without fallback.
-  const allowText = parsed.allowText === true && parsed.composed === true && !hasReference;
   const engineOverride =
     parsed.engine === "gpt" || parsed.engine === "gemini" ? parsed.engine : null;
+  const openAiKey = openAiConfigured ? process.env.OPENAI_API_KEY!.trim() : "";
+  const gptEditEligible =
+    hasAttachedReference && !listingRef && openAiConfigured && engineOverride !== "gemini";
   const useGptEngine =
-    !hasReference && openAiConfigured && engineOverride !== "gemini";
+    openAiConfigured && engineOverride !== "gemini" && (!hasGeminiReference || gptEditEligible);
   const gptOnly = engineOverride === "gpt";
 
-  // Suffix: designed graphics may carry typography — never append the photo
-  // lane's "no text" clause to them.
+  const designLane =
+    parsed.designLane === true && parsed.composed === true && !listingRef;
+  const allowText = parsed.allowText === true && parsed.composed === true && !listingRef;
+
+  const visionSources = gptEditEligible
+    ? [referenceImage as string]
+    : inputImages;
+  const visionImages =
+    useGptEngine && visionSources.length > 0
+      ? await resolveOpenAiVisionInputs({
+          apiKey: openAiKey,
+          sources: visionSources,
+          detail: visionDetail,
+        })
+      : [];
+
+  const gptAction: GptImageAction = gptEditEligible
+    ? "edit"
+    : designLane || visionImages.length > 0
+      ? "generate"
+      : "generate";
+
   const vividHint = allowText
     ? TEXT_ON_IMAGE_SUFFIX
-    : hasReference
-      ? generationSuffixForBrief(sourceIntent || promptForModel, true)
-      : generationSuffixForBrief(sourceIntent || promptForModel, false);
+    : designLane
+      ? GPT_DESIGN_SUFFIX
+      : hasGeminiReference
+        ? generationSuffixForBrief(sourceIntent || promptForModel, true)
+        : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
   async function runGeneration(promptText: string) {
-    const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;
+    const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
+    const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
     if (useGptEngine) {
       const gptResult = await generateGptImage({
-        apiKey: process.env.OPENAI_API_KEY!.trim(),
+        apiKey: openAiKey,
         prompt: fullPrompt,
         aspectRatio,
         quality,
+        visionImages,
+        visionDetail,
+        action: gptAction,
+        forceImageTool: designLane,
+        editImageSource: gptEditEligible ? (referenceImage as string) : null,
       });
       if (gptResult.ok || gptOnly || !apiKey) return gptResult;
-      // Graceful fallback — Gemini when GPT Image 2 fails (unless bake-off forced GPT).
     }
     if (!apiKey) {
       return {
@@ -237,15 +284,23 @@ export async function POST(req: NextRequest) {
         error: "Gemini fallback is not configured.",
       };
     }
+    if (!hasGeminiReference) {
+      return generateNanoBananaImage({
+        apiKey: apiKey!,
+        quality,
+        prompt: fullPrompt,
+        aspectRatio,
+        imageSize,
+        reference: null,
+      });
+    }
     return generateNanoBananaImage({
       apiKey: apiKey!,
       quality,
       prompt: fullPrompt,
       aspectRatio,
       imageSize,
-      reference: refInline
-        ? { mimeType: refInline.mimeType, data: refInline.data }
-        : null,
+      reference: { mimeType: refInline!.mimeType, data: refInline!.data },
     });
   }
 
@@ -267,7 +322,7 @@ export async function POST(req: NextRequest) {
     let retriedForQuality = false;
     // Skip the darkness retry for GPT designs: dark editorial layouts are a
     // deliberate style there, and a retry doubles a slow generation.
-    if (!hasReference && !useGptEngine && (await isImageTooDark(result.rawBase64))) {
+    if (!hasGeminiReference && !useGptEngine && (await isImageTooDark(result.rawBase64))) {
       const retry = await runGeneration(promptForModel + REAL_PHOTO_EXPOSURE_RETRY_SUFFIX);
       if (retry.ok) {
         result = retry;

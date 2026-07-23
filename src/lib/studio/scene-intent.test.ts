@@ -6,6 +6,7 @@ import {
   generationSuffixForBrief,
   isBrandOutcomeBrief,
   isListingBrief,
+  isProductAdBrief,
   inferPlatformIdFromIntent,
   isMinimalScenicBrief,
   isScenicBrief,
@@ -114,6 +115,17 @@ describe("scene-intent", () => {
     );
     expect(isBrandOutcomeBrief("Aurora Med Spa skincare bottles flat lay")).toBe(false);
     expect(isBrandOutcomeBrief("vibrant red smoothie")).toBe(false);
+  });
+
+  it("detects product-ad briefs (launches, site URLs) separately from brand heroes", () => {
+    expect(
+      isProductAdBrief(
+        "create an image for our new eyelash serum use revitalash.com for brand facts",
+      ),
+    ).toBe(true);
+    expect(isProductAdBrief("launch our new skincare serum instagram post")).toBe(true);
+    expect(isProductAdBrief("create an image for Aurora Med Spa")).toBe(false);
+    expect(isProductAdBrief("eyelash serum bottle flat lay on white")).toBe(false);
   });
 
   it("keeps product generation suffixes short and fidelity-first", () => {

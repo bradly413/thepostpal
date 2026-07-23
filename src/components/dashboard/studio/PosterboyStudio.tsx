@@ -57,7 +57,7 @@ import { StudioStyles } from "./studio-styles";
 import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
-import { isListingBrief } from "@/lib/studio/scene-intent";
+import { isListingBrief, isProductAdBrief } from "@/lib/studio/scene-intent";
 import {
   extractReferenceImageUrl,
   looksLikeDirectImageUrl,
@@ -783,13 +783,14 @@ export default function PosterboyStudio() {
       sourceText: string,
     ): Promise<{
       imageUrl: string | null;
+      imageUrls: string[];
       enrichedIntent: string | null;
       label: string | null;
       error: string | null;
     }> => {
       const pageUrl = extractWebsiteUrl(sourceText);
       if (!pageUrl) {
-        return { imageUrl: null, enrichedIntent: null, label: null, error: null };
+        return { imageUrl: null, imageUrls: [], enrichedIntent: null, label: null, error: null };
       }
 
       setRefImageLoading(true);
@@ -806,10 +807,12 @@ export default function PosterboyStudio() {
         const data = (await res.json()) as OpenGraphMeta & {
           url?: string;
           error?: string;
+          imageUrls?: string[];
         };
         if (!res.ok) {
           return {
             imageUrl: null,
+            imageUrls: [],
             enrichedIntent: null,
             label: null,
             error: data.error || "Could not read that website",
@@ -822,6 +825,11 @@ export default function PosterboyStudio() {
           imageUrl: data.imageUrl ?? null,
           siteName: data.siteName ?? null,
         };
+        const imageUrls = Array.isArray(data.imageUrls)
+          ? data.imageUrls.filter((u): u is string => typeof u === "string").slice(0, 4)
+          : meta.imageUrl
+            ? [meta.imageUrl]
+            : [];
         const baseIntent = (composerBrief || prompt).trim();
         const enrichedIntent = enrichIntentWithSiteContext(
           baseIntent || `Create images for ${meta.url}`,
@@ -834,10 +842,11 @@ export default function PosterboyStudio() {
           /* keep default */
         }
         const label = meta.siteName || meta.title || host;
-        return { imageUrl: meta.imageUrl, enrichedIntent, label, error: null };
+        return { imageUrl: meta.imageUrl, imageUrls, enrichedIntent, label, error: null };
       } catch {
         return {
           imageUrl: null,
+          imageUrls: [],
           enrichedIntent: null,
           label: null,
           error: "Could not read that website",
@@ -904,8 +913,9 @@ export default function PosterboyStudio() {
       if (url && looksLikeDirectImageUrl(url) && attachReferenceFromUrl(url)) nextRef = url;
     }
 
-    // Website link (socelle.com) → fetch og:image + brand copy for compose.
+    // Website link → fetch og:image(s) + brand copy for multimodal GPT compose.
     let siteGrounded = false;
+    let siteImageUrls: string[] = [];
     if (pageUrl) {
       const site = await resolveWebsiteBrand(sourceText);
       // Re-check in-flight: user may have navigated away; still finish this turn.
@@ -913,7 +923,10 @@ export default function PosterboyStudio() {
         briefOverride = site.enrichedIntent;
         siteGrounded = true;
       }
-      if (!nextRef && site.imageUrl && attachReferenceFromUrl(site.imageUrl)) {
+      if (site.imageUrls.length > 0) {
+        siteImageUrls = site.imageUrls;
+      }
+      if (!nextRef && site.imageUrl && !isProductAdBrief(userText) && attachReferenceFromUrl(site.imageUrl)) {
         nextRef = site.imageUrl;
         if (site.label) setRefName(site.label);
       } else if (!nextRef && site.error) {
@@ -939,7 +952,7 @@ export default function PosterboyStudio() {
       intent = withAsks.length > 980 ? withAsks.slice(0, 980) : withAsks;
     }
 
-    await composeFromIntent(intent, nextRef, { siteGrounded });
+    await composeFromIntent(intent, nextRef, { siteGrounded, siteImageUrls });
   }, [
     attachReferenceFromUrl,
     carouselCount,
