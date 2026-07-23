@@ -2656,6 +2656,13 @@ export function StudioStyles() {
   .pb-studio .pb-brandlock-label {
     font-size: var(--text-caption); font-weight: 600; color: var(--ink-2); white-space: nowrap;
   }
+  /* Bubbles scrolling off the top dissolve instead of clipping into floating
+     slivers (the "red line" during generation was a user bubble's bottom edge). */
+  .pb-studio .studio-chat-thread {
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
+  }
+
   /* ── Hero-size the creation (final say — retires the earlier compact caps:
         200px/28vh is-generating, 340px chat-layout, 320px result stage) ── */
   .pb-studio .frame-wrap.is-generating:not(.as-post),
