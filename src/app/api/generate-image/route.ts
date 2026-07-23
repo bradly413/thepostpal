@@ -10,7 +10,6 @@ import {
   isListingBrief,
 } from "@/lib/studio/scene-intent";
 import {
-  GPT_DESIGN_SUFFIX,
   REAL_PHOTO_EXPOSURE_RETRY_SUFFIX,
   TEXT_ON_IMAGE_SUFFIX,
 } from "@/lib/studio/image-prompt-vivid";
@@ -28,7 +27,7 @@ import {
   buildTenantGeography,
 } from "@/lib/ai-brand-context";
 
-// Studio: Standard = Nano Banana 2, Pro = Nano Banana Pro (Interactions API).
+// Studio: GPT Image 2 (primary when OPENAI_API_KEY set) · Gemini fallback · ref edits → Gemini.
 
 export const maxDuration = 90; // art-director expand + Pro 2K generation + quality retry
 
@@ -142,8 +141,12 @@ export async function POST(req: NextRequest) {
   }
 
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
+  const openAiConfigured = gptImageConfigured();
+  if (!openAiConfigured && !apiKey) {
+    return NextResponse.json(
+      { error: "Image generation is not configured (OPENAI_API_KEY or GEMINI_API_KEY required)" },
+      { status: 500 },
+    );
   }
 
   const refInline =
@@ -197,37 +200,42 @@ export async function POST(req: NextRequest) {
     ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
     : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
 
-  // Engine: design-lane prompts (Director-approved typography) go to GPT Image
-  // when configured — it composes full layouts. Photo lanes + all reference
-  // edits stay Gemini. `engine` body param is an explicit override for
-  // bake-off testing; without OPENAI_API_KEY everything runs Gemini as before.
+  // Engine: GPT Image 2 is the default for net-new generation when OpenAI is
+  // configured. Reference edits always stay Gemini. `engine=gemini` forces
+  // Gemini for bake-off testing; `engine=gpt` forces GPT without fallback.
   const allowText = parsed.allowText === true && parsed.composed === true && !hasReference;
   const engineOverride =
     parsed.engine === "gpt" || parsed.engine === "gemini" ? parsed.engine : null;
   const useGptEngine =
-    (engineOverride === "gpt" || (allowText && engineOverride !== "gemini")) &&
-    gptImageConfigured() &&
-    !hasReference;
+    !hasReference && openAiConfigured && engineOverride !== "gemini";
+  const gptOnly = engineOverride === "gpt";
 
   // Suffix: designed graphics may carry typography — never append the photo
   // lane's "no text" clause to them.
   const vividHint = allowText
     ? TEXT_ON_IMAGE_SUFFIX
-    : useGptEngine
-      ? GPT_DESIGN_SUFFIX
-      : hasReference
-        ? generationSuffixForBrief(sourceIntent || promptForModel, true)
-        : generationSuffixForBrief(sourceIntent || promptForModel, false);
+    : hasReference
+      ? generationSuffixForBrief(sourceIntent || promptForModel, true)
+      : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
   async function runGeneration(promptText: string) {
     const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;
     if (useGptEngine) {
-      return generateGptImage({
+      const gptResult = await generateGptImage({
         apiKey: process.env.OPENAI_API_KEY!.trim(),
         prompt: fullPrompt,
         aspectRatio,
         quality,
       });
+      if (gptResult.ok || gptOnly || !apiKey) return gptResult;
+      // Graceful fallback — Gemini when GPT Image 2 fails (unless bake-off forced GPT).
+    }
+    if (!apiKey) {
+      return {
+        ok: false as const,
+        status: 502,
+        error: "Gemini fallback is not configured.",
+      };
     }
     return generateNanoBananaImage({
       apiKey: apiKey!,
@@ -243,6 +251,11 @@ export async function POST(req: NextRequest) {
 
   try {
     let result = await runGeneration(promptForModel);
+    const usedGeminiFallback =
+      useGptEngine &&
+      !gptOnly &&
+      result.ok &&
+      !result.model.includes("gpt-image");
 
     if (!result.ok) {
       return NextResponse.json(
@@ -269,6 +282,7 @@ export async function POST(req: NextRequest) {
       modelId: result.model,
       imageSize: imageSize ?? "1K",
       ...(retriedForQuality ? { retriedForQuality: true } : {}),
+      ...(usedGeminiFallback ? { engineFallback: "gemini" } : {}),
     });
   } catch {
     return NextResponse.json(

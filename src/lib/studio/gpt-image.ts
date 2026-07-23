@@ -1,16 +1,20 @@
 import "server-only";
 
 /**
- * GPT Image adapter — OpenAI's image model for the DESIGN lane (promos,
- * flyers, ads with real typography/layout). Photo lanes stay on Gemini
- * (nano-banana.ts); this engine is only selected for Director-approved
- * text-on-image prompts, and only when OPENAI_API_KEY is configured.
+ * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
  *
- * Same result contract as generateNanoBananaImage so the generate route and
- * everything downstream (quality gate, previews, publish) stay engine-blind.
+ * Primary path: Responses API + image_generation tool (world-knowledge aware
+ * orchestrator → gpt-image-2). Fallback: Images API /v1/images/generations.
+ *
+ * Reference-photo edits stay on Gemini (nano-banana.ts). Same result contract
+ * as generateNanoBananaImage so the generate route stays engine-blind.
  */
 
 export const GPT_IMAGE_MODEL = "gpt-image-2";
+
+/** Orchestrator for Responses API image_generation tool calls. Override via env. */
+export const GPT_RESPONSES_MODEL =
+  process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-4.1-mini";
 
 export function gptImageConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
@@ -43,6 +47,17 @@ type GptImageResponse = {
   error?: { message?: string; type?: string } | null;
 };
 
+type ResponsesOutputItem = {
+  type?: string;
+  result?: string;
+  status?: string;
+};
+
+type ResponsesApiResponse = {
+  output?: ResponsesOutputItem[];
+  error?: { message?: string } | null;
+};
+
 export function gptImageErrorMessage(data: GptImageResponse, fallback = "Image generation failed"): string {
   if (data.error && typeof data.error === "object" && data.error.message) {
     return data.error.message;
@@ -50,11 +65,108 @@ export function gptImageErrorMessage(data: GptImageResponse, fallback = "Image g
   return fallback;
 }
 
-export async function generateGptImage(opts: {
+/** Pull base64 JPEG from a completed Responses API image_generation_call. */
+export function extractImageFromResponsesResponse(data: ResponsesApiResponse): string | null {
+  const items = data.output ?? [];
+  for (let i = items.length - 1; i >= 0; i--) {
+    const item = items[i];
+    if (
+      item?.type === "image_generation_call" &&
+      item.status === "completed" &&
+      typeof item.result === "string" &&
+      item.result.length > 0
+    ) {
+      return item.result;
+    }
+  }
+  return null;
+}
+
+function okResult(b64: string) {
+  return {
+    ok: true as const,
+    imageDataUrl: `data:image/jpeg;base64,${b64}`,
+    rawBase64: b64,
+    mimeType: "image/jpeg",
+    text: "",
+    model: GPT_IMAGE_MODEL,
+  };
+}
+
+async function generateGptImageViaResponses(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  /** Studio quality tier → model quality. */
+  quality: "standard" | "pro";
+}): Promise<
+  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
+  | { ok: false; status: number; error: string; text?: string }
+> {
+  let res: Response;
+  try {
+    res = await fetch("https://api.openai.com/v1/responses", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${opts.apiKey}`,
+      },
+      body: JSON.stringify({
+        model: GPT_RESPONSES_MODEL,
+        input: opts.prompt,
+        tools: [
+          {
+            type: "image_generation",
+            action: "generate",
+            model: GPT_IMAGE_MODEL,
+            size: gptImageSizeForAspect(opts.aspectRatio),
+            quality: opts.quality === "pro" ? "high" : "medium",
+            output_format: "jpeg",
+          },
+        ],
+      }),
+      signal: AbortSignal.timeout(85_000),
+    });
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return {
+      ok: false,
+      status: timedOut ? 504 : 502,
+      error: timedOut
+        ? "Image generation timed out. Try again or switch to Standard quality."
+        : "Could not reach the design image service.",
+    };
+  }
+
+  let data: ResponsesApiResponse;
+  try {
+    data = (await res.json()) as ResponsesApiResponse;
+  } catch {
+    return {
+      ok: false,
+      status: res.status || 502,
+      error: res.ok ? "Invalid response from image generation." : "Image generation failed",
+    };
+  }
+
+  if (!res.ok) {
+    const msg =
+      (data.error && typeof data.error === "object" && data.error.message) ||
+      "Image generation failed";
+    return { ok: false, status: res.status, error: msg };
+  }
+
+  const b64 = extractImageFromResponsesResponse(data);
+  if (!b64) {
+    return { ok: false, status: 422, error: "No image was generated. Try a different prompt." };
+  }
+
+  return okResult(b64);
+}
+
+async function generateGptImageViaImagesApi(opts: {
+  apiKey: string;
+  prompt: string;
+  aspectRatio?: string;
   quality: "standard" | "pro";
 }): Promise<
   | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
@@ -73,15 +185,20 @@ export async function generateGptImage(opts: {
         prompt: opts.prompt,
         n: 1,
         size: gptImageSizeForAspect(opts.aspectRatio),
-        // "high" is slow (can approach a minute) — reserve it for the Pro tier.
         quality: opts.quality === "pro" ? "high" : "medium",
         output_format: "jpeg",
       }),
-      // Route maxDuration is 60s — leave headroom for response handling.
-      signal: AbortSignal.timeout(55_000),
+      signal: AbortSignal.timeout(85_000),
     });
-  } catch {
-    return { ok: false, status: 502, error: "Could not reach the design image service." };
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return {
+      ok: false,
+      status: timedOut ? 504 : 502,
+      error: timedOut
+        ? "Image generation timed out. Try again or switch to Standard quality."
+        : "Could not reach the design image service.",
+    };
   }
 
   let data: GptImageResponse;
@@ -104,12 +221,21 @@ export async function generateGptImage(opts: {
     return { ok: false, status: 422, error: "No image was generated. Try a different prompt." };
   }
 
-  return {
-    ok: true,
-    imageDataUrl: `data:image/jpeg;base64,${b64}`,
-    rawBase64: b64,
-    mimeType: "image/jpeg",
-    text: "",
-    model: GPT_IMAGE_MODEL,
-  };
+  return okResult(b64);
+}
+
+export async function generateGptImage(opts: {
+  apiKey: string;
+  prompt: string;
+  aspectRatio?: string;
+  /** Studio quality tier → model quality. */
+  quality: "standard" | "pro";
+}): Promise<
+  | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
+  | { ok: false; status: number; error: string; text?: string }
+> {
+  const viaResponses = await generateGptImageViaResponses(opts);
+  if (viaResponses.ok) return viaResponses;
+  // Legacy Images API fallback when Responses is unavailable or misconfigured.
+  return generateGptImageViaImagesApi(opts);
 }

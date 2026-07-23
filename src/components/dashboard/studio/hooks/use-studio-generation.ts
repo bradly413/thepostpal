@@ -234,6 +234,7 @@ export function useStudioGeneration({
         image?: string;
         error?: string;
         modelId?: string;
+        engineFallback?: "gemini";
         retriedForQuality?: boolean;
       }>;
     },
@@ -614,11 +615,10 @@ export function useStudioGeneration({
 
       stopProgressTimer();
       setProgress(100);
-      // Honest engine attribution: forcing Design Studio can silently fall
-      // back to Gemini (no OpenAI key, or a reference photo is attached).
-      if (imageEngine === "design" && iData.modelId && !iData.modelId.includes("gpt")) {
+      // Honest attribution when GPT Image 2 fell back to Gemini.
+      if (iData.engineFallback === "gemini") {
         onSoftNotice?.(
-          "Design Studio wasn't available for this one — generated with Posterboy Visual instead.",
+          "GPT Image 2 couldn't finish — generated with Posterboy Visual instead.",
         );
       }
       setGeneratedUrl(iData.image);

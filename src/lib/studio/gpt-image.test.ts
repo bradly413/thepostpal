@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { gptImageErrorMessage, gptImageSizeForAspect } from "@/lib/studio/gpt-image";
+import {
+  extractImageFromResponsesResponse,
+  gptImageErrorMessage,
+  gptImageSizeForAspect,
+} from "@/lib/studio/gpt-image";
 
 describe("gptImageSizeForAspect", () => {
   it("maps Studio aspects to the nearest supported size", () => {
@@ -21,5 +25,26 @@ describe("gptImageErrorMessage", () => {
   it("falls back when the error shape is empty", () => {
     expect(gptImageErrorMessage({ error: null })).toBe("Image generation failed");
     expect(gptImageErrorMessage({}, "custom")).toBe("custom");
+  });
+});
+
+describe("extractImageFromResponsesResponse", () => {
+  it("returns the last completed image_generation_call result", () => {
+    const b64 = "abc123";
+    expect(
+      extractImageFromResponsesResponse({
+        output: [
+          { type: "message", status: "completed" },
+          { type: "image_generation_call", status: "completed", result: b64 },
+        ],
+      }),
+    ).toBe(b64);
+  });
+  it("ignores incomplete calls", () => {
+    expect(
+      extractImageFromResponsesResponse({
+        output: [{ type: "image_generation_call", status: "in_progress" }],
+      }),
+    ).toBeNull();
   });
 });
