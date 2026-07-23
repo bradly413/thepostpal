@@ -88,6 +88,16 @@ export function DashboardHomeStyles() {
       .pb-home2--fixed .pb-cal-grid > * {
         min-height: 0; height: 100%; overflow: hidden;
       }
+      .pb-home2--fixed #post-composer {
+        display: flex;
+        flex-direction: column;
+        overflow: hidden !important;
+      }
+      .pb-home2--fixed #post-composer .pb-composer-body {
+        overflow: hidden !important;
+        min-height: 0;
+        flex: 1 1 auto;
+      }
       .pb-home2--fixed .pb-cal-month {
         height: 100%; min-height: 0;
         display: flex; flex-direction: column;
