@@ -21,6 +21,7 @@ import {
   type NanoBananaQuality,
 } from "@/lib/studio/nano-banana";
 import { expandImageBrief } from "@/lib/studio/art-director";
+import { generateGptImage, gptImageConfigured } from "@/lib/studio/gpt-image";
 import {
   buildTenantImageBrandContext,
   buildTenantGeography,
@@ -61,6 +62,7 @@ export async function POST(req: NextRequest) {
     locationId?: unknown;
     composed?: unknown;
     allowText?: unknown;
+    engine?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -200,8 +202,27 @@ export async function POST(req: NextRequest) {
       ? generationSuffixForBrief(sourceIntent || promptForModel, true)
       : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
+  // Engine: design-lane prompts (Director-approved typography) go to GPT Image
+  // when configured — it composes full layouts. Photo lanes + all reference
+  // edits stay Gemini. `engine` body param is an explicit override for
+  // bake-off testing; without OPENAI_API_KEY everything runs Gemini as before.
+  const engineOverride =
+    parsed.engine === "gpt" || parsed.engine === "gemini" ? parsed.engine : null;
+  const useGptEngine =
+    (engineOverride === "gpt" || (allowText && engineOverride !== "gemini")) &&
+    gptImageConfigured() &&
+    !hasReference;
+
   async function runGeneration(promptText: string) {
     const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;
+    if (useGptEngine) {
+      return generateGptImage({
+        apiKey: process.env.OPENAI_API_KEY!.trim(),
+        prompt: fullPrompt,
+        aspectRatio,
+        quality,
+      });
+    }
     return generateNanoBananaImage({
       apiKey: apiKey!,
       quality,
@@ -225,7 +246,9 @@ export async function POST(req: NextRequest) {
     }
 
     let retriedForQuality = false;
-    if (!hasReference && (await isImageTooDark(result.rawBase64))) {
+    // Skip the darkness retry for GPT designs: dark editorial layouts are a
+    // deliberate style there, and a retry doubles a slow generation.
+    if (!hasReference && !useGptEngine && (await isImageTooDark(result.rawBase64))) {
       const retry = await runGeneration(promptForModel + REAL_PHOTO_EXPOSURE_RETRY_SUFFIX);
       if (retry.ok) {
         result = retry;

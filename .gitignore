@@ -53,3 +53,4 @@ next-env.d.ts
 tmp-*/
 docs/CLAUDE-SESSION-HANDOFF-LIVE.md
 tmp/
+bakeoff-output/
