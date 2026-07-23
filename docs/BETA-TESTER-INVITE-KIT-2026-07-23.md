@@ -15,30 +15,20 @@ For each invitee, Brad does two things, then sends one email. Written to match h
 
 ## The email
 
-**Subject:** want to try the thing I've been building?
+**Subject:** posterboy invite
 
 Hey [Name],
 
-I've been building something called Posterboy Social and I'd love for you to be one of the first people to actually use it.
+You're in. Setup takes about 10 minutes:
 
-Short version: you tell it what's going on at the business ("closed Monday for the holiday," "new fall menu starts Friday") and it makes the post. Image, caption that sounds like you, published to Facebook and Instagram on whatever schedule you want. The goal is that you stop thinking about the feed and get back to running the place.
+1. Accept the Facebook tester invite first (it's in your notifications, or at developers.facebook.com/requests)
+2. Sign up at **posterboysocial.com/signup**
+3. Connect your accounts at **posterboysocial.com/dashboard/connect/meta** with the same Facebook login. Leave all the permission boxes checked and pick your Page.
+4. Make a post, approve it, then go check your actual Page. It's really live.
 
-[PERSONAL LINE — why you thought of them specifically.]
+You'll need to be admin of the Facebook Page, and Instagram needs to be a business account linked to it for IG posting.
 
-It's a small closed beta. Free, no card, and honestly you'd be doing me the favor. I want to watch a few real businesses use it and find what breaks before I open it up.
-
-Setup takes about ten minutes:
-
-1. You should have a notification from Facebook inviting you to test "Posterboy Social." Accept that first. (If you can't find it, it's at developers.facebook.com/requests when you're logged into the account that runs your business Page.)
-2. Create your account at **posterboysocial.com/signup** and answer the quick setup questions. The more real detail you give it about the business, the more the captions sound like you.
-3. In the dashboard, connect Facebook and Instagram at **posterboysocial.com/dashboard/connect/meta**. Log in with that same Facebook account, leave all the permission boxes checked, and pick your Page.
-4. Make a post. Type what's happening, look at what it makes, hit approve. Then go check your actual Facebook Page, because it's really up there.
-
-Only two requirements: you need to be an admin of the business's Facebook Page, and if you want Instagram posting, the IG account needs to be a business or creator account linked to that Page (free to switch in the Instagram app if it isn't).
-
-Then just use it like it's yours. Tell me everything: what confused you, captions that don't sound like you, anything that breaks. The unfiltered version is the useful version.
-
-No pressure either way. And if it's not for you but you know someone drowning in their restaurant's Instagram, I'd love an intro.
+Text me anything that breaks or any caption that doesn't sound like you.
 
 brad
 
