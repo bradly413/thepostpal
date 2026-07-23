@@ -25,6 +25,8 @@ export type DirectorPlatform = (typeof DIRECTOR_PLATFORMS)[number];
 
 export type DirectorDecision = {
   platform: DirectorPlatform;
+  /** "design" routes to the GPT layout engine (ads, promos, product posts). */
+  lane: "photo" | "design";
   format: "single" | "carousel";
   /** Requested slide count when format=carousel (2–5). Generation is still
    *  slide 1 in this phase — the plan rides along for the carousel build. */
@@ -46,6 +48,7 @@ const SYSTEM_BASE = `You are the creative director for a local business's social
 
 {
   "platform": "instagram" | "facebook" | "x" | "tiktok" | "linkedin",   // named or implied; default instagram
+  "lane": "photo" | "design",                   // design = a DESIGNED GRAPHIC is the right deliverable: product ads, promos, launches, offers, flyers, brand lockup energy. photo = scene/food/portrait photography is the deliverable.
   "format": "single" | "carousel",              // carousel ONLY if they ask for one / multiple slides
   "slides": 3,                                   // when carousel: 2–5
   "allowText": false,                            // true ONLY for promo/offer/announcement asks where words belong ON the image (a price, date, offer, or short slogan)
@@ -66,6 +69,7 @@ IMAGE PROMPT rules — one dense paragraph, 40–90 words:
 - Must read as a photograph — not illustration, not 3D, not CGI.
 - allowText=false → NO words, letters, logos, or signage in the image.
 - allowText=true → include the typography as part of the art direction: overlayText rendered large and clean (placement + treatment), correctly spelled, exactly as quoted — nothing else written anywhere.
+- lane=design → art-direct a full layout (headline treatment, product placement, accent color, clean composition); product-ad asks default to lane=design with the product name as overlayText.
 - BRAND HERO: a business/brand ask with no named product → feature a person (radiant client portrait) on white/ivory seamless — never invent unlabeled product bottles.
 - REAL PROPERTY: a specific listing/address must never be invented — the owner attaches their photo (a separate gate handles this; do not clarify for it).
 - Keep every concrete detail the owner specified; never contradict the brief.
@@ -84,6 +88,7 @@ export function parseDirectorDecision(text: string): DirectorDecision | null {
       typeof raw.clarify === "string" && raw.clarify.trim() ? raw.clarify.trim().slice(0, 200) : undefined;
     const imagePrompt = typeof raw.imagePrompt === "string" ? raw.imagePrompt.trim() : "";
     if (!clarify && (imagePrompt.length < 20 || imagePrompt.length > 1500)) return null;
+    const lane = raw.lane === "design" ? "design" : "photo";
     const format = raw.format === "carousel" ? "carousel" : "single";
     const slidesNum = Number(raw.slides);
     const overlayText =
@@ -92,6 +97,7 @@ export function parseDirectorDecision(text: string): DirectorDecision | null {
         : undefined;
     return {
       platform,
+      lane,
       format,
       ...(format === "carousel"
         ? { slides: Math.min(5, Math.max(2, Number.isFinite(slidesNum) ? Math.round(slidesNum) : 3)) }

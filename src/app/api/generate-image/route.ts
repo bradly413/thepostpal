@@ -10,6 +10,7 @@ import {
   isListingBrief,
 } from "@/lib/studio/scene-intent";
 import {
+  GPT_DESIGN_SUFFIX,
   REAL_PHOTO_EXPOSURE_RETRY_SUFFIX,
   TEXT_ON_IMAGE_SUFFIX,
 } from "@/lib/studio/image-prompt-vivid";
@@ -196,25 +197,27 @@ export async function POST(req: NextRequest) {
     ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
     : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
 
-  // Director-approved text-on-image swaps the "no text" suffix for a
-  // typography-accuracy one. Only trusted for prompts a Claude step shaped.
-  const allowText = parsed.allowText === true && parsed.composed === true && !hasReference;
-  const vividHint = allowText
-    ? TEXT_ON_IMAGE_SUFFIX
-    : hasReference
-      ? generationSuffixForBrief(sourceIntent || promptForModel, true)
-      : generationSuffixForBrief(sourceIntent || promptForModel, false);
-
   // Engine: design-lane prompts (Director-approved typography) go to GPT Image
   // when configured — it composes full layouts. Photo lanes + all reference
   // edits stay Gemini. `engine` body param is an explicit override for
   // bake-off testing; without OPENAI_API_KEY everything runs Gemini as before.
+  const allowText = parsed.allowText === true && parsed.composed === true && !hasReference;
   const engineOverride =
     parsed.engine === "gpt" || parsed.engine === "gemini" ? parsed.engine : null;
   const useGptEngine =
     (engineOverride === "gpt" || (allowText && engineOverride !== "gemini")) &&
     gptImageConfigured() &&
     !hasReference;
+
+  // Suffix: designed graphics may carry typography — never append the photo
+  // lane's "no text" clause to them.
+  const vividHint = allowText
+    ? TEXT_ON_IMAGE_SUFFIX
+    : useGptEngine
+      ? GPT_DESIGN_SUFFIX
+      : hasReference
+        ? generationSuffixForBrief(sourceIntent || promptForModel, true)
+        : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
   async function runGeneration(promptText: string) {
     const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;

@@ -136,6 +136,7 @@ export async function POST(req: Request) {
 
   return Response.json({
     platform: decision.platform,
+    lane: decision.lane,
     format: decision.format,
     ...(decision.slides ? { slides: decision.slides } : {}),
     imagePrompt: decision.imagePrompt + suffix,

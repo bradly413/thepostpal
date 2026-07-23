@@ -190,6 +190,8 @@ export function useStudioGeneration({
         composed?: boolean;
         /** Director-approved text-on-image (promo/offer typography). */
         allowText?: boolean;
+        /** Director classified this as a designed graphic → GPT layout engine. */
+        designLane?: boolean;
         signal: AbortSignal;
       },
     ) => {
@@ -204,7 +206,7 @@ export function useStudioGeneration({
           ...(opts.listingMode ? { listingMode: true } : {}),
           ...(opts.composed ? { composed: true } : {}),
           ...(opts.allowText ? { allowText: true } : {}),
-          ...(imageEngine === "design" ? { engine: "gpt" } : {}),
+          ...(imageEngine === "design" || opts.designLane ? { engine: "gpt" } : {}),
           ...(brandLock ? {} : { brandLock: false }),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
@@ -373,6 +375,7 @@ export function useStudioGeneration({
       let aspect = resolveAspect();
       let directorComposed = false;
       let allowTextOnImage = false;
+      let directorWantsDesign = false;
       const historyLabel = intent;
 
       const editingFromCanvas =
@@ -450,6 +453,7 @@ export function useStudioGeneration({
           });
           const d = (await dRes.json()) as {
             platform?: string;
+            lane?: string;
             imagePrompt?: string;
             allowText?: boolean;
             clarify?: string;
@@ -488,6 +492,7 @@ export function useStudioGeneration({
                 : platforms[pIdx].genAspect;
             imagePrompt = d.imagePrompt;
             allowTextOnImage = d.allowText === true;
+            directorWantsDesign = d.lane === "design";
             directorComposed = true;
           }
         } catch {
@@ -552,6 +557,7 @@ export function useStudioGeneration({
           imageRoute === "compose_generate" ||
           imageRoute === "reprompt_edit",
         allowText: allowTextOnImage,
+        designLane: directorWantsDesign,
         signal: ctrl.signal,
       });
       if (iData.error || !iData.image) {

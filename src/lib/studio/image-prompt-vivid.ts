@@ -61,6 +61,10 @@ export const REAL_PHOTO_EXPOSURE_RETRY_SUFFIX =
  * Director-approved text-on-image (promos/offers): typography is part of the
  * design — so no "no text" clause, but spelling accuracy is non-negotiable.
  */
+/** GPT design lane without a literal offer overlay — layouts may carry type. */
+export const GPT_DESIGN_SUFFIX =
+  " Polished social-ad design: clean confident layout, premium typography correctly spelled, cohesive palette, no watermark.";
+
 export const TEXT_ON_IMAGE_SUFFIX =
   " Photographic scene with clean designed typography — render the quoted words large, crisp, and CORRECTLY SPELLED, exactly as given; no other words, no watermark. Vivid clean color, bright light, level camera.";
 
