@@ -11,6 +11,11 @@ import { guardrailsPromptBlock } from "@/lib/compliance/guardrails";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { fetchVoiceMemoryBlock } from "@/lib/ai-voice-memory";
 import { readVoiceLearning, voiceLearningBlock } from "@/lib/ai-voice-learning";
+import {
+  readVoiceProfile,
+  readImportedExemplars,
+  voiceProfileBlock,
+} from "@/lib/voice-engine/profile";
 
 /**
  * Compliance & brand guardrail injection (Phase 2 — prompt-injection only).
@@ -81,9 +86,17 @@ export async function buildTenantBrandContext(
       if (dna?.primaryTone) lines.push(`- Voice & tone: ${dna.primaryTone}`);
       if (dna?.contrastVibe) lines.push(`- Visual vibe: ${dna.contrastVibe}`);
 
-      // The full brand book from onboarding — the richest signal we have.
-      const found = await findTenantBrandBook(tx, auth.tenantId, opts?.locationId ?? null);
-      const bookBlock = found.brandBook ? brandBookVoiceBlock(found.brandBook) : "";
+      // Voice Engine: a profile extracted from the tenant's REAL captions is
+      // the source of truth. Only tenants without one fall back to the legacy
+      // onboarding brand book.
+      const profile = readVoiceProfile(org?.brandEngine);
+      let bookBlock = "";
+      if (profile) {
+        bookBlock = voiceProfileBlock(profile);
+      } else {
+        const found = await findTenantBrandBook(tx, auth.tenantId, opts?.locationId ?? null);
+        bookBlock = found.brandBook ? brandBookVoiceBlock(found.brandBook) : "";
+      }
 
       const base =
         lines.length === 0 && !bookBlock
@@ -91,8 +104,12 @@ export async function buildTenantBrandContext(
           : `\n\n## This Business's Brand\n${lines.join("\n")}${bookBlock}\nWrite all content in this business's voice, for this niche and audience. Do NOT assume an industry that isn't stated here.`;
 
       // Voice memory — few-shot from the tenant's recent real posts (the learning
-      // loop). Empty for brand-new tenants → unchanged behavior.
-      const voice = await fetchVoiceMemoryBlock(tx, auth.tenantId, org?.name ?? null, opts?.platform);
+      // loop), seeded with imported exemplars (pasted at onboarding / pulled from
+      // Meta history) so even day-one tenants are grounded in real writing.
+      const imported = readImportedExemplars(org?.brandEngine);
+      const voice = await fetchVoiceMemoryBlock(tx, auth.tenantId, org?.name ?? null, opts?.platform, {
+        importedExemplars: imported.map((e) => e.copy),
+      });
 
       // Learned edit patterns — what they consistently change about AI drafts.
       const learned = voiceLearningBlock(readVoiceLearning(org?.brandEngine));

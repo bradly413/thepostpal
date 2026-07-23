@@ -50,6 +50,9 @@ const PUBLIC_PREFIXES = [
   "/api/brand-book/generate",
   // Guest onboarding voice scan from pasted captions (no OAuth / no tenant).
   "/api/onboarding/analyze-paste",
+  // Voice Engine: pasted real captions → VoiceProfile. Handles guest vs.
+  // session itself (resolveBrandBookAuth) + its own IP rate limit.
+  "/api/voice/extract",
   // Onboarding "Use my location" — coords only; reverse-geocode stays server-side.
   "/api/geocode/",
   // public lead-magnet tool (its own IP rate limit lives in the route)

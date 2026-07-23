@@ -44,8 +44,17 @@ export async function fetchVoiceMemoryBlock(
   tenantId: string,
   businessName: string | null,
   platform?: string,
+  opts?: {
+    /**
+     * Voice Engine: captions the user pasted at onboarding (or pulled from
+     * their Meta history). Real writing — used to ground BRAND-NEW tenants
+     * before they've published anything through the app. Committed in-app
+     * posts still lead once they exist.
+     */
+    importedExemplars?: string[];
+  },
 ): Promise<string> {
-  let posts: { copy: string; platforms: string[] }[] = [];
+  let posts: { copy: string; platforms: string[]; imported?: boolean }[] = [];
   try {
     // ScheduledPost is the canonical post store. Prefer COMMITTED captions
     // (published / scheduled / approved) — those are real voice the user stood
@@ -61,6 +70,14 @@ export async function fetchVoiceMemoryBlock(
     });
   } catch {
     return "";
+  }
+
+  // Imported exemplars ride behind committed posts: real voice either way,
+  // but what they published through the app is the freshest signal. They are
+  // EXEMPT from the slop gate — if the owner's real style is emoji-heavy,
+  // that IS the voice; the gate only guards against AI-slop feedback loops.
+  for (const copy of opts?.importedExemplars ?? []) {
+    posts.push({ copy, platforms: [], imported: true });
   }
 
   // Platform-aware: same-platform posts teach that platform's voice. Keep them
@@ -79,7 +96,7 @@ export async function fetchVoiceMemoryBlock(
     if (copy.length < 12 || copy.length > 600) continue;
     const key = copy.slice(0, 48).toLowerCase();
     if (seen.has(key)) continue; // dedupe near-identical reposts
-    if (!looksHuman(copy)) continue;
+    if (!p.imported && !looksHuman(copy)) continue;
     seen.add(key);
     examples.push(copy);
     if (examples.length >= 6) break;
