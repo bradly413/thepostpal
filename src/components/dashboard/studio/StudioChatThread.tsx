@@ -1,15 +1,18 @@
 "use client";
 
-import { useEffect, useRef, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import type { StudioChatMessage } from "@/lib/studio/studio-chat";
 
 type Props = {
   messages: StudioChatMessage[];
   welcome: string;
-  /** Live generation / preview slot (current frame) — sits at end of thread. */
+  /** Live generation preview (progress / frame) — sits at end of thread. */
   liveSlot?: ReactNode;
-  /** When set, hide thread image cards that match the live preview (no duplicate). */
-  liveImageUrl?: string | null;
+  /**
+   * Current result URL from studio state. Rendered as a reliable <img> so the
+   * user always sees the image even if message.imageUrl or the live frame fails.
+   */
+  resultUrl?: string | null;
   className?: string;
 };
 
@@ -26,11 +29,29 @@ function scrollKey(messages: StudioChatMessage[]): string {
   return `${messages.length}:${last.id}:${last.status}`;
 }
 
+function ResultImage({ src, badge }: { src: string; badge?: string | null }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <div className="studio-chat-image-card studio-chat-image-card--error" role="alert">
+        <p>Image generated but couldn’t display. Try Create again.</p>
+      </div>
+    );
+  }
+  return (
+    <div className="studio-chat-image-card">
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src={src} alt="Generated studio image" onError={() => setFailed(true)} />
+      {badge ? <span className="studio-chat-format-badge on-image">{badge}</span> : null}
+    </div>
+  );
+}
+
 export default function StudioChatThread({
   messages,
   welcome,
   liveSlot,
-  liveImageUrl = null,
+  resultUrl = null,
   className = "",
 }: Props) {
   const endRef = useRef<HTMLDivElement>(null);
@@ -44,7 +65,11 @@ export default function StudioChatThread({
       typeof window !== "undefined" &&
       window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "end" });
-  }, [key]);
+  }, [key, resultUrl]);
+
+  const lastAsst = [...messages].reverse().find((m) => m.role === "assistant");
+  const lastBadge =
+    lastAsst && lastAsst.role === "assistant" ? formatBadge(lastAsst) : null;
 
   return (
     <div
@@ -71,10 +96,12 @@ export default function StudioChatThread({
           }
 
           const badge = formatBadge(msg);
+          // History cards only — current result is rendered via resultUrl below
+          // so we never hide the live image behind a collapsed frame.
           const showCard =
             !!msg.imageUrl &&
             msg.status === "done" &&
-            !(liveImageUrl && msg.imageUrl === liveImageUrl);
+            !(resultUrl && msg.imageUrl === resultUrl);
           return (
             <div
               key={msg.id}
@@ -88,16 +115,17 @@ export default function StudioChatThread({
                   <span className="studio-chat-aspect-badge">{msg.aspect}</span>
                 ) : null}
               </div>
-              {showCard ? (
-                <div className="studio-chat-image-card">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={msg.imageUrl!} alt="" />
-                  {badge ? <span className="studio-chat-format-badge on-image">{badge}</span> : null}
-                </div>
-              ) : null}
+              {showCard ? <ResultImage src={msg.imageUrl!} badge={badge} /> : null}
             </div>
           );
         })}
+
+        {resultUrl ? <ResultImage src={resultUrl} badge={lastBadge} /> : null}
+        {lastAsst?.status === "done" && !resultUrl && !lastAsst.imageUrl ? (
+          <div className="studio-chat-image-card studio-chat-image-card--error" role="alert">
+            <p>Generation finished without an image URL. Try Create again.</p>
+          </div>
+        ) : null}
 
         {liveSlot ? <div className="studio-chat-live-slot">{liveSlot}</div> : null}
         <div ref={endRef} className="studio-chat-end" aria-hidden />

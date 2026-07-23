@@ -903,7 +903,13 @@ export default function PosterboyStudio() {
   // Animate live image slot upward when a new assistant turn starts.
   useEffect(() => {
     const slot = frameWrapRef.current;
-    if (!slot || genState !== "generating") return;
+    if (!slot) return;
+    if (genState === "done" || genState === "idle") {
+      // Clear any mid-tween opacity/transform so the result never stays invisible.
+      gsap.set(slot, { clearProps: "opacity,y,transform" });
+      return;
+    }
+    if (genState !== "generating") return;
     const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (reduce) return;
     gsap.fromTo(
@@ -1009,21 +1015,36 @@ export default function PosterboyStudio() {
 
   const frameWrapStyle: CSSProperties = (() => {
     const { w: cw, h: ch } = canvasSize;
+    // Live slot is in-flow inside the chat thread. Percentage heights (% of
+    // parent) resolve to 0 there — always size with px or vh.
     if (!cw || !ch) {
       return frameRatio >= 1
-        ? { width: "min(58%, 600px)", height: "auto", aspectRatio: `${frameDims.w} / ${frameDims.h}`, maxHeight: "48%" }
-        : { height: "min(48%, 480px)", width: "auto", aspectRatio: `${frameDims.w} / ${frameDims.h}`, maxWidth: "56%" };
+        ? {
+            width: "min(90%, 400px)",
+            height: "auto",
+            aspectRatio: `${frameDims.w} / ${frameDims.h}`,
+            maxHeight: "min(48vh, 400px)",
+          }
+        : {
+            height: "min(48vh, 420px)",
+            width: "auto",
+            aspectRatio: `${frameDims.w} / ${frameDims.h}`,
+            maxWidth: "min(90%, 360px)",
+          };
     }
-    const fitW = Math.min(cw * 0.58, 600);
+    const fitW = Math.min(cw * 0.55, 400);
     // height capped tighter so the image clears the sticky chat composer
-    const fitH = Math.min(ch * 0.42, 480);
+    const fitH = Math.min(ch * 0.38, 440);
     let w = fitW;
     let h = fitW / frameRatio;
     if (h > fitH) {
       h = fitH;
       w = fitH * frameRatio;
     }
-    return { width: `${Math.round(w)}px`, height: `${Math.round(h)}px` };
+    return {
+      width: `${Math.max(120, Math.round(w))}px`,
+      height: `${Math.max(120, Math.round(h))}px`,
+    };
   })();
 
   // Generation choreography — staged status text + warm color emergence.
@@ -1528,16 +1549,56 @@ export default function PosterboyStudio() {
           <StudioChatThread
             messages={chatMessages}
             welcome={STUDIO_CHAT_WELCOME}
-            liveImageUrl={generatedUrl}
-            liveSlot={
-              genState === "idle" &&
-              !generatedUrl &&
-              !showTemplate &&
-              composerMode === "image" &&
-              chatMessages.length === 0 ? undefined : (
+            resultUrl={
+              genState === "done" && mediaKind === "image" ? generatedUrl : null
+            }
+          />
+
+          {/* Always-on result layer — sits above chat + frame so a blank frame
+              can never hide a successful generation. */}
+          {genState === "done" && mediaKind === "image" && generatedUrl && !showTemplate ? (
+            <div className="studio-result-stage" data-studio-result="1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={generatedUrl}
+                alt="Generated studio image"
+                style={{
+                  transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+                  filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+                }}
+                onError={(e) => {
+                  const el = e.currentTarget;
+                  el.style.display = "none";
+                  const host = el.parentElement;
+                  if (host && !host.querySelector("[data-img-error]")) {
+                    const p = document.createElement("p");
+                    p.dataset.imgError = "1";
+                    p.textContent = "Image data couldn’t be displayed. Try Create again.";
+                    host.appendChild(p);
+                    host.classList.add("studio-result-stage--missing");
+                  }
+                }}
+              />
+            </div>
+          ) : null}
+          {genState === "done" && mediaKind === "image" && !generatedUrl && !showTemplate ? (
+            <div className="studio-result-stage studio-result-stage--missing" role="alert" data-studio-result="missing">
+              <p>Generation finished but no image was returned. Try Create again.</p>
+            </div>
+          ) : null}
+
+          {/* Frame lives on the canvas (not inside the chat scroller) so absolute
+              positioning + % height resolve against the canvas, not a 0-height parent. */}
+          {!(
+            genState === "idle" &&
+            !generatedUrl &&
+            !showTemplate &&
+            composerMode === "image" &&
+            chatMessages.length === 0
+          ) ? (
           <div
             ref={frameWrapRef}
-            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}`}
+            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
             style={showTemplate ? undefined : frameWrapStyle}
           >
             {/* Ambient backlight: the generated image casts its own light — a
@@ -1546,7 +1607,7 @@ export default function PosterboyStudio() {
             {generatedUrl && mediaKind === "image" && (genState === "done" || showTemplate) ? (
               <div
                 className="ambient-glow"
-                style={{ backgroundImage: `url('${generatedUrl}')` }}
+                style={{ backgroundImage: `url(${JSON.stringify(generatedUrl)})` }}
                 aria-hidden
               />
             ) : null}
@@ -1623,12 +1684,26 @@ export default function PosterboyStudio() {
                 onPointerCancel={onImagePointerUp}
               >
                 <div className="emerge" style={{ opacity: emergeOpacity }} />
+                {/* Preview bg layer (may start at opacity 0). Real pixels live on
+                    .preview-img as a SIBLING so they are never trapped at opacity 0. */}
                 <div
                   className="preview"
                   style={previewStyle}
                   role="img"
                   aria-label={previewImageLabel}
                 />
+                {generatedUrl && mediaKind === "image" && genState === "done" ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    className="preview-img"
+                    src={generatedUrl}
+                    alt="Generated studio image"
+                    style={{
+                      transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+                      filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+                    }}
+                  />
+                ) : null}
                 {genState === "done" && mediaKind === "image" ? (
                   <CompositionOverlay
                     width={platform.w}
@@ -1663,9 +1738,7 @@ export default function PosterboyStudio() {
               </div>
             )}
           </div>
-              )
-            }
-          />
+          ) : null}
 
           {/* Image edit tools */}
           {genState === "done" && !showTemplate && (

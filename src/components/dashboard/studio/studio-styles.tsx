@@ -439,12 +439,62 @@ export function StudioStyles() {
   .studio-chat-thread {
     position: absolute;
     inset: 72px 0 200px 0;
-    z-index: 8;
+    z-index: 12;
     overflow-x: hidden;
     overflow-y: auto;
     padding: 8px 16px 24px;
     scroll-behavior: smooth;
     -webkit-overflow-scrolling: touch;
+    pointer-events: none;
+  }
+  .pb-studio .studio-chat-thread .studio-chat-inner,
+  .pb-studio .studio-chat-thread .studio-chat-bubble,
+  .pb-studio .studio-chat-thread .studio-chat-image-card,
+  .pb-studio .studio-chat-thread .studio-chat-msg-asst {
+    pointer-events: auto;
+  }
+  .pb-studio .studio-result-stage {
+    position: absolute;
+    inset: 88px 24px 210px;
+    z-index: 14;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    pointer-events: none;
+  }
+  .pb-studio .studio-result-stage img {
+    display: block;
+    width: auto;
+    height: auto;
+    max-width: min(420px, 72%);
+    max-height: min(52vh, 480px);
+    object-fit: contain;
+    border-radius: 6px;
+    box-shadow: 0 18px 48px -18px rgba(20, 20, 40, 0.55);
+    background: #fff;
+    pointer-events: none;
+  }
+  .pb-studio .studio-result-stage--missing {
+    pointer-events: auto;
+  }
+  .pb-studio .studio-result-stage--missing p {
+    margin: 0;
+    max-width: 320px;
+    padding: 14px 16px;
+    border-radius: 12px;
+    background: rgba(255, 255, 255, 0.92);
+    border: 1px solid rgba(200, 30, 42, 0.25);
+    color: #c81e2a;
+    font-size: 14px;
+    line-height: 1.4;
+    text-align: center;
+    box-shadow: 0 12px 28px -16px rgba(20, 20, 40, 0.4);
+  }
+  /* Hide the empty grey frame once the result stage owns the pixels */
+  .pb-studio .frame-wrap.is-chat-result {
+    opacity: 0;
+    pointer-events: none;
+    z-index: 1;
   }
   .pb-studio .canvas:has(.canvas-top.has-actions) .studio-chat-thread {
     inset-block-start: 100px;
@@ -515,17 +565,35 @@ export function StudioStyles() {
   }
   .pb-studio .studio-chat-image-card {
     position: relative;
-    width: min(280px, 70vw);
+    width: min(320px, 78vw);
+    min-height: 160px;
     border-radius: 14px;
     overflow: hidden;
     box-shadow: 0 12px 32px -16px rgba(20, 20, 40, 0.45);
     border: 1px solid rgba(255, 255, 255, 0.7);
+    background: rgba(0, 0, 0, 0.04);
   }
   .pb-studio .studio-chat-image-card img {
     display: block;
     width: 100%;
     height: auto;
+    min-height: 160px;
+    object-fit: cover;
     vertical-align: middle;
+  }
+  .pb-studio .studio-chat-image-card--error {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+    min-height: 88px;
+  }
+  .pb-studio .studio-chat-image-card--error p {
+    margin: 0;
+    font-size: 13px;
+    line-height: 1.4;
+    color: rgba(26, 26, 46, 0.72);
+    text-align: center;
   }
   .pb-studio .studio-chat-format-badge.on-image {
     position: absolute;
@@ -533,21 +601,6 @@ export function StudioStyles() {
     bottom: 8px;
     margin: 0;
     background: rgba(255, 255, 255, 0.9);
-  }
-  .pb-studio .studio-chat-live-slot {
-    display: flex;
-    justify-content: center;
-    width: 100%;
-    margin-top: 4px;
-    min-height: 0;
-  }
-  .pb-studio .studio-chat-live-slot .frame-wrap {
-    position: relative;
-    top: auto;
-    left: auto;
-    transform: none;
-    max-height: min(52vh, 520px);
-    margin: 0 auto;
   }
   .pb-studio .studio-recent-prompts {
     display: flex;
@@ -737,7 +790,18 @@ export function StudioStyles() {
     opacity: 0;
     transition: opacity var(--duration-slow) var(--ease-exit);
     z-index: 4;
-  }.pb-studio .frame.done .preview { opacity: 1; }.pb-studio .frame.editable { cursor: grab; touch-action: none; }.pb-studio .frame.editable:active { cursor: grabbing; }
+  }.pb-studio .frame.done .preview { opacity: 1 !important; }.pb-studio .frame.editable { cursor: grab; touch-action: none; }.pb-studio .frame.editable:active { cursor: grabbing; }
+  .pb-studio .frame .preview-img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    display: block;
+    z-index: 5;
+    opacity: 1 !important;
+    pointer-events: none;
+  }
   .pb-studio .frame { transition: filter 0.85s cubic-bezier(0.2,0.7,0.2,1); }
   .pb-studio .frame:not(.generating):not(.done) { filter: brightness(0.88) saturate(0.92); }
   @media (prefers-reduced-motion: no-preference) {

@@ -179,7 +179,8 @@ export function useImageEdit({
 
   const previewStyle: CSSProperties = {
     ...(generatedUrl && (genState === "done" || genState === "generating")
-      ? { backgroundImage: `url('${generatedUrl}')` }
+      ? // JSON.stringify → safe CSS url("...") even for data: / query strings
+        { backgroundImage: `url(${JSON.stringify(generatedUrl)})` }
       : {}),
     transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
     filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
