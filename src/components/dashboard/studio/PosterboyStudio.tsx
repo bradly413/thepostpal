@@ -478,7 +478,9 @@ export default function PosterboyStudio() {
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
+  const stageRef = useRef<HTMLDivElement>(null);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
+  const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
 
   const platform = PLATFORMS[platformIdx];
 
@@ -1058,6 +1060,17 @@ export default function PosterboyStudio() {
     return () => ro.disconnect();
   }, []);
 
+  // Stage band size — preview fills this box without overlapping chrome/composer/rail.
+  useEffect(() => {
+    const el = stageRef.current;
+    if (!el) return;
+    const measure = () => setStageSize({ w: el.clientWidth, h: el.clientHeight });
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   // Close the post-type popover on outside click (lives in the right rail).
   useEffect(() => {
     if (!activeTool) return;
@@ -1139,54 +1152,34 @@ export default function PosterboyStudio() {
     (aspectOverride && ASPECT_FRAME[aspectOverride]) || { w: platform.w, h: platform.h };
   const frameRatio = frameDims.w / frameDims.h;
 
-  // Chat/generating: hard pixel box so absolute/canvas-fit CSS cannot enlarge it.
-  // Template (as-post) keeps the larger fitted board.
+  // Fit the preview inside the stage band (below chrome, above composer, clear of edit rail).
   const frameWrapStyle: CSSProperties = (() => {
-    if (!showTemplate) {
-      const w = 140;
-      const h = Math.max(120, Math.round(w / frameRatio));
-      return {
-        position: "relative",
-        top: "auto",
-        left: "auto",
-        right: "auto",
-        bottom: "auto",
-        transform: "none",
-        width: w,
-        height: h,
-        maxWidth: w,
-        maxHeight: h,
-        margin: "0 auto",
-        zIndex: 2,
-      };
+    const railClearance = genState === "done" ? 80 : 32;
+    const availW = Math.max(140, (stageSize.w || 400) - railClearance);
+    const availH = Math.max(140, (stageSize.h || 300) - 24);
+    const maxW = Math.min(availW, 340);
+    const maxH = Math.min(availH, 420);
+    let w = maxW;
+    let h = w / frameRatio;
+    if (h > maxH) {
+      h = maxH;
+      w = h * frameRatio;
     }
-    const { w: cw, h: ch } = canvasSize;
-    if (!cw || !ch) {
-      return frameRatio >= 1
-        ? {
-            width: "min(58%, 420px)",
-            height: "auto",
-            aspectRatio: `${frameDims.w} / ${frameDims.h}`,
-            maxHeight: "min(48vh, 420px)",
-          }
-        : {
-            height: "min(48vh, 420px)",
-            width: "auto",
-            aspectRatio: `${frameDims.w} / ${frameDims.h}`,
-            maxWidth: "min(58%, 360px)",
-          };
-    }
-    const fitW = Math.min(cw * 0.5, 420);
-    const fitH = Math.min(ch * 0.5, 480);
-    let w = fitW;
-    let h = fitW / frameRatio;
-    if (h > fitH) {
-      h = fitH;
-      w = fitH * frameRatio;
-    }
+    w = Math.round(w);
+    h = Math.round(h);
     return {
-      width: `${Math.max(120, Math.round(w))}px`,
-      height: `${Math.max(120, Math.round(h))}px`,
+      position: "relative",
+      top: "auto",
+      left: "auto",
+      right: "auto",
+      bottom: "auto",
+      transform: "none",
+      width: w,
+      height: showTemplate ? "auto" : h,
+      maxWidth: maxW,
+      maxHeight: maxH,
+      margin: "0 auto",
+      zIndex: 2,
     };
   })();
 
@@ -1711,7 +1704,7 @@ export default function PosterboyStudio() {
             }
           />
 
-          <div className="studio-stage">
+          <div className="studio-stage" ref={stageRef}>
           {/* Coverflow for carousel format — prev / selected / next positions. */}
           {genState === "done" &&
           mediaKind === "image" &&
@@ -1775,7 +1768,7 @@ export default function PosterboyStudio() {
           <div
             ref={frameWrapRef}
             className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "generating" ? " is-generating" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
-            style={showTemplate ? undefined : frameWrapStyle}
+            style={frameWrapStyle}
           >
             {/* Ambient backlight: the generated image casts its own light — a
                 blurred copy of itself behind the frame (sized by the selected

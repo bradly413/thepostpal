@@ -2398,13 +2398,18 @@ export function StudioStyles() {
     right: auto !important;
     bottom: auto !important;
     flex: 0 1 auto;
-    max-height: min(18vh, 120px) !important;
+    max-height: min(14vh, 96px) !important;
     height: auto !important;
     overflow-x: hidden;
     overflow-y: auto;
-    padding: 4px 16px 6px;
+    padding: 4px 16px 4px;
     z-index: 3;
     pointer-events: none;
+  }
+  .pb-studio .canvas.is-chat-layout:has(.studio-coverflow) .studio-chat-thread,
+  .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-chat-thread,
+  .pb-studio .canvas.is-chat-layout:has(.frame-wrap.as-post) .studio-chat-thread {
+    max-height: min(10vh, 72px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-inner,
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-bubble,
@@ -2421,8 +2426,12 @@ export function StudioStyles() {
     align-items: center;
     justify-content: center;
     overflow: hidden !important;
-    padding: 4px 8px;
+    padding: 8px 16px;
     z-index: 2;
+  }
+  .pb-studio .canvas.is-chat-layout:has(.edit-rail) .studio-stage {
+    padding-right: 72px;
+    padding-left: 16px;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow {
     position: relative !important;
@@ -2432,7 +2441,7 @@ export function StudioStyles() {
     bottom: auto !important;
     left: auto !important;
     width: 100%;
-    height: auto;
+    height: 100%;
     max-height: 100%;
     flex: 1 1 auto;
     min-height: 0;
@@ -2440,52 +2449,60 @@ export function StudioStyles() {
     pointer-events: none;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-track {
-    width: min(560px, 100%);
-    height: min(100%, 220px) !important;
+    width: min(720px, 100%);
+    height: 100% !important;
     max-height: 100%;
+    overflow: hidden;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-skeleton {
-    width: min(140px, 18vw) !important;
-    max-height: min(26vh, 180px) !important;
+    width: min(200px, 24vw, 36vh) !important;
+    max-height: min(42vh, calc(100% - 8px), 320px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected .studio-coverflow-skeleton {
-    width: min(156px, 22vw) !important;
-    max-height: min(28vh, 200px) !important;
+    width: min(280px, 32vw, 48vh) !important;
+    max-height: min(52vh, calc(100% - 8px), 380px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prev img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.next img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prev .studio-coverflow-skeleton,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.next .studio-coverflow-skeleton {
-    width: min(118px, 14vw) !important;
-    max-height: min(22vh, 155px) !important;
+    width: min(180px, 20vw, 32vh) !important;
+    max-height: min(38vh, calc(100% - 8px), 280px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prevLeftSecond,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond {
-    opacity: 0.55;
+    opacity: 0.5;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prevLeftSecond img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prevLeftSecond .studio-coverflow-skeleton,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond .studio-coverflow-skeleton {
-    width: min(88px, 11vw) !important;
-    max-height: min(16vh, 120px) !important;
+    width: min(120px, 14vw, 22vh) !important;
+    max-height: min(26vh, calc(100% - 8px), 180px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-result-stage {
     position: relative !important;
     inset: auto !important;
     width: 100%;
-    height: auto;
+    height: 100%;
     max-height: 100%;
     z-index: 2;
     pointer-events: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
   }
   .pb-studio .canvas.is-chat-layout .studio-result-stage img {
-    max-width: min(156px, 40%) !important;
-    max-height: min(200px, 70%) !important;
+    max-width: min(320px, 48%, 42vh) !important;
+    max-height: min(400px, 92%, 56vh) !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
   }
-  .pb-studio .canvas.is-chat-layout .frame-wrap:not(.as-post) {
+  .pb-studio .canvas.is-chat-layout .frame-wrap:not(.as-post),
+  .pb-studio .canvas.is-chat-layout .frame-wrap.as-post {
     position: relative !important;
     top: auto !important;
     left: auto !important;
@@ -2495,6 +2512,16 @@ export function StudioStyles() {
     inset: auto !important;
     margin: 0 auto !important;
     z-index: 2 !important;
+    max-height: 100% !important;
+  }
+  .pb-studio .canvas.is-chat-layout .frame-wrap.as-post {
+    width: min(320px, 100%) !important;
+    max-width: min(340px, calc(100% - 8px)) !important;
+    overflow: hidden;
+  }
+  .pb-studio .canvas.is-chat-layout .frame-wrap.as-post .igpv-media,
+  .pb-studio .canvas.is-chat-layout .frame-wrap.as-post .fbpv-media {
+    max-height: min(42vh, 320px) !important;
   }
   .pb-studio .canvas.is-chat-layout .frame-wrap.is-generating:not(.as-post)::before {
     display: none;
@@ -2516,25 +2543,40 @@ export function StudioStyles() {
     transform: none !important;
     flex: 0 0 auto !important;
     z-index: 40 !important;
-    max-height: min(36vh, 280px);
+    max-height: min(32vh, 240px);
     background: rgba(255, 255, 255, 0.92) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-error {
-    position: relative;
-    top: auto;
-    left: auto;
-    margin: 0 12px 4px;
+    position: relative !important;
+    top: auto !important;
+    left: auto !important;
+    transform: none !important;
+    flex: 0 0 auto;
+    width: min(680px, calc(100% - 24px));
+    margin: 0 auto 6px;
+    padding: 8px 12px;
+    z-index: 35;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-error p {
+    font-size: 12.5px;
+    line-height: 1.35;
   }
   @media (max-width: 768px) {
     .pb-studio .canvas.is-chat-layout .studio-chat-thread {
-      max-height: min(14vh, 96px) !important;
+      max-height: min(12vh, 80px) !important;
     }
-    .pb-studio .canvas.is-chat-layout .studio-coverflow-track {
-      height: min(100%, 180px) !important;
+    .pb-studio .canvas.is-chat-layout:has(.edit-rail) .studio-stage {
+      padding-right: 16px;
+      padding-bottom: 64px;
+    }
+    .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected img,
+    .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected .studio-coverflow-skeleton {
+      width: min(220px, 48vw) !important;
+      max-height: min(40vh, 280px) !important;
     }
     .pb-studio .canvas.is-chat-layout .prompt-bar.is-chat {
       margin-bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
-      max-height: min(34vh, 240px);
+      max-height: min(30vh, 220px);
     }
   }
     `}</style>
