@@ -30,7 +30,6 @@ import {
   Plus,
   Sparkles,
   Wand2 as EnhanceIcon,
-  ShoppingBag,
   Image as ImageTabIcon,
 } from "lucide-react";
 import StudioPostChrome from "@/components/dashboard/studio/StudioPostChrome";
@@ -289,11 +288,7 @@ export default function PosterboyStudio() {
   const carouselRunIdRef = useRef(0);
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
-  // Composer redesign: engine picker + brand lock + prompt enhance.
-  const [engineMenuOpen, setEngineMenuOpen] = useState(false);
-  const engineMenuRef = useRef<HTMLDivElement>(null);
-  const [imageEngine, setImageEngine] = useState<"auto" | "design">("auto");
-  const [brandLock, setBrandLock] = useState(true);
+  // Composer: prompt enhance (lanes + brand grounding are automatic).
   const [enhanceBusy, setEnhanceBusy] = useState(false);
   const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
   const [softNotice, setSoftNotice] = useState("");
@@ -428,7 +423,6 @@ export default function PosterboyStudio() {
           prompt: brief,
           ...(locationId ? { locationId } : {}),
           ...(businessType ? { businessType } : {}),
-          ...(brandLock ? {} : { brandLock: false }),
         }),
       });
       const data = (await res.json()) as { enhanced?: string; error?: string };
@@ -592,8 +586,6 @@ export default function PosterboyStudio() {
     refImage,
     imageQuality,
     imageSize,
-    imageEngine,
-    brandLock,
     onSoftNotice: setSoftNotice,
     businessType: businessType ?? undefined,
     locationId,
@@ -1052,7 +1044,7 @@ export default function PosterboyStudio() {
 
   // Platform / aspect / format menus: outside-click + Escape to close.
   useEffect(() => {
-    if (!platformMenuOpen && !aspectMenuOpen && !formatMenuOpen && !engineMenuOpen) return;
+    if (!platformMenuOpen && !aspectMenuOpen && !formatMenuOpen) return;
     const onDown = (e: MouseEvent) => {
       const t = e.target as Node;
       if (platformMenuRef.current && !platformMenuRef.current.contains(t)) {
@@ -1064,16 +1056,12 @@ export default function PosterboyStudio() {
       if (formatMenuRef.current && !formatMenuRef.current.contains(t)) {
         setFormatMenuOpen(false);
       }
-      if (engineMenuRef.current && !engineMenuRef.current.contains(t)) {
-        setEngineMenuOpen(false);
-      }
     };
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         setPlatformMenuOpen(false);
         setAspectMenuOpen(false);
         setFormatMenuOpen(false);
-        setEngineMenuOpen(false);
       }
     };
     document.addEventListener("mousedown", onDown);
@@ -1082,7 +1070,7 @@ export default function PosterboyStudio() {
       document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", onKey);
     };
-  }, [platformMenuOpen, aspectMenuOpen, formatMenuOpen, engineMenuOpen]);
+  }, [platformMenuOpen, aspectMenuOpen, formatMenuOpen]);
 
   // Chat UX: composer stays sticky at the bottom (no centered hero bar).
   useLayoutEffect(() => {
@@ -2113,18 +2101,6 @@ export default function PosterboyStudio() {
                     <Clapperboard size={15} strokeWidth={1.9} aria-hidden />
                   </button>
                 </div>
-                <button
-                  type="button"
-                  className="pb-brandkit"
-                  title="Your brand kit — palette, voice, photography style"
-                  onClick={() => router.push("/dashboard/brand")}
-                >
-                  <ShoppingBag size={15} strokeWidth={1.9} aria-hidden />
-                  <span>Brand Kit</span>
-                  <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                    <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                  </svg>
-                </button>
               </div>
             ) : null}
             {promptMode !== "caption" && genState !== "generating" && recentPrompts.length > 0 ? (
@@ -2403,55 +2379,6 @@ export default function PosterboyStudio() {
                     <div className="pb-bar-extras">
                       {composerMode === "image" ? (
                         <>
-                          <span className="pb-pill-model" ref={engineMenuRef}>
-                            <button
-                              type="button"
-                              className={`pb-dim-chip pb-engine-chip${imageEngine === "design" ? " is-design" : ""}`}
-                              onClick={() => {
-                                setEngineMenuOpen((o) => !o);
-                                setAspectMenuOpen(false);
-                                setFormatMenuOpen(false);
-                              }}
-                              aria-expanded={engineMenuOpen}
-                              aria-haspopup="listbox"
-                              aria-label={`Style engine: ${imageEngine === "design" ? "Design Studio" : "Posterboy Visual"}`}
-                              title="Style engine"
-                            >
-                              <Sparkles size={13} strokeWidth={2} aria-hidden />
-                              {imageEngine === "design" ? "Design Studio" : "Posterboy Visual"}
-                              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
-                                <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
-                              </svg>
-                            </button>
-                            {engineMenuOpen ? (
-                              <div className="pb-tools-pop pb-model-pop" role="listbox" aria-label="Style engine">
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={imageEngine === "auto"}
-                                  onClick={() => {
-                                    setImageEngine("auto");
-                                    setEngineMenuOpen(false);
-                                  }}
-                                >
-                                  <span className="pb-model-name">Posterboy Visual</span>
-                                  <span className="pb-model-sub">Photo-real, brand-aware — routes itself</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  role="option"
-                                  aria-selected={imageEngine === "design"}
-                                  onClick={() => {
-                                    setImageEngine("design");
-                                    setEngineMenuOpen(false);
-                                  }}
-                                >
-                                  <span className="pb-model-name">Design Studio</span>
-                                  <span className="pb-model-sub">Layouts & typography — promos, flyers, ads</span>
-                                </button>
-                              </div>
-                            ) : null}
-                          </span>
                           <span className="pb-pill-model" ref={aspectMenuRef}>
                             <button
                               type="button"
@@ -2605,21 +2532,6 @@ export default function PosterboyStudio() {
                     </div>
                   </>
                 )}
-                {composerMode === "image" && (genState !== "done" || promptMode !== "caption") ? (
-                  <label className="pb-brandlock" title="Keep colors, styling, and voice locked to your brand kit">
-                    <button
-                      type="button"
-                      role="switch"
-                      aria-checked={brandLock}
-                      aria-label="Brand locked — keep output on your brand kit"
-                      className={`pb-brandlock-switch${brandLock ? " is-on" : ""}`}
-                      onClick={() => setBrandLock((v) => !v)}
-                    >
-                      <span className="pb-brandlock-knob" />
-                    </button>
-                    <span className="pb-brandlock-label">Brand locked</span>
-                  </label>
-                ) : null}
                 <span className="pb-bar-spacer" />
                 {(() => {
                   const inCaption = genState === "done" && promptMode === "caption";
