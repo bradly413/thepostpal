@@ -1033,26 +1033,16 @@ export default function PosterboyStudio() {
     const bar = canvas.querySelector<HTMLElement>(".prompt-bar");
     if (!bar) return;
     bar.classList.remove("is-hero");
-    gsap.set(bar, { x: 0, xPercent: 0, y: 0 });
+    gsap.killTweensOf(bar);
+    gsap.set(bar, { clearProps: "x,xPercent,y,yPercent,transform" });
   }, []);
 
-  // Animate live image slot upward when a new assistant turn starts.
+  // Kill leftover GSAP transforms only — never clear width/height (React owns those).
   useEffect(() => {
     const slot = frameWrapRef.current;
     if (!slot) return;
-    if (genState === "done" || genState === "idle") {
-      // Clear any mid-tween opacity/transform so the result never stays invisible.
-      gsap.set(slot, { clearProps: "opacity,y,transform" });
-      return;
-    }
-    if (genState !== "generating") return;
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    if (reduce) return;
-    gsap.fromTo(
-      slot,
-      { y: 28, opacity: 0.85 },
-      { y: 0, opacity: 1, duration: 0.55, ease: "power2.out" },
-    );
+    gsap.killTweensOf(slot);
+    gsap.set(slot, { clearProps: "opacity,y,x,xPercent,yPercent,transform" });
   }, [genState, chatMessages.length]);
 
 
@@ -1149,28 +1139,45 @@ export default function PosterboyStudio() {
     (aspectOverride && ASPECT_FRAME[aspectOverride]) || { w: platform.w, h: platform.h };
   const frameRatio = frameDims.w / frameDims.h;
 
+  // Chat/generating: hard pixel box so absolute/canvas-fit CSS cannot enlarge it.
+  // Template (as-post) keeps the larger fitted board.
   const frameWrapStyle: CSSProperties = (() => {
+    if (!showTemplate) {
+      const w = 140;
+      const h = Math.max(120, Math.round(w / frameRatio));
+      return {
+        position: "relative",
+        top: "auto",
+        left: "auto",
+        right: "auto",
+        bottom: "auto",
+        transform: "none",
+        width: w,
+        height: h,
+        maxWidth: w,
+        maxHeight: h,
+        margin: "0 auto",
+        zIndex: 2,
+      };
+    }
     const { w: cw, h: ch } = canvasSize;
-    // Live slot is in-flow inside the chat thread. Percentage heights (% of
-    // parent) resolve to 0 there — always size with px or vh.
     if (!cw || !ch) {
       return frameRatio >= 1
         ? {
-            width: "min(90%, 400px)",
+            width: "min(58%, 420px)",
             height: "auto",
             aspectRatio: `${frameDims.w} / ${frameDims.h}`,
-            maxHeight: "min(48vh, 400px)",
+            maxHeight: "min(48vh, 420px)",
           }
         : {
             height: "min(48vh, 420px)",
             width: "auto",
             aspectRatio: `${frameDims.w} / ${frameDims.h}`,
-            maxWidth: "min(90%, 360px)",
+            maxWidth: "min(58%, 360px)",
           };
     }
-    const fitW = Math.min(cw * 0.55, 400);
-    // height capped tighter so the image clears the sticky chat composer
-    const fitH = Math.min(ch * 0.38, 440);
+    const fitW = Math.min(cw * 0.5, 420);
+    const fitH = Math.min(ch * 0.5, 480);
     let w = fitW;
     let h = fitW / frameRatio;
     if (h > fitH) {
@@ -1506,7 +1513,11 @@ export default function PosterboyStudio() {
           }
         >
         {/* CANVAS */}
-        <main className={`canvas canvas-theme-${theme}`} ref={canvasRef}>
+        <main
+          className={`canvas canvas-theme-${theme} is-chat-layout`}
+          ref={canvasRef}
+          data-studio-layout="chat-v3"
+        >
           <h1 className="sr-only">Studio</h1>
           <div className="canvas-wall-lines" />
           <div className="canvas-floor" />
@@ -1687,6 +1698,7 @@ export default function PosterboyStudio() {
             </div>
           </div>
 
+          <div className="studio-body">
           <StudioChatThread
             messages={chatMessages}
             welcome={STUDIO_CHAT_WELCOME}
@@ -1699,6 +1711,7 @@ export default function PosterboyStudio() {
             }
           />
 
+          <div className="studio-stage">
           {/* Coverflow for carousel format — prev / selected / next positions. */}
           {genState === "done" &&
           mediaKind === "image" &&
@@ -1761,7 +1774,7 @@ export default function PosterboyStudio() {
           ) ? (
           <div
             ref={frameWrapRef}
-            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
+            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "generating" ? " is-generating" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
             style={showTemplate ? undefined : frameWrapStyle}
           >
             {/* Ambient backlight: the generated image casts its own light — a
@@ -1902,6 +1915,8 @@ export default function PosterboyStudio() {
             )}
           </div>
           ) : null}
+          </div>{/* /.studio-stage */}
+          </div>{/* /.studio-body */}
 
           {/* Image edit tools */}
           {genState === "done" && !showTemplate && (
@@ -2036,8 +2051,20 @@ export default function PosterboyStudio() {
             className={`prompt-bar${genState === "generating" ? " is-generating" : ""}${
               hasCaptionReady && genState === "done" ? " is-finish" : ""
             } is-chat`}
+            style={{
+              position: "relative",
+              top: "auto",
+              bottom: "auto",
+              left: "auto",
+              right: "auto",
+              transform: "none",
+              zIndex: 40,
+              margin: "6px auto 12px",
+              width: "min(680px, calc(100% - 24px))",
+              flex: "0 0 auto",
+            }}
           >
-            {promptMode !== "caption" && recentPrompts.length > 0 ? (
+            {promptMode !== "caption" && genState !== "generating" && recentPrompts.length > 0 ? (
               <div className="studio-recent-prompts" role="list" aria-label="Recent prompts">
                 {recentPrompts.slice(0, 8).map((entry) => (
                   <button
