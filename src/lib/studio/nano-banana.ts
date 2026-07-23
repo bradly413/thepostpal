@@ -135,9 +135,15 @@ export async function generateNanoBananaImage(opts: {
         input,
         response_format: responseFormat,
       }),
+      signal: AbortSignal.timeout(85_000),
     });
-  } catch {
-    return { ok: false, status: 502, error: "Could not reach image generation service." };
+  } catch (err) {
+    const timedOut = err instanceof DOMException && err.name === "TimeoutError";
+    return {
+      ok: false,
+      status: timedOut ? 504 : 502,
+      error: timedOut ? "Image generation timed out. Try again or switch to Standard quality." : "Could not reach image generation service.",
+    };
   }
 
   let data: InteractionsResponse;

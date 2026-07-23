@@ -24,7 +24,7 @@ const STUDIO_DIRECTOR_CLIENT_MS = 35_000;
  * High/Pro often died mid-generate after a long art-direct turn.
  * Keep ≥ /api/generate-image maxDuration.
  */
-const STUDIO_GENERATE_CLIENT_MS = 90_000;
+const STUDIO_GENERATE_CLIENT_MS = 120_000;
 
 function abortAfter(ms: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
@@ -349,6 +349,7 @@ export function useStudioGeneration({
   const composeFromIntent = useCallback(async (
     overrideBrief?: string,
     overrideRefImage?: string | null,
+    opts?: { siteGrounded?: boolean },
   ) => {
     const intent = (overrideBrief ?? composerBrief).trim();
     const activeRef = overrideRefImage !== undefined ? overrideRefImage : refImage;
@@ -446,6 +447,21 @@ export function useStudioGeneration({
           imagePrompt = buildFallbackEditPrompt(intent);
         }
       } else if (imageRoute === "compose_generate" || imageRoute === "direct_generate") {
+        if (opts?.siteGrounded) {
+          // preview-url already enriched brand context — skip Director to save
+          // a full Claude round-trip before image gen (common timeout source).
+          const textNamesPlatform =
+            /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
+          const inferred = inferPlatformIdFromIntent(intent);
+          const idx = inferred ? platforms.findIndex((p) => p.id === inferred) : -1;
+          const pIdx = idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
+          if (idx >= 0) setPlatformIdx(pIdx);
+          aspect =
+            aspectPinRef.current && aspectOverride
+              ? aspectOverride
+              : platforms[pIdx].genAspect;
+          imagePrompt = intent;
+        } else {
         // Studio Director: one Claude turn that classifies the ask AND
         // art-directs a brand-aware prompt (platform, text-on-image, clarify).
         // The legacy compose path below is the fallback — the Director is
@@ -560,6 +576,7 @@ export function useStudioGeneration({
           // direct_generate fallback — the server-side art director still
           // brand-grounds it (composed:false).
           imagePrompt = intent;
+        }
         }
       }
 

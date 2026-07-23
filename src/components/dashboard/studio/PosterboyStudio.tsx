@@ -606,15 +606,16 @@ export default function PosterboyStudio() {
     setActiveEdit,
     pushHistory,
     onAfterGenerateSuccess: clearComposeFieldForReview,
-    onAfterGenerateFailure: () => {
+    onAfterGenerateFailure: (message) => {
       const aid = pendingAssistantIdRef.current;
       if (!aid) return;
-      // Keep the detailed message in the stage notice only — duplicating it
-      // into the chat bubble looked like two identical "Timed out" errors.
+      const chatText = /timed out/i.test(message)
+        ? "Couldn't finish that one."
+        : message;
       setChatMessages((prev) =>
         prev.map((m) =>
           m.id === aid && m.role === "assistant"
-            ? { ...m, status: "error" as const, text: "Couldn't finish that one." }
+            ? { ...m, status: "error" as const, text: chatText }
             : m,
         ),
       );
@@ -904,10 +905,14 @@ export default function PosterboyStudio() {
     }
 
     // Website link (socelle.com) → fetch og:image + brand copy for compose.
+    let siteGrounded = false;
     if (pageUrl) {
       const site = await resolveWebsiteBrand(sourceText);
       // Re-check in-flight: user may have navigated away; still finish this turn.
-      if (site.enrichedIntent) briefOverride = site.enrichedIntent;
+      if (site.enrichedIntent) {
+        briefOverride = site.enrichedIntent;
+        siteGrounded = true;
+      }
       if (!nextRef && site.imageUrl && attachReferenceFromUrl(site.imageUrl)) {
         nextRef = site.imageUrl;
         if (site.label) setRefName(site.label);
@@ -922,6 +927,7 @@ export default function PosterboyStudio() {
           "\n\nNote: that website could not be fetched. You may draw on general knowledge of this brand's look and product category for tasteful art direction, but NEVER invent statistics, study results, review scores, or specific product claims.";
         briefOverride =
           (briefOverride || userText).slice(0, 990 - knowledgeNote.length) + knowledgeNote;
+        siteGrounded = true;
       }
     }
 
@@ -933,7 +939,7 @@ export default function PosterboyStudio() {
       intent = withAsks.length > 980 ? withAsks.slice(0, 980) : withAsks;
     }
 
-    await composeFromIntent(intent, nextRef);
+    await composeFromIntent(intent, nextRef, { siteGrounded });
   }, [
     attachReferenceFromUrl,
     carouselCount,
