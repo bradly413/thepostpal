@@ -5,7 +5,6 @@ import type { StudioChatMessage } from "@/lib/studio/studio-chat";
 
 type Props = {
   messages: StudioChatMessage[];
-  welcome: string;
   /** Live generation preview (progress / frame) — sits at end of thread. */
   liveSlot?: ReactNode;
   /**
@@ -49,7 +48,6 @@ function ResultImage({ src, badge }: { src: string; badge?: string | null }) {
 
 export default function StudioChatThread({
   messages,
-  welcome,
   liveSlot,
   resultUrl = null,
   className = "",
@@ -80,12 +78,6 @@ export default function StudioChatThread({
       aria-relevant="additions"
     >
       <div className="studio-chat-inner">
-        {messages.length === 0 ? (
-          <div className="studio-chat-bubble studio-chat-bubble--assistant studio-chat-welcome">
-            <p>{welcome}</p>
-          </div>
-        ) : null}
-
         {messages.map((msg) => {
           if (msg.role === "user") {
             return (

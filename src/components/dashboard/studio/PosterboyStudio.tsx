@@ -76,7 +76,6 @@ import StudioCoverflow from "@/components/dashboard/studio/StudioCoverflow";
 import { carouselSlidePrompt } from "@/lib/studio/coverflow";
 import {
   STUDIO_ASPECT_OPTIONS,
-  STUDIO_CHAT_WELCOME,
   enrichIntentWithFormat,
   makeUserMessage,
   makeWorkingAssistant,
@@ -1719,7 +1718,6 @@ export default function PosterboyStudio() {
           <div className="studio-body">
           <StudioChatThread
             messages={chatMessages}
-            welcome={STUDIO_CHAT_WELCOME}
             resultUrl={
               genState === "done" &&
               mediaKind === "image" &&
