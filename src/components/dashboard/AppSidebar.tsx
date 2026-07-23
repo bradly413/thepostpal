@@ -131,6 +131,28 @@ const SIDEBAR_CSS = `
 .pb-side nav a.active svg { opacity: 1; }
 .pb-side .spacer { flex: 1; min-height: 8px; }
 
+/* Tablet 769–980: the shell grid (.home2) allots this cell only 52px — the
+   sidebar must collapse to an icon rail or it overflows across the content
+   (welcome bubble / composer / mode toggle slide under it). */
+@media (max-width: 980px) and (min-width: 769px) {
+  .pb-side {
+    width: 52px;
+    padding: 16px 6px 14px;
+    align-items: center;
+  }
+  /* The wordmark can't survive a 52px rail — icons only (Dashboard icon
+     already duplicates the logo's home link). */
+  .pb-side .logo { display: none; }
+  .pb-side .nav-section-label { display: none; }
+  .pb-side nav { width: 100%; }
+  .pb-side nav a {
+    justify-content: center;
+    padding: 10px 0;
+  }
+  .pb-side nav a .nav-label { display: none; }
+  .pb-side nav .grp-gap { height: 14px; }
+}
+
 @media (max-width: 768px) {
   .pb-side { display: none !important; }
 }
