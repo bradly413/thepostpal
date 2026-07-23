@@ -96,7 +96,7 @@ export async function expandImageBrief(opts: {
       .join("\n");
 
     const resp = await client.messages.create({
-      model: "claude-sonnet-4-6", // same id the rest of the app uses
+      model: "claude-sonnet-5", // same id the rest of the app uses
       max_tokens: 320,
       system: scenic ? ART_DIRECTOR_SCENIC_SYSTEM : ART_DIRECTOR_BUSINESS_SYSTEM,
       messages: [{ role: "user", content: user }],

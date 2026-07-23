@@ -165,3 +165,28 @@ export async function buildTenantImageBrandContext(
     return "";
   }
 }
+
+/**
+ * "City, ST" for a tenant location so generated scenes match the market
+ * (architecture, vegetation, light). Returns "" when unknown — never throws.
+ */
+export async function buildTenantGeography(
+  auth: AuthContext,
+  locationId?: string | null,
+): Promise<string> {
+  if (!locationId) return "";
+  try {
+    return await withTenantDb(auth, async (tx) => {
+      const access = await resolveAccess(auth.userId, locationId, tx);
+      if (!access.hasAccess) return "";
+      const loc = await tx.location.findFirst({
+        where: { id: locationId, organizationId: auth.tenantId },
+        select: { city: true, state: true, country: true },
+      });
+      if (!loc) return "";
+      return [loc.city, loc.state ?? loc.country].filter(Boolean).join(", ");
+    });
+  } catch {
+    return "";
+  }
+}

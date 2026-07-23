@@ -17,6 +17,11 @@ import {
   type NanoBananaImageSize,
   type NanoBananaQuality,
 } from "@/lib/studio/nano-banana";
+import { expandImageBrief } from "@/lib/studio/art-director";
+import {
+  buildTenantImageBrandContext,
+  buildTenantGeography,
+} from "@/lib/ai-brand-context";
 
 // Studio: Standard = Nano Banana 2, Pro = Nano Banana Pro (Interactions API).
 
@@ -154,6 +159,26 @@ export async function POST(req: NextRequest) {
 
   const hasReference = !!refInline;
   let promptForModel = hasReference ? prompt : enrichScenicBrief(prompt);
+
+  // Direct briefs (no compose/reprompt Claude step, no reference photo) get the
+  // hidden art-director expansion: brand palette, vertical aesthetic, geography.
+  // expandImageBrief returns the original brief on any failure — never blocks.
+  const alreadyComposed = parsed.composed === true;
+  if (!hasReference && !alreadyComposed) {
+    const businessType =
+      typeof parsed.businessType === "string" ? parsed.businessType.slice(0, 120) : undefined;
+    const [brandContext, geography] = await Promise.all([
+      buildTenantImageBrandContext(auth, { locationId }),
+      buildTenantGeography(auth, locationId),
+    ]);
+    promptForModel = await expandImageBrief({
+      brief: promptForModel,
+      aspectRatio,
+      businessType,
+      brandContext: brandContext || undefined,
+      geography: geography || undefined,
+    });
+  }
 
   const listingRef = refInline && (listingMode || isListingBrief(sourceIntent || prompt));
   const refPreamble = listingRef

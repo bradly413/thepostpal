@@ -4,6 +4,10 @@ import { withTenantDb } from "@/lib/db";
 import { resolveAccess } from "@/lib/authz";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import {
+  buildTenantImageBrandContext,
+  buildTenantGeography,
+} from "@/lib/ai-brand-context";
+import {
   composeSuffixForBrief,
   enrichScenicBrief,
   isBrandOutcomeBrief,
@@ -100,8 +104,22 @@ export async function POST(req: Request) {
     ? ""
     : `If the request is about a specific listing/address, do not invent the property — the owner must attach a photo.`;
 
+  // Brand-aware compose: palette, photography style, and market geography so
+  // the FIRST generation already looks like this business. Both loaders return
+  // "" on any failure — compose never blocks on brand data.
+  const [brandContext, geography] = await Promise.all([
+    buildTenantImageBrandContext(auth, { locationId }),
+    buildTenantGeography(auth, locationId),
+  ]);
+  const brandBlock = brandContext
+    ? `\nBRAND VISUAL DIRECTION (honor without dulling vibrancy):\n${brandContext}`
+    : "";
+  const geoBlock = geography
+    ? `\nGEOGRAPHY: ${geography} — match region (architecture, vegetation, light); never tropical/coastal unless asked; no invented landmarks.`
+    : "";
+
   const system = `Rewrite the owner's social outcome into a short image-generation prompt. Keep it light — Gemini does the heavy lifting.
-${scenicBlock}${listingBlock}${websiteBlock ? `\n${websiteBlock}` : ""}
+${scenicBlock}${listingBlock}${websiteBlock ? `\n${websiteBlock}` : ""}${brandBlock}${geoBlock}
 
 Return ONLY JSON (no markdown) with:
 {
@@ -117,7 +135,7 @@ Return ONLY JSON (no markdown) with:
   try {
     const client = new Anthropic({ apiKey: key });
     const resp = await client.messages.create({
-      model: "claude-sonnet-4-6",
+      model: "claude-sonnet-5",
       max_tokens: 350,
       system,
       messages: [{ role: "user", content: enrichedIntent }],

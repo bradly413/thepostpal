@@ -12,7 +12,7 @@ const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export const runtime = "nodejs";
 
-const MODEL = "claude-sonnet-4-6"; // has vision
+const MODEL = "claude-sonnet-5"; // has vision
 
 interface ElevateResult {
   caption: string;
@@ -72,7 +72,7 @@ async function fetchImageAsBase64(
 /**
  * POST /api/studio/elevate
  * Trash-to-Treasure vision auto-caption. Takes an uploaded photo URL, looks at the
- * image with claude-sonnet-4-6, and returns a brand-voice caption + hashtags + alt
+ * image with claude-sonnet-5, and returns a brand-voice caption + hashtags + alt
  * text. Body: { imageUrl }. Returns { caption, hashtags, altText } plus an additive
  * `compliance` flag when the tenant has guardrails. Backward-compatible shape.
  */

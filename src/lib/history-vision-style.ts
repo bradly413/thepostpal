@@ -41,7 +41,7 @@ export async function refineVisualStyleFromImages(
 
   try {
     const { object } = await generateObject({
-      model: anthropic("claude-sonnet-4-6"),
+      model: anthropic("claude-sonnet-5"),
       schema: visionStyleSchema,
       messages: [
         {

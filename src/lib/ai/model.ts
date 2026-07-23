@@ -14,12 +14,12 @@ import { anthropic } from "@/lib/ai/anthropic";
 export type PosterboyModelId = "sonnet" | "haiku";
 
 const GATEWAY_MODELS: Record<PosterboyModelId, string> = {
-  sonnet: "anthropic/claude-sonnet-4.6",
+  sonnet: "anthropic/claude-sonnet-5",
   haiku: "anthropic/claude-haiku-4.5",
 };
 
 const DIRECT_MODELS: Record<PosterboyModelId, string> = {
-  sonnet: "claude-sonnet-4-6",
+  sonnet: "claude-sonnet-5",
   haiku: "claude-haiku-4-5",
 };
 

@@ -51,7 +51,7 @@ export async function extractVoiceFromDocs(textRaw: string): Promise<ExtractedVo
 
   const client = new Anthropic({ apiKey: key, timeout: 45_000, maxRetries: 1 });
   const resp = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5",
     max_tokens: 900,
     system: SYSTEM,
     messages: [{ role: "user", content: text }],

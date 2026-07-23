@@ -161,7 +161,7 @@ export async function generateBrandVoiceStructured(
   }
 
   const { object } = await generateObject({
-    model: anthropic("claude-sonnet-4-6"),
+    model: anthropic("claude-sonnet-5"),
     schema: brandVoiceAiSchema,
     system: buildBrandVoiceSystemPrompt(answers),
     prompt: buildBrandVoiceUserPrompt(answers),

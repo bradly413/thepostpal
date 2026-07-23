@@ -10,7 +10,7 @@ import { REAL_PHOTO_REFERENCE_SUFFIX } from "@/lib/studio/image-prompt-vivid";
 
 export const runtime = "nodejs";
 
-const MODEL = "claude-sonnet-4-6";
+const MODEL = "claude-sonnet-5";
 
 const REPROMPT_SYSTEM = `You edit social post images for a small local business. The user already has a generated image and wants specific changes — NOT a new subject, NOT a new scene.
 

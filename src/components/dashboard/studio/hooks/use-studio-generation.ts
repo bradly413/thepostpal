@@ -458,10 +458,11 @@ export function useStudioGeneration({
         referenceImage: refForGen,
         sourceIntent: intent,
         listingMode: isListingBrief(intent) && !!refForGen,
+        // Only compose/reprompt already ran a Claude shaping step. Direct briefs
+        // stay composed:false so the server-side art director can brand-ground them.
         composed:
           imageRoute === "compose_generate" ||
-          imageRoute === "reprompt_edit" ||
-          imageRoute === "direct_generate",
+          imageRoute === "reprompt_edit",
         signal: ctrl.signal,
       });
       if (iData.error || !iData.image) {

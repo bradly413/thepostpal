@@ -178,7 +178,7 @@ export async function POST(req: Request) {
     if (anthropicKey) {
       const client = new Anthropic({ apiKey: anthropicKey });
       const response = await client.messages.create({
-        model: "claude-sonnet-4-6",
+        model: "claude-sonnet-5",
         max_tokens: 1500,
         system: systemPrompt,
         messages: chat.map((m: { role: string; content: string }) => ({

@@ -158,7 +158,7 @@ async function synthesizeVoiceFromPosts(
   );
 
   const { object } = await generateObject({
-    model: anthropic("claude-sonnet-4-6"),
+    model: anthropic("claude-sonnet-5"),
     schema: zeroShotExtractionSchema,
     system: ZERO_SHOT_EXTRACTION_PROMPT,
     prompt: `Precomputed local stats (trust these; do not invent alternatives):

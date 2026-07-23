@@ -46,7 +46,7 @@ export async function extractVoiceProfile(
     .join("\n");
 
   const { object } = await generateObject({
-    model: anthropic("claude-sonnet-4-6"),
+    model: anthropic("claude-sonnet-5"),
     schema: voiceProfileSchema,
     system: SYSTEM,
     prompt: `${header ? header + "\n\n" : ""}Their real captions (${cleaned.length}):\n\n${cleaned

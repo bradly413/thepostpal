@@ -169,14 +169,14 @@ export async function synthesizeVoice(
 
   const client = new Anthropic({ apiKey });
 
-  // claude-sonnet-4-6 is the current Sonnet — fast + cheap enough for a
+  // claude-sonnet-5 is the current Sonnet — fast + cheap enough for a
   // 2–4s wait during onboarding, smart enough to match real voice samples.
   // System prompt gets cache_control as future-proofing (won't fire below
   // ~2k tokens but adds zero cost and starts caching if the prompt grows).
   // No output_config — relying on JSON-in-prompt + manual validation so we
   // don't depend on SDK-version-specific structured-output API support.
   const response = await client.messages.create({
-    model: "claude-sonnet-4-6",
+    model: "claude-sonnet-5",
     max_tokens: 1500,
     system: [
       {
