@@ -6,10 +6,16 @@ import {
   extractReadableText,
   parseOpenGraphHtml,
 } from "@/lib/studio/open-graph";
-import { parseShopifyProducts, readSiteIntel, type ShopifyPull } from "@/lib/studio/site-intel";
+import {
+  parseShopifyProducts,
+  readSiteIntel,
+  searchGroundedIntel,
+  type ShopifyPull,
+} from "@/lib/studio/site-intel";
 import { normalizeWebsiteUrl } from "@/lib/studio/page-url";
 
 export const runtime = "nodejs";
+export const maxDuration = 45; // HTML attempt + Shopify + search-grounded fallbacks
 
 const MAX_HTML_BYTES = 1_000_000;
 const TIMEOUT_MS = 12_000;
@@ -136,6 +142,27 @@ export async function POST(req: Request) {
     });
   };
 
+  // Hard-walled sites (Cloudflare challenges HTML *and* the products API):
+  // web-search grounding still gets verifiable brand facts — the image stays
+  // null and the Director's knowledge-mode handles aesthetics.
+  const groundedResponse = async (pageUrl: string): Promise<Response | null> => {
+    let host = "";
+    try {
+      host = new URL(pageUrl).hostname.replace(/^www\./, "");
+    } catch {
+      return null;
+    }
+    const intel = await searchGroundedIntel(host);
+    if (!intel || intel.facts.length === 0) return null;
+    return Response.json({
+      url: pageUrl,
+      title: intel.brandName ?? host,
+      description: `Key facts from web search: ${intel.facts.join("; ")}.`.slice(0, 700),
+      imageUrl: null,
+      siteName: intel.brandName ?? host,
+    });
+  };
+
   try {
     const res = await safeFetch(
       normalized,
@@ -146,6 +173,8 @@ export async function POST(req: Request) {
     if (!res.ok) {
       const viaShop = await shopifyResponse(normalized);
       if (viaShop) return viaShop;
+      const viaSearch = await groundedResponse(normalized);
+      if (viaSearch) return viaSearch;
       return Response.json(
         { error: "Could not load that website", url: normalized },
         { status: 502 },
@@ -226,6 +255,8 @@ export async function POST(req: Request) {
     }
 
     if (!meta.title && !meta.description && !meta.imageUrl) {
+      const viaSearch = await groundedResponse(finalUrl);
+      if (viaSearch) return viaSearch;
       return Response.json(
         {
           error: "Could not read brand details from that site",

@@ -92,6 +92,51 @@ export function parseShopifyProducts(raw: unknown): ShopifyPull | null {
   };
 }
 
+/**
+ * Last-resort for hard-walled sites (Cloudflare challenges everything):
+ * Gemini with Google Search grounding pulls verifiable brand facts from
+ * SEARCH RESULTS — no site access needed. Facts only; never numbers the
+ * results don't state.
+ */
+export async function searchGroundedIntel(domain: string): Promise<SiteIntel | null> {
+  const key = process.env.GEMINI_API_KEY?.trim();
+  if (!key || !domain) return null;
+  try {
+    const res = await fetch(
+      "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent",
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "x-goog-api-key": key },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Search the web for the business at "${domain}" and its main products. Return ONLY a JSON object, no markdown:
+{"brandName": "the brand's name" | null,
+ "facts": ["up to 5 short claims about this brand and its products that the SEARCH RESULTS corroborate — signature products, what they're known for, product benefits. NEVER include statistics, percentages, or study results unless a result states them verbatim. Keep each under 100 characters."],
+ "bestImageUrl": null}`,
+                },
+              ],
+            },
+          ],
+          tools: [{ google_search: {} }],
+        }),
+        signal: AbortSignal.timeout(10_000),
+      },
+    );
+    if (!res.ok) return null;
+    const data = (await res.json()) as {
+      candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    };
+    const text =
+      data.candidates?.[0]?.content?.parts?.map((p) => p.text ?? "").join("") ?? "";
+    return parseSiteIntel(text, new Set());
+  } catch {
+    return null;
+  }
+}
+
 export async function readSiteIntel(opts: {
   url: string;
   title: string | null;
