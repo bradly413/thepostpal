@@ -822,7 +822,7 @@ export function StudioStyles() {
   }
   .pb-studio .studio-chat-image-card {
     position: relative;
-    width: min(320px, 78vw);
+    width: min(460px, 82vw);
     min-height: 160px;
     border-radius: 14px;
     overflow: hidden;
@@ -926,10 +926,10 @@ export function StudioStyles() {
   /* Chat UX: compact generating/idle frame under chat, clear of chips + composer */
   .pb-studio .canvas:has(.studio-chat-thread) .frame-wrap:not(.as-post):not(.is-chat-result),
   .pb-studio .canvas:has(.prompt-bar.is-chat) .frame-wrap:not(.as-post):not(.is-chat-result) {
-    --studio-top-chrome: max(110px, 16vh);
+    --studio-top-chrome: max(72px, 10vh);
     --studio-prompt-reserve: 280px;
-    max-width: min(200px, 26vw);
-    max-height: min(28vh, 250px, calc(100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)));
+    max-width: min(380px, 40vw);
+    max-height: min(46vh, 480px, calc(100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)));
     top: calc(var(--studio-top-chrome) + (100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)) * 0.36);
   }
   .pb-studio .canvas:has(.studio-chat-thread):has(.canvas-top.has-actions) .frame-wrap:not(.as-post):not(.is-chat-result),

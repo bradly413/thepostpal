@@ -6,13 +6,41 @@ import {
   extractReadableText,
   parseOpenGraphHtml,
 } from "@/lib/studio/open-graph";
-import { readSiteIntel } from "@/lib/studio/site-intel";
+import { parseShopifyProducts, readSiteIntel, type ShopifyPull } from "@/lib/studio/site-intel";
 import { normalizeWebsiteUrl } from "@/lib/studio/page-url";
 
 export const runtime = "nodejs";
 
 const MAX_HTML_BYTES = 1_000_000;
 const TIMEOUT_MS = 12_000;
+
+// Storefront bot walls (Shopify et al.) block obvious bots from datacenter
+// IPs — a browser-realistic fingerprint gets the same HTML a customer sees.
+const BROWSER_HEADERS = {
+  "User-Agent":
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+  Accept: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+  "Accept-Language": "en-US,en;q=0.9",
+};
+
+/** Best-effort Shopify /products.json pull — null when not a Shopify store. */
+async function tryShopifyProducts(pageUrl: string): Promise<ShopifyPull | null> {
+  try {
+    const origin = new URL(pageUrl).origin;
+    const url = `${origin}/products.json?limit=6`;
+    await assertUrlAllowed(url);
+    const res = await safeFetch(
+      url,
+      { headers: { ...BROWSER_HEADERS, Accept: "application/json" } },
+      { timeoutMs: 8_000, maxBytes: 400_000, maxRedirects: 2 },
+    );
+    if (!res.ok) return null;
+    const buf = await readCappedBuffer(res, 400_000);
+    return parseShopifyProducts(JSON.parse(buf.toString("utf8")));
+  } catch {
+    return null;
+  }
+}
 
 /**
  * POST /api/studio/preview-url
@@ -68,19 +96,56 @@ export async function POST(req: Request) {
     throw err;
   }
 
+  // Shopify fallback used whenever the HTML path yields nothing usable —
+  // bot walls block datacenter IPs from pages, but the products API is open.
+  const shopifyResponse = async (pageUrl: string): Promise<Response | null> => {
+    const shop = await tryShopifyProducts(pageUrl);
+    if (!shop) return null;
+    const intel = await readSiteIntel({
+      url: pageUrl,
+      title: shop.title,
+      description: shop.description,
+      bodyText: shop.bodyText,
+      images: shop.images,
+    });
+    let imageUrl: string | null = intel?.bestImageUrl ?? shop.images[0]?.url ?? null;
+    if (imageUrl) {
+      try {
+        await assertUrlAllowed(imageUrl);
+      } catch {
+        imageUrl = null;
+      }
+    }
+    let description = shop.description ?? "";
+    if (intel && intel.facts.length > 0) {
+      const factLine = `Key facts from the site: ${intel.facts.join("; ")}.`;
+      description = description ? `${description} ${factLine}`.slice(0, 700) : factLine.slice(0, 700);
+    }
+    let host = "";
+    try {
+      host = new URL(pageUrl).hostname.replace(/^www\./, "");
+    } catch {
+      /* keep empty */
+    }
+    return Response.json({
+      url: pageUrl,
+      title: shop.title,
+      description: description || null,
+      imageUrl,
+      siteName: intel?.brandName ?? host ?? null,
+    });
+  };
+
   try {
     const res = await safeFetch(
       normalized,
-      {
-        headers: {
-          "User-Agent": "PosterboySocial/1.0 (+https://www.posterboysocial.com)",
-          Accept: "text/html,application/xhtml+xml;q=0.9,*/*;q=0.8",
-        },
-      },
+      { headers: BROWSER_HEADERS },
       { timeoutMs: TIMEOUT_MS, maxBytes: MAX_HTML_BYTES, maxRedirects: 3 },
     );
 
     if (!res.ok) {
+      const viaShop = await shopifyResponse(normalized);
+      if (viaShop) return viaShop;
       return Response.json(
         { error: "Could not load that website", url: normalized },
         { status: 502 },
@@ -151,6 +216,13 @@ export async function POST(req: Request) {
           : factLine.slice(0, 700);
       }
       if (intel.brandName && !meta.siteName) meta.siteName = intel.brandName;
+    }
+
+    // No product-worthy image from the page (bot-walled HTML often parses but
+    // is a challenge shell) → the Shopify products API usually still delivers.
+    if (!meta.imageUrl || (!meta.title && !meta.description)) {
+      const viaShop = await shopifyResponse(finalUrl);
+      if (viaShop) return viaShop;
     }
 
     if (!meta.title && !meta.description && !meta.imageUrl) {

@@ -45,6 +45,53 @@ export function parseSiteIntel(text: string, allowedImageUrls: Set<string>): Sit
   }
 }
 
+/**
+ * Shopify escape hatch: storefront bot walls often block datacenter IPs from
+ * fetching HTML, but /products.json is a public API that stays open. Gives us
+ * REAL product titles, descriptions, and images when the homepage won't talk.
+ */
+export type ShopifyPull = {
+  bodyText: string;
+  images: PageImageCandidate[];
+  title: string | null;
+  description: string | null;
+};
+
+export function parseShopifyProducts(raw: unknown): ShopifyPull | null {
+  const products = (raw as { products?: unknown })?.products;
+  if (!Array.isArray(products) || products.length === 0) return null;
+  const strip = (html: unknown) =>
+    typeof html === "string"
+      ? html.replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()
+      : "";
+  const lines: string[] = [];
+  const images: PageImageCandidate[] = [];
+  for (const p of products.slice(0, 6)) {
+    const prod = p as {
+      title?: unknown;
+      body_html?: unknown;
+      images?: Array<{ src?: unknown }>;
+    };
+    const title = typeof prod.title === "string" ? prod.title.trim() : "";
+    if (!title) continue;
+    const body = strip(prod.body_html).slice(0, 400);
+    lines.push(`PRODUCT: ${title}${body ? ` — ${body}` : ""}`);
+    for (const img of (prod.images ?? []).slice(0, 2)) {
+      if (typeof img?.src === "string" && /^https:\/\//.test(img.src) && images.length < 10) {
+        images.push({ url: img.src.split("?")[0], alt: title });
+      }
+    }
+  }
+  if (lines.length === 0) return null;
+  const firstTitle = lines[0].replace(/^PRODUCT: /, "").split(" — ")[0];
+  return {
+    bodyText: lines.join("\n").slice(0, 6000),
+    images,
+    title: firstTitle || null,
+    description: lines[0].split(" — ")[1]?.slice(0, 300) || null,
+  };
+}
+
 export async function readSiteIntel(opts: {
   url: string;
   title: string | null;

@@ -917,6 +917,14 @@ export default function PosterboyStudio() {
       } else if (!nextRef && site.error) {
         // Soft notice — never marks the assistant bubble as failed.
         setSoftNotice(`${site.error}. Generating from your prompt instead.`);
+        // Bot-walled site: let the Director lean on general brand knowledge
+        // for AESTHETICS only — inventing stats/claims is the failure mode
+        // the verbatim-facts pipeline exists to prevent. Compose/director cap
+        // intent at 1000 chars — clamp the base so the note always survives.
+        const knowledgeNote =
+          "\n\nNote: that website could not be fetched. You may draw on general knowledge of this brand's look and product category for tasteful art direction, but NEVER invent statistics, study results, review scores, or specific product claims.";
+        briefOverride =
+          (briefOverride || userText).slice(0, 990 - knowledgeNote.length) + knowledgeNote;
       }
     }
 
