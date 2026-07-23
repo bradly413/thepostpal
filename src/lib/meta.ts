@@ -29,6 +29,11 @@ const SCOPES = [
   "pages_read_engagement",
   "instagram_basic",
   "instagram_content_publish",
+  // Analytics (/api/meta/insights): Page + IG insights reads. Both are on the
+  // app's use cases (added 2026-07-23) — without them the dashboard analytics
+  // only works for app-role holders.
+  "read_insights",
+  "instagram_manage_insights",
 ].join(",");
 
 /** Incremental Marketing API consent — separate from organic page publishing. */
