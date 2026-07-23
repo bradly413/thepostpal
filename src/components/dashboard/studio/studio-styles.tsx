@@ -2409,7 +2409,14 @@ export function StudioStyles() {
   .pb-studio .canvas.is-chat-layout:has(.studio-coverflow) .studio-chat-thread,
   .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-chat-thread,
   .pb-studio .canvas.is-chat-layout:has(.frame-wrap.as-post) .studio-chat-thread {
+    height: auto !important;
     max-height: min(10vh, 72px) !important;
+    inset-block-start: auto !important;
+  }
+  .pb-studio .canvas.is-chat-layout:has(.canvas-top.has-actions):has(.studio-coverflow) .studio-chat-thread {
+    height: auto !important;
+    max-height: min(10vh, 72px) !important;
+    inset-block-start: auto !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-inner,
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-bubble,
@@ -2433,7 +2440,11 @@ export function StudioStyles() {
     padding-right: 72px;
     padding-left: 16px;
   }
+  /* Coverflow owns the middle band as one compact unit (slides + Prev/Next).
+     Never stretch the track to 100% — that left a dead gap above the composer. */
   .pb-studio .canvas.is-chat-layout .studio-coverflow {
+    --cf-top-band: 0px;
+    --cf-prompt-reserve: 0px;
     position: relative !important;
     inset: auto !important;
     top: auto !important;
@@ -2441,35 +2452,46 @@ export function StudioStyles() {
     bottom: auto !important;
     left: auto !important;
     width: 100%;
-    height: 100%;
+    height: auto !important;
     max-height: 100%;
     flex: 1 1 auto;
     min-height: 0;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    overflow: hidden;
     z-index: 2;
     pointer-events: none;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-track {
     width: min(720px, 100%);
-    height: 100% !important;
-    max-height: 100%;
+    height: min(44vh, calc(100% - 48px), 340px) !important;
+    max-height: calc(100% - 48px) !important;
+    flex: 0 1 auto;
     overflow: hidden;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-coverflow-buttons {
+    margin: 0;
+    flex: 0 0 auto;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-skeleton {
-    width: min(200px, 24vw, 36vh) !important;
-    max-height: min(42vh, calc(100% - 8px), 320px) !important;
+    width: min(200px, 24vw, 34vh) !important;
+    max-height: min(38vh, calc(100% - 4px), 300px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.selected .studio-coverflow-skeleton {
-    width: min(280px, 32vw, 48vh) !important;
-    max-height: min(52vh, calc(100% - 8px), 380px) !important;
+    width: min(260px, 30vw, 42vh) !important;
+    max-height: min(46vh, calc(100% - 4px), 340px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prev img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.next img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prev .studio-coverflow-skeleton,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.next .studio-coverflow-skeleton {
-    width: min(180px, 20vw, 32vh) !important;
-    max-height: min(38vh, calc(100% - 8px), 280px) !important;
+    width: min(170px, 19vw, 30vh) !important;
+    max-height: min(34vh, calc(100% - 4px), 260px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prevLeftSecond,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond {
@@ -2479,8 +2501,8 @@ export function StudioStyles() {
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond img,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.prevLeftSecond .studio-coverflow-skeleton,
   .pb-studio .canvas.is-chat-layout .studio-coverflow-slide.nextRightSecond .studio-coverflow-skeleton {
-    width: min(120px, 14vw, 22vh) !important;
-    max-height: min(26vh, calc(100% - 8px), 180px) !important;
+    width: min(110px, 13vw, 20vh) !important;
+    max-height: min(24vh, calc(100% - 4px), 170px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-result-stage {
     position: relative !important;
@@ -2543,23 +2565,43 @@ export function StudioStyles() {
     transform: none !important;
     flex: 0 0 auto !important;
     z-index: 40 !important;
-    max-height: min(32vh, 240px);
+    max-height: min(30vh, 220px);
+    overflow: hidden !important;
     background: rgba(255, 255, 255, 0.92) !important;
   }
+  /* Status / soft notices live inside the stage as a bottom chip — never a
+     flex band that opens a white canyon between carousel and composer. */
   .pb-studio .canvas.is-chat-layout .studio-error {
-    position: relative !important;
+    position: absolute !important;
     top: auto !important;
-    left: auto !important;
-    transform: none !important;
-    flex: 0 0 auto;
-    width: min(680px, calc(100% - 24px));
-    margin: 0 auto 6px;
-    padding: 8px 12px;
+    bottom: 10px !important;
+    left: 50% !important;
+    transform: translateX(-50%) !important;
+    flex: none;
+    width: min(440px, calc(100% - 32px));
+    margin: 0;
+    padding: 7px 12px;
     z-index: 35;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 6px 10px;
   }
   .pb-studio .canvas.is-chat-layout .studio-error p {
     font-size: 12.5px;
     line-height: 1.35;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-error button,
+  .pb-studio .canvas.is-chat-layout .studio-error .studio-error-cta {
+    margin: 0 !important;
+    flex: 0 0 auto;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-stage:has(.studio-coverflow) {
+    padding-bottom: 44px;
   }
   @media (max-width: 768px) {
     .pb-studio .canvas.is-chat-layout .studio-chat-thread {

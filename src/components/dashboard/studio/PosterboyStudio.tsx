@@ -1927,6 +1927,27 @@ export default function PosterboyStudio() {
             )}
           </div>
           ) : null}
+
+          {error ? (
+            <div className="studio-error">
+              <p>{error}</p>
+              {/connect/i.test(error) && /meta|facebook|instagram/i.test(error) ? (
+                <a className="studio-error-cta" href="/dashboard/settings?tab=account">
+                  Connect Facebook
+                </a>
+              ) : /pro feature|upgrade to unlock/i.test(error) ? (
+                <a className="studio-error-cta" href="/dashboard/settings?tab=billing">
+                  Upgrade plan
+                </a>
+              ) : null}
+              <button type="button" onClick={() => setError("")}>Dismiss</button>
+            </div>
+          ) : softNotice ? (
+            <div className="studio-error studio-soft-notice">
+              <p>{softNotice}</p>
+              <button type="button" onClick={() => setSoftNotice("")}>Dismiss</button>
+            </div>
+          ) : null}
           </div>{/* /.studio-stage */}
           </div>{/* /.studio-body */}
 
@@ -2023,28 +2044,6 @@ export default function PosterboyStudio() {
 
             </div>
           )}
-
-          {error ? (
-            <div className="studio-error">
-              <p>{error}</p>
-              {/* "not connected" errors get a real path to the fix, not a hint */}
-              {/connect/i.test(error) && /meta|facebook|instagram/i.test(error) ? (
-                <a className="studio-error-cta" href="/dashboard/settings?tab=account">
-                  Connect Facebook
-                </a>
-              ) : /pro feature|upgrade to unlock/i.test(error) ? (
-                <a className="studio-error-cta" href="/dashboard/settings?tab=billing">
-                  Upgrade plan
-                </a>
-              ) : null}
-              <button type="button" onClick={() => setError("")}>Dismiss</button>
-            </div>
-          ) : softNotice ? (
-            <div className="studio-error studio-soft-notice">
-              <p>{softNotice}</p>
-              <button type="button" onClick={() => setSoftNotice("")}>Dismiss</button>
-            </div>
-          ) : null}
 
           {historyOpen ? (
             <StudioHistoryGallery
