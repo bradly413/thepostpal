@@ -13,6 +13,12 @@ import {
   buildRateLimitKey,
   RateLimitUnavailableError,
 } from "@/lib/rate-limit";
+import {
+  CALENDAR_PENDING_DELETE_TTL_SECONDS,
+  clearCalendarPendingDelete,
+  getCalendarPendingDelete,
+  setCalendarPendingDelete,
+} from "@/lib/calendar-pending-delete";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -29,32 +35,13 @@ const UNPUBLISHED_STATUSES: DraftStatus[] = [
 ];
 
 const MAX_DELETE = 100;
-const PENDING_TTL_MS = 10 * 60_000;
+const PENDING_TTL_MS = CALENDAR_PENDING_DELETE_TTL_SECONDS * 1000;
 
 const ROLE_RANK: Record<LocationRole, number> = {
   LOCATION_VIEWER: 0,
   LOCATION_EDITOR: 1,
   LOCATION_ADMIN: 2,
 };
-
-type PendingDelete = {
-  token: string;
-  tenantId: string;
-  locationId: string;
-  userId: string;
-  ids: string[];
-  summary: string;
-  expiresAt: number;
-};
-
-const pendingDeletes = new Map<string, PendingDelete>();
-
-function prunePending() {
-  const now = Date.now();
-  for (const [token, entry] of pendingDeletes) {
-    if (entry.expiresAt <= now) pendingDeletes.delete(token);
-  }
-}
 
 function roleAtLeast(
   role: LocationRole | null | undefined,
@@ -80,8 +67,7 @@ async function executeConfirmedDelete(
   locationId: string,
   token: string,
 ) {
-  prunePending();
-  const pending = pendingDeletes.get(token);
+  const pending = await getCalendarPendingDelete(token);
   if (
     !pending ||
     pending.expiresAt <= Date.now() ||
@@ -114,7 +100,7 @@ async function executeConfirmedDelete(
     return result.count;
   });
 
-  pendingDeletes.delete(token);
+  await clearCalendarPendingDelete(token);
 
   const message =
     deleted === 0
@@ -352,7 +338,6 @@ export async function POST(request: NextRequest) {
               return { needsConfirm: false, count: 0 };
             }
 
-            prunePending();
             const token = randomUUID();
             const sample = targets
               .slice(0, 5)
@@ -362,7 +347,7 @@ export async function POST(request: NextRequest) {
               targets.length > 5 ? "…" : ""
             }`;
 
-            pendingDeletes.set(token, {
+            await setCalendarPendingDelete({
               token,
               tenantId: auth.tenantId,
               locationId,
