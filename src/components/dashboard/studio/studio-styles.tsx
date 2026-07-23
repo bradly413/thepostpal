@@ -926,10 +926,10 @@ export function StudioStyles() {
   /* Chat UX: compact generating/idle frame under chat, clear of chips + composer */
   .pb-studio .canvas:has(.studio-chat-thread) .frame-wrap:not(.as-post):not(.is-chat-result),
   .pb-studio .canvas:has(.prompt-bar.is-chat) .frame-wrap:not(.as-post):not(.is-chat-result) {
-    --studio-top-chrome: max(72px, 10vh);
-    --studio-prompt-reserve: 280px;
-    max-width: min(380px, 40vw);
-    max-height: min(46vh, 480px, calc(100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)));
+    --studio-top-chrome: max(64px, 8vh);
+    --studio-prompt-reserve: 250px;
+    max-width: min(520px, 48vw);
+    max-height: min(58vh, 640px, calc(100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)));
     top: calc(var(--studio-top-chrome) + (100% - var(--studio-top-chrome) - var(--studio-prompt-reserve)) * 0.36);
   }
   .pb-studio .canvas:has(.studio-chat-thread):has(.canvas-top.has-actions) .frame-wrap:not(.as-post):not(.is-chat-result),
@@ -2656,6 +2656,18 @@ export function StudioStyles() {
   .pb-studio .pb-brandlock-label {
     font-size: var(--text-caption); font-weight: 600; color: var(--ink-2); white-space: nowrap;
   }
+  /* ── Hero-size the creation (final say — retires the earlier compact caps:
+        200px/28vh is-generating, 340px chat-layout, 320px result stage) ── */
+  .pb-studio .frame-wrap.is-generating:not(.as-post),
+  .pb-studio .canvas.is-chat-layout .frame-wrap.is-generating:not(.as-post) {
+    max-width: min(520px, 48vw) !important;
+    max-height: min(58vh, 640px) !important;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-result-stage img {
+    max-width: min(560px, 60%, 52vh) !important;
+    max-height: min(640px, 94%, 62vh) !important;
+  }
+
   @media (max-width: 640px) {
     .pb-studio .pb-brandlock-label { display: none; }
     .pb-studio .pb-brandkit span { display: none; }
