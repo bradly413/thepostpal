@@ -68,6 +68,8 @@ import {
   veoAspectForPlatform,
 } from "@/lib/studio/generate-video-client";
 import StudioChatThread from "@/components/dashboard/studio/StudioChatThread";
+import StudioCoverflow from "@/components/dashboard/studio/StudioCoverflow";
+import { carouselSlidePrompt } from "@/lib/studio/coverflow";
 import {
   STUDIO_ASPECT_OPTIONS,
   STUDIO_CHAT_WELCOME,
@@ -192,6 +194,11 @@ export default function PosterboyStudio() {
     setIntentDetail("");
   }, []);
   const resetToNewImage = () => {
+    carouselFillAbortRef.current?.abort();
+    carouselFillAbortRef.current = null;
+    carouselRunIdRef.current += 1;
+    setCarouselSlides([]);
+    setCarouselSelected(0);
     setGenState("idle");
     setGeneratedUrl(null);
     setShowTemplate(false);
@@ -272,6 +279,10 @@ export default function PosterboyStudio() {
   const aspectMenuRef = useRef<HTMLDivElement>(null);
   const [postFormat, setPostFormat] = useState<StudioPostFormat>("single");
   const [carouselCount, setCarouselCount] = useState(3);
+  const [carouselSlides, setCarouselSlides] = useState<(string | null)[]>([]);
+  const [carouselSelected, setCarouselSelected] = useState(0);
+  const carouselFillAbortRef = useRef<AbortController | null>(null);
+  const carouselRunIdRef = useRef(0);
   const [formatMenuOpen, setFormatMenuOpen] = useState(false);
   const formatMenuRef = useRef<HTMLDivElement>(null);
   const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
@@ -573,11 +584,110 @@ export default function PosterboyStudio() {
     },
   });
 
+  const clearCarousel = useCallback(() => {
+    carouselFillAbortRef.current?.abort();
+    carouselFillAbortRef.current = null;
+    carouselRunIdRef.current += 1;
+    setCarouselSlides([]);
+    setCarouselSelected(0);
+  }, []);
+
+  const selectCarouselSlide = useCallback(
+    (index: number) => {
+      setCarouselSelected(index);
+      const url = carouselSlides[index];
+      if (url) {
+        setGeneratedUrl(url);
+        resetEdit();
+      }
+    },
+    [carouselSlides, resetEdit],
+  );
+
+  const fillCarouselSlides = useCallback(
+    async (heroUrl: string, intent: string, count: number) => {
+      carouselFillAbortRef.current?.abort();
+      const ctrl = new AbortController();
+      carouselFillAbortRef.current = ctrl;
+      const runId = ++carouselRunIdRef.current;
+      const n = Math.min(5, Math.max(2, Math.round(count) || 3));
+      setCarouselSlides(Array.from({ length: n }, (_, i) => (i === 0 ? heroUrl : null)));
+      setCarouselSelected(0);
+
+      for (let i = 1; i < n; i++) {
+        if (ctrl.signal.aborted || runId !== carouselRunIdRef.current) return;
+        setSoftNotice(`Generating slide ${i + 1} of ${n}…`);
+        const promptText = carouselSlidePrompt(intent, i, n);
+        try {
+          const res = await fetch("/api/generate-image", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              prompt: promptText,
+              aspectRatio: effectiveAspect,
+              // Brand ref only — never the hero slide (that forces near-duplicates).
+              ...(refImage ? { referenceImage: refImage } : {}),
+              sourceIntent: intent,
+              composed: true,
+              quality: imageQuality,
+              ...(imageQuality === "pro" ? { imageSize } : {}),
+              ...(businessType ? { businessType } : {}),
+              ...(locationId ? { locationId } : {}),
+            }),
+            signal: ctrl.signal,
+          });
+          const data = (await res.json()) as { image?: string; error?: string };
+          if (ctrl.signal.aborted || runId !== carouselRunIdRef.current) return;
+          if (res.ok && data.image) {
+            const url = data.image;
+            setCarouselSlides((prev) => {
+              const next =
+                prev.length === n
+                  ? [...prev]
+                  : Array.from({ length: n }, (_, j) => prev[j] ?? null);
+              next[i] = url;
+              return next;
+            });
+            pushHistory(url, `Carousel slide ${i + 1}/${n}`);
+          }
+        } catch (err) {
+          if (err instanceof DOMException && err.name === "AbortError") return;
+        }
+      }
+
+      if (ctrl.signal.aborted || runId !== carouselRunIdRef.current) return;
+      setSoftNotice("");
+      setChatMessages((prev) => {
+        const last = [...prev].reverse().find((m) => m.role === "assistant" && m.status === "done");
+        if (!last || last.role !== "assistant") return prev;
+        return prev.map((m) =>
+          m.id === last.id && m.role === "assistant"
+            ? {
+                ...m,
+                text: `Here’s your ${n}-slide carousel — use Prev / Next to browse.`,
+              }
+            : m,
+        );
+      });
+    },
+    [
+      businessType,
+      effectiveAspect,
+      imageQuality,
+      imageSize,
+      locationId,
+      pushHistory,
+      refImage,
+    ],
+  );
+
   // Finalize chat assistant bubble when generation succeeds (image stays in live slot).
   useEffect(() => {
     if (genState !== "done" || !generatedUrl) return;
     const aid = pendingAssistantIdRef.current;
     if (!aid) return;
+    const formatForTurn = pendingPromptMemoryRef.current?.format ?? postFormat;
+    const countForTurn = pendingPromptMemoryRef.current?.carouselCount ?? carouselCount;
     setChatMessages((prev) =>
       prev.map((m) =>
         m.id === aid && m.role === "assistant"
@@ -585,8 +695,8 @@ export default function PosterboyStudio() {
               ...m,
               status: "done" as const,
               text:
-                m.format === "carousel"
-                  ? `Here’s slide 1 of ${m.carouselCount ?? 3} — a hero for your carousel.`
+                formatForTurn === "carousel"
+                  ? `Here’s slide 1 of ${countForTurn ?? 3} — building the rest of your carousel…`
                   : "Here’s your image.",
               aspect: effectiveAspect,
               imageUrl: generatedUrl,
@@ -601,7 +711,31 @@ export default function PosterboyStudio() {
     }
     pendingAssistantIdRef.current = null;
     composeInFlightRef.current = false;
-  }, [genState, generatedUrl, effectiveAspect, locationId]);
+
+    if (formatForTurn === "carousel") {
+      const intent =
+        lastGenPrompt.trim() ||
+        mem?.text ||
+        composerBrief.trim() ||
+        prompt.trim() ||
+        "Instagram carousel";
+      void fillCarouselSlides(generatedUrl, intent, countForTurn ?? 3);
+    } else {
+      clearCarousel();
+    }
+  }, [
+    genState,
+    generatedUrl,
+    effectiveAspect,
+    locationId,
+    postFormat,
+    carouselCount,
+    lastGenPrompt,
+    composerBrief,
+    prompt,
+    fillCarouselSlides,
+    clearCarousel,
+  ]);
 
   const resolveWebsiteBrand = useCallback(
     async (
@@ -691,6 +825,7 @@ export default function PosterboyStudio() {
     composeInFlightRef.current = true;
     setSoftNotice("");
     setError("");
+    clearCarousel();
 
     // Archive current live image onto the previous assistant before a new turn.
     if (generatedUrl && genState === "done") {
@@ -751,6 +886,7 @@ export default function PosterboyStudio() {
   }, [
     attachReferenceFromUrl,
     carouselCount,
+    clearCarousel,
     composeFromIntent,
     composerBrief,
     effectiveAspect,
@@ -1338,6 +1474,11 @@ export default function PosterboyStudio() {
         platformId: platform.id,
         format: postFormat,
         carouselCount: postFormat === "carousel" ? carouselCount : undefined,
+        ...(postFormat === "carousel"
+          ? {
+              mediaUrls: carouselSlides.filter((u): u is string => !!u),
+            }
+          : {}),
       });
       router.push("/dashboard/calendar?from=studio");
     } catch (err) {
@@ -1550,13 +1691,35 @@ export default function PosterboyStudio() {
             messages={chatMessages}
             welcome={STUDIO_CHAT_WELCOME}
             resultUrl={
-              genState === "done" && mediaKind === "image" ? generatedUrl : null
+              genState === "done" &&
+              mediaKind === "image" &&
+              postFormat !== "carousel"
+                ? generatedUrl
+                : null
             }
           />
 
+          {/* Coverflow for carousel format — prev / selected / next positions. */}
+          {genState === "done" &&
+          mediaKind === "image" &&
+          postFormat === "carousel" &&
+          carouselSlides.length > 0 &&
+          !showTemplate ? (
+            <StudioCoverflow
+              slides={carouselSlides.map((url) => ({ url }))}
+              selectedIndex={carouselSelected}
+              onSelect={selectCarouselSlide}
+              aspectRatio={`${frameDims.w} / ${frameDims.h}`}
+            />
+          ) : null}
+
           {/* Always-on result layer — sits above chat + frame so a blank frame
               can never hide a successful generation. */}
-          {genState === "done" && mediaKind === "image" && generatedUrl && !showTemplate ? (
+          {genState === "done" &&
+          mediaKind === "image" &&
+          generatedUrl &&
+          postFormat !== "carousel" &&
+          !showTemplate ? (
             <div className="studio-result-stage" data-studio-result="1">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img

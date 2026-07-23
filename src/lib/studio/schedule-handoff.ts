@@ -11,6 +11,8 @@ export type StudioScheduleHandoff = {
   /** v1: UI intent only — calendar can open ready for multi-upload later. */
   format?: "single" | "carousel";
   carouselCount?: number;
+  /** When format is carousel, all ready slide URLs (selected first is mediaUrl). */
+  mediaUrls?: string[];
 };
 
 export function writeStudioScheduleHandoff(payload: StudioScheduleHandoff): void {

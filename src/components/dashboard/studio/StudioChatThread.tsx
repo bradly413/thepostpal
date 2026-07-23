@@ -96,11 +96,11 @@ export default function StudioChatThread({
           }
 
           const badge = formatBadge(msg);
-          // History cards only — current result is rendered via resultUrl below
-          // so we never hide the live image behind a collapsed frame.
+          // History cards for single posts only — carousel uses the coverflow stage.
           const showCard =
             !!msg.imageUrl &&
             msg.status === "done" &&
+            msg.format !== "carousel" &&
             !(resultUrl && msg.imageUrl === resultUrl);
           return (
             <div
