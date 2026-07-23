@@ -17,6 +17,21 @@ type Platform = {
   publishable: boolean;
 };
 
+/** Director / compose / reprompt — must stay under /api/studio/director maxDuration. */
+const STUDIO_DIRECTOR_CLIENT_MS = 35_000;
+/**
+ * Image generation alone. Was sharing a single 60s abort with Director, so
+ * High/Pro often died mid-generate after a long art-direct turn.
+ * Keep ≥ /api/generate-image maxDuration.
+ */
+const STUDIO_GENERATE_CLIENT_MS = 90_000;
+
+function abortAfter(ms: number): { signal: AbortSignal; clear: () => void } {
+  const ctrl = new AbortController();
+  const id = setTimeout(() => ctrl.abort(), ms);
+  return { signal: ctrl.signal, clear: () => clearTimeout(id) };
+}
+
 /** Cover-crop a generated image to the platform's exact pixel dimensions. */
 export function resizeToExact(dataUrl: string, w: number, h: number): Promise<string> {
   return new Promise((resolve) => {
@@ -253,8 +268,7 @@ export function useStudioGeneration({
       startProgressTimer();
       const startedAt = Date.now();
 
-      const ctrl = new AbortController();
-      const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
+      const genAbort = abortAfter(STUDIO_GENERATE_CLIENT_MS);
       try {
         const editingFromCanvas =
           recoverGenState === "done" &&
@@ -265,7 +279,7 @@ export function useStudioGeneration({
         const data = await requestGenerateImage(savedPrompt, {
           aspect: resolveAspect(),
           referenceImage: refForGen,
-          signal: ctrl.signal,
+          signal: genAbort.signal,
         });
         if (data.error || !data.image) {
           await holdFloor(startedAt);
@@ -299,7 +313,7 @@ export function useStudioGeneration({
         );
         setGenState("idle");
       } finally {
-        clearTimeout(timeoutId);
+        genAbort.clear();
       }
     },
     [
@@ -368,8 +382,9 @@ export function useStudioGeneration({
 
     startProgressTimer();
 
-    const ctrl = new AbortController();
-    const timeoutId = setTimeout(() => ctrl.abort(), 60_000);
+    // Separate budgets: Director must not steal the image-gen abort window.
+    const planAbort = abortAfter(STUDIO_DIRECTOR_CLIENT_MS);
+    let genAbort: { signal: AbortSignal; clear: () => void } | null = null;
     try {
       let imagePrompt: string | null = null;
       let aspect = resolveAspect();
@@ -409,7 +424,6 @@ export function useStudioGeneration({
         setCaptionState("idle");
         setGenState("done");
         onAfterGenerateSuccessRef.current?.();
-        clearTimeout(timeoutId);
         return;
       }
 
@@ -423,7 +437,7 @@ export function useStudioGeneration({
             referenceImage: generatedUrl,
             ...(locationId ? { locationId } : {}),
           }),
-          signal: ctrl.signal,
+          signal: planAbort.signal,
         });
         const rData = (await rRes.json()) as { imagePrompt?: string; error?: string };
         if (rRes.ok && rData.imagePrompt) {
@@ -449,7 +463,7 @@ export function useStudioGeneration({
               ...(brandLock ? {} : { brandLock: false }),
               ...(imageEngine === "design" ? { designLane: true } : {}),
             }),
-            signal: ctrl.signal,
+            signal: planAbort.signal,
           });
           const d = (await dRes.json()) as {
             platform?: string;
@@ -463,7 +477,6 @@ export function useStudioGeneration({
           if (!dRes.ok && d.code === "listing_photo_required") {
             stopProgressTimer();
             setCaptionState("idle");
-            clearTimeout(timeoutId);
             failGenerate(d.error || "Add your listing photo first.");
             setGenState(isReprompt ? "done" : "idle");
             return;
@@ -473,7 +486,6 @@ export function useStudioGeneration({
             stopProgressTimer();
             setProgress(0);
             setCaptionState("idle");
-            clearTimeout(timeoutId);
             failGenerate(d.clarify);
             setGenState(isReprompt ? "done" : "idle");
             return;
@@ -496,46 +508,53 @@ export function useStudioGeneration({
             directorComposed = true;
           }
         } catch {
-          // Director unreachable — legacy fallback below.
+          // Director timed out / unreachable — legacy fallback below.
+          // Image generate still gets a fresh abort budget.
         }
 
         if (!directorComposed && imageRoute === "compose_generate") {
-          const cRes = await fetch("/api/studio/compose", {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({
-              intent,
-              hasReferenceImage: !!refForGen,
-              ...(locationId ? { locationId } : {}),
-              ...(brandLock ? {} : { brandLock: false }),
-            }),
-            signal: ctrl.signal,
-          });
-          const brief = await cRes.json();
-          if (!cRes.ok || brief.error) {
-            if (brief.code === "listing_photo_required") {
-              stopProgressTimer();
-              setCaptionState("idle");
-              clearTimeout(timeoutId);
-              failGenerate(brief.error || "Add your listing photo first.");
-              setGenState(isReprompt ? "done" : "idle");
-              return;
+          // Fresh budget if Director ate the first abort window.
+          planAbort.clear();
+          const composeAbort = abortAfter(STUDIO_DIRECTOR_CLIENT_MS);
+          try {
+            const cRes = await fetch("/api/studio/compose", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                intent,
+                hasReferenceImage: !!refForGen,
+                ...(locationId ? { locationId } : {}),
+                ...(brandLock ? {} : { brandLock: false }),
+              }),
+              signal: composeAbort.signal,
+            });
+            const brief = await cRes.json();
+            if (!cRes.ok || brief.error) {
+              if (brief.code === "listing_photo_required") {
+                stopProgressTimer();
+                setCaptionState("idle");
+                failGenerate(brief.error || "Add your listing photo first.");
+                setGenState(isReprompt ? "done" : "idle");
+                return;
+              }
+              // Compose failed — fall through with the raw intent.
+              imagePrompt = intent;
+            } else {
+              const textNamesPlatform =
+                /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
+              const idx = platforms.findIndex((p) => p.id === brief.platform);
+              const pIdx =
+                idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
+              if (textNamesPlatform) platformPinRef.current = false;
+              setPlatformIdx(pIdx);
+              aspect =
+                aspectPinRef.current && aspectOverride
+                  ? aspectOverride
+                  : platforms[pIdx].genAspect;
+              imagePrompt = brief.imagePrompt;
             }
-            // Compose failed — fall through with the raw intent.
-            imagePrompt = intent;
-          } else {
-            const textNamesPlatform =
-              /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
-            const idx = platforms.findIndex((p) => p.id === brief.platform);
-            const pIdx =
-              idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
-            if (textNamesPlatform) platformPinRef.current = false;
-            setPlatformIdx(pIdx);
-            aspect =
-              aspectPinRef.current && aspectOverride
-                ? aspectOverride
-                : platforms[pIdx].genAspect;
-            imagePrompt = brief.imagePrompt;
+          } finally {
+            composeAbort.clear();
           }
         } else if (!directorComposed) {
           // direct_generate fallback — the server-side art director still
@@ -544,6 +563,8 @@ export function useStudioGeneration({
         }
       }
 
+      planAbort.clear();
+      genAbort = abortAfter(STUDIO_GENERATE_CLIENT_MS);
       const iData = await requestGenerateImage(imagePrompt || intent, {
         aspect,
         referenceImage: refForGen,
@@ -558,7 +579,7 @@ export function useStudioGeneration({
           imageRoute === "reprompt_edit",
         allowText: allowTextOnImage,
         designLane: directorWantsDesign,
-        signal: ctrl.signal,
+        signal: genAbort.signal,
       });
       if (iData.error || !iData.image) {
         stopProgressTimer();
@@ -602,7 +623,8 @@ export function useStudioGeneration({
       );
       setGenState(isReprompt ? "done" : "idle");
     } finally {
-      clearTimeout(timeoutId);
+      planAbort.clear();
+      genAbort?.clear();
     }
   }, [
     composerBrief,

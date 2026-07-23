@@ -606,13 +606,15 @@ export default function PosterboyStudio() {
     setActiveEdit,
     pushHistory,
     onAfterGenerateSuccess: clearComposeFieldForReview,
-    onAfterGenerateFailure: (message) => {
+    onAfterGenerateFailure: () => {
       const aid = pendingAssistantIdRef.current;
       if (!aid) return;
+      // Keep the detailed message in the stage notice only — duplicating it
+      // into the chat bubble looked like two identical "Timed out" errors.
       setChatMessages((prev) =>
         prev.map((m) =>
           m.id === aid && m.role === "assistant"
-            ? { ...m, status: "error" as const, text: message }
+            ? { ...m, status: "error" as const, text: "Couldn't finish that one." }
             : m,
         ),
       );
@@ -791,11 +793,14 @@ export default function PosterboyStudio() {
 
       setRefImageLoading(true);
       try {
+        // Cap wait so a slow/bot-walled site can't burn the whole Generate turn
+        // before Director + image gen even start.
         const res = await fetch("/api/studio/preview-url", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           credentials: "same-origin",
           body: JSON.stringify({ url: pageUrl }),
+          signal: AbortSignal.timeout(12_000),
         });
         const data = (await res.json()) as OpenGraphMeta & {
           url?: string;

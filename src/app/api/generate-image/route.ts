@@ -30,7 +30,7 @@ import {
 
 // Studio: Standard = Nano Banana 2, Pro = Nano Banana Pro (Interactions API).
 
-export const maxDuration = 60; // art-director expand + Pro 2K generation + quality retry
+export const maxDuration = 90; // art-director expand + Pro 2K generation + quality retry
 
 export async function POST(req: NextRequest) {
   let auth: AuthContext;
