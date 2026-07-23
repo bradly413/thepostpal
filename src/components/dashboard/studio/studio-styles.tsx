@@ -2609,14 +2609,20 @@ export function StudioStyles() {
   .pb-studio .pb-brandkit:hover { background: rgba(255,255,255,0.95); }
   .pb-studio .pb-plus {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 36px; height: 36px; margin: 8px 0 0 14px; flex: none;
+    width: 36px; height: 36px; margin: 0; flex: none;
     border-radius: 50%; border: 1px solid rgba(26,26,46,0.14);
     background: rgba(255,255,255,0.75); color: var(--ink-2); cursor: pointer;
     align-self: flex-start;
   }
+  /* One centerline: + circle and the first text line share a vertical center;
+     multiline growth keeps + pinned to the first line. */
+  .pb-studio .prompt-bar .pb-bar-input {
+    align-items: flex-start; gap: 12px; padding: 12px 16px 10px;
+  }
+  .pb-studio .pb-plus + textarea.pb-bar-textarea { padding: 7px 0 0; }
   .pb-studio .pb-plus:hover { color: #c81e2a; border-color: rgba(238,37,50,0.35); }
   .pb-studio .pb-enhance {
-    position: absolute; right: 14px; bottom: 12px;
+    position: absolute; right: 14px; top: 14px;
     display: inline-flex; align-items: center; justify-content: center;
     width: 32px; height: 32px; border-radius: 9px; border: none;
     background: transparent; color: var(--ink-2); cursor: pointer;

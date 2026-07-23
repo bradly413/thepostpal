@@ -1,6 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { requireAuthContext } from "@/lib/api-auth";
+import { expandImageBrief } from "@/lib/studio/art-director";
+import {
+  buildTenantImageBrandContext,
+  buildTenantGeography,
+} from "@/lib/ai-brand-context";
 
 export async function POST(req: NextRequest) {
   let auth;
@@ -17,14 +22,42 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  const { prompt } = await req.json();
+  const body = (await req.json()) as {
+    prompt?: unknown;
+    locationId?: unknown;
+    businessType?: unknown;
+    brandLock?: unknown;
+  };
+  const prompt = typeof body.prompt === "string" ? body.prompt : "";
 
-  if (!prompt || typeof prompt !== "string") {
+  if (!prompt) {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
   }
 
   if (prompt.length > 2000) {
     return NextResponse.json({ error: "Prompt too long (2000 char max)" }, { status: 400 });
+  }
+
+  // Preferred path: the art director — brand palette, vertical aesthetic, and
+  // geography aware. Returns the original brief unchanged on any failure.
+  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+    const locationId = typeof body.locationId === "string" ? body.locationId : null;
+    const [brandContext, geography] = await Promise.all([
+      body.brandLock === false
+        ? Promise.resolve("")
+        : buildTenantImageBrandContext(auth, { locationId }),
+      buildTenantGeography(auth, locationId),
+    ]);
+    const enhanced = await expandImageBrief({
+      brief: prompt,
+      businessType: typeof body.businessType === "string" ? body.businessType.slice(0, 120) : undefined,
+      brandContext: brandContext || undefined,
+      geography: geography || undefined,
+    });
+    if (enhanced.trim() && enhanced.trim() !== prompt.trim()) {
+      return NextResponse.json({ enhanced: enhanced.trim() });
+    }
+    // Fall through to the legacy enhancer if the expansion was a no-op.
   }
 
   const apiKey = process.env.GEMINI_API_KEY;

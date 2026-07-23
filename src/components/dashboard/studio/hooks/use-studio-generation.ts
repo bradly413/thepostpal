@@ -83,6 +83,8 @@ export type UseStudioGenerationParams = {
   onAfterGenerateSuccess?: () => void;
   /** Fatal generate/compose failure (not soft notices). */
   onAfterGenerateFailure?: (message: string) => void;
+  /** Non-fatal heads-up (e.g. Design Studio fell back to Gemini). */
+  onSoftNotice?: (message: string) => void;
 };
 
 export function useStudioGeneration({
@@ -118,6 +120,7 @@ export function useStudioGeneration({
   pushHistory,
   onAfterGenerateSuccess,
   onAfterGenerateFailure,
+  onSoftNotice,
 }: UseStudioGenerationParams) {
   const resolveAspect = useCallback(() => {
     if (aspectPinRef.current && aspectOverride) return aspectOverride;
@@ -213,6 +216,7 @@ export function useStudioGeneration({
       return res.json() as Promise<{
         image?: string;
         error?: string;
+        modelId?: string;
         retriedForQuality?: boolean;
       }>;
     },
@@ -566,6 +570,13 @@ export function useStudioGeneration({
 
       stopProgressTimer();
       setProgress(100);
+      // Honest engine attribution: forcing Design Studio can silently fall
+      // back to Gemini (no OpenAI key, or a reference photo is attached).
+      if (imageEngine === "design" && iData.modelId && !iData.modelId.includes("gpt")) {
+        onSoftNotice?.(
+          "Design Studio wasn't available for this one — generated with Posterboy Visual instead.",
+        );
+      }
       setGeneratedUrl(iData.image);
       pushHistory(iData.image, historyLabel);
       rememberGenPrompt(historyLabel);
@@ -593,6 +604,7 @@ export function useStudioGeneration({
     generatedUrl,
     imageEngine,
     brandLock,
+    onSoftNotice,
     platformIdx,
     platforms,
     platformPinRef,

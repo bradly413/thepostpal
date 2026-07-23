@@ -425,7 +425,12 @@ export default function PosterboyStudio() {
       const res = await fetch("/api/enhance-prompt", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: brief }),
+        body: JSON.stringify({
+          prompt: brief,
+          ...(locationId ? { locationId } : {}),
+          ...(businessType ? { businessType } : {}),
+          ...(brandLock ? {} : { brandLock: false }),
+        }),
       });
       const data = (await res.json()) as { enhanced?: string; error?: string };
       if (res.ok && data.enhanced?.trim()) {
@@ -590,6 +595,7 @@ export default function PosterboyStudio() {
     imageSize,
     imageEngine,
     brandLock,
+    onSoftNotice: setSoftNotice,
     businessType: businessType ?? undefined,
     locationId,
     platformPinRef,
@@ -1623,31 +1629,7 @@ export default function PosterboyStudio() {
                   ) : null}
                 </div>
               ) : null}
-              <div className="studio-mode-toggle" role="group" aria-label="Studio mode">
-                <button
-                  type="button"
-                  className={`preview-toggle${composerMode === "image" ? " is-sched" : ""}`}
-                  aria-pressed={composerMode === "image"}
-                  onClick={requestImageMode}
-                  disabled={videoBusy}
-                  title="Image mode"
-                >
-                  <ImageIcon size={15} />
-                  <span>Image</span>
-                </button>
-                <button
-                  type="button"
-                  className={`preview-toggle${composerMode === "video" ? " is-sched" : ""}`}
-                  aria-pressed={composerMode === "video"}
-                  onClick={requestVideoMode}
-                  disabled={videoBusy}
-                  title="Video mode — publish coming soon in closed beta"
-                >
-                  <Clapperboard size={15} />
-                  <span>Video</span>
-                  <em className="post-soon">Soon</em>
-                </button>
-              </div>
+              {/* Mode switching lives in the composer head tabs now. */}
             </div>
 
             {genState === "done" ? (
@@ -2109,7 +2091,8 @@ export default function PosterboyStudio() {
                     className={`pb-mode-tab${composerMode === "image" ? " is-active" : ""}`}
                     aria-pressed={composerMode === "image"}
                     title="Image mode"
-                    onClick={() => setComposerMode("image")}
+                    onClick={requestImageMode}
+                    disabled={videoBusy}
                   >
                     <ImageTabIcon size={15} strokeWidth={1.9} aria-hidden />
                   </button>
@@ -2118,7 +2101,8 @@ export default function PosterboyStudio() {
                     className={`pb-mode-tab${composerMode === "video" ? " is-active" : ""}`}
                     aria-pressed={composerMode === "video"}
                     title="Video mode — publish coming soon in closed beta"
-                    onClick={() => setComposerMode("video")}
+                    onClick={requestVideoMode}
+                    disabled={videoBusy}
                   >
                     <Clapperboard size={15} strokeWidth={1.9} aria-hidden />
                   </button>
