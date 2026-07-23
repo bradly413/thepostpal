@@ -52,8 +52,8 @@ function mediaAltText(
 const CUBE_MAX = 6;
 
 /**
- * Full-width Instagram portrait frame (4:5).
- * Large queues use a counter + thumbnail strip instead of a wall of dots.
+ * Instagram portrait frame (4:5) that fills remaining composer height —
+ * sized by available space, not width×aspect (which forced inner scroll).
  */
 export default function PostPreview({
   mediaUrl,
@@ -106,8 +106,30 @@ export default function PostPreview({
     : [Navigation, A11y, Keyboard];
 
   return (
-    <div className="mb-2 w-full shrink-0">
+    <div className="flex min-h-0 w-full flex-1 flex-col">
       <style>{`
+        .pb-composer-preview-fit {
+          container-type: size;
+          position: relative;
+          flex: 1 1 auto;
+          min-height: min(48vh, 380px);
+          width: 100%;
+        }
+        @media (min-width: 1024px) {
+          .pb-composer-preview-fit {
+            min-height: 0;
+          }
+        }
+        .pb-composer-preview-fit__frame {
+          position: absolute;
+          inset: 0;
+          margin: auto;
+          aspect-ratio: 4 / 5;
+          width: min(100%, calc(100cqh * 4 / 5));
+          height: min(100%, calc(100cqw * 5 / 4));
+          max-width: 100%;
+          max-height: 100%;
+        }
         .pb-composer-swiper,
         .pb-composer-swiper .swiper-wrapper {
           width: 100%;
@@ -157,152 +179,156 @@ export default function PostPreview({
       `}</style>
 
       {!mediaUrl ? (
-        <label
-          className={`relative flex aspect-[4/5] w-full cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center shadow-[0_12px_28px_-18px_rgba(20,20,40,0.35)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
-            uploadingMedia ? "pointer-events-none" : ""
-          }`}
-        >
-          <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ee2532]/12 text-xl font-light leading-none text-[#ee2532]">
-            +
-          </span>
-          <span className="text-sm font-medium text-black/55">Add a photo or video</span>
-          <span className="text-[11px] text-black/35">Uploads to your secure bucket</span>
-          <input
-            type="file"
-            accept="image/*,video/*"
-            className="sr-only"
-            onChange={(e) => onPickFile(e.target.files?.[0])}
-            disabled={uploadingMedia}
-          />
-        </label>
-      ) : (
-        <>
-          <div
-            className={`relative aspect-[4/5] w-full overflow-hidden bg-[#111] ring-1 ring-black/[0.06] ${
-              largeQueue
-                ? "shadow-[0_10px_28px_-16px_rgba(20,20,40,0.35)]"
-                : "shadow-[0_18px_42px_-16px_rgba(20,20,40,0.45),0_4px_12px_-6px_rgba(20,20,40,0.22)]"
+        <div className="pb-composer-preview-fit">
+          <label
+            className={`pb-composer-preview-fit__frame flex cursor-pointer flex-col items-center justify-center gap-1.5 bg-[#f3f3f4] text-center shadow-[0_12px_28px_-18px_rgba(20,20,40,0.35)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
+              uploadingMedia ? "pointer-events-none" : ""
             }`}
           >
-            {showCarousel ? (
-              <Swiper
-                key={useCube ? "cube" : "slide"}
-                className="pb-composer-swiper absolute inset-0"
-                modules={carouselModules}
-                {...(useCube
-                  ? { effect: "cube" as const, cubeEffect: { slideShadows: false } }
-                  : {})}
-                speed={reduceMotion ? 0 : largeQueue ? 320 : 500}
-                loop={false}
-                initialSlide={carouselIndex}
-                keyboard={{ enabled: true }}
-                navigation={{
-                  nextEl: ".pb-composer-next",
-                  prevEl: ".pb-composer-prev",
-                }}
-                onSwiper={(s) => {
-                  swiperRef.current = s;
-                }}
-                onSlideChange={(s) => {
-                  if (s.activeIndex !== carouselIndex) {
-                    onCarouselIndexChange?.(s.activeIndex);
-                  }
-                }}
-              >
-                {mediaItems.map((item, i) => (
-                  <SwiperSlide key={`${item.url}-${i}`}>
-                    {item.type === "video" ? (
-                      <video
-                        src={item.url}
-                        muted
-                        playsInline
-                        aria-label={mediaAltText(item, i, mediaItems.length)}
-                      />
-                    ) : (
-                      // eslint-disable-next-line @next/next/no-img-element
-                      <img
-                        src={item.url}
-                        alt={mediaAltText(item, i, mediaItems.length)}
-                      />
-                    )}
-                  </SwiperSlide>
-                ))}
-              </Swiper>
-            ) : mediaType === "video" ? (
-              <video
-                src={mediaUrl}
-                className="absolute inset-0 h-full w-full object-contain object-center"
-                muted
-                playsInline
-                aria-label="Post preview video"
-              />
-            ) : (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={mediaUrl}
-                alt="Post preview photo"
-                className="absolute inset-0 h-full w-full object-contain object-center"
-              />
-            )}
-
-            {uploadingMedia && (
-              <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-md">
-                <span
-                  className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white"
-                  aria-hidden
+            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ee2532]/12 text-xl font-light leading-none text-[#ee2532]">
+              +
+            </span>
+            <span className="text-sm font-medium text-black/55">Add a photo or video</span>
+            <span className="text-[11px] text-black/35">Uploads to your secure bucket</span>
+            <input
+              type="file"
+              accept="image/*,video/*"
+              className="sr-only"
+              onChange={(e) => onPickFile(e.target.files?.[0])}
+              disabled={uploadingMedia}
+            />
+          </label>
+        </div>
+      ) : (
+        <>
+          <div className="pb-composer-preview-fit">
+            <div
+              className={`pb-composer-preview-fit__frame overflow-hidden bg-[#111] ring-1 ring-black/[0.06] ${
+                largeQueue
+                  ? "shadow-[0_10px_28px_-16px_rgba(20,20,40,0.35)]"
+                  : "shadow-[0_18px_42px_-16px_rgba(20,20,40,0.45),0_4px_12px_-6px_rgba(20,20,40,0.22)]"
+              }`}
+            >
+              {showCarousel ? (
+                <Swiper
+                  key={useCube ? "cube" : "slide"}
+                  className="pb-composer-swiper absolute inset-0"
+                  modules={carouselModules}
+                  {...(useCube
+                    ? { effect: "cube" as const, cubeEffect: { slideShadows: false } }
+                    : {})}
+                  speed={reduceMotion ? 0 : largeQueue ? 320 : 500}
+                  loop={false}
+                  initialSlide={carouselIndex}
+                  keyboard={{ enabled: true }}
+                  navigation={{
+                    nextEl: ".pb-composer-next",
+                    prevEl: ".pb-composer-prev",
+                  }}
+                  onSwiper={(s) => {
+                    swiperRef.current = s;
+                  }}
+                  onSlideChange={(s) => {
+                    if (s.activeIndex !== carouselIndex) {
+                      onCarouselIndexChange?.(s.activeIndex);
+                    }
+                  }}
+                >
+                  {mediaItems.map((item, i) => (
+                    <SwiperSlide key={`${item.url}-${i}`}>
+                      {item.type === "video" ? (
+                        <video
+                          src={item.url}
+                          muted
+                          playsInline
+                          aria-label={mediaAltText(item, i, mediaItems.length)}
+                        />
+                      ) : (
+                        // eslint-disable-next-line @next/next/no-img-element
+                        <img
+                          src={item.url}
+                          alt={mediaAltText(item, i, mediaItems.length)}
+                        />
+                      )}
+                    </SwiperSlide>
+                  ))}
+                </Swiper>
+              ) : mediaType === "video" ? (
+                <video
+                  src={mediaUrl}
+                  className="absolute inset-0 h-full w-full object-contain object-center"
+                  muted
+                  playsInline
+                  aria-label="Post preview video"
                 />
-              </div>
-            )}
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={mediaUrl}
+                  alt="Post preview photo"
+                  className="absolute inset-0 h-full w-full object-contain object-center"
+                />
+              )}
 
-            {!uploadingMedia && (
-              <>
-                <div className="absolute right-2 top-2 z-20 flex gap-1.5">
-                  <label className="cursor-pointer rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65">
-                    Change
-                    <input
-                      type="file"
-                      accept="image/*,video/*"
-                      className="sr-only"
-                      onChange={(e) => onPickFile(e.target.files?.[0])}
-                    />
-                  </label>
-                  <button
-                    type="button"
-                    onClick={onRemove}
-                    className="rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65"
-                  >
-                    Remove
-                  </button>
+              {uploadingMedia && (
+                <div className="absolute inset-0 z-20 flex items-center justify-center bg-black/40 backdrop-blur-md">
+                  <span
+                    className="h-6 w-6 animate-spin rounded-full border-2 border-white/30 border-t-white"
+                    aria-hidden
+                  />
                 </div>
-                {showCarousel && (
-                  <>
+              )}
+
+              {!uploadingMedia && (
+                <>
+                  <div className="absolute right-2 top-2 z-20 flex gap-1.5">
+                    <label className="cursor-pointer rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65">
+                      Change
+                      <input
+                        type="file"
+                        accept="image/*,video/*"
+                        className="sr-only"
+                        onChange={(e) => onPickFile(e.target.files?.[0])}
+                      />
+                    </label>
                     <button
                       type="button"
-                      className="pb-composer-prev pb-composer-nav absolute left-1.5 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60"
-                      aria-label="Previous image"
+                      onClick={onRemove}
+                      className="rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65"
                     >
-                      <ChevronLeft size={16} aria-hidden />
+                      Remove
                     </button>
-                    <button
-                      type="button"
-                      className="pb-composer-next pb-composer-nav absolute right-1.5 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60"
-                      aria-label="Next image"
-                    >
-                      <ChevronRight size={16} aria-hidden />
-                    </button>
-                    <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white backdrop-blur">
-                      {carouselIndex + 1} / {mediaItems.length}
-                    </div>
-                  </>
-                )}
-              </>
-            )}
+                  </div>
+                  {showCarousel && (
+                    <>
+                      <button
+                        type="button"
+                        className="pb-composer-prev pb-composer-nav absolute left-1.5 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={16} aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        className="pb-composer-next pb-composer-nav absolute right-1.5 top-1/2 z-20 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full bg-black/45 text-white backdrop-blur transition-colors hover:bg-black/60"
+                        aria-label="Next image"
+                      >
+                        <ChevronRight size={16} aria-hidden />
+                      </button>
+                      <div className="pointer-events-none absolute bottom-2 left-1/2 z-20 -translate-x-1/2 rounded-full bg-black/50 px-2.5 py-1 text-[11px] font-semibold tabular-nums text-white backdrop-blur">
+                        {carouselIndex + 1} / {mediaItems.length}
+                      </div>
+                    </>
+                  )}
+                </>
+              )}
+            </div>
           </div>
 
           {showCarousel && (
             <div
               ref={stripRef}
-              className="pb-composer-thumbs mt-2"
+              className="pb-composer-thumbs mt-2 shrink-0"
               role="listbox"
               aria-label="Post queue"
             >
@@ -346,8 +372,9 @@ export default function PostPreview({
           )}
         </>
       )}
+
       {mediaError && (
-        <p className="mt-1 text-center text-[11px] text-[#ee2532]">{mediaError}</p>
+        <p className="mt-1.5 shrink-0 text-center text-[11px] text-[#ee2532]">{mediaError}</p>
       )}
     </div>
   );

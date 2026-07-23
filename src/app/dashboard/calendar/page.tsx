@@ -1725,9 +1725,9 @@ function CalendarPageContent() {
             </h2>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain px-3 pb-0 sm:px-4">
+          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-0 max-md:overflow-y-auto max-md:overscroll-contain sm:px-4">
             {editingPost?.status === "failed" && (
-              <div className="mb-3 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
+              <div className="mb-3 shrink-0 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
                 <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
                 {editingPost.errorLog && (
                   <p className="mt-1 break-words text-[11px] text-black/65">{editingPost.errorLog}</p>
