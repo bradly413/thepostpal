@@ -1725,7 +1725,7 @@ function CalendarPageContent() {
             </h2>
           </div>
 
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-0 max-md:overflow-y-auto max-md:overscroll-contain sm:px-4">
+          <div className="pb-composer-body flex min-h-0 flex-1 flex-col overflow-hidden px-3 pb-0 sm:px-4">
             {editingPost?.status === "failed" && (
               <div className="mb-3 shrink-0 rounded-xl border border-[#ee2532]/25 bg-[#ee2532]/[0.06] p-3">
                 <p className="text-xs font-semibold text-[#c81e2a]">This post failed to publish</p>
@@ -1891,9 +1891,9 @@ function CalendarPageContent() {
               onCarouselIndexChange={goCarouselTo}
             />
 
-            {/* Caption block — spaced below the preview so it doesn’t crowd the image. */}
-            <div className="mb-2 mt-3 flex h-[72px] shrink-0 flex-col overflow-hidden sm:mb-3 sm:mt-4 sm:h-[66px]">
-              <div className="relative h-[44px] shrink-0 overflow-hidden sm:h-[40px]">
+            {/* Caption block — fixed height so preview owns remaining space. */}
+            <div className="mb-1 mt-2 flex h-[64px] shrink-0 flex-col overflow-hidden sm:mb-2 sm:mt-3 sm:h-[60px]">
+              <div className="relative h-[40px] shrink-0 overflow-hidden sm:h-[36px]">
                 {captionLoading ? (
                   <p className="h-full overflow-hidden text-[13px] font-medium leading-snug text-[#ee2532] animate-pulse">
                     Analyzing image & writing captions…
