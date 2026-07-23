@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { CAPTION_ANTI_AI_TELLS, CAPTION_SOUND_HUMAN } from "@/lib/ai-caption-voice";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 export const runtime = "nodejs";
 export const maxDuration = 30;
@@ -64,12 +65,14 @@ Offer or event: ${offer || "(none)"}`;
   try {
     const client = new Anthropic({ apiKey: key });
     const resp = await client.messages.create({
-      model: "claude-sonnet-5", // same model id the rest of the app uses — the prod key rejected the Haiku id
+      model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" }, // same model id the rest of the app uses — the prod key rejected the Haiku id
       max_tokens: 700,
       system,
       messages: [{ role: "user", content: user }],
     });
-    const text = resp.content[0]?.type === "text" ? resp.content[0].text : "";
+    const text = extractMessageText(resp.content);
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) return NextResponse.json({ error: "unavailable" }, { status: 502 });
     const parsed = JSON.parse(match[0]) as {

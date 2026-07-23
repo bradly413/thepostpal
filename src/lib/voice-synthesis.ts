@@ -177,6 +177,8 @@ export async function synthesizeVoice(
   // don't depend on SDK-version-specific structured-output API support.
   const response = await client.messages.create({
     model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" },
     max_tokens: 1500,
     system: [
       {

@@ -1,7 +1,12 @@
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { assertUrlAllowed, readCappedBuffer, safeFetch, SsrfError } from "@/lib/safe-fetch";
-import { parseOpenGraphHtml } from "@/lib/studio/open-graph";
+import {
+  extractImageCandidates,
+  extractReadableText,
+  parseOpenGraphHtml,
+} from "@/lib/studio/open-graph";
+import { readSiteIntel } from "@/lib/studio/site-intel";
 import { normalizeWebsiteUrl } from "@/lib/studio/page-url";
 
 export const runtime = "nodejs";
@@ -116,6 +121,36 @@ export async function POST(req: Request) {
       } catch {
         meta.imageUrl = null;
       }
+    }
+
+    // Deep read (best-effort): page text + image candidates → Haiku picks the
+    // image that actually shows the subject and extracts postable facts. On
+    // any failure the plain OpenGraph result stands.
+    const intel = await readSiteIntel({
+      url: finalUrl,
+      title: meta.title,
+      description: meta.description,
+      bodyText: extractReadableText(html),
+      images: extractImageCandidates(html, finalUrl),
+    });
+    if (intel) {
+      if (intel.bestImageUrl) {
+        try {
+          await assertUrlAllowed(intel.bestImageUrl);
+          meta.imageUrl = intel.bestImageUrl;
+        } catch {
+          /* keep the og image */
+        }
+      }
+      if (intel.facts.length > 0) {
+        // Facts ride inside description so the existing client contract —
+        // and enrichIntentWithSiteContext — carry them without changes.
+        const factLine = `Key facts from the site: ${intel.facts.join("; ")}.`;
+        meta.description = meta.description
+          ? `${meta.description} ${factLine}`.slice(0, 700)
+          : factLine.slice(0, 700);
+      }
+      if (intel.brandName && !meta.siteName) meta.siteName = intel.brandName;
     }
 
     if (!meta.title && !meta.description && !meta.imageUrl) {

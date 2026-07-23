@@ -18,6 +18,7 @@ import {
   SCENIC_COMPOSE_BLOCK,
 } from "@/lib/studio/scene-intent";
 import { validateListingComposeRequest } from "@/lib/studio/studio-image-routing";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 // POST /api/studio/compose
 // Thin outcome → imagePrompt rewrite. Direct visual briefs skip this route
@@ -136,11 +137,13 @@ Return ONLY JSON (no markdown) with:
     const client = new Anthropic({ apiKey: key });
     const resp = await client.messages.create({
       model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" },
       max_tokens: 350,
       system,
       messages: [{ role: "user", content: enrichedIntent }],
     });
-    const text = resp.content[0]?.type === "text" ? resp.content[0].text : "";
+    const text = extractMessageText(resp.content);
     const match = text.match(/\{[\s\S]*\}/);
     if (!match) {
       return Response.json({ error: "Could not interpret that request" }, { status: 502 });

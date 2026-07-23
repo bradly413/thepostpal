@@ -6,6 +6,7 @@ import { withTenantDb } from "@/lib/db";
 import { resolveTenantGuardrails } from "@/lib/compliance/resolve";
 import { checkViolations, type ResolvedGuardrails } from "@/lib/compliance/guardrails";
 import { safeFetch, readCappedBuffer } from "@/lib/safe-fetch";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 // Cap the fallback image fetch — well above any reasonable social photo.
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
@@ -137,6 +138,7 @@ Include 5-8 relevant hashtags. The altText must describe what is actually visibl
     try {
       const response = await client.messages.create({
         model: MODEL,
+        thinking: { type: "disabled" },
         max_tokens: 1200,
         system,
         messages: [
@@ -149,13 +151,14 @@ Include 5-8 relevant hashtags. The altText must describe what is actually visibl
           },
         ],
       });
-      text = response.content[0]?.type === "text" ? response.content[0].text : "";
+      text = extractMessageText(response.content);
     } catch (err) {
       // Some hosting setups block the model from fetching the URL — retry once
       // with the image inlined as base64 before giving up.
       const { mediaType, data } = await fetchImageAsBase64(imageUrl);
       const response = await client.messages.create({
         model: MODEL,
+        thinking: { type: "disabled" },
         max_tokens: 1200,
         system,
         messages: [
@@ -171,7 +174,7 @@ Include 5-8 relevant hashtags. The altText must describe what is actually visibl
           },
         ],
       });
-      text = response.content[0]?.type === "text" ? response.content[0].text : "";
+      text = extractMessageText(response.content);
       if (!text) throw err;
     }
 

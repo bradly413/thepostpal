@@ -11,6 +11,7 @@ import {
 import { loadTemplateCatalog } from "@/lib/template-catalog";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { buildTenantBrandContext } from "@/lib/ai-brand-context";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -179,6 +180,8 @@ export async function POST(req: Request) {
       const client = new Anthropic({ apiKey: anthropicKey });
       const response = await client.messages.create({
         model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" },
         max_tokens: 1500,
         system: systemPrompt,
         messages: chat.map((m: { role: string; content: string }) => ({
@@ -187,7 +190,7 @@ export async function POST(req: Request) {
         })),
       });
       const text =
-        response.content[0].type === "text" ? response.content[0].text : "";
+        extractMessageText(response.content);
       return Response.json({ message: text });
     }
 

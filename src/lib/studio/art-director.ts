@@ -5,6 +5,7 @@ import {
   scenicSettingForBrief,
 } from "@/lib/studio/scene-intent";
 import { verticalAestheticBlock } from "@/lib/studio/vertical-aesthetics";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 // Hidden "art director" step for the studio. The user types a short brief
 // ("fall promo", "make an instagram post about cold brew"); this expands it
@@ -96,13 +97,15 @@ export async function expandImageBrief(opts: {
       .join("\n");
 
     const resp = await client.messages.create({
-      model: "claude-sonnet-5", // same id the rest of the app uses
+      model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" }, // same id the rest of the app uses
       max_tokens: 320,
       system: scenic ? ART_DIRECTOR_SCENIC_SYSTEM : ART_DIRECTOR_BUSINESS_SYSTEM,
       messages: [{ role: "user", content: user }],
     });
 
-    const text = resp.content[0]?.type === "text" ? resp.content[0].text.trim() : "";
+    const text = extractMessageText(resp.content).trim();
     // Sanity-gate the expansion; otherwise keep the user's original brief.
     if (text.length < 20 || text.length > 1500) return brief;
     return text;

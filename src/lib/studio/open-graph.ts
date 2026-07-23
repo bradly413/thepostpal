@@ -120,6 +120,55 @@ export function parseOpenGraphHtml(html: string, pageUrl: string): OpenGraphMeta
   };
 }
 
+/**
+ * Readable body text for the deep site read: strip scripts/styles/tags,
+ * collapse whitespace, cap. Regex-over-HTML is fine here — this feeds a
+ * model, not a parser.
+ */
+export function extractReadableText(html: string, maxChars = 6000): string {
+  const cleaned = html
+    .replace(/<script\b[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style\b[\s\S]*?<\/style>/gi, " ")
+    .replace(/<noscript\b[\s\S]*?<\/noscript>/gi, " ")
+    .replace(/<svg\b[\s\S]*?<\/svg>/gi, " ")
+    .replace(/<!--[\s\S]*?-->/g, " ")
+    .replace(/<[^>]+>/g, " ");
+  return decodeBasicEntities(cleaned).replace(/\s+/g, " ").trim().slice(0, maxChars);
+}
+
+export type PageImageCandidate = { url: string; alt: string };
+
+const IMG_SKIP_RE = /(\.svg($|\?)|favicon|sprite|pixel|tracking|spacer|blank\.|logo-?strip|1x1)/i;
+
+/**
+ * Candidate content images from the page (absolute https), with alt text so a
+ * model can pick the actual product/hero shot instead of the og banner.
+ */
+export function extractImageCandidates(
+  html: string,
+  pageUrl: string,
+  max = 15,
+): PageImageCandidate[] {
+  const out: PageImageCandidate[] = [];
+  const seen = new Set<string>();
+  const re = /<img\b[^>]*>/gi;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(html)) && out.length < max) {
+    const tag = m[0];
+    const src =
+      attr(tag, "src") ||
+      (attr(tag, "srcset") || "").split(",")[0]?.trim().split(/\s+/)[0] ||
+      attr(tag, "data-src");
+    const resolved = resolvePageAssetUrl(pageUrl, src);
+    if (!resolved || seen.has(resolved)) continue;
+    if (resolved.startsWith("data:")) continue;
+    if (IMG_SKIP_RE.test(resolved)) continue;
+    seen.add(resolved);
+    out.push({ url: resolved, alt: (attr(tag, "alt") || "").slice(0, 120) });
+  }
+  return out;
+}
+
 /** Append site brand cues to the owner's intent for compose/generate. */
 export function enrichIntentWithSiteContext(
   intent: string,
@@ -134,12 +183,14 @@ export function enrichIntentWithSiteContext(
     }
   })();
   const label = meta.siteName || meta.title || host;
+  // Image instruction BEFORE the (possibly fact-rich) description so the 980
+  // cap truncates facts, never the reference instruction.
   const bits = [
     `Website brand reference: ${label} (${meta.url}).`,
-    meta.description ? `About: ${meta.description}` : null,
     meta.imageUrl
       ? "Use the attached website image as brand/visual reference — match colors, mood, and subject matter; scale it into a social-ready photograph. Do not invent a different brand."
       : "Match this business's brand from the site context; create a social-ready photograph (no website screenshot mockup unless asked).",
+    meta.description ? `About: ${meta.description}` : null,
   ].filter(Boolean);
 
   const suffix = bits.join(" ");

@@ -57,6 +57,13 @@ export function looksStudioComposed(prompt: string): boolean {
 export const REAL_PHOTO_EXPOSURE_RETRY_SUFFIX =
   " Brighter exposure, cleaner color, still a real photograph.";
 
+/**
+ * Director-approved text-on-image (promos/offers): typography is part of the
+ * design — so no "no text" clause, but spelling accuracy is non-negotiable.
+ */
+export const TEXT_ON_IMAGE_SUFFIX =
+  " Photographic scene with clean designed typography — render the quoted words large, crisp, and CORRECTLY SPELLED, exactly as given; no other words, no watermark. Vivid clean color, bright light, level camera.";
+
 /** When editing from a reference image — preserve subject, keep energy. */
 export const REAL_PHOTO_REFERENCE_SUFFIX =
   " Preserve the subject. Keep vivid clean photographic quality. No CGI, no text or watermark.";

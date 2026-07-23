@@ -1,5 +1,6 @@
 import "server-only";
 import Anthropic from "@anthropic-ai/sdk";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 // Document ingestion — the cold-start unlock. A local business almost always has
 // rich OWNED text (website copy, listing write-ups, a newsletter, a few real
@@ -52,11 +53,13 @@ export async function extractVoiceFromDocs(textRaw: string): Promise<ExtractedVo
   const client = new Anthropic({ apiKey: key, timeout: 45_000, maxRetries: 1 });
   const resp = await client.messages.create({
     model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" },
     max_tokens: 900,
     system: SYSTEM,
     messages: [{ role: "user", content: text }],
   });
-  const out = resp.content[0]?.type === "text" ? resp.content[0].text : "";
+  const out = extractMessageText(resp.content);
   const match = out.match(/\{[\s\S]*\}/);
   if (!match) return null;
 

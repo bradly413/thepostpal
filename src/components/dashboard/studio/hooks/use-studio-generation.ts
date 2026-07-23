@@ -179,6 +179,8 @@ export function useStudioGeneration({
         listingMode?: boolean;
         /** Prompt already came from /api/studio/compose — skip a second expand. */
         composed?: boolean;
+        /** Director-approved text-on-image (promo/offer typography). */
+        allowText?: boolean;
         signal: AbortSignal;
       },
     ) => {
@@ -192,6 +194,7 @@ export function useStudioGeneration({
           ...(opts.sourceIntent ? { sourceIntent: opts.sourceIntent } : {}),
           ...(opts.listingMode ? { listingMode: true } : {}),
           ...(opts.composed ? { composed: true } : {}),
+          ...(opts.allowText ? { allowText: true } : {}),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),
           ...(businessType ? { businessType } : {}),
@@ -356,6 +359,8 @@ export function useStudioGeneration({
     try {
       let imagePrompt: string | null = null;
       let aspect = resolveAspect();
+      let directorComposed = false;
+      let allowTextOnImage = false;
       const historyLabel = intent;
 
       const editingFromCanvas =
@@ -411,46 +416,112 @@ export function useStudioGeneration({
         } else {
           imagePrompt = buildFallbackEditPrompt(intent);
         }
-      } else if (imageRoute === "compose_generate") {
-        const cRes = await fetch("/api/studio/compose", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            intent,
-            hasReferenceImage: !!refForGen,
-            ...(locationId ? { locationId } : {}),
-          }),
-          signal: ctrl.signal,
-        });
-        const brief = await cRes.json();
-        if (!cRes.ok || brief.error) {
-          if (brief.code === "listing_photo_required") {
+      } else if (imageRoute === "compose_generate" || imageRoute === "direct_generate") {
+        // Studio Director: one Claude turn that classifies the ask AND
+        // art-directs a brand-aware prompt (platform, text-on-image, clarify).
+        // The legacy compose path below is the fallback — the Director is
+        // never a single point of failure for generation.
+        try {
+          const dRes = await fetch("/api/studio/director", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              intent,
+              hasReferenceImage: !!refForGen,
+              ...(lastGenPromptRef.current ? { lastGenPrompt: lastGenPromptRef.current } : {}),
+              ...(businessType ? { businessType } : {}),
+              ...(locationId ? { locationId } : {}),
+            }),
+            signal: ctrl.signal,
+          });
+          const d = (await dRes.json()) as {
+            platform?: string;
+            imagePrompt?: string;
+            allowText?: boolean;
+            clarify?: string;
+            error?: string;
+            code?: string;
+          };
+          if (!dRes.ok && d.code === "listing_photo_required") {
             stopProgressTimer();
             setCaptionState("idle");
             clearTimeout(timeoutId);
-            failGenerate(brief.error || "Add your listing photo first.");
+            failGenerate(d.error || "Add your listing photo first.");
             setGenState(isReprompt ? "done" : "idle");
             return;
           }
-          // Compose failed — fall through with the raw intent.
-          imagePrompt = intent;
-        } else {
-          const textNamesPlatform =
-            /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
-          const idx = platforms.findIndex((p) => p.id === brief.platform);
-          const pIdx =
-            idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
-          if (textNamesPlatform) platformPinRef.current = false;
-          setPlatformIdx(pIdx);
-          aspect =
-            aspectPinRef.current && aspectOverride
-              ? aspectOverride
-              : platforms[pIdx].genAspect;
-          imagePrompt = brief.imagePrompt;
+          if (dRes.ok && d.clarify) {
+            // One clarifying question — no generation until it's answered.
+            stopProgressTimer();
+            setProgress(0);
+            setCaptionState("idle");
+            clearTimeout(timeoutId);
+            failGenerate(d.clarify);
+            setGenState(isReprompt ? "done" : "idle");
+            return;
+          }
+          if (dRes.ok && d.imagePrompt) {
+            const textNamesPlatform =
+              /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
+            const idx = platforms.findIndex((p) => p.id === d.platform);
+            const pIdx =
+              idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
+            if (textNamesPlatform) platformPinRef.current = false;
+            setPlatformIdx(pIdx);
+            aspect =
+              aspectPinRef.current && aspectOverride
+                ? aspectOverride
+                : platforms[pIdx].genAspect;
+            imagePrompt = d.imagePrompt;
+            allowTextOnImage = d.allowText === true;
+            directorComposed = true;
+          }
+        } catch {
+          // Director unreachable — legacy fallback below.
         }
-      } else {
-        // direct_generate — owner already wrote a visual brief
-        imagePrompt = intent;
+
+        if (!directorComposed && imageRoute === "compose_generate") {
+          const cRes = await fetch("/api/studio/compose", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              intent,
+              hasReferenceImage: !!refForGen,
+              ...(locationId ? { locationId } : {}),
+            }),
+            signal: ctrl.signal,
+          });
+          const brief = await cRes.json();
+          if (!cRes.ok || brief.error) {
+            if (brief.code === "listing_photo_required") {
+              stopProgressTimer();
+              setCaptionState("idle");
+              clearTimeout(timeoutId);
+              failGenerate(brief.error || "Add your listing photo first.");
+              setGenState(isReprompt ? "done" : "idle");
+              return;
+            }
+            // Compose failed — fall through with the raw intent.
+            imagePrompt = intent;
+          } else {
+            const textNamesPlatform =
+              /instagram|facebook|tiktok|linkedin|\btwitter\b|\bx\b/i.test(intent);
+            const idx = platforms.findIndex((p) => p.id === brief.platform);
+            const pIdx =
+              idx >= 0 && (textNamesPlatform || !platformPinRef.current) ? idx : platformIdx;
+            if (textNamesPlatform) platformPinRef.current = false;
+            setPlatformIdx(pIdx);
+            aspect =
+              aspectPinRef.current && aspectOverride
+                ? aspectOverride
+                : platforms[pIdx].genAspect;
+            imagePrompt = brief.imagePrompt;
+          }
+        } else if (!directorComposed) {
+          // direct_generate fallback — the server-side art director still
+          // brand-grounds it (composed:false).
+          imagePrompt = intent;
+        }
       }
 
       const iData = await requestGenerateImage(imagePrompt || intent, {
@@ -458,11 +529,14 @@ export function useStudioGeneration({
         referenceImage: refForGen,
         sourceIntent: intent,
         listingMode: isListingBrief(intent) && !!refForGen,
-        // Only compose/reprompt already ran a Claude shaping step. Direct briefs
-        // stay composed:false so the server-side art director can brand-ground them.
+        // Composed = a Claude step (Director/compose/reprompt) already shaped
+        // this prompt. Only un-directed direct briefs stay composed:false so
+        // the server-side art director can brand-ground them.
         composed:
+          directorComposed ||
           imageRoute === "compose_generate" ||
           imageRoute === "reprompt_edit",
+        allowText: allowTextOnImage,
         signal: ctrl.signal,
       });
       if (iData.error || !iData.image) {

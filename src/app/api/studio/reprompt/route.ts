@@ -7,6 +7,7 @@ import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/r
 import { isInlineReferenceImage } from "@/lib/reference-image";
 import { loadVisionJpegBase64 } from "@/lib/studio/vision-image-input";
 import { REAL_PHOTO_REFERENCE_SUFFIX } from "@/lib/studio/image-prompt-vivid";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 export const runtime = "nodejs";
 
@@ -105,6 +106,7 @@ export async function POST(req: Request) {
     const client = new Anthropic({ apiKey, timeout: 12_000, maxRetries: 1 });
     const response = await client.messages.create({
       model: MODEL,
+        thinking: { type: "disabled" },
       max_tokens: 400,
       system: REPROMPT_SYSTEM,
       messages: [
@@ -130,7 +132,7 @@ export async function POST(req: Request) {
       ],
     });
 
-    const text = response.content[0]?.type === "text" ? response.content[0].text.trim() : "";
+    const text = extractMessageText(response.content).trim();
     if (text.length < 20 || text.length > 2000) {
       return Response.json({ error: "Could not interpret your changes" }, { status: 502 });
     }

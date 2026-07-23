@@ -9,7 +9,10 @@ import {
   generationSuffixForBrief,
   isListingBrief,
 } from "@/lib/studio/scene-intent";
-import { REAL_PHOTO_EXPOSURE_RETRY_SUFFIX } from "@/lib/studio/image-prompt-vivid";
+import {
+  REAL_PHOTO_EXPOSURE_RETRY_SUFFIX,
+  TEXT_ON_IMAGE_SUFFIX,
+} from "@/lib/studio/image-prompt-vivid";
 import { isImageTooDark } from "@/lib/studio/image-quality-gate";
 import { referenceImageToGeminiInline } from "@/lib/studio/vision-image-input";
 import {
@@ -57,6 +60,7 @@ export async function POST(req: NextRequest) {
     businessType?: unknown;
     locationId?: unknown;
     composed?: unknown;
+    allowText?: unknown;
   };
   try {
     parsed = (await req.json()) as typeof parsed;
@@ -187,9 +191,14 @@ export async function POST(req: NextRequest) {
     ? `Edit the attached listing photograph only. The property/building MUST remain identical — same house, same facade, same roofline, same windows. Do not invent a different property or substitute generic lifestyle props. Apply only: `
     : `Edit the reference photograph. The main subject in the reference image must stay identical — same food item, same object, same identity. Do not swap subjects. Apply only: `;
 
-  const vividHint = hasReference
-    ? generationSuffixForBrief(sourceIntent || promptForModel, true)
-    : generationSuffixForBrief(sourceIntent || promptForModel, false);
+  // Director-approved text-on-image swaps the "no text" suffix for a
+  // typography-accuracy one. Only trusted for prompts a Claude step shaped.
+  const allowText = parsed.allowText === true && parsed.composed === true && !hasReference;
+  const vividHint = allowText
+    ? TEXT_ON_IMAGE_SUFFIX
+    : hasReference
+      ? generationSuffixForBrief(sourceIntent || promptForModel, true)
+      : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
   async function runGeneration(promptText: string) {
     const fullPrompt = (hasReference ? `${refPreamble}${promptText}` : promptText) + vividHint;

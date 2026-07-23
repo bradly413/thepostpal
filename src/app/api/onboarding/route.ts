@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { ONBOARDING_SYSTEM_PROMPT } from "@/lib/onboarding-agent";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
+import { extractMessageText } from "@/lib/ai/message-text";
 
 export async function POST(req: Request) {
   try {
@@ -36,6 +37,8 @@ export async function POST(req: Request) {
   try {
     const response = await client.messages.create({
       model: "claude-sonnet-5",
+      // Structured/routing call — reasoning would only add latency + budget risk.
+      thinking: { type: "disabled" },
       max_tokens: 800,
       system: ONBOARDING_SYSTEM_PROMPT,
       messages: messages
@@ -47,7 +50,7 @@ export async function POST(req: Request) {
     });
 
     const text =
-      response.content[0].type === "text" ? response.content[0].text : "";
+      extractMessageText(response.content);
 
     return Response.json({ message: text });
   } catch (err) {
