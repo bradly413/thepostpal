@@ -588,12 +588,12 @@ export function useStudioGeneration({
         sourceIntent: intent,
         listingMode: isListingBrief(intent) && !!refForGen,
         // Composed = a Claude step (Director/compose/reprompt) already shaped
-        // this prompt. Only un-directed direct briefs stay composed:false so
-        // the server-side art director can brand-ground them.
+        // this prompt. Site-grounded briefs skip Director but still need the
+        // server expand when there is no reference photo.
         composed:
           directorComposed ||
-          imageRoute === "compose_generate" ||
-          imageRoute === "reprompt_edit",
+          (imageRoute === "reprompt_edit") ||
+          (imageRoute === "compose_generate" && !opts?.siteGrounded),
         allowText: allowTextOnImage,
         designLane: directorWantsDesign,
         signal: genAbort.signal,
