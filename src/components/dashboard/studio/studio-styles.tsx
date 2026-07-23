@@ -2653,6 +2653,19 @@ export function StudioStyles() {
   @media (max-width: 640px) {
     .pb-studio .pb-brandlock-label { display: none; }
     .pb-studio .pb-brandkit span { display: none; }
+    /* The taller creator card outgrew the old compact-bar height cap —
+       without this the controls row + Generate clip off the card bottom. */
+    .pb-studio .prompt-bar.is-chat,
+    .pb-studio .canvas.is-chat-layout .prompt-bar.is-chat {
+      max-height: min(56vh, 430px);
+    }
+    .pb-studio .pb-bar-head { padding: 10px 10px 0; }
+    .pb-studio .pb-plus { margin: 6px 0 0 10px; width: 32px; height: 32px; }
+    .pb-studio .pb-generate.pb-generate-primary {
+      flex: 1 1 100%;
+      margin-left: 0;
+      justify-content: center;
+    }
   }
     `}</style>
   );

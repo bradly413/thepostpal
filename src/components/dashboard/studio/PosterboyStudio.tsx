@@ -2202,6 +2202,16 @@ export default function PosterboyStudio() {
             ) : (
             <div className="pb-bar-input">
               {selectedIntent ? (
+                <>
+                <button
+                  type="button"
+                  className="pb-plus"
+                  onClick={() => refFileRef.current?.click()}
+                  title="Attach a reference photo"
+                  aria-label="Attach a reference photo"
+                >
+                  <Plus size={18} strokeWidth={2} aria-hidden />
+                </button>
                 <textarea
                   ref={inputRef}
                   rows={1}
@@ -2228,6 +2238,7 @@ export default function PosterboyStudio() {
                   disabled={genState === "generating"}
                   aria-label={`Details for ${selectedIntent.label}`}
                 />
+                </>
               ) : (
                 <>
                 {composerMode === "image" ? (
@@ -2604,12 +2615,13 @@ export default function PosterboyStudio() {
                     </div>
                   </>
                 )}
-                {genState !== "done" || promptMode !== "caption" ? (
+                {composerMode === "image" && (genState !== "done" || promptMode !== "caption") ? (
                   <label className="pb-brandlock" title="Keep colors, styling, and voice locked to your brand kit">
                     <button
                       type="button"
                       role="switch"
                       aria-checked={brandLock}
+                      aria-label="Brand locked — keep output on your brand kit"
                       className={`pb-brandlock-switch${brandLock ? " is-on" : ""}`}
                       onClick={() => setBrandLock((v) => !v)}
                     >
