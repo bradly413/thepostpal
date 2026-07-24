@@ -54,7 +54,10 @@ export function isProductAdBrief(text: string): boolean {
   if (EXPLICIT_PRODUCT_SHOT_RE.test(t) && !PRODUCT_AD_RE.test(t) && !SITE_URL_BRIEF_RE.test(t)) {
     return false;
   }
-  if (PRODUCT_AD_RE.test(t) && (isProductHeroBrief(t) || SITE_URL_BRIEF_RE.test(t))) return true;
+  // A URL plus "launch" is not enough: "company launch ... use example.com"
+  // describes a service-brand announcement, not a physical product. Requiring
+  // a product subject prevents the design lane from inventing packaging.
+  if (PRODUCT_AD_RE.test(t) && isProductHeroBrief(t)) return true;
   if (SITE_URL_BRIEF_RE.test(t) && isProductHeroBrief(t)) return true;
   if (
     BRAND_OUTCOME_RE.test(t) &&
@@ -73,12 +76,12 @@ export function buildProductAdPrompt(
 ): string {
   const intro = opts?.hasReferenceImages
     ? "Generate a polished vertical social-media product advertisement using the reference product images and the brand facts below."
-    : "Generate a polished vertical social-media product advertisement using your knowledge of this brand's products, packaging, and visual identity plus the facts below.";
+    : "Generate a polished vertical social-media product advertisement using only the product and brand facts below. Do not invent packaging or a physical product that is not explicitly described.";
   return [
     intro,
     enrichedBrief,
-    "Layout: hero product photography (match tubes/packaging from references when shown), elegant headline with product name, 3–4 benefit rows with minimal icons, optional consumer-study statistics row, premium beauty-brand typography — all correctly spelled.",
-    "Use the brand's known palette and world knowledge when you recognize the brand. Dark editorial or brand-appropriate background unless the brief says otherwise.",
+    "Layout: hero product photography only when a physical product is explicitly named; match packaging only when it is clearly shown in a reference. Use an elegant headline with the verified product name and restrained supporting copy — all correctly spelled.",
+    "Use the reference brand palette when shown. Do not invent statistics, benefits, claims, awards, reviews, packaging, logos, or client marks. Use only facts present in the brief or visible in the references.",
   ].join(" ");
 }
 

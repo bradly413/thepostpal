@@ -125,6 +125,11 @@ describe("scene-intent", () => {
       ),
     ).toBe(true);
     expect(isProductAdBrief("launch our new skincare serum instagram post")).toBe(true);
+    expect(
+      isProductAdBrief(
+        "create an instagram post for my company launch The Restaurant Creatives use therestaurantcreatives.com for information and images",
+      ),
+    ).toBe(false);
     expect(isProductAdBrief("create an image for Aurora Med Spa")).toBe(false);
     expect(isProductAdBrief("eyelash serum bottle flat lay on white")).toBe(false);
   });
@@ -135,7 +140,10 @@ describe("scene-intent", () => {
     ).toMatch(/using the reference product images/i);
     expect(
       buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: false }),
-    ).toMatch(/using your knowledge of this brand/i);
+    ).toMatch(/do not invent packaging/i);
+    expect(
+      buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: true }),
+    ).toMatch(/do not invent statistics/i);
   });
 
   it("keeps product generation suffixes short and fidelity-first", () => {
