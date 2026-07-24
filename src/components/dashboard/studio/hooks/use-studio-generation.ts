@@ -232,7 +232,8 @@ export function useStudioGeneration({
           ...(opts.designLane ? { designLane: true } : {}),
           ...(opts.inputImages?.length ? { inputImages: opts.inputImages } : {}),
           ...(opts.visionDetail ? { visionDetail: opts.visionDetail } : {}),
-          ...(imageEngine === "design" || opts.designLane ? { engine: "gpt" } : {}),
+          // engine=gpt is bake-off only (disables Gemini fallback) — never send for design lane.
+          ...(imageEngine === "design" ? { engine: "gpt" } : {}),
           ...(brandLock ? {} : { brandLock: false }),
           quality: imageQuality,
           ...(imageQuality === "pro" ? { imageSize } : {}),

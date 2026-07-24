@@ -3,6 +3,8 @@ import {
   extractImageFromResponsesResponse,
   gptImageErrorMessage,
   gptImageSizeForAspect,
+  gptOrchestratorModels,
+  isRetryableResponsesError,
 } from "@/lib/studio/gpt-image";
 
 describe("gptImageSizeForAspect", () => {
@@ -25,6 +27,21 @@ describe("gptImageErrorMessage", () => {
   it("falls back when the error shape is empty", () => {
     expect(gptImageErrorMessage({ error: null })).toBe("Image generation failed");
     expect(gptImageErrorMessage({}, "custom")).toBe("custom");
+  });
+});
+
+describe("gptOrchestratorModels", () => {
+  it("includes fallback models after the configured default", () => {
+    const models = gptOrchestratorModels();
+    expect(models.length).toBeGreaterThanOrEqual(2);
+    expect(models).toContain("gpt-4.1-mini");
+  });
+});
+
+describe("isRetryableResponsesError", () => {
+  it("retries unknown model errors", () => {
+    expect(isRetryableResponsesError(400, "The model gpt-5.6 does not exist")).toBe(true);
+    expect(isRetryableResponsesError(502, "upstream failed")).toBe(false);
   });
 });
 

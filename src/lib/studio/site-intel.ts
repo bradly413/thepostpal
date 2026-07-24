@@ -122,7 +122,7 @@ export async function searchGroundedIntel(domain: string): Promise<SiteIntel | n
           ],
           tools: [{ google_search: {} }],
         }),
-        signal: AbortSignal.timeout(10_000),
+        signal: AbortSignal.timeout(15_000),
       },
     );
     if (!res.ok) return null;

@@ -101,7 +101,22 @@ type GptRunResult =
   | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
   | { ok: false; status: number; error: string; text?: string };
 
-async function generateGptImageViaResponses(opts: {
+/** Orchestrator fallbacks when gpt-5.6 is unavailable on the account. */
+export function gptOrchestratorModels(): string[] {
+  const env = process.env.OPENAI_RESPONSES_MODEL?.trim();
+  const chain = [env, "gpt-5.6", "gpt-4.1-mini", "gpt-4.1"].filter(
+    (m): m is string => typeof m === "string" && m.length > 0,
+  );
+  return [...new Set(chain)];
+}
+
+export function isRetryableResponsesError(status: number, message: string): boolean {
+  if (status === 404 || status === 429) return true;
+  if (status !== 400 && status !== 422) return false;
+  return /model|tool_choice|does not support|not found|invalid/i.test(message);
+}
+
+async function callResponsesOnce(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
@@ -109,11 +124,12 @@ async function generateGptImageViaResponses(opts: {
   visionImages?: OpenAiInputImagePart[];
   action?: GptImageAction;
   forceImageTool?: boolean;
+  model: string;
 }): Promise<GptRunResult> {
   const action = opts.action ?? (opts.visionImages?.length ? "auto" : "generate");
   const input = buildResponsesInput(opts.prompt, opts.visionImages ?? []);
   const body: Record<string, unknown> = {
-    model: GPT_RESPONSES_MODEL,
+    model: opts.model,
     input,
     tools: [
       {
@@ -185,6 +201,31 @@ async function generateGptImageViaResponses(opts: {
   }
 
   return okResult(b64);
+}
+
+async function generateGptImageViaResponses(opts: {
+  apiKey: string;
+  prompt: string;
+  aspectRatio?: string;
+  quality: "standard" | "pro";
+  visionImages?: OpenAiInputImagePart[];
+  action?: GptImageAction;
+  forceImageTool?: boolean;
+}): Promise<GptRunResult> {
+  const models = gptOrchestratorModels();
+  const toolAttempts = opts.forceImageTool ? [true, false] : [false];
+  let last: GptRunResult = { ok: false, status: 502, error: "Image generation failed" };
+
+  for (const model of models) {
+    for (const forceImageTool of toolAttempts) {
+      const result = await callResponsesOnce({ ...opts, model, forceImageTool });
+      if (result.ok) return result;
+      last = result;
+      if (!isRetryableResponsesError(result.status, result.error)) return result;
+    }
+  }
+
+  return last;
 }
 
 async function generateGptImageViaImagesApi(opts: {

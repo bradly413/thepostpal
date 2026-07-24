@@ -237,14 +237,18 @@ export async function POST(req: NextRequest) {
   const visionSources = gptEditEligible
     ? [referenceImage as string]
     : inputImages;
-  const visionImages =
-    useGptEngine && visionSources.length > 0
-      ? await resolveOpenAiVisionInputs({
-          apiKey: openAiKey,
-          sources: visionSources,
-          detail: visionDetail,
-        })
-      : [];
+  let visionImages: Awaited<ReturnType<typeof resolveOpenAiVisionInputs>> = [];
+  if (useGptEngine && visionSources.length > 0) {
+    try {
+      visionImages = await resolveOpenAiVisionInputs({
+        apiKey: openAiKey,
+        sources: visionSources,
+        detail: visionDetail,
+      });
+    } catch {
+      visionImages = [];
+    }
+  }
 
   const gptAction: GptImageAction = gptEditEligible
     ? "edit"

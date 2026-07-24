@@ -609,9 +609,10 @@ export default function PosterboyStudio() {
     onAfterGenerateFailure: (message) => {
       const aid = pendingAssistantIdRef.current;
       if (!aid) return;
-      const chatText = /timed out/i.test(message)
-        ? "Couldn't finish that one."
-        : message;
+      const chatText =
+        /timed out|lost connection|network error/i.test(message)
+          ? "Couldn't finish that one."
+          : message;
       setChatMessages((prev) =>
         prev.map((m) =>
           m.id === aid && m.role === "assistant"

@@ -15,7 +15,7 @@ import {
 import { normalizeWebsiteUrl } from "@/lib/studio/page-url";
 
 export const runtime = "nodejs";
-export const maxDuration = 45; // HTML attempt + Shopify + search-grounded fallbacks
+export const maxDuration = 60; // HTML + parallel Shopify/search fallbacks
 
 const MAX_HTML_BYTES = 1_000_000;
 const TIMEOUT_MS = 12_000;
@@ -185,9 +185,11 @@ export async function POST(req: Request) {
     );
 
     if (!res.ok) {
-      const viaShop = await shopifyResponse(normalized);
+      const [viaShop, viaSearch] = await Promise.all([
+        shopifyResponse(normalized),
+        groundedResponse(normalized),
+      ]);
       if (viaShop) return viaShop;
-      const viaSearch = await groundedResponse(normalized);
       if (viaSearch) return viaSearch;
       return Response.json(
         { error: "Could not load that website", url: normalized },
@@ -305,6 +307,12 @@ export async function POST(req: Request) {
       "[api/studio/preview-url] failed:",
       err instanceof Error ? err.message : err,
     );
+    const [viaShop, viaSearch] = await Promise.all([
+      shopifyResponse(normalized),
+      groundedResponse(normalized),
+    ]);
+    if (viaShop) return viaShop;
+    if (viaSearch) return viaSearch;
     return Response.json({ error: "Could not load that website" }, { status: 502 });
   }
 }
