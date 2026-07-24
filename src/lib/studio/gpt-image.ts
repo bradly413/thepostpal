@@ -20,7 +20,7 @@ export const GPT_IMAGE_MODEL = "gpt-image-2";
 
 /** Orchestrator for Responses API — world-knowledge + vision routing. */
 export const GPT_RESPONSES_MODEL =
-  process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-5.6";
+  process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-4.1-mini";
 
 export type GptImageAction = "auto" | "generate" | "edit";
 
@@ -155,7 +155,7 @@ async function callResponsesOnce(opts: {
         Authorization: `Bearer ${opts.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(85_000),
+      signal: AbortSignal.timeout(55_000),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -211,13 +211,19 @@ async function generateGptImageViaResponses(opts: {
   visionImages?: OpenAiInputImagePart[];
   action?: GptImageAction;
   forceImageTool?: boolean;
+  maxAttempts?: number;
 }): Promise<GptRunResult> {
-  const models = gptOrchestratorModels();
+  const models = gptOrchestratorModels().slice(0, 2);
   const toolAttempts = opts.forceImageTool ? [true, false] : [false];
   let last: GptRunResult = { ok: false, status: 502, error: "Image generation failed" };
+  let attempts = 0;
+  /** Stay under /api/generate-image maxDuration so Gemini fallback can still run. */
+  const maxAttempts = opts.maxAttempts ?? 2;
 
   for (const model of models) {
     for (const forceImageTool of toolAttempts) {
+      if (attempts >= maxAttempts) break;
+      attempts += 1;
       const result = await callResponsesOnce({ ...opts, model, forceImageTool });
       if (result.ok) return result;
       last = result;
@@ -250,7 +256,7 @@ async function generateGptImageViaImagesApi(opts: {
         quality: opts.quality === "pro" ? "high" : "medium",
         output_format: "jpeg",
       }),
-      signal: AbortSignal.timeout(85_000),
+      signal: AbortSignal.timeout(55_000),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -313,7 +319,7 @@ async function editGptImageViaImagesApi(opts: {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.apiKey}` },
       body: form,
-      signal: AbortSignal.timeout(85_000),
+      signal: AbortSignal.timeout(55_000),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -361,7 +367,36 @@ export async function generateGptImage(opts: {
   forceImageTool?: boolean;
   /** Images API edit fallback source (https / data URL). */
   editImageSource?: string | null;
+  /**
+   * Product-ad fast path: call gpt-image-2 directly (matches OpenAI playground)
+   * instead of Responses orchestrator — one hop, leaves budget for Gemini fallback.
+   */
+  preferDirectImagesApi?: boolean;
 }): Promise<GptRunResult> {
+  if (opts.preferDirectImagesApi && opts.action !== "edit") {
+    const direct = await generateGptImageViaImagesApi({
+      apiKey: opts.apiKey,
+      prompt: opts.prompt,
+      aspectRatio: opts.aspectRatio,
+      quality: opts.quality,
+    });
+    if (direct.ok) return direct;
+    // Timed out — skip Responses so Gemini fallback still has room on Vercel.
+    if (direct.status === 504) return direct;
+    const viaResponses = await generateGptImageViaResponses({
+      apiKey: opts.apiKey,
+      prompt: opts.prompt,
+      aspectRatio: opts.aspectRatio,
+      quality: opts.quality,
+      visionImages: opts.visionImages,
+      action: opts.action,
+      forceImageTool: opts.forceImageTool,
+      maxAttempts: 1,
+    });
+    if (viaResponses.ok) return viaResponses;
+    return direct;
+  }
+
   const viaResponses = await generateGptImageViaResponses({
     apiKey: opts.apiKey,
     prompt: opts.prompt,
@@ -370,6 +405,7 @@ export async function generateGptImage(opts: {
     visionImages: opts.visionImages,
     action: opts.action,
     forceImageTool: opts.forceImageTool,
+    maxAttempts: opts.forceImageTool ? 1 : 2,
   });
   if (viaResponses.ok) return viaResponses;
 
@@ -385,12 +421,17 @@ export async function generateGptImage(opts: {
   }
 
   if (opts.action === "generate" || !opts.visionImages?.length) {
-    return generateGptImageViaImagesApi({
-      apiKey: opts.apiKey,
-      prompt: opts.prompt,
-      aspectRatio: opts.aspectRatio,
-      quality: opts.quality,
-    });
+    // Skip a second 45s Images API hop after Responses already timed out — leave
+    // budget for the server-side Gemini fallback instead of dying on Vercel's wall.
+    if (viaResponses.status !== 504) {
+      const viaImages = await generateGptImageViaImagesApi({
+        apiKey: opts.apiKey,
+        prompt: opts.prompt,
+        aspectRatio: opts.aspectRatio,
+        quality: opts.quality,
+      });
+      if (viaImages.ok) return viaImages;
+    }
   }
 
   return viaResponses;

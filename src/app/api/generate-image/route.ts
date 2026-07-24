@@ -264,6 +264,10 @@ export async function POST(req: NextRequest) {
         ? generationSuffixForBrief(sourceIntent || promptForModel, true)
         : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
+  const routeDeadline = Date.now() + 118_000;
+  const geminiTimeoutMs = () =>
+    Math.min(85_000, Math.max(25_000, routeDeadline - Date.now() - 2_000));
+
   async function runGeneration(promptText: string) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
     const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
@@ -278,6 +282,7 @@ export async function POST(req: NextRequest) {
         action: gptAction,
         forceImageTool: designLane,
         editImageSource: gptEditEligible ? (referenceImage as string) : null,
+        preferDirectImagesApi: designLane && visionImages.length === 0,
       });
       if (gptResult.ok || gptOnly || !apiKey) return gptResult;
     }
@@ -288,6 +293,7 @@ export async function POST(req: NextRequest) {
         error: "Gemini fallback is not configured.",
       };
     }
+    const fallbackTimeout = geminiTimeoutMs();
     if (!hasGeminiReference) {
       return generateNanoBananaImage({
         apiKey: apiKey!,
@@ -296,6 +302,7 @@ export async function POST(req: NextRequest) {
         aspectRatio,
         imageSize,
         reference: null,
+        timeoutMs: fallbackTimeout,
       });
     }
     return generateNanoBananaImage({
@@ -305,6 +312,7 @@ export async function POST(req: NextRequest) {
       aspectRatio,
       imageSize,
       reference: { mimeType: refInline!.mimeType, data: refInline!.data },
+      timeoutMs: fallbackTimeout,
     });
   }
 

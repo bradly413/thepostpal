@@ -116,6 +116,10 @@ gsap.registerPlugin(useGSAP);
 // `w`/`h` drive the morphing canvas frame.
 // `publishable` = Posterboy can actually post to it today (Meta only). Others
 // are preview-only until their integration ships — surfaced up front (T4).
+
+/** Must exceed STUDIO_GENERATE_CLIENT_MS in use-studio-generation (130s). */
+const STUDIO_GENERATING_WATCHDOG_MS = 135_000;
+
 const PLATFORMS = [
   // w/h are the EXACT output dimensions per platform (Hootsuite 2026 sizes);
   // every generation is cover-cropped to these pixels on completion.
@@ -610,7 +614,7 @@ export default function PosterboyStudio() {
       const aid = pendingAssistantIdRef.current;
       if (!aid) return;
       const chatText =
-        /timed out|lost connection|network error/i.test(message)
+        /timed out|lost connection|network error|didn't finish/i.test(message)
           ? "Couldn't finish that one."
           : message;
       setChatMessages((prev) =>
@@ -779,6 +783,30 @@ export default function PosterboyStudio() {
     clearCarousel,
   ]);
 
+  // Safety net when /api/generate-image hangs without aborting (Vercel hard-kill, etc.).
+  useEffect(() => {
+    if (genState !== "generating") return;
+    const id = window.setTimeout(() => {
+      setGenState("idle");
+      setProgress(0);
+      setError("Generation timed out. Please try again.");
+      composeInFlightRef.current = false;
+      const aid = pendingAssistantIdRef.current;
+      if (aid) {
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === aid && m.role === "assistant"
+              ? { ...m, status: "error" as const, text: "Couldn't finish that one." }
+              : m,
+          ),
+        );
+        pendingAssistantIdRef.current = null;
+        pendingPromptMemoryRef.current = null;
+      }
+    }, STUDIO_GENERATING_WATCHDOG_MS);
+    return () => window.clearTimeout(id);
+  }, [genState, setProgress]);
+
   const resolveWebsiteBrand = useCallback(
     async (
       sourceText: string,
@@ -881,6 +909,7 @@ export default function PosterboyStudio() {
     setError("");
     clearCarousel();
 
+    try {
     // Archive current live image onto the previous assistant before a new turn.
     if (generatedUrl && genState === "done") {
       setChatMessages((prev) => {
@@ -954,6 +983,24 @@ export default function PosterboyStudio() {
     }
 
     await composeFromIntent(intent, nextRef, { siteGrounded, siteImageUrls });
+    } catch {
+      setGenState("idle");
+      setProgress(0);
+      setError("Generation didn't finish. Please try again.");
+      composeInFlightRef.current = false;
+      const aid = pendingAssistantIdRef.current;
+      if (aid) {
+        setChatMessages((prev) =>
+          prev.map((m) =>
+            m.id === aid && m.role === "assistant"
+              ? { ...m, status: "error" as const, text: "Couldn't finish that one." }
+              : m,
+          ),
+        );
+        pendingAssistantIdRef.current = null;
+        pendingPromptMemoryRef.current = null;
+      }
+    }
   }, [
     attachReferenceFromUrl,
     carouselCount,

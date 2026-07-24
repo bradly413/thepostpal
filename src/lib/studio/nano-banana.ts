@@ -98,6 +98,8 @@ export async function generateNanoBananaImage(opts: {
   imageSize?: NanoBananaImageSize | null;
   /** Optional reference image (edit / listing). */
   reference?: { mimeType: string; data: string } | null;
+  /** When GPT already ran, cap Gemini so the route stays under maxDuration. */
+  timeoutMs?: number;
 }): Promise<
   | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
   | { ok: false; status: number; error: string; text?: string }
@@ -135,7 +137,7 @@ export async function generateNanoBananaImage(opts: {
         input,
         response_format: responseFormat,
       }),
-      signal: AbortSignal.timeout(85_000),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 85_000),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";

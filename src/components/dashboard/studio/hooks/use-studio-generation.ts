@@ -24,12 +24,8 @@ type Platform = {
 
 /** Director / compose / reprompt — must stay under /api/studio/director maxDuration. */
 const STUDIO_DIRECTOR_CLIENT_MS = 35_000;
-/**
- * Image generation alone. Was sharing a single 60s abort with Director, so
- * High/Pro often died mid-generate after a long art-direct turn.
- * Keep ≥ /api/generate-image maxDuration.
- */
-const STUDIO_GENERATE_CLIENT_MS = 120_000;
+/** Product-ad compose + image gen — must exceed /api/generate-image maxDuration. */
+const STUDIO_GENERATE_CLIENT_MS = 130_000;
 
 function abortAfter(ms: number): { signal: AbortSignal; clear: () => void } {
   const ctrl = new AbortController();
@@ -386,7 +382,7 @@ export function useStudioGeneration({
   ) => {
     const intent = (overrideBrief ?? composerBrief).trim();
     const activeRef = overrideRefImage !== undefined ? overrideRefImage : refImage;
-    if (!intent || genState === "generating") {
+    if (!intent) {
       inputRef.current?.focus();
       return;
     }
@@ -499,7 +495,9 @@ export function useStudioGeneration({
           const productAd = isProductAdBrief(intent);
           if (productAd) {
             directorWantsDesign = true;
-            imagePrompt = buildProductAdPrompt(intent);
+            imagePrompt = buildProductAdPrompt(intent, {
+              hasReferenceImages: (opts?.siteImageUrls?.length ?? 0) > 0,
+            });
           } else {
             imagePrompt = intent;
           }
@@ -678,7 +676,7 @@ export function useStudioGeneration({
       setCaptionState("idle");
       failGenerate(
         err instanceof DOMException && err.name === "AbortError"
-          ? "Timed out. Please try again."
+          ? "Timed out. Try Standard quality or a shorter brief."
           : err instanceof TypeError
             ? "Lost connection to the server. Hard-refresh and try again."
             : err instanceof Error && err.message
