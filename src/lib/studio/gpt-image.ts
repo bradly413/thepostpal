@@ -6,6 +6,7 @@ import {
   type OpenAiInputImagePart,
   type OpenAiVisionDetail,
 } from "@/lib/studio/openai-vision-input";
+import { STUDIO_GPT_PROVIDER_TIMEOUT_MS } from "@/lib/studio/image-generation-budget";
 
 /**
  * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
@@ -24,7 +25,7 @@ export const GPT_RESPONSES_MODEL =
 
 export type GptImageAction = "auto" | "generate" | "edit";
 
-const GPT_PROVIDER_TIMEOUT_MS = 55_000;
+const GPT_PROVIDER_TIMEOUT_MS = STUDIO_GPT_PROVIDER_TIMEOUT_MS;
 const MIN_PROVIDER_ATTEMPT_MS = 1_000;
 
 export function boundedProviderTimeoutMs(opts: {
@@ -62,7 +63,7 @@ export function gptImageSizeForAspect(aspectRatio: string | undefined): string {
 
 type GptImageResponse = {
   data?: Array<{ b64_json?: string }>;
-  error?: { message?: string; type?: string } | null;
+  error?: { message?: string; type?: string; code?: string } | null;
 };
 
 type ResponsesOutputItem = {
@@ -75,7 +76,7 @@ type ResponsesOutputItem = {
 type ResponsesApiResponse = {
   output?: ResponsesOutputItem[];
   output_text?: string;
-  error?: { message?: string } | null;
+  error?: { message?: string; type?: string; code?: string } | null;
 };
 
 export function gptImageErrorMessage(data: GptImageResponse, fallback = "Image generation failed"): string {
@@ -114,7 +115,15 @@ function okResult(b64: string) {
 
 type GptRunResult =
   | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
-  | { ok: false; status: number; error: string; text?: string };
+  | {
+      ok: false;
+      status: number;
+      error: string;
+      text?: string;
+      provider?: "responses" | "images" | "edits";
+      requestId?: string;
+      errorCode?: string;
+    };
 
 /** Orchestrator fallbacks when the configured/default model is unavailable. */
 export function gptOrchestratorModels(): string[] {
@@ -148,6 +157,7 @@ async function callResponsesOnce(opts: {
       ok: false,
       status: 504,
       error: "Image generation timed out. Try again or switch to Standard quality.",
+      provider: "responses",
     };
   }
   const action = opts.action ?? (opts.visionImages?.length ? "auto" : "generate");
@@ -186,6 +196,7 @@ async function callResponsesOnce(opts: {
     return {
       ok: false,
       status: timedOut ? 504 : 502,
+      provider: "responses",
       error: timedOut
         ? "Image generation timed out. Try again or switch to Standard quality."
         : "Could not reach the design image service.",
@@ -199,6 +210,8 @@ async function callResponsesOnce(opts: {
     return {
       ok: false,
       status: res.status || 502,
+      provider: "responses",
+      requestId: res.headers.get("x-request-id") || undefined,
       error: res.ok ? "Invalid response from image generation." : "Image generation failed",
     };
   }
@@ -207,7 +220,14 @@ async function callResponsesOnce(opts: {
     const msg =
       (data.error && typeof data.error === "object" && data.error.message) ||
       "Image generation failed";
-    return { ok: false, status: res.status, error: msg };
+    return {
+      ok: false,
+      status: res.status,
+      error: msg,
+      provider: "responses",
+      requestId: res.headers.get("x-request-id") || undefined,
+      errorCode: data.error?.code,
+    };
   }
 
   const b64 = extractImageFromResponsesResponse(data);
@@ -220,6 +240,8 @@ async function callResponsesOnce(opts: {
       ok: false,
       status: 422,
       error: "No image was generated. Try a different prompt.",
+      provider: "responses",
+      requestId: res.headers.get("x-request-id") || undefined,
       ...(hint ? { text: hint } : {}),
     };
   }
@@ -284,6 +306,7 @@ async function generateGptImageViaImagesApi(opts: {
       ok: false,
       status: 504,
       error: "Image generation timed out. Try again or switch to Standard quality.",
+      provider: "images",
     };
   }
   let res: Response;
@@ -309,6 +332,7 @@ async function generateGptImageViaImagesApi(opts: {
     return {
       ok: false,
       status: timedOut ? 504 : 502,
+      provider: "images",
       error: timedOut
         ? "Image generation timed out. Try again or switch to Standard quality."
         : "Could not reach the design image service.",
@@ -322,17 +346,32 @@ async function generateGptImageViaImagesApi(opts: {
     return {
       ok: false,
       status: res.status || 502,
+      provider: "images",
+      requestId: res.headers.get("x-request-id") || undefined,
       error: res.ok ? "Invalid response from image generation." : "Image generation failed",
     };
   }
 
   if (!res.ok) {
-    return { ok: false, status: res.status, error: gptImageErrorMessage(data) };
+    return {
+      ok: false,
+      status: res.status,
+      error: gptImageErrorMessage(data),
+      provider: "images",
+      requestId: res.headers.get("x-request-id") || undefined,
+      errorCode: data.error?.code,
+    };
   }
 
   const b64 = data.data?.[0]?.b64_json;
   if (!b64) {
-    return { ok: false, status: 422, error: "No image was generated. Try a different prompt." };
+    return {
+      ok: false,
+      status: 422,
+      error: "No image was generated. Try a different prompt.",
+      provider: "images",
+      requestId: res.headers.get("x-request-id") || undefined,
+    };
   }
 
   return okResult(b64);
@@ -356,11 +395,16 @@ async function editGptImageViaImagesApi(opts: {
     });
   const sourceLoadReserveMs = /^https:\/\//i.test(opts.imageSource) ? 12_000 : 0;
   if (initialBudgetMs < MIN_PROVIDER_ATTEMPT_MS + sourceLoadReserveMs) {
-    return { ok: false, status: 504, error: "Image edit timed out. Try again." };
+    return { ok: false, status: 504, error: "Image edit timed out. Try again.", provider: "edits" };
   }
   const bytes = await loadImageBytesForEdit(opts.imageSource);
   if (!bytes) {
-    return { ok: false, status: 422, error: "Could not read the reference image for editing." };
+    return {
+      ok: false,
+      status: 422,
+      error: "Could not read the reference image for editing.",
+      provider: "edits",
+    };
   }
   const timeoutMs =
     opts.deadlineMs == null
@@ -370,7 +414,7 @@ async function editGptImageViaImagesApi(opts: {
           reserveMs: opts.reserveMs,
         });
   if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
-    return { ok: false, status: 504, error: "Image edit timed out. Try again." };
+    return { ok: false, status: 504, error: "Image edit timed out. Try again.", provider: "edits" };
   }
 
   const form = new FormData();
@@ -395,6 +439,7 @@ async function editGptImageViaImagesApi(opts: {
     return {
       ok: false,
       status: timedOut ? 504 : 502,
+      provider: "edits",
       error: timedOut ? "Image edit timed out. Try again." : "Could not reach the image edit service.",
     };
   }
@@ -406,17 +451,32 @@ async function editGptImageViaImagesApi(opts: {
     return {
       ok: false,
       status: res.status || 502,
+      provider: "edits",
+      requestId: res.headers.get("x-request-id") || undefined,
       error: res.ok ? "Invalid edit response." : "Image edit failed",
     };
   }
 
   if (!res.ok) {
-    return { ok: false, status: res.status, error: gptImageErrorMessage(data, "Image edit failed") };
+    return {
+      ok: false,
+      status: res.status,
+      error: gptImageErrorMessage(data, "Image edit failed"),
+      provider: "edits",
+      requestId: res.headers.get("x-request-id") || undefined,
+      errorCode: data.error?.code,
+    };
   }
 
   const b64 = data.data?.[0]?.b64_json;
   if (!b64) {
-    return { ok: false, status: 422, error: "No edited image was returned." };
+    return {
+      ok: false,
+      status: 422,
+      error: "No edited image was returned.",
+      provider: "edits",
+      requestId: res.headers.get("x-request-id") || undefined,
+    };
   }
 
   return okResult(b64);

@@ -8,6 +8,13 @@ import {
   gptOrchestratorModels,
   isRetryableResponsesError,
 } from "@/lib/studio/gpt-image";
+import {
+  STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+  STUDIO_GPT_PROVIDER_TIMEOUT_MS,
+  STUDIO_IMAGE_CLIENT_TIMEOUT_MS,
+  STUDIO_IMAGE_ROUTE_BUDGET_MS,
+  STUDIO_IMAGE_WATCHDOG_MS,
+} from "@/lib/studio/image-generation-budget";
 
 describe("gptImageSizeForAspect", () => {
   it("maps Studio aspects to the nearest supported size", () => {
@@ -45,28 +52,42 @@ describe("boundedProviderTimeoutMs", () => {
   it("caps a provider call while preserving the fallback reserve", () => {
     expect(
       boundedProviderTimeoutMs({
-        deadlineMs: 200_000,
-        reserveMs: 25_000,
+        deadlineMs: 400_000,
+        reserveMs: STUDIO_GEMINI_FALLBACK_RESERVE_MS,
         nowMs: 100_000,
       }),
-    ).toBe(55_000);
+    ).toBe(STUDIO_GPT_PROVIDER_TIMEOUT_MS);
     expect(
       boundedProviderTimeoutMs({
-        deadlineMs: 150_000,
-        reserveMs: 25_000,
+        deadlineMs: 220_000,
+        reserveMs: STUDIO_GEMINI_FALLBACK_RESERVE_MS,
         nowMs: 100_000,
       }),
-    ).toBe(25_000);
+    ).toBe(30_000);
   });
 
   it("returns zero instead of overrunning an exhausted deadline", () => {
     expect(
       boundedProviderTimeoutMs({
         deadlineMs: 120_000,
-        reserveMs: 25_000,
+        reserveMs: STUDIO_GEMINI_FALLBACK_RESERVE_MS,
         nowMs: 100_000,
       }),
     ).toBe(0);
+  });
+});
+
+describe("Studio image generation budget", () => {
+  it("allows a two-minute GPT attempt while preserving fallback headroom", () => {
+    expect(STUDIO_GPT_PROVIDER_TIMEOUT_MS).toBeGreaterThanOrEqual(120_000);
+    expect(STUDIO_IMAGE_ROUTE_BUDGET_MS).toBeGreaterThanOrEqual(
+      STUDIO_GPT_PROVIDER_TIMEOUT_MS + STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+    );
+  });
+
+  it("keeps client recovery outside the server deadline", () => {
+    expect(STUDIO_IMAGE_CLIENT_TIMEOUT_MS).toBeGreaterThan(STUDIO_IMAGE_ROUTE_BUDGET_MS);
+    expect(STUDIO_IMAGE_WATCHDOG_MS).toBeGreaterThan(STUDIO_IMAGE_CLIENT_TIMEOUT_MS);
   });
 });
 

@@ -32,14 +32,19 @@ import {
   buildTenantImageBrandContext,
   buildTenantGeography,
 } from "@/lib/ai-brand-context";
+import {
+  STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+  STUDIO_GEMINI_PROVIDER_TIMEOUT_MS,
+  STUDIO_IMAGE_ROUTE_BUDGET_MS,
+} from "@/lib/studio/image-generation-budget";
 
 // Studio: GPT Image 2 (Responses multimodal + edit) · Gemini fallback for listings.
 
-export const maxDuration = 120; // GPT Image 2 + optional Gemini fallback on Pro/High
+export const maxDuration = 240; // GPT Image 2 (up to 2m) + optional Gemini fallback
 
 export async function POST(req: NextRequest) {
   // One wall-clock budget for auth, grounding, GPT, fallback, and response flush.
-  const routeDeadline = Date.now() + 118_000;
+  const routeDeadline = Date.now() + STUDIO_IMAGE_ROUTE_BUDGET_MS;
 
   let auth: AuthContext;
   try {
@@ -268,12 +273,13 @@ export async function POST(req: NextRequest) {
         : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
   const geminiTimeoutMs = () =>
-    Math.min(85_000, routeDeadline - Date.now() - 2_000);
+    Math.min(STUDIO_GEMINI_PROVIDER_TIMEOUT_MS, routeDeadline - Date.now() - 2_000);
 
   async function runGeneration(promptText: string) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
     const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
     if (useGptEngine) {
+      const gptStartedAt = Date.now();
       const gptResult = await generateGptImage({
         apiKey: openAiKey,
         prompt: fullPrompt,
@@ -286,9 +292,21 @@ export async function POST(req: NextRequest) {
         editImageSource: gptEditEligible ? (referenceImage as string) : null,
         preferDirectImagesApi: designLane && visionImages.length === 0,
         deadlineMs: routeDeadline,
-        fallbackReserveMs: !gptOnly && apiKey ? 25_000 : 0,
+        fallbackReserveMs:
+          !gptOnly && apiKey ? STUDIO_GEMINI_FALLBACK_RESERVE_MS : 0,
       });
       if (gptResult.ok || gptOnly || !apiKey) return gptResult;
+      console.warn("[studio-image] GPT Image fallback", {
+        status: gptResult.status,
+        error: gptResult.error,
+        errorCode: gptResult.errorCode,
+        provider: gptResult.provider,
+        providerRequestId: gptResult.requestId,
+        elapsedMs: Date.now() - gptStartedAt,
+        quality,
+        aspectRatio,
+        designLane,
+      });
     }
     if (!apiKey) {
       return {

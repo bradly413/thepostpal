@@ -57,6 +57,7 @@ import { StudioStyles } from "./studio-styles";
 import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
+import { STUDIO_IMAGE_WATCHDOG_MS } from "@/lib/studio/image-generation-budget";
 import { isListingBrief, isProductAdBrief } from "@/lib/studio/scene-intent";
 import {
   extractReferenceImageUrl,
@@ -117,8 +118,8 @@ gsap.registerPlugin(useGSAP);
 // `publishable` = Posterboy can actually post to it today (Meta only). Others
 // are preview-only until their integration ships — surfaced up front (T4).
 
-/** Image-request safety net; must exceed the hook's 130s fetch abort. */
-const STUDIO_GENERATING_WATCHDOG_MS = 135_000;
+/** Image-request safety net; must exceed the hook's fetch abort. */
+const STUDIO_GENERATING_WATCHDOG_MS = STUDIO_IMAGE_WATCHDOG_MS;
 
 const PLATFORMS = [
   // w/h are the EXACT output dimensions per platform (Hootsuite 2026 sizes);

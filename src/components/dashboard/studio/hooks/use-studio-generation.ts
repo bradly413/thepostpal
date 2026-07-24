@@ -9,6 +9,7 @@ import {
   isProductAdBrief,
 } from "@/lib/studio/scene-intent";
 import { resolveStudioImageRoute } from "@/lib/studio/studio-image-routing";
+import { STUDIO_IMAGE_CLIENT_TIMEOUT_MS } from "@/lib/studio/image-generation-budget";
 
 type GenState = "idle" | "generating" | "done";
 type CaptionState = "idle" | "loading" | "done" | "error";
@@ -24,8 +25,8 @@ type Platform = {
 
 /** Director / compose / reprompt — must stay under /api/studio/director maxDuration. */
 const STUDIO_DIRECTOR_CLIENT_MS = 35_000;
-/** Product-ad compose + image gen — must exceed /api/generate-image maxDuration. */
-const STUDIO_GENERATE_CLIENT_MS = 130_000;
+/** Product-ad compose + image gen — follows the route's coordinated provider budget. */
+const STUDIO_GENERATE_CLIENT_MS = STUDIO_IMAGE_CLIENT_TIMEOUT_MS;
 
 type AbortHandle = {
   signal: AbortSignal;
@@ -718,7 +719,7 @@ export function useStudioGeneration({
       // Honest attribution when GPT Image 2 fell back to Gemini.
       if (iData.engineFallback === "gemini") {
         onSoftNotice?.(
-          "GPT Image 2 couldn't finish — generated with Posterboy Visual instead.",
+          "GPT Image 2 took longer than expected — Posterboy Visual completed this version.",
         );
       }
       setGeneratedUrl(iData.image);
