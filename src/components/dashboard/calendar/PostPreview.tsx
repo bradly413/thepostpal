@@ -22,6 +22,8 @@ export interface ComposerMediaItem {
   type: "image" | "video";
   /** Per-slide draft fields (bulk upload queue). */
   caption?: string;
+  /** User explicitly locked this caption for scheduling. */
+  captionApproved?: boolean;
   date?: string;
   time?: string;
 }
@@ -197,7 +199,8 @@ export default function PostPreview({
 
       <div
         ref={hostRef}
-        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden"
+        className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden max-lg:aspect-[4/5] max-lg:max-h-[78svh] max-lg:flex-none"
+        data-composer-preview-host="true"
       >
         {!mediaUrl ? (
           <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl bg-[#f3f3f4] px-4 text-center shadow-[0_12px_28px_-18px_rgba(20,20,40,0.35)] ring-1 ring-black/[0.05]">

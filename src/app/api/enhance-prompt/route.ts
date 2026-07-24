@@ -22,13 +22,18 @@ export async function POST(req: NextRequest) {
     throw error;
   }
 
-  const body = (await req.json()) as {
+  let body: {
     prompt?: unknown;
     locationId?: unknown;
     businessType?: unknown;
     brandLock?: unknown;
   };
-  const prompt = typeof body.prompt === "string" ? body.prompt : "";
+  try {
+    body = (await req.json()) as typeof body;
+  } catch {
+    return NextResponse.json({ error: "Invalid JSON body" }, { status: 400 });
+  }
+  const prompt = typeof body.prompt === "string" ? body.prompt.trim() : "";
 
   if (!prompt) {
     return NextResponse.json({ error: "Prompt is required" }, { status: 400 });
@@ -40,14 +45,21 @@ export async function POST(req: NextRequest) {
 
   // Preferred path: the art director — brand palette, vertical aesthetic, and
   // geography aware. Returns the original brief unchanged on any failure.
-  if (process.env.ANTHROPIC_API_KEY?.trim()) {
+  const anthropicConfigured = Boolean(process.env.ANTHROPIC_API_KEY?.trim());
+  if (anthropicConfigured) {
     const locationId = typeof body.locationId === "string" ? body.locationId : null;
-    const [brandContext, geography] = await Promise.all([
-      body.brandLock === false
-        ? Promise.resolve("")
-        : buildTenantImageBrandContext(auth, { locationId }),
-      buildTenantGeography(auth, locationId),
-    ]);
+    let brandContext = "";
+    let geography = "";
+    try {
+      [brandContext, geography] = await Promise.all([
+        body.brandLock === false
+          ? Promise.resolve("")
+          : buildTenantImageBrandContext(auth, { locationId }),
+        buildTenantGeography(auth, locationId),
+      ]);
+    } catch {
+      // Grounding improves the result but must not make the control appear dead.
+    }
     const enhanced = await expandImageBrief({
       brief: prompt,
       businessType: typeof body.businessType === "string" ? body.businessType.slice(0, 120) : undefined,
@@ -62,7 +74,13 @@ export async function POST(req: NextRequest) {
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
-    return NextResponse.json({ error: "GEMINI_API_KEY not configured" }, { status: 500 });
+    if (anthropicConfigured) {
+      return NextResponse.json({ enhanced: prompt, unchanged: true });
+    }
+    return NextResponse.json(
+      { error: "Prompt enhancement is temporarily unavailable" },
+      { status: 503 },
+    );
   }
 
   try {
@@ -70,6 +88,7 @@ export async function POST(req: NextRequest) {
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent`,
       {
         method: "POST",
+        signal: AbortSignal.timeout(12_000),
         headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
         body: JSON.stringify({
           contents: [
@@ -100,8 +119,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No enhanced prompt returned" }, { status: 422 });
     }
 
-    return NextResponse.json({ enhanced });
+    return NextResponse.json({
+      enhanced,
+      ...(enhanced === prompt ? { unchanged: true } : {}),
+    });
   } catch {
-    return NextResponse.json({ error: "Enhancement failed" }, { status: 500 });
+    return NextResponse.json({ error: "Enhancement failed" }, { status: 504 });
   }
 }

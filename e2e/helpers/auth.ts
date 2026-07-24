@@ -7,8 +7,10 @@ export async function loginAsDemo(page: Page, landing = "/dashboard") {
   }
   await page.locator("#username").fill("demo");
   await page.locator("#password").fill("demo123");
-  await page.getByRole("button", { name: "Sign In" }).click();
-  await page.waitForURL(/\/dashboard/, { timeout: 30_000 });
+  await Promise.all([
+    page.waitForURL(/\/dashboard/, { timeout: 45_000 }),
+    page.getByRole("button", { name: "Sign In" }).click(),
+  ]);
   if (!page.url().includes(landing)) {
     await page.goto(landing);
     await page.waitForLoadState("domcontentloaded");

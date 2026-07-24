@@ -325,6 +325,7 @@ export default function PosterboyStudio() {
   const formatMenuRef = useRef<HTMLDivElement>(null);
   // Composer: prompt enhance (lanes + brand grounding are automatic).
   const [enhanceBusy, setEnhanceBusy] = useState(false);
+  const [enhanceFeedback, setEnhanceFeedback] = useState("");
   const [recentPrompts, setRecentPrompts] = useState<PromptMemoryEntry[]>([]);
   const [softNotice, setSoftNotice] = useState("");
 
@@ -456,9 +457,13 @@ export default function PosterboyStudio() {
     const brief = prompt.trim();
     if (!brief || enhanceBusy || genState === "generating") return;
     setEnhanceBusy(true);
+    setEnhanceFeedback("Enhancing");
+    setError("");
     try {
       const res = await fetch("/api/enhance-prompt", {
         method: "POST",
+        cache: "no-store",
+        credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: brief,
@@ -466,16 +471,44 @@ export default function PosterboyStudio() {
           ...(businessType ? { businessType } : {}),
         }),
       });
-      const data = (await res.json()) as { enhanced?: string; error?: string };
-      if (res.ok && data.enhanced?.trim()) {
-        setPrompt(data.enhanced.trim());
-        window.setTimeout(() => {
-          syncPromptHeight();
-          inputRef.current?.focus();
-        }, 0);
+      const data = (await res.json().catch(() => ({}))) as {
+        enhanced?: string;
+        unchanged?: boolean;
+        error?: string;
+      };
+      if (!res.ok) {
+        setEnhanceFeedback("Try again");
+        setError(
+          res.status === 429
+            ? "Prompt enhancement is busy. Wait a moment and try again."
+            : data.error || "Could not enhance your prompt. Try again.",
+        );
+        return;
       }
+      const enhanced = data.enhanced?.trim();
+      if (!enhanced) {
+        setEnhanceFeedback("Try again");
+        setError("Prompt enhancement returned an empty response. Try again.");
+        return;
+      }
+      if (data.unchanged || enhanced === brief) {
+        setEnhanceFeedback("Already strong");
+        setSoftNotice("Your prompt is already detailed and ready to generate.");
+        return;
+      }
+      setPrompt(enhanced);
+      setEnhanceFeedback("Enhanced");
+      setSoftNotice("Prompt enhanced. Review the changes, then Generate.");
+      window.setTimeout(() => {
+        syncPromptHeight();
+        const input = inputRef.current;
+        input?.focus();
+        input?.setSelectionRange(0, 0);
+        if (input) input.scrollTop = 0;
+      }, 0);
     } catch {
-      /* leave the brief as typed */
+      setEnhanceFeedback("Try again");
+      setError("Could not enhance your prompt. Check your connection and try again.");
     } finally {
       setEnhanceBusy(false);
     }
@@ -2383,7 +2416,7 @@ export default function PosterboyStudio() {
           ) ? (
           <div
             ref={frameWrapRef}
-            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "generating" ? " is-generating" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
+            className={`frame-wrap${showTemplate ? ` as-post pc-platform-${platform.id}` : ""}${genState === "idle" && composerMode === "image" && !showTemplate ? " is-idle" : ""}${genState === "idle" && composerMode === "video" && !showTemplate ? " is-video-compose" : ""}${genState === "generating" ? " is-generating" : ""}${genState === "done" && mediaKind === "image" && !showTemplate ? " is-chat-result" : ""}`}
             style={frameWrapStyle}
           >
             {/* Ambient backlight: the generated image casts its own light — a
@@ -2680,33 +2713,6 @@ export default function PosterboyStudio() {
               flex: "0 0 auto",
             }}
           >
-            {/* Composer head: mode tabs + brand kit (creator-studio card chrome) */}
-            {genState !== "generating" ? (
-              <div className="pb-bar-head">
-                <div className="pb-mode-tabs" role="group" aria-label="Studio mode">
-                  <button
-                    type="button"
-                    className={`pb-mode-tab${composerMode === "image" ? " is-active" : ""}`}
-                    aria-pressed={composerMode === "image"}
-                    title="Image mode"
-                    onClick={requestImageMode}
-                    disabled={videoBusy}
-                  >
-                    <ImageTabIcon size={15} strokeWidth={1.9} aria-hidden />
-                  </button>
-                  <button
-                    type="button"
-                    className={`pb-mode-tab${composerMode === "video" ? " is-active" : ""}`}
-                    aria-pressed={composerMode === "video"}
-                    title="Video mode — publish coming soon in closed beta"
-                    onClick={requestVideoMode}
-                    disabled={videoBusy}
-                  >
-                    <Clapperboard size={15} strokeWidth={1.9} aria-hidden />
-                  </button>
-                </div>
-              </div>
-            ) : null}
             {promptMode !== "caption" && genState !== "generating" && recentPrompts.length > 0 ? (
               <div className="studio-recent-prompts" role="list" aria-label="Recent prompts">
                 {recentPrompts.slice(0, 8).map((entry) => (
@@ -2830,6 +2836,7 @@ export default function PosterboyStudio() {
                   onChange={(e) => {
                     const next = e.target.value;
                     setPrompt(next);
+                    setEnhanceFeedback("");
                     syncPromptHeight();
                     // Only auto-attach clear direct image URLs — never website pages.
                     if (!refImage && !refImageLoading && composerMode === "image") {
@@ -2882,25 +2889,40 @@ export default function PosterboyStudio() {
                       void runComposeFromIntent();
                     }
                   }}
-                  placeholder={STUDIO_PROMPT_PLACEHOLDERS[placeholderIdx]}
+                  placeholder={
+                    composerMode === "video"
+                      ? "Describe the 8-second video you want to create…"
+                      : STUDIO_PROMPT_PLACEHOLDERS[placeholderIdx]
+                  }
                   disabled={genState === "generating"}
                   aria-label={
                     prefixActive
                       ? `What should the ${platform.id} post be about?`
-                      : "Describe your post"
+                      : composerMode === "video"
+                        ? "Describe your video"
+                        : "Describe your post"
                   }
                 />
                 {composerMode === "image" ? (
-                  <button
-                    type="button"
-                    className={`pb-enhance${enhanceBusy ? " is-busy" : ""}`}
-                    onClick={() => void enhancePrompt()}
-                    disabled={enhanceBusy || !prompt.trim()}
-                    title="Enhance my prompt"
-                    aria-label="Enhance my prompt"
-                  >
-                    <EnhanceIcon size={16} strokeWidth={1.9} aria-hidden />
-                  </button>
+                  <>
+                    <button
+                      type="button"
+                      className={`pb-enhance${enhanceBusy ? " is-busy" : ""}`}
+                      onClick={() => void enhancePrompt()}
+                      disabled={enhanceBusy || genState === "generating" || !prompt.trim()}
+                      title={enhanceBusy ? "Enhancing prompt" : "Enhance my prompt"}
+                      aria-label="Enhance my prompt"
+                      aria-busy={enhanceBusy}
+                    >
+                      <EnhanceIcon size={16} strokeWidth={1.9} aria-hidden />
+                      <span>
+                        {enhanceBusy ? "Enhancing" : enhanceFeedback || "Enhance"}
+                      </span>
+                    </button>
+                    <span className="sr-only" role="status" aria-live="polite">
+                      {enhanceBusy ? "Enhancing prompt" : enhanceFeedback}
+                    </span>
+                  </>
                 ) : null}
                 </>
               )}
@@ -2982,6 +3004,30 @@ export default function PosterboyStudio() {
                 ) : (
                   <>
                     <div className="pb-bar-extras">
+                      <div className="pb-mode-tabs" role="group" aria-label="Studio mode">
+                        <button
+                          type="button"
+                          className={`pb-mode-tab${composerMode === "image" ? " is-active" : ""}`}
+                          aria-pressed={composerMode === "image"}
+                          aria-label="Image mode"
+                          title="Image mode"
+                          onClick={requestImageMode}
+                          disabled={videoBusy}
+                        >
+                          <ImageTabIcon size={15} strokeWidth={1.9} aria-hidden />
+                        </button>
+                        <button
+                          type="button"
+                          className={`pb-mode-tab${composerMode === "video" ? " is-active" : ""}`}
+                          aria-pressed={composerMode === "video"}
+                          aria-label="Video mode"
+                          title="Video mode — publish coming soon in closed beta"
+                          onClick={requestVideoMode}
+                          disabled={videoBusy}
+                        >
+                          <Clapperboard size={15} strokeWidth={1.9} aria-hidden />
+                        </button>
+                      </div>
                       {composerMode === "image" ? (
                         <>
                           <span className="pb-pill-model" ref={aspectMenuRef}>

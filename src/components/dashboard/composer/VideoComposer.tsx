@@ -1,11 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { uploadDashboardVideo } from "@/lib/dashboard-upload";
 import {
-  startAndPollVideo,
-  type VideoGenAspect,
-} from "@/lib/studio/generate-video-client";
+  Clapperboard,
+  Clock3,
+  Sparkles,
+  Upload,
+  Volume2,
+} from "lucide-react";
+import { uploadDashboardVideo } from "@/lib/dashboard-upload";
+import type { VideoGenAspect } from "@/lib/studio/generate-video-client";
+import styles from "./VideoComposer.module.css";
 
 export type VideoAspectPreset = "9:16" | "1:1" | "4:5";
 
@@ -36,6 +41,7 @@ export default function VideoComposer({
   aspectHint = "9:16",
 }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [sourceUrl, setSourceUrl] = useState<string | null>(initialUrl ?? null);
   const [duration, setDuration] = useState(0);
   const [trimIn, setTrimIn] = useState(0);
@@ -44,10 +50,7 @@ export default function VideoComposer({
   const [aspect, setAspect] = useState<VideoAspectPreset>("9:16");
   const [exporting, setExporting] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [aiPrompt, setAiPrompt] = useState("");
-  const [aiBusy, setAiBusy] = useState(false);
-  const [aiStatus, setAiStatus] = useState("");
-  const aiAbortRef = useRef<AbortController | null>(null);
+  const [dragActive, setDragActive] = useState(false);
 
   useEffect(() => {
     return () => {
@@ -180,103 +183,124 @@ export default function VideoComposer({
     }
   };
 
-  const busy = exporting || uploading || aiBusy;
-
-  const generateAiVideo = async () => {
-    const brief = aiPrompt.trim();
-    if (!brief) {
-      onError("Describe the video you want.");
-      return;
-    }
-    aiAbortRef.current?.abort();
-    const ctrl = new AbortController();
-    aiAbortRef.current = ctrl;
-    setAiBusy(true);
-    setAiStatus("Starting video…");
-    try {
-      const { videoUrl } = await startAndPollVideo({
-        prompt: brief,
-        aspectRatio: aspectHint,
-        signal: ctrl.signal,
-        onStatus: (s) => {
-          if (s.phase === "starting") setAiStatus("Starting video…");
-          if (s.phase === "processing") {
-            const sec = Math.round(s.elapsedMs / 1000);
-            setAiStatus(sec < 20 ? "Generating video…" : `Still generating… ${sec}s`);
-          }
-        },
-      });
-      onComplete(videoUrl, { prompt: brief });
-    } catch (err) {
-      if (!(err instanceof DOMException && err.name === "AbortError")) {
-        onError(err instanceof Error ? err.message : "Video generation failed.");
-      }
-    } finally {
-      setAiBusy(false);
-      setAiStatus("");
-      aiAbortRef.current = null;
-    }
-  };
+  const busy = exporting || uploading;
+  const outputLabel = aspectHint === "9:16" ? "Vertical 9:16" : "Landscape 16:9";
 
   return (
-    <div className="pb-video-composer">
-      <div className="pb-video-ai">
-        <p className="pb-video-ai-label">AI Video (Veo)</p>
-        <p className="pb-video-ai-sub">8s clip with audio — or upload your own below.</p>
-        <textarea
-          className="pb-video-ai-prompt"
-          rows={3}
-          placeholder="A chef plating a vibrant dish, soft kitchen light, gentle camera push-in…"
-          value={aiPrompt}
-          onChange={(e) => setAiPrompt(e.target.value)}
-          disabled={aiBusy}
-        />
-        <div className="pb-video-ai-actions">
-          <button
-            type="button"
-            className="pb-video-export"
-            disabled={aiBusy || !aiPrompt.trim()}
-            onClick={() => void generateAiVideo()}
-          >
-            {aiBusy ? aiStatus || "Generating…" : "Generate with Veo"}
-          </button>
-          {aiBusy ? (
-            <button
-              type="button"
-              className="pb-video-ai-cancel"
-              onClick={() => aiAbortRef.current?.abort()}
-            >
-              Cancel
-            </button>
-          ) : null}
+    <section
+      className={styles.composer}
+      aria-labelledby="pb-video-composer-title"
+      data-video-composer="true"
+    >
+      <div className={styles.workspace}>
+        <div className={styles.briefPane}>
+          <div className={styles.eyebrow}>
+            <Sparkles size={14} strokeWidth={2} aria-hidden />
+            <span>AI video</span>
+            <span className={styles.model}>Veo</span>
+          </div>
+          <div className={styles.headingGroup}>
+            <h2 id="pb-video-composer-title">Create an 8-second video</h2>
+            <p>Describe the shot in the prompt below, or upload a finished clip.</p>
+          </div>
+          <div className={styles.specs} aria-label="Video output details">
+            <span><Clock3 size={14} aria-hidden />8 seconds</span>
+            <span><Volume2 size={14} aria-hidden />Audio included</span>
+            <span><Clapperboard size={14} aria-hidden />{outputLabel}</span>
+          </div>
+          <div className={styles.promptGuide}>
+            <span>Prompt structure</span>
+            <p><strong>Subject</strong> + action + camera movement + lighting</p>
+            <blockquote>
+              “A chef plates a vibrant dish in soft kitchen light as the camera gently pushes in.”
+            </blockquote>
+          </div>
+        </div>
+
+        <div
+          className={`${styles.previewPane}${dragActive ? ` ${styles.dragActive}` : ""}`}
+          onDragEnter={(event) => {
+            event.preventDefault();
+            if (!busy) setDragActive(true);
+          }}
+          onDragOver={(event) => {
+            event.preventDefault();
+          }}
+          onDragLeave={(event) => {
+            if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
+              setDragActive(false);
+            }
+          }}
+          onDrop={(event) => {
+            event.preventDefault();
+            setDragActive(false);
+            const file = event.dataTransfer.files?.[0];
+            if (file && !busy) onFile(file);
+          }}
+        >
+          <div className={styles.previewMeta}>
+            <span>{sourceUrl ? "Preview" : "Video canvas"}</span>
+            <span>{outputLabel}</span>
+          </div>
+          {sourceUrl ? (
+            <>
+              <video
+                ref={videoRef}
+                src={sourceUrl}
+                className={styles.preview}
+                onLoadedMetadata={onVideoMeta}
+                controls
+                playsInline
+                muted
+              />
+              <button
+                type="button"
+                className={styles.replaceAction}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                <Upload size={14} aria-hidden />
+                Replace video
+              </button>
+            </>
+          ) : (
+            <div className={styles.emptyState}>
+              <span className={styles.uploadMark}><Upload size={24} strokeWidth={1.8} /></span>
+              <strong>Upload your own video</strong>
+              <span>Drop an MP4 or MOV here, or choose a file.</span>
+              <button
+                type="button"
+                className={styles.uploadAction}
+                onClick={() => fileInputRef.current?.click()}
+                disabled={busy}
+              >
+                Choose video
+              </button>
+            </div>
+          )}
+          <input
+            ref={fileInputRef}
+            id="pb-video-upload"
+            type="file"
+            accept="video/mp4,video/quicktime,.mp4,.mov"
+            className={styles.visuallyHidden}
+            onChange={(event) => {
+              const file = event.target.files?.[0];
+              if (file) onFile(file);
+              event.currentTarget.value = "";
+            }}
+            disabled={busy}
+          />
         </div>
       </div>
 
-      {!sourceUrl ? (
-        <label className="pb-video-drop">
-          <span>Upload MP4 or MOV</span>
-          <input
-            type="file"
-            accept="video/mp4,video/quicktime,.mp4,.mov"
-            className="hidden"
-            onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
-          />
-        </label>
-      ) : (
-        <>
-          <video
-            ref={videoRef}
-            src={sourceUrl}
-            className="pb-video-preview"
-            onLoadedMetadata={onVideoMeta}
-            playsInline
-            muted
-          />
+      {sourceUrl ? (
+        <div className={styles.editor} aria-label="Video finishing controls">
           {duration > 0 ? (
-            <div className="pb-video-trim">
-              <div className="pb-video-trim-labels">
-                <span>In: {formatTime(trimIn)}</span>
-                <span>Out: {formatTime(trimOut)}</span>
+            <div className={styles.trim}>
+              <div className={styles.controlHeading}>
+                <span>Trim</span>
+                <span>{formatTime(trimIn)}–{formatTime(trimOut)}</span>
               </div>
               <input
                 type="range"
@@ -289,6 +313,8 @@ export default function VideoComposer({
                   setTrimIn(Math.min(v, trimOut - 0.1));
                   if (videoRef.current) videoRef.current.currentTime = v;
                 }}
+                aria-label="Video trim start"
+                aria-valuetext={formatTime(trimIn)}
               />
               <input
                 type="range"
@@ -300,97 +326,51 @@ export default function VideoComposer({
                   const v = Number(e.target.value);
                   setTrimOut(Math.max(v, trimIn + 0.1));
                 }}
+                aria-label="Video trim end"
+                aria-valuetext={formatTime(trimOut)}
               />
             </div>
           ) : null}
 
-          <div className="pb-video-aspects">
+          <div className={styles.aspectControl}>
+            <span className={styles.controlLabel}>Crop</span>
+            <div className={styles.aspects} role="group" aria-label="Video crop">
             {(["9:16", "1:1", "4:5"] as VideoAspectPreset[]).map((a) => (
               <button
                 key={a}
                 type="button"
-                className={aspect === a ? "active" : ""}
+                  className={aspect === a ? styles.active : ""}
                 onClick={() => setAspect(a)}
+                  aria-pressed={aspect === a}
               >
-                {a === "9:16" ? "Reels 9:16" : a === "1:1" ? "Square 1:1" : "Feed 4:5"}
+                  {a}
               </button>
             ))}
+            </div>
           </div>
 
-          <label htmlFor="pb-video-caption-overlay" className="sr-only">
-            Caption overlay on video (optional)
+          <label className={styles.overlayControl} htmlFor="pb-video-caption-overlay">
+            <span className={styles.controlLabel}>Text overlay</span>
+            <input
+              id="pb-video-caption-overlay"
+              type="text"
+              className={styles.overlayInput}
+              placeholder="Optional caption"
+              value={overlayText}
+              onChange={(e) => setOverlayText(e.target.value)}
+            />
           </label>
-          <input
-            id="pb-video-caption-overlay"
-            type="text"
-            className="pb-video-overlay"
-            placeholder="Caption overlay on video (optional)"
-            value={overlayText}
-            onChange={(e) => setOverlayText(e.target.value)}
-            aria-label="Caption overlay on video (optional)"
-          />
 
           <button
             type="button"
-            className="pb-video-export"
+            className={styles.useAction}
             disabled={busy || duration <= 0}
             onClick={() => void exportTrimmed()}
           >
             {uploading ? "Uploading…" : exporting ? "Exporting…" : "Export and use in post"}
           </button>
-        </>
-      )}
-
-      <style>{`
-        .pb-video-composer { display: flex; flex-direction: column; gap: 10px; width: 100%; max-width: 360px; }
-        .pb-video-ai {
-          display: flex; flex-direction: column; gap: 8px;
-          padding: 12px; border-radius: 14px; background: rgba(255,255,255,0.72);
-          border: 1px solid rgba(0,0,0,0.06);
-        }
-        .pb-video-ai-label { margin: 0; font-size: 12px; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: rgba(22,22,28,0.7); }
-        .pb-video-ai-sub { margin: 0; font-size: 12px; color: rgba(22,22,28,0.5); }
-        .pb-video-ai-prompt {
-          width: 100%; resize: vertical; min-height: 72px; padding: 10px 12px; border-radius: 10px;
-          border: 1px solid rgba(0,0,0,0.1); background: #fff; font-size: 13px; line-height: 1.4;
-        }
-        .pb-video-ai-actions { display: flex; gap: 8px; align-items: center; }
-        .pb-video-ai-cancel {
-          border: none; background: transparent; font-size: 12px; font-weight: 600;
-          color: #c41e2a; cursor: pointer; text-decoration: underline;
-        }
-        .pb-video-drop {
-          display: flex; align-items: center; justify-content: center;
-          min-height: 120px; border: 2px dashed rgba(0,0,0,0.12); border-radius: 14px;
-          font-size: var(--text-caption); font-weight: 600; color: rgba(22,22,28,0.55); cursor: pointer;
-        }
-        .pb-video-drop:hover { border-color: rgba(238,37,50,0.35); color: #c41e2a; }
-        .pb-video-preview { width: 100%; max-height: 200px; border-radius: 12px; background: #000; object-fit: contain; }
-        .pb-video-trim { display: flex; flex-direction: column; gap: 4px; }
-        .pb-video-trim-labels { display: flex; justify-content: space-between; font-size: var(--text-label); opacity: 0.6; }
-        .pb-video-trim input[type=range] { width: 100%; accent-color: #ee2532; }
-        .pb-video-aspects { display: flex; gap: 6px; flex-wrap: wrap; }
-        .pb-video-aspects button {
-          padding: 5px 10px; border-radius: 8px; font-size: var(--text-label); font-weight: 600;
-          border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.8);
-        }
-        .pb-video-aspects button.active { border-color: rgba(238,37,50,0.4); background: rgba(238,37,50,0.08); color: #c41e2a; }
-        .pb-video-overlay {
-          width: 100%; padding: 8px 10px; border-radius: 10px; font-size: var(--text-caption);
-          border: 1px solid rgba(0,0,0,0.1); background: rgba(255,255,255,0.9);
-        }
-        .pb-video-export {
-          padding: 9px 14px; border-radius: 10px; font-size: var(--text-caption); font-weight: 700;
-          background: #c81e2a; color: #fff; border: none; cursor: pointer;
-        }
-        .pb-video-export:disabled { opacity: 0.5; cursor: not-allowed; }
-        .pb-video-ai-stub {
-          margin-top: 8px; padding: 10px 12px; border-radius: 10px;
-          border: 1px dashed rgba(0,0,0,0.12); background: rgba(255,255,255,0.5);
-        }
-        .pb-video-ai-label { font-size: var(--text-label); font-weight: 700; margin: 0 0 2px; }
-        .pb-video-ai-sub { font-size: var(--text-eyebrow); margin: 0; opacity: 0.55; }
-      `}</style>
-    </div>
+        </div>
+      ) : null}
+    </section>
   );
 }

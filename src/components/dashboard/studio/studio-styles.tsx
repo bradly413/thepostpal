@@ -2768,17 +2768,20 @@ export function StudioStyles() {
   .pb-studio .prompt-bar .pb-bar-input {
     align-items: flex-start; gap: 12px; padding: 12px 16px 10px;
   }
-  .pb-studio .pb-plus + textarea.pb-bar-textarea { padding: 7px 0 0; }
+  .pb-studio .pb-plus + textarea.pb-bar-textarea { padding: 7px 7.5rem 0 0; }
   .pb-studio .pb-plus:hover { color: #c81e2a; border-color: rgba(238,37,50,0.35); }
   .pb-studio .pb-enhance {
     position: absolute; right: 14px; top: 14px;
-    display: inline-flex; align-items: center; justify-content: center;
-    width: 32px; height: 32px; border-radius: 9px; border: none;
-    background: transparent; color: var(--ink-2); cursor: pointer;
+    display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+    min-width: 32px; height: 32px; padding: 0 9px; border-radius: 9px;
+    border: 1px solid rgba(26,26,46,0.09);
+    background: rgba(255,255,255,0.84); color: var(--ink-2); cursor: pointer;
+    box-shadow: 0 3px 12px rgba(20,20,40,0.06);
+    font: inherit; font-size: 11px; font-weight: 650;
   }
   .pb-studio .pb-enhance:hover:not(:disabled) { color: #c81e2a; background: rgba(238,37,50,0.07); }
   .pb-studio .pb-enhance:disabled { opacity: 0.35; cursor: default; }
-  .pb-studio .pb-enhance.is-busy { animation: pb-enhance-pulse 1.1s ease-in-out infinite; }
+  .pb-studio .pb-enhance.is-busy { color: #c81e2a; animation: pb-enhance-pulse 1.1s ease-in-out infinite; }
   @keyframes pb-enhance-pulse { 50% { opacity: 0.4; } }
   .pb-studio .pb-bar-input { position: relative; }
   .pb-studio .pb-engine-chip svg:first-child { color: #c81e2a; }
@@ -2868,6 +2871,14 @@ export function StudioStyles() {
     height: 100%;
     min-height: 100%;
   }
+  /* A finished creation earns a full scrollport, but an in-progress frame
+     should stay close to its status message and composer. Reserving 100% here
+     pushed the loader below a large empty canvas on laptop-sized viewports. */
+  .pb-studio .canvas.is-chat-layout .studio-stage:has(.frame-wrap.is-generating:not(.as-post)) {
+    flex-basis: clamp(300px, 50dvh, 440px);
+    height: clamp(300px, 50dvh, 440px);
+    min-height: clamp(300px, 50dvh, 440px);
+  }
   @media (max-width: 768px) {
     /* The dashboard shell already reserves the fixed bottom navigation. Give
        Studio a definite remaining viewport height so the full-stage history
@@ -2929,16 +2940,38 @@ export function StudioStyles() {
     outline: none;
   }
 
+  /* Video creation is a workspace, not a media-aspect preview. Release it
+     from the portrait frame dimensions so it can use the Studio stage. */
+  .pb-studio .frame-wrap.is-video-compose,
+  .pb-studio .canvas.is-chat-layout .frame-wrap.is-video-compose {
+    width: min(900px, calc(100% - 32px)) !important;
+    max-width: min(900px, calc(100% - 32px)) !important;
+    height: auto !important;
+    min-height: 286px;
+    max-height: 100% !important;
+  }
+  .pb-studio .frame-wrap.is-video-compose::before {
+    display: none;
+  }
+  .pb-studio .frame-wrap.is-video-compose .studio-video-compose {
+    height: auto;
+    padding: 0;
+    align-items: stretch;
+  }
+
   @media (min-width: 769px) {
     .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-stage {
       padding-top: 4px;
       padding-bottom: 4px;
     }
 
-    /* Keep the creator controls useful without letting an empty one-line
-       prompt dominate a laptop viewport. Multiline prompts still scroll. */
-    .pb-studio .pb-bar-head {
-      padding: 8px 12px 0;
+    /* Keep the composer broad and shallow on desktop. Moving the media-mode
+       switch into the footer removes a dedicated row, while the added width
+       keeps real prompts from wrapping prematurely. */
+    .pb-studio .prompt-bar.is-chat,
+    .pb-studio .canvas.is-chat-layout .prompt-bar.is-chat {
+      width: min(840px, calc(100% - 32px));
+      max-width: calc(100% - 32px);
     }
     .pb-studio .pb-mode-tabs {
       padding: 2px;
@@ -2950,20 +2983,20 @@ export function StudioStyles() {
       border-radius: 8px;
     }
     .pb-studio .prompt-bar .pb-bar-input {
-      min-height: 48px;
-      gap: 10px;
-      padding: 8px 12px 7px;
+      min-height: 42px;
+      gap: 8px;
+      padding: 5px 12px 4px;
     }
     .pb-studio .pb-plus {
-      width: 32px;
-      height: 32px;
+      width: 30px;
+      height: 30px;
     }
     .pb-studio .pb-plus + textarea.pb-bar-textarea {
-      max-height: 96px;
-      padding-top: 4px;
+      max-height: 80px;
+      padding-top: 3px;
     }
     .pb-studio .pb-bar-controls {
-      padding: 7px 12px 10px;
+      padding: 6px 12px 8px;
     }
   }
 
@@ -2982,6 +3015,12 @@ export function StudioStyles() {
       flex: 1 1 100%;
       margin-left: 0;
       justify-content: center;
+    }
+    .pb-studio .frame-wrap.is-video-compose,
+    .pb-studio .canvas.is-chat-layout .frame-wrap.is-video-compose {
+      width: calc(100% - 16px) !important;
+      max-width: calc(100% - 16px) !important;
+      min-height: 0;
     }
   }
     `}</style>

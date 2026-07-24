@@ -34,9 +34,33 @@ test.describe("Posterboy Studio", () => {
   });
 
   test("shows prompt bar and disables create when empty", async ({ page }) => {
+    await page.setViewportSize({ width: 1312, height: 618 });
     const prompt = page.locator(".prompt-bar textarea");
     await expect(prompt).toBeVisible();
     await expect(primaryActionButton(page)).toBeDisabled();
+
+    const controls = page.locator(".prompt-bar .pb-bar-controls");
+    const modeTabs = page.getByRole("group", { name: "Studio mode" });
+    const aspectButton = page.getByRole("button", { name: /^Aspect ratio:/ });
+    await expect(modeTabs).toBeVisible();
+    await expect(aspectButton).toBeVisible();
+    expect(
+      await controls.evaluate((element) => {
+        const tabs = element.querySelector(".pb-mode-tabs");
+        const aspect = element.querySelector(".pb-aspect-chip");
+        return Boolean(
+          tabs &&
+            aspect &&
+            tabs.compareDocumentPosition(aspect) & Node.DOCUMENT_POSITION_FOLLOWING,
+        );
+      }),
+    ).toBe(true);
+    await expect(controls.locator(".pb-mode-tabs")).toHaveCount(1);
+    await expect(page.locator(".prompt-bar > .pb-bar-head")).toHaveCount(0);
+    const composerBox = await page.locator(".prompt-bar").boundingBox();
+    const inputBox = await page.locator(".prompt-bar .pb-bar-input").boundingBox();
+    expect(composerBox?.width).toBeGreaterThanOrEqual(800);
+    expect(inputBox?.height).toBeLessThanOrEqual(44);
 
     const qualityButton = page.getByRole("button", { name: "Image quality: Standard" });
     await expect(qualityButton).toBeVisible();
@@ -49,6 +73,90 @@ test.describe("Posterboy Studio", () => {
 
     await qualityMenu.getByRole("option", { name: /Draft/ }).click();
     await expect(page.getByRole("button", { name: "Image quality: Draft" })).toBeVisible();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileComposerBox = await page.locator(".prompt-bar").boundingBox();
+    expect(mobileComposerBox).not.toBeNull();
+    expect(mobileComposerBox!.x).toBeGreaterThanOrEqual(0);
+    expect(mobileComposerBox!.x + mobileComposerBox!.width).toBeLessThanOrEqual(390);
+    expect(mobileComposerBox!.height).toBeLessThanOrEqual(430);
+    await expect(modeTabs).toBeVisible();
+    await expect(controls.locator(".pb-mode-tabs")).toHaveCount(1);
+  });
+
+  test("enhances a prompt with visible success and error feedback", async ({
+    page,
+  }) => {
+    let enhanceCalls = 0;
+    await page.route("**/api/enhance-prompt", async (route) => {
+      enhanceCalls += 1;
+      if (enhanceCalls === 1) {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            enhanced:
+              "Extreme close-up of a chef confidently chopping vivid fresh herbs in crisp directional light.",
+          }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 503,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "Prompt enhancement is temporarily unavailable" }),
+      });
+    });
+
+    const prompt = page.locator(".prompt-bar textarea");
+    const enhance = page.getByRole("button", { name: "Enhance my prompt" });
+    await prompt.fill("chef cutting herbs");
+    await enhance.click();
+
+    await expect(prompt).toHaveValue(
+      "Extreme close-up of a chef confidently chopping vivid fresh herbs in crisp directional light.",
+    );
+    await expect(enhance).toContainText("Enhanced");
+    await expect(page.locator(".studio-soft-notice")).toContainText("Prompt enhanced");
+    expect(await prompt.evaluate((element) => element.scrollTop)).toBe(0);
+
+    await prompt.fill("chef plating dinner");
+    await enhance.click();
+    await expect(prompt).toHaveValue("chef plating dinner");
+    await expect(enhance).toContainText("Try again");
+    await expect(page.locator(".studio-error")).toContainText(
+      "Prompt enhancement is temporarily unavailable",
+    );
+  });
+
+  test("presents video creation as one responsive production workspace", async ({ page }) => {
+    await page.setViewportSize({ width: 1312, height: 618 });
+    await page.getByRole("button", { name: "Video mode" }).click();
+
+    const videoComposer = page.locator('[data-video-composer="true"]');
+    await expect(
+      page.getByRole("heading", { name: "Create an 8-second video" }),
+    ).toBeVisible();
+    await expect(page.getByText("Prompt structure")).toBeVisible();
+    await expect(page.getByText("Upload your own video")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Choose video" })).toBeVisible();
+    await expect(page.getByLabel("Describe your video")).toBeVisible();
+    await expect(primaryActionButton(page)).toHaveText("Create video");
+    await expect(page.locator(".studio-video-compose textarea")).toHaveCount(0);
+
+    const desktopComposerBox = await videoComposer.boundingBox();
+    expect(desktopComposerBox).not.toBeNull();
+    expect(desktopComposerBox!.width).toBeGreaterThanOrEqual(760);
+    expect(desktopComposerBox!.height).toBeLessThanOrEqual(320);
+
+    await page.getByRole("button", { name: "Choose video" }).focus();
+    await expect(page.getByRole("button", { name: "Choose video" })).toBeFocused();
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    const mobileComposerBox = await videoComposer.boundingBox();
+    expect(mobileComposerBox).not.toBeNull();
+    expect(mobileComposerBox!.x).toBeGreaterThanOrEqual(0);
+    expect(mobileComposerBox!.x + mobileComposerBox!.width).toBeLessThanOrEqual(390);
   });
 
   test("listing without photo shows add-listing-photo gate", async ({ page }) => {
@@ -60,6 +168,7 @@ test.describe("Posterboy Studio", () => {
   });
 
   test("shows live progress and lets a user cancel a slow image render", async ({ page }) => {
+    await page.setViewportSize({ width: 959, height: 736 });
     let releaseGeneration!: () => void;
     let markGenerationStarted!: () => void;
     const generationGate = new Promise<void>((resolve) => {
@@ -109,6 +218,9 @@ test.describe("Posterboy Studio", () => {
     await expect(page.locator(".frame.generating .gen-progress")).toBeVisible();
     await expect(page.getByRole("button", { name: "Cancel image generation" })).toBeVisible();
     await expect(prompt).toBeDisabled();
+    const generatingStage = await page.locator(".studio-stage").boundingBox();
+    expect(generatingStage?.height).toBeLessThanOrEqual(441);
+    await expect(prompt).toBeInViewport();
 
     await page.getByRole("button", { name: "Cancel image generation" }).click();
     releaseGeneration();
@@ -286,7 +398,7 @@ test.describe("Posterboy Studio", () => {
 
     const prompts = [
       "make an instagram post about a palm tree on the beach",
-      "a crimson burger",
+      "make an instagram post about a palm tree on the beach",
       "a violet coffee cup",
     ];
     const currentImage = stageImage;

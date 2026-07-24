@@ -271,6 +271,7 @@ export function useStudioGeneration({
     ) => {
       const res = await fetch("/api/generate-image", {
         method: "POST",
+        cache: "no-store",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: promptText,

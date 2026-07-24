@@ -197,6 +197,48 @@ describe("POST /api/generate-image", () => {
     expect(routeMocks.withTenantDb).not.toHaveBeenCalled();
   });
 
+  it("gives repeated fresh generations distinct visual directions", async () => {
+    const rawBase64 = Buffer.from("fresh-generation").toString("base64");
+    routeMocks.generateGptImage.mockResolvedValue({
+      ok: true,
+      imageDataUrl: `data:image/jpeg;base64,${rawBase64}`,
+      rawBase64,
+      mimeType: "image/jpeg",
+      text: "",
+      model: "gpt-image-test",
+    });
+    const request = {
+      prompt: "Create a detailed close-up of a chef chopping fresh herbs",
+      composed: true,
+      engine: "gpt",
+      quality: "standard",
+    };
+
+    const firstResponse = await postGenerateImage(request);
+    const secondResponse = await postGenerateImage(request);
+
+    expect(firstResponse.status).toBe(200);
+    expect(secondResponse.status).toBe(200);
+    expect(routeMocks.generateGptImage).toHaveBeenCalledTimes(2);
+    const firstRequest = routeMocks.generateGptImage.mock.calls[0]?.[0];
+    const secondRequest = routeMocks.generateGptImage.mock.calls[1]?.[0];
+    expect(firstRequest).toEqual(
+      expect.objectContaining({
+        action: "generate",
+        preferDirectImagesApi: true,
+      }),
+    );
+    expect(secondRequest).toEqual(
+      expect.objectContaining({
+        action: "generate",
+        preferDirectImagesApi: true,
+      }),
+    );
+    expect(firstRequest.prompt).toContain(request.prompt);
+    expect(secondRequest.prompt).toContain(request.prompt);
+    expect(firstRequest.prompt).not.toBe(secondRequest.prompt);
+  });
+
   it("refuses an oversized inline response when durable storage is unavailable", async () => {
     const rawBase64 = Buffer.alloc(3_100_000, 7).toString("base64");
     routeMocks.generateGptImage.mockResolvedValue({

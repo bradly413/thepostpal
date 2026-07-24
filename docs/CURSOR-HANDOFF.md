@@ -1,3 +1,8 @@
+> **Current Studio work:** this June handoff is historical. For the active
+> production Studio, Library, Schedule, and Video Composer work, read
+> [`CURSOR-HANDOFF-STUDIO-2026-07-24.md`](./CURSOR-HANDOFF-STUDIO-2026-07-24.md)
+> first.
+
 # Cursor handoff — Posterboy Social (2026-06-02)
 
 Project update for picking up work in Cursor. Self-contained; read this before touching code.

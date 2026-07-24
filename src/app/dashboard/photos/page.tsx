@@ -17,7 +17,7 @@ import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 import { SkeletonGrid, EmptyState, ErrorState, LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
 import { writeStudioScheduleHandoff } from "@/lib/studio/schedule-handoff";
-import { CalendarPlus, Download } from "lucide-react";
+import { CalendarPlus, Check, Download } from "lucide-react";
 
 interface DisplayMedia {
   id: string;
@@ -67,6 +67,10 @@ export default function PhotosPage() {
   const [search, setSearch] = useState("");
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
+  const [batchSelection, setBatchSelection] = useState<{
+    locationId: string | null;
+    ids: string[];
+  }>({ locationId: null, ids: [] });
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
   const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
@@ -119,6 +123,43 @@ export default function PhotosPage() {
           : a.createdAt.localeCompare(b.createdAt),
       );
   }, [media, search, filter, sortDir]);
+
+  const batchSelectedIds = useMemo(
+    () =>
+      new Set(
+        batchSelection.locationId === locationId ? batchSelection.ids : [],
+      ),
+    [batchSelection, locationId],
+  );
+
+  const batchSelectedMedia = useMemo(() => {
+    if (batchSelection.locationId !== locationId) return [];
+    const mediaById = new Map(media.map((item) => [item.id, item]));
+    return batchSelection.ids
+      .map((id) => mediaById.get(id))
+      .filter(
+        (item): item is DisplayMedia =>
+          item !== undefined && item.kind === "image" && !item.pending,
+      );
+  }, [batchSelection, locationId, media]);
+
+  const toggleBatchSelection = useCallback(
+    (item: DisplayMedia) => {
+      if (!locationId || item.kind !== "image" || item.pending) return;
+      setBatchSelection((current) => {
+        const ids = current.locationId === locationId ? current.ids : [];
+        const nextIds = ids.includes(item.id)
+          ? ids.filter((id) => id !== item.id)
+          : [...ids, item.id];
+        return { locationId, ids: nextIds };
+      });
+    },
+    [locationId],
+  );
+
+  const clearBatchSelection = useCallback(() => {
+    setBatchSelection({ locationId, ids: [] });
+  }, [locationId]);
 
   const handleFiles = useCallback(
     (files: FileList) => {
@@ -188,6 +229,10 @@ export default function PhotosPage() {
       if (selected?.id === id) setSelected(null);
       try {
         await deleteDashboardPhoto(id);
+        setBatchSelection((current) => ({
+          ...current,
+          ids: current.ids.filter((selectedId) => selectedId !== id),
+        }));
       } catch (err) {
         setMedia(prev);
         showToast(formatDashboardApiMessage(err, "Could not remove that file."));
@@ -225,6 +270,21 @@ export default function PhotosPage() {
     },
     [router],
   );
+
+  const scheduleSelectedMedia = useCallback(() => {
+    const first = batchSelectedMedia[0];
+    if (!first) return;
+    writeStudioScheduleHandoff({
+      mediaUrl: first.src,
+      mediaType: "image",
+      format: "single",
+      queue: batchSelectedMedia.map((item) => ({
+        mediaUrl: item.src,
+        mediaType: "image",
+      })),
+    });
+    router.push("/dashboard/calendar?from=library");
+  }, [batchSelectedMedia, router]);
 
   const downloadPng = useCallback(
     async (item: DisplayMedia) => {
@@ -342,16 +402,52 @@ export default function PhotosPage() {
       </div>
 
       <div className="mb-4 flex shrink-0 items-center gap-4">
-        <div
-          onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
-          onDragLeave={() => setDragOver(false)}
-          onDrop={handleDrop}
-          className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-2 px-4 transition-all text-xs ${
-            dragOver ? "border-[var(--pb-press)] bg-[rgba(238,37,50,0.05)] pb-press-text" : "border-black/10 opacity-45 hover:border-[var(--pb-press)]/40"
-          }`}
-        >
-          Drop images or video here
-        </div>
+        {batchSelectedMedia.length > 0 ? (
+          <div className="flex flex-1 flex-col gap-2 rounded-xl border border-[var(--pb-press)]/20 bg-[rgba(238,37,50,0.05)] px-3 py-2 sm:flex-row sm:items-center sm:justify-between">
+            <p
+              className="inline-flex min-h-8 items-center gap-2 text-sm font-semibold text-black/80"
+              role="status"
+              aria-live="polite"
+            >
+              <span className="inline-flex h-6 w-6 items-center justify-center rounded-md bg-[var(--pb-press)] text-white">
+                <Check size={15} strokeWidth={3} aria-hidden />
+              </span>
+              {batchSelectedMedia.length}{" "}
+              {batchSelectedMedia.length === 1 ? "image" : "images"} selected
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={clearBatchSelection}
+                className="min-h-11 rounded-lg border border-black/10 bg-white px-3 text-xs font-semibold text-black/65 transition-colors hover:border-black/25 hover:text-black"
+              >
+                Clear
+              </button>
+              <button
+                type="button"
+                onClick={scheduleSelectedMedia}
+                className="pb-btn-primary inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 px-4 text-xs sm:flex-none"
+              >
+                <CalendarPlus size={16} aria-hidden />
+                Schedule{" "}
+                {batchSelectedMedia.length === 1
+                  ? "selected image"
+                  : `${batchSelectedMedia.length} images`}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div
+            onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+            onDragLeave={() => setDragOver(false)}
+            onDrop={handleDrop}
+            className={`flex-1 flex items-center justify-center gap-2 rounded-xl border-2 border-dashed py-2 px-4 transition-all text-xs ${
+              dragOver ? "border-[var(--pb-press)] bg-[rgba(238,37,50,0.05)] pb-press-text" : "border-black/10 opacity-45 hover:border-[var(--pb-press)]/40"
+            }`}
+          >
+            Drop images or video here
+          </div>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto pb-4" style={{ scrollbarWidth: "none" }}>
@@ -380,44 +476,73 @@ export default function PhotosPage() {
             ref={gridRef}
             className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4 auto-rows-min"
           >
-            {filtered.map((item) => (
-              <div
-                key={item.id}
-                className={`photo-card group relative rounded-xl overflow-hidden border transition-all cursor-pointer bg-white ${
-                  selected?.id === item.id
-                    ? "border-[var(--pb-press)] ring-2 ring-[rgba(238,37,50,0.2)] shadow-lg"
-                    : "border-black/10 hover:border-[var(--pb-press)]/40 hover:shadow-lg"
-                } ${item.pending ? "opacity-70" : ""}`}
-                onClick={() => setSelected(item)}
-              >
-                <div className="relative h-[9.75em] bg-black/5 overflow-hidden">
-                  {item.kind === "video" ? (
-                    <video src={item.src} className="absolute inset-0 w-full h-full object-cover" muted playsInline />
-                  ) : (
-                    <img
-                      src={item.src}
-                      alt={item.name}
-                      className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
-                  )}
-                  <span
-                    className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
-                      item.kind === "video" ? "bg-black/65 text-white" : "bg-white/90 text-black/70"
-                    }`}
+            {filtered.map((item) => {
+              const isBatchSelected = batchSelectedIds.has(item.id);
+              return (
+                <div
+                  key={item.id}
+                  className={`photo-card group relative overflow-hidden rounded-xl border bg-white transition-all ${
+                    isBatchSelected
+                      ? "border-[var(--pb-press)] ring-2 ring-[rgba(238,37,50,0.2)] shadow-lg"
+                      : selected?.id === item.id
+                        ? "border-[var(--pb-press)]/60 shadow-lg"
+                        : "border-black/10 hover:border-[var(--pb-press)]/40 hover:shadow-lg"
+                  } ${item.pending ? "opacity-70" : ""}`}
+                >
+                  {item.kind === "image" && !item.pending ? (
+                    <label className="absolute right-2 top-2 z-10 inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg focus-within:ring-2 focus-within:ring-[var(--pb-press)] focus-within:ring-offset-2">
+                      <input
+                        type="checkbox"
+                        checked={isBatchSelected}
+                        onChange={() => toggleBatchSelection(item)}
+                        aria-label={`Select ${item.name} for scheduling`}
+                        className="peer absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
+                      />
+                      <span
+                        className={`pointer-events-none inline-flex h-7 w-7 items-center justify-center rounded-md border shadow-sm transition-colors ${
+                          isBatchSelected
+                            ? "border-[var(--pb-press)] bg-[var(--pb-press)] text-white"
+                            : "border-black/20 bg-white/95 text-transparent peer-hover:border-[var(--pb-press)]"
+                        }`}
+                        aria-hidden
+                      >
+                        <Check size={16} strokeWidth={3} />
+                      </span>
+                    </label>
+                  ) : null}
+                  <button
+                    type="button"
+                    onClick={() => setSelected(item)}
+                    aria-label={`Preview ${item.name}`}
+                    className="relative block h-[9.75em] w-full overflow-hidden bg-black/5 text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-[var(--pb-press)]"
                   >
-                    {item.kind}
-                  </span>
-                  {item.pending && (
-                    <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-medium text-white">
-                      Saving…
+                    {item.kind === "video" ? (
+                      <video src={item.src} className="absolute inset-0 w-full h-full object-cover" muted playsInline />
+                    ) : (
+                      <img
+                        src={item.src}
+                        alt=""
+                        className="absolute inset-0 w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
+                      />
+                    )}
+                    <span
+                      className={`absolute left-2 top-2 rounded-full px-2 py-0.5 text-[9px] font-bold uppercase tracking-wide ${
+                        item.kind === "video" ? "bg-black/65 text-white" : "bg-white/90 text-black/70"
+                      }`}
+                    >
+                      {item.kind}
                     </span>
-                  )}
-                </div>
+                    {item.pending && (
+                      <span className="absolute right-2 top-2 rounded-full bg-black/55 px-2 py-0.5 text-[9px] font-medium text-white">
+                        Saving…
+                      </span>
+                    )}
+                  </button>
 
-                <div className="px-3 py-2 flex flex-col gap-2">
-                  <span className="text-xs truncate">{item.name}</span>
-                  {!item.pending && (
-                    <>
+                  <div className="px-3 py-2 flex flex-col gap-2">
+                    <span className="text-xs truncate">{item.name}</span>
+                    {!item.pending && (
+                      <>
                       <div className="flex items-center gap-1.5">
                         <button
                           type="button"
@@ -482,11 +607,12 @@ export default function PhotosPage() {
                           </svg>
                         </button>
                       </div>
-                    </>
-                  )}
+                      </>
+                    )}
+                  </div>
                 </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         )}
         </LocationGate>

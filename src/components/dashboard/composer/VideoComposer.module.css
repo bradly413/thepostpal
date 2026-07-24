@@ -1,0 +1,469 @@
+.composer {
+  width: min(900px, 100%);
+  max-height: 100%;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  color: #17171a;
+}
+
+.workspace {
+  display: grid;
+  grid-template-columns: minmax(0, 1.18fr) minmax(260px, 0.82fr);
+  min-height: 286px;
+  overflow: hidden;
+  border: 1px solid rgba(23, 23, 26, 0.1);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 24px 60px -42px rgba(16, 16, 20, 0.55);
+  animation: composer-enter 220ms ease-out both;
+}
+
+.briefPane {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  padding: 24px;
+}
+
+.eyebrow {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: #c81e2a;
+  font-size: 11px;
+  font-weight: 750;
+  letter-spacing: 0.09em;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.model {
+  margin-left: 2px;
+  padding-left: 9px;
+  border-left: 1px solid rgba(23, 23, 26, 0.14);
+  color: rgba(23, 23, 26, 0.52);
+}
+
+.headingGroup {
+  margin-top: 14px;
+}
+
+.headingGroup h2 {
+  margin: 0;
+  font-size: clamp(22px, 2.2vw, 30px);
+  font-weight: 650;
+  letter-spacing: -0.035em;
+  line-height: 1.06;
+}
+
+.headingGroup p {
+  max-width: 44ch;
+  margin: 7px 0 0;
+  color: rgba(23, 23, 26, 0.58);
+  font-size: 13px;
+  line-height: 1.45;
+}
+
+.specs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 16px;
+  color: rgba(23, 23, 26, 0.62);
+  font-size: 11.5px;
+  font-weight: 600;
+}
+
+.specs span {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.controlLabel {
+  color: rgba(23, 23, 26, 0.72);
+  font-size: 11.5px;
+  font-weight: 700;
+}
+
+.uploadAction,
+.replaceAction,
+.useAction {
+  min-height: 40px;
+  border: 0;
+  border-radius: 10px;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 150ms ease,
+    border-color 150ms ease,
+    color 150ms ease,
+    transform 150ms ease,
+    opacity 150ms ease;
+}
+
+.useAction:hover:not(:disabled) {
+  background: #a81722;
+  transform: translateY(-1px);
+}
+
+.useAction:disabled {
+  cursor: not-allowed;
+  opacity: 0.42;
+}
+
+.promptGuide {
+  margin-top: auto;
+  padding-top: 22px;
+}
+
+.promptGuide > span {
+  color: rgba(23, 23, 26, 0.48);
+  font-size: 10.5px;
+  font-weight: 750;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.promptGuide p {
+  margin: 7px 0 0;
+  color: rgba(23, 23, 26, 0.68);
+  font-size: 12px;
+}
+
+.promptGuide strong {
+  color: #17171a;
+  font-weight: 700;
+}
+
+.promptGuide blockquote {
+  max-width: 47ch;
+  margin: 10px 0 0;
+  padding-left: 12px;
+  border-left: 2px solid rgba(200, 30, 42, 0.48);
+  color: rgba(23, 23, 26, 0.5);
+  font-size: 11.5px;
+  font-style: normal;
+  line-height: 1.45;
+}
+
+.previewPane {
+  position: relative;
+  display: grid;
+  min-height: 286px;
+  overflow: hidden;
+  border-left: 1px solid rgba(255, 255, 255, 0.08);
+  background: #151519;
+  color: #fff;
+  transition:
+    background 180ms ease,
+    box-shadow 180ms ease;
+}
+
+.previewPane.dragActive {
+  background: #21191b;
+  box-shadow: inset 0 0 0 2px #e23a45;
+}
+
+.previewMeta {
+  position: absolute;
+  z-index: 2;
+  top: 14px;
+  right: 14px;
+  left: 14px;
+  display: flex;
+  justify-content: space-between;
+  color: rgba(255, 255, 255, 0.58);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.emptyState {
+  display: flex;
+  align-self: center;
+  justify-self: center;
+  width: min(220px, calc(100% - 32px));
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+}
+
+.emptyState strong {
+  margin-top: 13px;
+  font-size: 14px;
+  font-weight: 650;
+}
+
+.emptyState > span:last-of-type {
+  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 11.5px;
+  line-height: 1.4;
+}
+
+.uploadMark {
+  display: grid;
+  width: 52px;
+  height: 52px;
+  place-items: center;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.82);
+  transition:
+    transform 180ms ease,
+    border-color 180ms ease;
+}
+
+.previewPane:hover .uploadMark,
+.dragActive .uploadMark {
+  transform: translateY(-2px);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.uploadAction {
+  display: inline-flex;
+  min-height: 36px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 16px;
+  padding: 0 14px;
+  background: #fff;
+  color: #17171a;
+}
+
+.uploadAction:hover {
+  background: #f0efed;
+  transform: translateY(-1px);
+}
+
+.preview {
+  width: 100%;
+  height: 100%;
+  max-height: 286px;
+  object-fit: contain;
+  background: #0b0b0d;
+  animation: preview-enter 180ms ease-out both;
+}
+
+.replaceAction {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  gap: 6px;
+  padding: 0 11px;
+  background: rgba(15, 15, 17, 0.82);
+  color: rgba(255, 255, 255, 0.86);
+  backdrop-filter: blur(12px);
+}
+
+.replaceAction:hover {
+  background: rgba(15, 15, 17, 0.96);
+  color: #fff;
+}
+
+.editor {
+  display: grid;
+  grid-template-columns: minmax(180px, 1.15fr) auto minmax(170px, 1fr) auto;
+  align-items: end;
+  gap: 16px;
+  margin-top: 10px;
+  padding: 14px 16px;
+  border: 1px solid rgba(23, 23, 26, 0.1);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.94);
+  animation: editor-enter 180ms ease-out both;
+}
+
+.trim {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.controlHeading {
+  display: flex;
+  justify-content: space-between;
+  color: rgba(23, 23, 26, 0.6);
+  font-size: 11px;
+  font-weight: 650;
+}
+
+.trim input[type="range"] {
+  width: 100%;
+  height: 12px;
+  accent-color: #c81e2a;
+}
+
+.aspectControl,
+.overlayControl {
+  display: grid;
+  gap: 7px;
+}
+
+.aspects {
+  display: flex;
+  gap: 4px;
+}
+
+.aspects button {
+  min-height: 34px;
+  padding: 0 9px;
+  border: 1px solid rgba(23, 23, 26, 0.11);
+  border-radius: 8px;
+  background: transparent;
+  color: rgba(23, 23, 26, 0.6);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.aspects button:hover,
+.aspects button.active {
+  border-color: rgba(200, 30, 42, 0.38);
+  background: rgba(200, 30, 42, 0.06);
+  color: #b31a25;
+}
+
+.overlayInput {
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(23, 23, 26, 0.12);
+  border-radius: 8px;
+  outline: none;
+  background: #fff;
+  color: #17171a;
+  font: inherit;
+  font-size: 12px;
+}
+
+.overlayInput:focus {
+  border-color: rgba(200, 30, 42, 0.55);
+  box-shadow: 0 0 0 3px rgba(200, 30, 42, 0.08);
+}
+
+.useAction {
+  min-height: 38px;
+  padding: 0 14px;
+  background: #c81e2a;
+  color: #fff;
+  white-space: nowrap;
+}
+
+.visuallyHidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  clip-path: inset(50%);
+}
+
+@keyframes composer-enter {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes preview-enter {
+  from {
+    opacity: 0;
+    transform: scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes editor-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-4px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 900px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr) minmax(230px, 0.72fr);
+  }
+
+  .briefPane {
+    padding: 20px;
+  }
+
+  .specs {
+    gap: 7px 10px;
+  }
+
+  .editor {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+@media (max-width: 680px) {
+  .composer {
+    overflow-y: auto;
+  }
+
+  .workspace {
+    grid-template-columns: 1fr;
+  }
+
+  .briefPane {
+    padding: 18px;
+  }
+
+  .headingGroup h2 {
+    font-size: 24px;
+  }
+
+  .previewPane {
+    min-height: 230px;
+    border-top: 1px solid rgba(23, 23, 26, 0.08);
+    border-left: 0;
+  }
+
+  .preview {
+    max-height: 230px;
+  }
+
+  .editor {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .useAction {
+    width: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace,
+  .preview,
+  .editor,
+  .uploadAction,
+  .replaceAction,
+  .useAction,
+  .uploadMark {
+    transition: none;
+  }
+}

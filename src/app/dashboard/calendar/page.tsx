@@ -394,6 +394,7 @@ function CalendarPageContent() {
   const [mediaIndex, setMediaIndex] = useState(0);
   const mediaUrl = mediaItems[mediaIndex]?.url ?? "";
   const mediaType = mediaItems[mediaIndex]?.type ?? "image";
+  const captionApproved = Boolean(mediaItems[mediaIndex]?.captionApproved);
   mediaUrlRef.current = mediaUrl;
   mediaItemsRef.current = mediaItems;
   const [uploadingMedia, setUploadingMedia] = useState(false);
@@ -433,7 +434,26 @@ function CalendarPageContent() {
     setFormCaption(text);
     setCaptionFade("in");
     setMediaItems((prev) =>
-      prev.map((item, i) => (i === mediaIndex ? { ...item, caption: text } : item)),
+      prev.map((item, i) =>
+        i === mediaIndex
+          ? { ...item, caption: text, captionApproved: false }
+          : item,
+      ),
+    );
+  }
+
+  function approveActiveCaption() {
+    const text = formCaption.trim();
+    if (!text || captionLoading) return;
+    stopCaptionRotation();
+    setCaptionUserEdited(true);
+    setFormCaption(text);
+    setMediaItems((prev) =>
+      prev.map((item, i) =>
+        i === mediaIndex
+          ? { ...item, caption: text, captionApproved: true }
+          : item,
+      ),
     );
   }
 
@@ -445,7 +465,15 @@ function CalendarPageContent() {
       captionFadeTimerRef.current = setTimeout(() => {
         setCaptionIndex((prev) => {
           const next = (prev + 1) % options.length;
-          setFormCaption(formatCaptionOption(options[next]));
+          const text = formatCaptionOption(options[next]);
+          setFormCaption(text);
+          setMediaItems((items) =>
+            items.map((item, i) =>
+              i === mediaIndex
+                ? { ...item, caption: text, captionApproved: false }
+                : item,
+            ),
+          );
           return next;
         });
         setCaptionFade("in");
@@ -467,17 +495,44 @@ function CalendarPageContent() {
   useEffect(() => {
     const handoff = takeStudioScheduleHandoff();
     if (!handoff) return;
-    setComposerMediaSingle(
-      handoff.mediaUrl,
-      handoff.mediaType === "video" ? "video" : "image",
-    );
+    const queue = handoff.queue;
+    if (queue && queue.length > 1) {
+      const startDate = todayDateKeyLocal();
+      const slots = staggerBulkSlots(queue.length, startDate, nextScheduleTime());
+      const queued: ComposerMediaItem[] = queue.map((item, index) => ({
+        url: item.mediaUrl,
+        type: item.mediaType,
+        caption: "",
+        date: slots[index]?.date ?? startDate,
+        time: slots[index]?.time ?? nextScheduleTime(),
+      }));
+      stopCaptionRotation();
+      setEditingPost(null);
+      setCaptionUserEdited(false);
+      setCaptionOptions([]);
+      setCaptionGenError(null);
+      setFormCaption("");
+      setFormStatus("scheduled");
+      setMediaItems(queued);
+      mediaItemsRef.current = queued;
+      setMediaIndex(0);
+      setSelectedDate(queued[0]?.date ?? startDate);
+      setFormTime(queued[0]?.time ?? nextScheduleTime());
+      setScheduleTimeTouched(true);
+    } else {
+      const item = queue?.[0];
+      setComposerMediaSingle(
+        item?.mediaUrl ?? handoff.mediaUrl,
+        item?.mediaType ?? handoff.mediaType,
+      );
+      setSelectedDate(todayDateKeyLocal());
+    }
     setFormPlatform(handoffPlatformToForm(handoff.platformId));
     if (handoff.caption?.trim()) {
       skipNextCaptionGenRef.current = true;
       setFormCaption(handoff.caption.trim());
       setCaptionUserEdited(true);
     }
-    setSelectedDate(todayDateKeyLocal());
     requestAnimationFrame(() => {
       document.getElementById("post-composer")?.scrollIntoView({
         behavior: "smooth",
@@ -1308,7 +1363,11 @@ function CalendarPageContent() {
 
       const text = formatCaptionOption(variants[0]);
       setMediaItems((prev) =>
-        prev.map((item) => (item.url === imageUrl ? { ...item, caption: text } : item)),
+        prev.map((item) =>
+          item.url === imageUrl
+            ? { ...item, caption: text, captionApproved: false }
+            : item,
+        ),
       );
 
       if (showInComposer()) {
@@ -1927,9 +1986,21 @@ function CalendarPageContent() {
                   <textarea
                     value={formCaption}
                     onChange={(e) => {
+                      const nextCaption = e.target.value;
                       setCaptionUserEdited(true);
                       stopCaptionRotation();
-                      setFormCaption(e.target.value);
+                      setFormCaption(nextCaption);
+                      setMediaItems((prev) =>
+                        prev.map((item, i) =>
+                          i === mediaIndex
+                            ? {
+                                ...item,
+                                caption: nextCaption,
+                                captionApproved: false,
+                              }
+                            : item,
+                        ),
+                      );
                     }}
                     onFocus={() => {
                       if (captionOptions.length > 0) {
@@ -1951,18 +2022,38 @@ function CalendarPageContent() {
                 )}
               </div>
               <div className="mt-1.5 flex h-[18px] shrink-0 items-center gap-2 overflow-hidden">
+                {formCaption.trim() ? (
+                  <button
+                    type="button"
+                    onClick={approveActiveCaption}
+                    disabled={captionLoading}
+                    aria-label={captionApproved ? "Caption approved" : "Approve caption"}
+                    aria-pressed={captionApproved}
+                    className={`inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold transition-colors disabled:opacity-40 ${
+                      captionApproved
+                        ? "text-[#1f7a42]"
+                        : "text-black/55 hover:text-[#1f7a42]"
+                    }`}
+                  >
+                    <Check size={12} strokeWidth={2.5} aria-hidden />
+                    {captionApproved ? "Approved" : "Approve"}
+                  </button>
+                ) : null}
                 {mediaUrl && mediaType === "image" ? (
                   <button
                     type="button"
                     onClick={() => requestCaptionForActive()}
                     disabled={captionLoading || uploadingMedia || bulkUploading || captionQueueBusy}
+                    aria-label={
+                      formCaption.trim() ? "Regenerate caption" : "Write caption"
+                    }
                     className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-[#ee2532] transition-colors hover:text-[#c81e2a] disabled:opacity-40"
                   >
                     <Wand2 size={12} aria-hidden />
                     {captionLoading
                       ? "Writing…"
                       : formCaption.trim()
-                        ? "Rewrite caption"
+                        ? "Regenerate"
                         : "Write caption"}
                   </button>
                 ) : null}
@@ -1986,7 +2077,7 @@ function CalendarPageContent() {
                         />
                       ))}
                     </div>
-                    <span className="truncate text-[10px] font-medium uppercase tracking-wide text-black/35">
+                    <span className="truncate text-[10px] font-medium uppercase tracking-wide text-black/35 max-sm:hidden">
                       {captionOptions[captionIndex]?.angle || "Option"} · {captionIndex + 1}/{captionOptions.length}
                     </span>
                   </>

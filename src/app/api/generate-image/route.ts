@@ -50,6 +50,7 @@ import {
   STUDIO_GEMINI_PROVIDER_TIMEOUT_MS,
   STUDIO_IMAGE_ROUTE_BUDGET_MS,
 } from "@/lib/studio/image-generation-budget";
+import { withFreshGenerationVariation } from "@/lib/studio/generation-variation";
 import { isS3Configured, uploadToS3 } from "@/lib/storage";
 import { isSafeMediaUrl } from "@/lib/safe-media-url";
 
@@ -320,10 +321,22 @@ export async function POST(req: NextRequest) {
   const gptFallbackState: { diagnostic: GptFallbackDiagnostic | null } = {
     diagnostic: null,
   };
+  const freshVariationKey = randomUUID();
 
   async function runGeneration(promptText: string) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
-    const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
+    const basePrompt =
+      (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
+    // This provider path does not expose a seed. Give every fresh request a
+    // distinct visual direction so repeating the same brief yields a genuinely
+    // new composition. Reference-image edits keep their precise edit prompt.
+    const fullPrompt = hasAttachedReference
+      ? basePrompt
+      : withFreshGenerationVariation(
+          basePrompt,
+          freshVariationKey,
+          designLane ? "design" : "photo",
+        );
     if (useGptEngine) {
       const referenceDescriptions = visionImages.map((_, index) =>
         referenceRoleForSource(visionSources[index] ?? "", index, {

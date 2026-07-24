@@ -70,15 +70,48 @@ test("downloads a Library image as PNG and carries it into Schedule", async ({
   await page.waitForURL(/\/dashboard\/calendar\?from=library/, {
     timeout: 30_000,
   });
+  await page.setViewportSize({ width: 1011, height: 618 });
   const preview = page.locator('img[alt="Post preview photo"]');
   await expect(preview).toBeVisible({ timeout: 20_000 });
   await expect(preview).toHaveAttribute("src", LIBRARY_IMAGE);
+  const previewBox = await preview.boundingBox();
+  expect(previewBox).not.toBeNull();
+  expect(previewBox!.width).toBeGreaterThanOrEqual(360);
+  expect(previewBox!.height).toBeGreaterThanOrEqual(450);
 });
 
 test("chooses existing image or video from Library inside Schedule", async ({
   page,
 }) => {
   await page.setViewportSize({ width: 1312, height: 618 });
+  let captionCalls = 0;
+  await page.route("**/api/ai/captions-from-image", async (route) => {
+    captionCalls += 1;
+    const prefix = captionCalls === 1 ? "First" : "Fresh";
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        variants: [
+          {
+            angle: "Direct",
+            caption: `${prefix} recruiting caption`,
+            hashtags: ["#nursing"],
+          },
+          {
+            angle: "Purpose",
+            caption: `${prefix} purpose caption`,
+            hashtags: ["#careers"],
+          },
+          {
+            angle: "Community",
+            caption: `${prefix} community caption`,
+            hashtags: ["#team"],
+          },
+        ],
+      }),
+    });
+  });
   await page.route(/\/api\/photos\?locationId=/, async (route) => {
     await route.fulfill({
       status: 200,
@@ -143,6 +176,25 @@ test("chooses existing image or video from Library inside Schedule", async ({
   const preview = page.locator('img[alt="Post preview photo"]');
   await expect(preview).toBeVisible();
   await expect(preview).toHaveAttribute("src", LIBRARY_IMAGE);
+
+  const caption = page.locator('textarea[placeholder="Write your caption…"]');
+  await page.getByRole("button", { name: "Write caption" }).click();
+  await expect(caption).toHaveValue("First recruiting caption #nursing");
+
+  const approveCaption = page.getByRole("button", { name: "Approve caption" });
+  await approveCaption.click();
+  await expect(
+    page.getByRole("button", { name: "Caption approved" }),
+  ).toHaveAttribute("aria-pressed", "true");
+  await page.waitForTimeout(5_500);
+  await expect(caption).toHaveValue("First recruiting caption #nursing");
+
+  await page.getByRole("button", { name: "Regenerate caption" }).click();
+  await expect(caption).toHaveValue("Fresh recruiting caption #nursing");
+  await expect(page.getByRole("button", { name: "Approve caption" })).toHaveAttribute(
+    "aria-pressed",
+    "false",
+  );
 
   await page.setViewportSize({ width: 390, height: 844 });
   await page.getByRole("button", { name: "Library" }).click();

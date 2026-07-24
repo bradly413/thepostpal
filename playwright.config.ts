@@ -15,7 +15,18 @@ export default defineConfig({
     trace: "on-first-retry",
     screenshot: "only-on-failure",
   },
-  projects: [{ name: "chromium", use: { ...devices["Desktop Chrome"] } }],
+  projects: [
+    { name: "setup", testMatch: /auth\.setup\.ts/ },
+    {
+      name: "chromium",
+      use: {
+        ...devices["Desktop Chrome"],
+        storageState: "e2e/.auth/demo.json",
+      },
+      dependencies: ["setup"],
+      testIgnore: /auth\.setup\.ts/,
+    },
+  ],
   webServer: {
     command: "npm run dev",
     url: baseURL,
