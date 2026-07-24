@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useId } from "react";
+import { useCallback, useEffect, useId, useRef } from "react";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 import { coverflowRole, type CoverflowRole } from "@/lib/studio/coverflow";
 
@@ -26,6 +26,7 @@ export default function StudioCoverflow({
   className = "",
 }: Props) {
   const labelId = useId();
+  const rootRef = useRef<HTMLDivElement>(null);
   const total = slides.length;
   const safeSelected = Math.min(Math.max(0, selectedIndex), Math.max(0, total - 1));
 
@@ -40,10 +41,12 @@ export default function StudioCoverflow({
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const t = e.target as HTMLElement | null;
-      if (t && (t.tagName === "TEXTAREA" || t.tagName === "INPUT" || t.isContentEditable)) {
-        return;
-      }
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      // Only claim the arrows when focus is inside this carousel — a document-
+      // wide handler hijacked arrow keys page-wide whenever any coverflow was
+      // mounted, breaking normal arrow behavior for every other control.
+      const root = rootRef.current;
+      if (!root || !root.contains(document.activeElement)) return;
       if (e.key === "ArrowLeft") {
         e.preventDefault();
         move("prev");
@@ -60,6 +63,7 @@ export default function StudioCoverflow({
 
   return (
     <div
+      ref={rootRef}
       className={`studio-coverflow${className ? ` ${className}` : ""}`}
       role="region"
       aria-roledescription="carousel"

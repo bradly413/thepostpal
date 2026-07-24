@@ -128,11 +128,14 @@ export async function POST(req: Request) {
     return Response.json({ clarify: decision.clarify, platform: decision.platform });
   }
 
-  // allowText prompts get their typography suffix in /api/generate-image
-  // (vividHint) — appending it here too would double it.
-  const suffix = decision.allowText
-    ? ""
-    : composeSuffixForBrief(enrichedIntent, decision.styleDirected);
+  // Design-lane and allowText prompts get their typography-aware suffix in
+  // /api/generate-image. Appending the photo-lane compose suffix here would
+  // contradict it ("no text or watermark" vs "premium typography") — so only
+  // photo-lane prompts carry it.
+  const suffix =
+    decision.allowText || decision.lane === "design"
+      ? ""
+      : composeSuffixForBrief(enrichedIntent, decision.styleDirected);
 
   return Response.json({
     platform: decision.platform,

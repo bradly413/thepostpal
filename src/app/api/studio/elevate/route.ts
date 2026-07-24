@@ -12,6 +12,7 @@ import { extractMessageText } from "@/lib/ai/message-text";
 const MAX_IMAGE_BYTES = 10 * 1024 * 1024;
 
 export const runtime = "nodejs";
+export const maxDuration = 45; // two sequential vision calls
 
 const MODEL = "claude-sonnet-5"; // has vision
 
@@ -132,7 +133,7 @@ Include 5-8 relevant hashtags. The altText must describe what is actually visibl
   };
 
   try {
-    const client = new Anthropic({ apiKey });
+    const client = new Anthropic({ apiKey, timeout: 20_000, maxRetries: 1 });
 
     let text = "";
     try {

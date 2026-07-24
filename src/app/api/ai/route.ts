@@ -177,7 +177,7 @@ export async function POST(req: Request) {
     // Prefer Claude (brand voice); fall back to Gemini when Anthropic
     // isn't configured so captions / chat still generate.
     if (anthropicKey) {
-      const client = new Anthropic({ apiKey: anthropicKey });
+      const client = new Anthropic({ apiKey: anthropicKey, timeout: 45_000, maxRetries: 1 });
       const response = await client.messages.create({
         model: "claude-sonnet-5",
       // Structured/routing call — reasoning would only add latency + budget risk.

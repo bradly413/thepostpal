@@ -178,7 +178,9 @@ export async function processDueScheduledPosts(): Promise<CronPublishResult> {
       if (!secrets?.pageToken) {
         const message = "Meta not connected for this location";
         await markStatus(post.id, "failed", message);
-        result.skipped += 1;
+        // Status is failed, so count it as failed — counting it "skipped" made
+        // the run summary understate real failures.
+        result.failed += 1;
         result.errors.push({ postId: post.id, message });
         continue;
       }

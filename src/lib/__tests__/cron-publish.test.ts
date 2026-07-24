@@ -321,7 +321,9 @@ describe("processDueScheduledPosts", () => {
     const result = await processDueScheduledPosts();
 
     expect(metaMocks.state.attempts).toEqual([]);
-    expect(result.skipped).toBe(1);
+    // Status is "failed", so the counter must agree — not "skipped".
+    expect(result.failed).toBe(1);
+    expect(result.skipped).toBe(0);
     expect(getRow("post-1").status).toBe("failed");
     expect(getRow("post-1").errorLog).toContain("not connected");
   });

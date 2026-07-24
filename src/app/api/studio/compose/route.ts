@@ -20,6 +20,9 @@ import {
 import { validateListingComposeRequest } from "@/lib/studio/studio-image-routing";
 import { extractMessageText } from "@/lib/ai/message-text";
 
+export const runtime = "nodejs";
+export const maxDuration = 30;
+
 // POST /api/studio/compose
 // Thin outcome → imagePrompt rewrite. Direct visual briefs skip this route
 // (see needsComposeRewrite / direct_generate).
@@ -136,7 +139,9 @@ Return ONLY JSON (no markdown) with:
 }`;
 
   try {
-    const client = new Anthropic({ apiKey: key });
+    // Bound the call to the route budget — the SDK default is a 10-min timeout
+    // with retries, which silently overruns Vercel's wall and yields opaque 504s.
+    const client = new Anthropic({ apiKey: key, timeout: 20_000, maxRetries: 1 });
     const resp = await client.messages.create({
       model: "claude-sonnet-5",
       // Structured/routing call — reasoning would only add latency + budget risk.
