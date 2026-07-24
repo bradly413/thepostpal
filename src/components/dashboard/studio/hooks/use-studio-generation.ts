@@ -297,6 +297,7 @@ export function useStudioGeneration({
         error?: string;
         modelId?: string;
         engineFallback?: "gemini";
+        engineFallbackReason?: "timeout" | "provider_error";
         retriedForQuality?: boolean;
       };
       try {
@@ -719,7 +720,9 @@ export function useStudioGeneration({
       // Honest attribution when GPT Image 2 fell back to Gemini.
       if (iData.engineFallback === "gemini") {
         onSoftNotice?.(
-          "GPT Image 2 took longer than expected — Posterboy Visual completed this version.",
+          iData.engineFallbackReason === "timeout"
+            ? "Posterboy Visual completed this version while GPT Image 2 was still rendering."
+            : "GPT Image 2 wasn't available for this render — Posterboy Visual completed this version.",
         );
       }
       setGeneratedUrl(iData.image);

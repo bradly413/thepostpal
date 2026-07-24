@@ -6,7 +6,10 @@ import {
   type OpenAiInputImagePart,
   type OpenAiVisionDetail,
 } from "@/lib/studio/openai-vision-input";
-import { STUDIO_GPT_PROVIDER_TIMEOUT_MS } from "@/lib/studio/image-generation-budget";
+import {
+  STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
+  STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
+} from "@/lib/studio/image-generation-budget";
 
 /**
  * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
@@ -24,9 +27,27 @@ export const GPT_RESPONSES_MODEL =
   process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-4.1-mini";
 
 export type GptImageAction = "auto" | "generate" | "edit";
+export type GptFallbackReason = "timeout" | "provider_error";
 
-const GPT_PROVIDER_TIMEOUT_MS = STUDIO_GPT_PROVIDER_TIMEOUT_MS;
+const GPT_PROVIDER_TIMEOUT_MS = STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS;
 const MIN_PROVIDER_ATTEMPT_MS = 1_000;
+
+export function gptProviderTimeoutMsForQuality(
+  quality: "standard" | "pro",
+): number {
+  return quality === "pro"
+    ? STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS
+    : STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS;
+}
+
+export function classifyGptFallbackReason(
+  status: number,
+  error: string,
+): GptFallbackReason {
+  return status === 504 || /timed?\s*out|timeout/i.test(error)
+    ? "timeout"
+    : "provider_error";
+}
 
 export function boundedProviderTimeoutMs(opts: {
   deadlineMs?: number;
@@ -274,6 +295,7 @@ async function generateGptImageViaResponses(opts: {
       const timeoutMs = boundedProviderTimeoutMs({
         deadlineMs: opts.deadlineMs,
         reserveMs: opts.reserveMs,
+        capMs: gptProviderTimeoutMsForQuality(opts.quality),
       });
       if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
         return {
@@ -392,6 +414,7 @@ async function editGptImageViaImagesApi(opts: {
     boundedProviderTimeoutMs({
       deadlineMs: opts.deadlineMs,
       reserveMs: opts.reserveMs,
+      capMs: gptProviderTimeoutMsForQuality(opts.quality),
     });
   const sourceLoadReserveMs = /^https:\/\//i.test(opts.imageSource) ? 12_000 : 0;
   if (initialBudgetMs < MIN_PROVIDER_ATTEMPT_MS + sourceLoadReserveMs) {
@@ -412,6 +435,7 @@ async function editGptImageViaImagesApi(opts: {
       : boundedProviderTimeoutMs({
           deadlineMs: opts.deadlineMs,
           reserveMs: opts.reserveMs,
+          capMs: gptProviderTimeoutMsForQuality(opts.quality),
         });
   if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
     return { ok: false, status: 504, error: "Image edit timed out. Try again.", provider: "edits" };
@@ -510,6 +534,7 @@ export async function generateGptImage(opts: {
     boundedProviderTimeoutMs({
       deadlineMs: opts.deadlineMs,
       reserveMs: opts.fallbackReserveMs,
+      capMs: gptProviderTimeoutMsForQuality(opts.quality),
     });
 
   if (opts.preferDirectImagesApi && opts.action !== "edit") {

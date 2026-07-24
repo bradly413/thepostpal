@@ -2,15 +2,18 @@ import { describe, expect, it } from "vitest";
 import {
   GPT_RESPONSES_MODEL,
   boundedProviderTimeoutMs,
+  classifyGptFallbackReason,
   extractImageFromResponsesResponse,
   gptImageErrorMessage,
   gptImageSizeForAspect,
   gptOrchestratorModels,
+  gptProviderTimeoutMsForQuality,
   isRetryableResponsesError,
 } from "@/lib/studio/gpt-image";
 import {
   STUDIO_GEMINI_FALLBACK_RESERVE_MS,
-  STUDIO_GPT_PROVIDER_TIMEOUT_MS,
+  STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
+  STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
   STUDIO_IMAGE_CLIENT_TIMEOUT_MS,
   STUDIO_IMAGE_ROUTE_BUDGET_MS,
   STUDIO_IMAGE_WATCHDOG_MS,
@@ -56,7 +59,7 @@ describe("boundedProviderTimeoutMs", () => {
         reserveMs: STUDIO_GEMINI_FALLBACK_RESERVE_MS,
         nowMs: 100_000,
       }),
-    ).toBe(STUDIO_GPT_PROVIDER_TIMEOUT_MS);
+    ).toBe(STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS);
     expect(
       boundedProviderTimeoutMs({
         deadlineMs: 220_000,
@@ -78,16 +81,40 @@ describe("boundedProviderTimeoutMs", () => {
 });
 
 describe("Studio image generation budget", () => {
-  it("allows a two-minute GPT attempt while preserving fallback headroom", () => {
-    expect(STUDIO_GPT_PROVIDER_TIMEOUT_MS).toBeGreaterThanOrEqual(120_000);
+  it("gives High more than two minutes while preserving fallback headroom", () => {
+    expect(STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS).toBeGreaterThan(120_000);
+    expect(STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS).toBeLessThan(
+      STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
+    );
     expect(STUDIO_IMAGE_ROUTE_BUDGET_MS).toBeGreaterThanOrEqual(
-      STUDIO_GPT_PROVIDER_TIMEOUT_MS + STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+      STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS + STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+    );
+  });
+
+  it("selects the provider cap from the requested quality", () => {
+    expect(gptProviderTimeoutMsForQuality("standard")).toBe(
+      STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
+    );
+    expect(gptProviderTimeoutMsForQuality("pro")).toBe(
+      STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
     );
   });
 
   it("keeps client recovery outside the server deadline", () => {
     expect(STUDIO_IMAGE_CLIENT_TIMEOUT_MS).toBeGreaterThan(STUDIO_IMAGE_ROUTE_BUDGET_MS);
     expect(STUDIO_IMAGE_WATCHDOG_MS).toBeGreaterThan(STUDIO_IMAGE_CLIENT_TIMEOUT_MS);
+  });
+});
+
+describe("classifyGptFallbackReason", () => {
+  it("separates timeouts from other provider errors", () => {
+    expect(classifyGptFallbackReason(504, "Image generation timed out.")).toBe(
+      "timeout",
+    );
+    expect(classifyGptFallbackReason(502, "Upstream timeout")).toBe("timeout");
+    expect(classifyGptFallbackReason(429, "Rate limit reached")).toBe(
+      "provider_error",
+    );
   });
 });
 

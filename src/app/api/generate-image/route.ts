@@ -22,7 +22,13 @@ import {
   type NanoBananaQuality,
 } from "@/lib/studio/nano-banana";
 import { expandImageBrief } from "@/lib/studio/art-director";
-import { generateGptImage, gptImageConfigured, type GptImageAction } from "@/lib/studio/gpt-image";
+import {
+  classifyGptFallbackReason,
+  generateGptImage,
+  gptImageConfigured,
+  type GptFallbackReason,
+  type GptImageAction,
+} from "@/lib/studio/gpt-image";
 import {
   resolveOpenAiVisionInputs,
   uniqueHttpsUrls,
@@ -40,7 +46,7 @@ import {
 
 // Studio: GPT Image 2 (Responses multimodal + edit) · Gemini fallback for listings.
 
-export const maxDuration = 240; // GPT Image 2 (up to 2m) + optional Gemini fallback
+export const maxDuration = 300; // High GPT Image 2 (up to 190s) + optional Gemini fallback
 
 export async function POST(req: NextRequest) {
   // One wall-clock budget for auth, grounding, GPT, fallback, and response flush.
@@ -275,6 +281,19 @@ export async function POST(req: NextRequest) {
   const geminiTimeoutMs = () =>
     Math.min(STUDIO_GEMINI_PROVIDER_TIMEOUT_MS, routeDeadline - Date.now() - 2_000);
 
+  type GptFallbackDiagnostic = {
+    reason: GptFallbackReason;
+    status: number;
+    error: string;
+    errorCode?: string;
+    provider?: string;
+    providerRequestId?: string;
+    elapsedMs: number;
+  };
+  const gptFallbackState: { diagnostic: GptFallbackDiagnostic | null } = {
+    diagnostic: null,
+  };
+
   async function runGeneration(promptText: string) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
     const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
@@ -296,13 +315,17 @@ export async function POST(req: NextRequest) {
           !gptOnly && apiKey ? STUDIO_GEMINI_FALLBACK_RESERVE_MS : 0,
       });
       if (gptResult.ok || gptOnly || !apiKey) return gptResult;
-      console.warn("[studio-image] GPT Image fallback", {
+      gptFallbackState.diagnostic = {
+        reason: classifyGptFallbackReason(gptResult.status, gptResult.error),
         status: gptResult.status,
         error: gptResult.error,
         errorCode: gptResult.errorCode,
         provider: gptResult.provider,
         providerRequestId: gptResult.requestId,
         elapsedMs: Date.now() - gptStartedAt,
+      };
+      console.warn("[studio-image] GPT Image fallback", {
+        ...gptFallbackState.diagnostic,
         quality,
         aspectRatio,
         designLane,
@@ -354,6 +377,17 @@ export async function POST(req: NextRequest) {
       !result.model.includes("gpt-image");
 
     if (!result.ok) {
+      const diagnostic = gptFallbackState.diagnostic;
+      if (diagnostic) {
+        console.error("[studio-image] GPT Image and Posterboy Visual failed", {
+          ...diagnostic,
+          fallbackStatus: result.status,
+          fallbackError: result.error,
+          quality,
+          aspectRatio,
+          designLane,
+        });
+      }
       return NextResponse.json(
         { error: result.error, ...(result.text ? { text: result.text } : {}) },
         { status: result.status >= 400 && result.status < 600 ? result.status : 502 },
@@ -378,7 +412,13 @@ export async function POST(req: NextRequest) {
       modelId: result.model,
       imageSize: imageSize ?? "1K",
       ...(retriedForQuality ? { retriedForQuality: true } : {}),
-      ...(usedGeminiFallback ? { engineFallback: "gemini" } : {}),
+      ...(usedGeminiFallback
+        ? {
+            engineFallback: "gemini",
+            engineFallbackReason:
+              gptFallbackState.diagnostic?.reason ?? ("provider_error" as const),
+          }
+        : {}),
     });
   } catch {
     return NextResponse.json(

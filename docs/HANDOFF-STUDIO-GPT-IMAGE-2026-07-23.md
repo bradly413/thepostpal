@@ -54,8 +54,8 @@ The original six-file WIP shipped in `0ae2238`. A review follow-up tightens the 
 | `src/app/api/generate-image/route.ts` | Deadline starts at request entry; Gemini gets only the actual remaining budget |
 | `src/lib/studio/nano-banana.ts` | Optional `timeoutMs` for fallback |
 | `src/lib/studio/scene-intent.ts` | `buildProductAdPrompt(..., { hasReferenceImages })` when site fetch fails |
-| `src/components/dashboard/studio/hooks/use-studio-generation.ts` | 238s fetch abort plus tracked request IDs, cancellation, and stale-result invalidation |
-| `src/components/dashboard/studio/PosterboyStudio.tsx` | 245s watchdog starts at the image request only; Director and Veo are excluded |
+| `src/components/dashboard/studio/hooks/use-studio-generation.ts` | 297s fetch abort plus tracked request IDs, cancellation, stale-result invalidation, and reason-specific fallback notice |
+| `src/components/dashboard/studio/PosterboyStudio.tsx` | 305s watchdog starts at the image request only; Director and Veo are excluded |
 
 ---
 
@@ -99,7 +99,7 @@ sequenceDiagram
 
 ### Server flow (`/api/generate-image`)
 
-- `maxDuration = 240`
+- `maxDuration = 300`
 - **Listing photos:** Gemini only (never GPT edit for listings)
 - **Design lane:** GPT with `forceImageTool`, `GPT_DESIGN_SUFFIX` (typography allowed)
 - **Gemini fallback:** when GPT fails and `engine !== "gpt"` (never send `engine:gpt` from design lane)
@@ -123,11 +123,11 @@ sequenceDiagram
 |-------|--------|
 | preview-url (client) | 12s |
 | Director (if used) | 35s client abort |
-| GPT direct Images API | up to 125s, bounded by route deadline minus fallback reserve |
+| GPT direct Images API | Standard up to 125s; High up to 190s, bounded by route deadline minus fallback reserve |
 | GPT Responses (fallback) | up to 1 attempt, bounded by the same remaining budget |
 | Gemini fallback | min(85s, route deadline remaining), with 90s reserved before GPT starts |
-| Client `/api/generate-image` abort | 238s |
-| Client watchdog | 245s from image-request start; aborts and invalidates that request only |
+| Client `/api/generate-image` abort | 297s |
+| Client watchdog | 305s from image-request start; aborts and invalidates that request only |
 
 ---
 
@@ -171,7 +171,7 @@ Repeat after any provider-budget change:
 1. Prod: `/dashboard/studio` → same RevitaLash prompt, Instagram 4:5.
 2. **Network/runtime logs:**
    - `POST /api/studio/preview-url` — 200 or soft-fail; note `imageUrls[]` (often empty for RevitaLash)
-   - `POST /api/generate-image` — should complete in &lt;238s with `modelId` containing `gpt-image` **or** `engineFallback: "gemini"`
+   - `POST /api/generate-image` — should complete in &lt;297s with `modelId` containing `gpt-image` **or** `engineFallback: "gemini"`
 3. UI must not stay on Generating; the image-only watchdog must not affect Director or Veo.
 4. If GPT still times out on **High**, confirm the honest Gemini fallback; compare **Standard** separately.
 5. Run `./scripts/smoke-prod.sh` and `npm test -- --run`.
@@ -212,4 +212,4 @@ Repeat after any provider-budget change:
 
 ## One paragraph for ChatGPT
 
-GPT Image 2 is Studio's primary generator, with Gemini as an honest fallback. Commit `0ae2238` shipped the direct Images API product-ad path and succeeded on the RevitaLash production repro via fallback. The follow-up hardening makes all provider calls share one deadline, gives GPT Image 2 up to 125s for complex prompts, keeps real time for Gemini, defaults the Responses orchestrator to `gpt-4.1-mini`, and ties the 245s watchdog to a cancellable image request ID so late results cannot overwrite a newer turn and Veo is unaffected. Re-run the production repro, smoke suite, and tests after deploying any further timing change.
+GPT Image 2 is Studio's primary generator, with Gemini as an honest fallback. Commit `0ae2238` shipped the direct Images API product-ad path and succeeded on the RevitaLash production repro via fallback. The follow-up hardening makes all provider calls share one deadline, gives Standard up to 125s and High up to 190s while preserving Gemini headroom, defaults the Responses orchestrator to `gpt-4.1-mini`, and ties the 305s watchdog to a cancellable image request ID so late results cannot overwrite a newer turn and Veo is unaffected. Re-run the production repro, smoke suite, and tests after deploying any further timing change.
