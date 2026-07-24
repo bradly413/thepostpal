@@ -74,7 +74,7 @@ test.describe("Posterboy Studio", () => {
     expect(generateCalls).toBe(0);
   });
 
-  test("scenic brief calls mocked compose and generate-image", async ({ page }) => {
+  test("scenic brief generates and opens an accessible image preview", async ({ page }) => {
     await page.route("**/api/studio/compose", async (route) => {
       await route.fulfill({
         status: 200,
@@ -89,13 +89,14 @@ test.describe("Posterboy Studio", () => {
     });
 
     await page.route("**/api/generate-image", async (route) => {
-      const png =
-        "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==";
+      const svg = Buffer.from(
+        '<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350"><rect width="1080" height="1350" fill="#17325a"/></svg>',
+      ).toString("base64");
       await route.fulfill({
         status: 200,
         contentType: "application/json",
         body: JSON.stringify({
-          image: `data:image/png;base64,${png}`,
+          image: `data:image/svg+xml;base64,${svg}`,
           model: "standard",
         }),
       });
@@ -104,10 +105,58 @@ test.describe("Posterboy Studio", () => {
     const prompt = page.locator(".prompt-bar textarea");
     await prompt.fill("make an instagram post about a palm tree on the beach");
     const createBtn = primaryActionButton(page);
-    await expect(createBtn).toHaveText("Create post", { timeout: 10_000 });
+    await expect(createBtn).toHaveText("Generate", { timeout: 10_000 });
     await expect(createBtn).toBeEnabled();
     await createBtn.click();
 
     await expect(page.locator(".frame.done")).toBeVisible({ timeout: 30_000 });
+
+    const enlarge = page.getByRole("button", { name: "Enlarge generated image" });
+    await expect(enlarge).toBeVisible();
+    const stageImage = enlarge.locator("img");
+    const stageSrc = await stageImage.getAttribute("src");
+    const stageStyle = await stageImage.getAttribute("style");
+    const stageBox = await stageImage.boundingBox();
+
+    await enlarge.click();
+    const dialog = page.getByRole("dialog", { name: "Generated image preview" });
+    const fullImage = dialog.getByRole("img", { name: "Full-size generated studio image" });
+    await expect(dialog).toBeVisible();
+    await expect(fullImage).toHaveAttribute("src", stageSrc!);
+    await expect(fullImage).toHaveAttribute("style", stageStyle!);
+
+    const fullBox = await fullImage.boundingBox();
+    expect(stageBox).not.toBeNull();
+    expect(fullBox).not.toBeNull();
+    await expect
+      .poll(async () => {
+        const current = await fullImage.boundingBox();
+        return current ? (current.width * current.height) / (stageBox!.width * stageBox!.height) : 0;
+      })
+      .toBeGreaterThan(1);
+    await expect
+      .poll(() => dialog.evaluate((element) => Number(getComputedStyle(element).opacity)))
+      .toBeGreaterThan(0.99);
+    await expect(dialog).toBeFocused();
+    await page.keyboard.press("Shift+Tab");
+    await expect(dialog.getByRole("button", { name: "Close image preview" })).toBeFocused();
+
+    await fullImage.click();
+    await expect(dialog).toBeVisible();
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
+    await expect(enlarge).toBeFocused();
+
+    await enlarge.click();
+    await expect(dialog).toBeVisible();
+    await dialog.getByRole("button", { name: "Close image preview" }).click();
+    await expect(dialog).toBeHidden();
+
+    await enlarge.click();
+    await expect(dialog).toBeVisible();
+    await page
+      .locator('[data-overlay="Generated image preview"] > button[aria-label="Close dialog"]')
+      .click({ position: { x: 12, y: 12 } });
+    await expect(dialog).toBeHidden();
   });
 });

@@ -73,6 +73,7 @@ import {
 } from "@/lib/studio/generate-video-client";
 import StudioChatThread from "@/components/dashboard/studio/StudioChatThread";
 import StudioCoverflow from "@/components/dashboard/studio/StudioCoverflow";
+import StudioImageLightbox from "@/components/dashboard/studio/StudioImageLightbox";
 import { carouselSlidePrompt } from "@/lib/studio/coverflow";
 import {
   STUDIO_ASPECT_OPTIONS,
@@ -159,6 +160,8 @@ export default function PosterboyStudio() {
   const [intentDetail, setIntentDetail] = useState("");
   const [genState, setGenState] = useState<GenState>("idle");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
+  const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const closeImageLightbox = useCallback(() => setImageLightboxOpen(false), []);
   const [error, setError] = useState("");
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
   const [progress, setProgress] = useState(0);
@@ -209,6 +212,7 @@ export default function PosterboyStudio() {
     setCarouselSelected(0);
     setGenState("idle");
     setGeneratedUrl(null);
+    setImageLightboxOpen(false);
     setShowTemplate(false);
     setPrompt("");
     setSelectedIntentId(null);
@@ -1388,6 +1392,7 @@ export default function PosterboyStudio() {
   };
 
   const handleVideoReady = (url: string) => {
+    setImageLightboxOpen(false);
     setGeneratedUrl(url);
     setMediaKind("video");
     setComposerMode("video");
@@ -1480,6 +1485,7 @@ export default function PosterboyStudio() {
       setConfirmVideoSwitch(true);
       return;
     }
+    setImageLightboxOpen(false);
     setComposerMode("video");
     setMediaKind("video");
   }, [composerMode, genState, generatedUrl]);
@@ -1487,6 +1493,7 @@ export default function PosterboyStudio() {
   const requestImageMode = useCallback(() => {
     if (composerMode === "image") return;
     stopVideoJob();
+    setImageLightboxOpen(false);
     setComposerMode("image");
     setMediaKind("image");
     setGenState("idle");
@@ -1831,27 +1838,40 @@ export default function PosterboyStudio() {
           postFormat !== "carousel" &&
           !showTemplate ? (
             <div className="studio-result-stage" data-studio-result="1">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={generatedUrl}
-                alt="Generated studio image"
-                style={{
-                  transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
-                  filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
-                }}
-                onError={(e) => {
-                  const el = e.currentTarget;
-                  el.style.display = "none";
-                  const host = el.parentElement;
-                  if (host && !host.querySelector("[data-img-error]")) {
-                    const p = document.createElement("p");
-                    p.dataset.imgError = "1";
-                    p.textContent = "Image data couldn’t be displayed. Try Create again.";
-                    host.appendChild(p);
-                    host.classList.add("studio-result-stage--missing");
-                  }
-                }}
-              />
+              <button
+                type="button"
+                className="studio-result-zoom-trigger"
+                aria-label="Enlarge generated image"
+                aria-haspopup="dialog"
+                aria-expanded={imageLightboxOpen}
+                disabled={videoBusy}
+                onClick={() => setImageLightboxOpen(true)}
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={generatedUrl}
+                  alt="Generated studio image"
+                  draggable={false}
+                  style={{
+                    transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+                    filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+                  }}
+                  onError={(e) => {
+                    const el = e.currentTarget;
+                    el.style.display = "none";
+                    const trigger = el.closest("button");
+                    if (trigger instanceof HTMLButtonElement) trigger.disabled = true;
+                    const host = el.closest(".studio-result-stage");
+                    if (host && !host.querySelector("[data-img-error]")) {
+                      const p = document.createElement("p");
+                      p.dataset.imgError = "1";
+                      p.textContent = "Image data couldn’t be displayed. Try Create again.";
+                      host.appendChild(p);
+                      host.classList.add("studio-result-stage--missing");
+                    }
+                  }}
+                />
+              </button>
             </div>
           ) : null}
           {genState === "done" && mediaKind === "image" && !generatedUrl && !showTemplate ? (
@@ -2760,6 +2780,18 @@ export default function PosterboyStudio() {
 
       </div>
 
+      {generatedUrl && mediaKind === "image" ? (
+        <StudioImageLightbox
+          open={imageLightboxOpen}
+          src={generatedUrl}
+          imageStyle={{
+            transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+            filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+          }}
+          onClose={closeImageLightbox}
+        />
+      ) : null}
+
       <DashboardConfirm
         open={confirmVideoSwitch}
         title="Switch to video?"
@@ -2771,6 +2803,7 @@ export default function PosterboyStudio() {
           stopVideoJob();
           setGenState("idle");
           setGeneratedUrl(null);
+          setImageLightboxOpen(false);
           setShowTemplate(false);
           setComposerMode("video");
           setMediaKind("video");

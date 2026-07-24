@@ -2716,6 +2716,35 @@ export function StudioStyles() {
     max-width: min(900px, 78%) !important;
     max-height: min(900px, calc(100% - 8px), 70dvh) !important;
   }
+  .pb-studio .studio-result-zoom-trigger {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: inherit;
+    pointer-events: none;
+  }
+  .pb-studio .studio-result-zoom-trigger img {
+    pointer-events: auto !important;
+    cursor: zoom-in;
+    transition: box-shadow 180ms ease, outline-color 180ms ease;
+  }
+  .pb-studio .studio-result-zoom-trigger:disabled img {
+    cursor: default;
+  }
+  .pb-studio .studio-result-zoom-trigger:not(:disabled):hover img,
+  .pb-studio .studio-result-zoom-trigger:focus-visible img {
+    outline: 3px solid rgba(255, 255, 255, 0.92);
+    outline-offset: 4px;
+    box-shadow: 0 22px 58px -18px rgba(20, 20, 40, 0.68);
+  }
+  .pb-studio .studio-result-zoom-trigger:focus-visible {
+    outline: none;
+  }
 
   @media (min-width: 769px) {
     /* The active result already owns the visual stage. Collapse the completed
