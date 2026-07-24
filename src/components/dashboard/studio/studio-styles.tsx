@@ -2713,8 +2713,60 @@ export function StudioStyles() {
     max-height: min(58vh, 640px) !important;
   }
   .pb-studio .canvas.is-chat-layout .studio-result-stage img {
-    max-width: min(560px, 60%, 52vh) !important;
-    max-height: min(640px, 94%, 62vh) !important;
+    max-width: min(900px, 78%) !important;
+    max-height: min(900px, calc(100% - 8px), 70dvh) !important;
+  }
+
+  @media (min-width: 769px) {
+    /* The active result already owns the visual stage. Collapse the completed
+       chat band without removing its live log from assistive technology. */
+    .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-chat-thread {
+      position: absolute !important;
+      width: 1px !important;
+      height: 1px !important;
+      max-height: 1px !important;
+      margin: -1px !important;
+      padding: 0 !important;
+      overflow: hidden !important;
+      clip: rect(0 0 0 0) !important;
+      clip-path: inset(50%) !important;
+      white-space: nowrap !important;
+    }
+    .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-stage {
+      padding-top: 4px;
+      padding-bottom: 4px;
+    }
+
+    /* Keep the creator controls useful without letting an empty one-line
+       prompt dominate a laptop viewport. Multiline prompts still scroll. */
+    .pb-studio .pb-bar-head {
+      padding: 8px 12px 0;
+    }
+    .pb-studio .pb-mode-tabs {
+      padding: 2px;
+      border-radius: 10px;
+    }
+    .pb-studio .pb-mode-tab {
+      width: 36px;
+      height: 28px;
+      border-radius: 8px;
+    }
+    .pb-studio .prompt-bar .pb-bar-input {
+      min-height: 48px;
+      gap: 10px;
+      padding: 8px 12px 7px;
+    }
+    .pb-studio .pb-plus {
+      width: 32px;
+      height: 32px;
+    }
+    .pb-studio .pb-plus + textarea.pb-bar-textarea {
+      max-height: 96px;
+      padding-top: 4px;
+    }
+    .pb-studio .pb-bar-controls {
+      padding: 7px 12px 10px;
+    }
   }
 
   @media (max-width: 640px) {

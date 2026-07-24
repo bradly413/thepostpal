@@ -8,8 +8,8 @@ type Props = {
   /** Live generation preview (progress / frame) — sits at end of thread. */
   liveSlot?: ReactNode;
   /**
-   * Current result URL from studio state. Rendered as a reliable <img> so the
-   * user always sees the image even if message.imageUrl or the live frame fails.
+   * Current result URL from studio state. The canvas stage renders the active
+   * image; the thread uses this URL only to suppress its duplicate message card.
    */
   resultUrl?: string | null;
   className?: string;
@@ -66,9 +66,6 @@ export default function StudioChatThread({
   }, [key, resultUrl]);
 
   const lastAsst = [...messages].reverse().find((m) => m.role === "assistant");
-  const lastBadge =
-    lastAsst && lastAsst.role === "assistant" ? formatBadge(lastAsst) : null;
-
   return (
     <div
       ref={scrollerRef}
@@ -111,8 +108,6 @@ export default function StudioChatThread({
             </div>
           );
         })}
-
-        {resultUrl ? <ResultImage src={resultUrl} badge={lastBadge} /> : null}
         {lastAsst?.status === "done" && !resultUrl && !lastAsst.imageUrl ? (
           <div className="studio-chat-image-card studio-chat-image-card--error" role="alert">
             <p>Generation finished without an image URL. Try Create again.</p>

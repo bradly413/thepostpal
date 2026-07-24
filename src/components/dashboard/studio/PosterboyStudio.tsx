@@ -2155,8 +2155,7 @@ export default function PosterboyStudio() {
               right: "auto",
               transform: "none",
               zIndex: 40,
-              margin: "6px auto 12px",
-              width: "min(880px, calc(100% - 24px))",
+              margin: "4px auto 10px",
               flex: "0 0 auto",
             }}
           >
