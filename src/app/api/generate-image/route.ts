@@ -22,6 +22,10 @@ import {
   type NanoBananaImageSize,
   type NanoBananaQuality,
 } from "@/lib/studio/nano-banana";
+import {
+  normalizeStudioImageQuality,
+  type StudioImageQuality,
+} from "@/lib/studio/image-quality";
 import { expandImageBrief } from "@/lib/studio/art-director";
 import {
   classifyGptFallbackReason,
@@ -31,8 +35,10 @@ import {
   type GptImageAction,
 } from "@/lib/studio/gpt-image";
 import {
+  referenceRoleForSource,
   resolveOpenAiVisionInputs,
   uniqueHttpsUrls,
+  withIndexedReferenceInstructions,
   type OpenAiVisionDetail,
 } from "@/lib/studio/openai-vision-input";
 import {
@@ -120,7 +126,8 @@ export async function POST(req: NextRequest) {
     typeof parsed.sourceIntent === "string" ? parsed.sourceIntent.slice(0, 1000) : "";
   const listingMode = parsed.listingMode === true || (!!sourceIntent && isListingBrief(sourceIntent));
   const locationId = typeof parsed.locationId === "string" ? parsed.locationId : null;
-  const quality: NanoBananaQuality = parsed.quality === "pro" ? "pro" : "standard";
+  const quality: StudioImageQuality = normalizeStudioImageQuality(parsed.quality);
+  const geminiQuality: NanoBananaQuality = quality === "pro" ? "pro" : "standard";
 
   if (quality === "pro" || locationId) {
     try {
@@ -318,10 +325,19 @@ export async function POST(req: NextRequest) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
     const fullPrompt = (useGeminiPreamble ? `${refPreamble}${promptText}` : promptText) + vividHint;
     if (useGptEngine) {
+      const referenceDescriptions = visionImages.map((_, index) =>
+        referenceRoleForSource(visionSources[index] ?? "", index, {
+          attachedReference: gptEditEligible,
+        }),
+      );
+      const gptPrompt = withIndexedReferenceInstructions(
+        fullPrompt,
+        referenceDescriptions,
+      );
       const gptStartedAt = Date.now();
       const gptResult = await generateGptImage({
         apiKey: openAiKey,
-        prompt: fullPrompt,
+        prompt: gptPrompt,
         aspectRatio,
         quality,
         visionImages,
@@ -329,7 +345,9 @@ export async function POST(req: NextRequest) {
         action: gptAction,
         forceImageTool: designLane,
         editImageSource: gptEditEligible ? (referenceImage as string) : null,
-        preferDirectImagesApi: designLane && visionImages.length === 0,
+        // OpenAI recommends the direct Images API for clean one-shot
+        // generation; keep Responses for multimodal and iterative work.
+        preferDirectImagesApi: gptAction === "generate" && visionImages.length === 0,
         deadlineMs: routeDeadline,
         fallbackReserveMs:
           !gptOnly && apiKey ? STUDIO_GEMINI_FALLBACK_RESERVE_MS : 0,
@@ -369,7 +387,7 @@ export async function POST(req: NextRequest) {
     if (!hasGeminiReference) {
       return generateNanoBananaImage({
         apiKey: apiKey!,
-        quality,
+        quality: geminiQuality,
         prompt: fullPrompt,
         aspectRatio,
         imageSize,
@@ -379,7 +397,7 @@ export async function POST(req: NextRequest) {
     }
     return generateNanoBananaImage({
       apiKey: apiKey!,
-      quality,
+      quality: geminiQuality,
       prompt: fullPrompt,
       aspectRatio,
       imageSize,

@@ -74,15 +74,18 @@ export function buildProductAdPrompt(
   enrichedBrief: string,
   opts?: { hasReferenceImages?: boolean },
 ): string {
-  const intro = opts?.hasReferenceImages
-    ? "Generate a polished vertical social-media product advertisement using the reference product images and the brand facts below."
-    : "Generate a polished vertical social-media product advertisement using only the product and brand facts below. Do not invent packaging or a physical product that is not explicitly described.";
+  const referenceUse = opts?.hasReferenceImages
+    ? "Use the supplied reference images as factual visual evidence. Preserve recognizable product geometry, packaging, labels, logo, and brand colors."
+    : "No verified product image is available. Depict a physical product only when the facts explicitly name one; do not invent packaging.";
   return [
-    intro,
-    enrichedBrief,
-    "Layout: hero product photography only when a physical product is explicitly named; match packaging only when it is clearly shown in a reference. Use an elegant headline with the verified product name and restrained supporting copy — all correctly spelled.",
-    "Use the reference brand palette when shown. Do not invent statistics, benefits, claims, awards, reviews, packaging, logos, or client marks. Use only facts present in the brief or visible in the references.",
-  ].join(" ");
+    "GOAL:\nCreate a polished vertical social-media product advertisement.",
+    `VERIFIED BRAND AND PRODUCT FACTS:\n${enrichedBrief}`,
+    `REFERENCE USE:\n${referenceUse}`,
+    "COMPOSITION:\nUse hero product photography only when a physical product is explicitly named. Build a clean, confident hierarchy with restrained supporting copy and the verified brand palette.",
+    'EXACT TEXT:\nRender only copy explicitly quoted in the verified facts. If no copy is quoted, use only the verified product or brand name, correctly spelled, and no additional marketing claims.',
+    "MUST PRESERVE:\nAny referenced product identity, packaging geometry, label details, official logo, and brand colors.",
+    "DO NOT INCLUDE:\nInvented statistics, benefits, claims, awards, reviews, packaging, logos, client marks, products, or unverified text.",
+  ].join("\n\n");
 }
 
 export function isBrandOutcomeBrief(text: string): boolean {

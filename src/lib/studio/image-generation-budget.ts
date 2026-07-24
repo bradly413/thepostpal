@@ -6,6 +6,7 @@
  * preserving enough time for Posterboy Visual and a clean JSON response.
  */
 export const STUDIO_IMAGE_ROUTE_BUDGET_MS = 292_000;
+export const STUDIO_GPT_DRAFT_PROVIDER_TIMEOUT_MS = 75_000;
 export const STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS = 125_000;
 export const STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS = 190_000;
 export const STUDIO_GEMINI_FALLBACK_RESERVE_MS = 90_000;

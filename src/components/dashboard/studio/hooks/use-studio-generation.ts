@@ -10,6 +10,7 @@ import {
 } from "@/lib/studio/scene-intent";
 import { resolveStudioImageRoute } from "@/lib/studio/studio-image-routing";
 import { STUDIO_IMAGE_CLIENT_TIMEOUT_MS } from "@/lib/studio/image-generation-budget";
+import type { StudioImageQuality } from "@/lib/studio/image-quality";
 
 type GenState = "idle" | "generating" | "done";
 type CaptionState = "idle" | "loading" | "done" | "error";
@@ -81,7 +82,7 @@ export type UseStudioGenerationParams = {
   platform: Platform;
   platforms: readonly Platform[];
   refImage: string | null;
-  imageQuality: "standard" | "pro";
+  imageQuality: StudioImageQuality;
   imageSize: "1K" | "2K";
   /** "design" forces the GPT layout engine; "auto" lets the Director route. */
   imageEngine?: "auto" | "design";
@@ -586,6 +587,7 @@ export function useStudioGeneration({
             lane?: string;
             imagePrompt?: string;
             allowText?: boolean;
+            overlayText?: string;
             clarify?: string;
             error?: string;
             code?: string;
@@ -618,7 +620,14 @@ export function useStudioGeneration({
               aspectPinRef.current && aspectOverride
                 ? aspectOverride
                 : platforms[pIdx].genAspect;
-            imagePrompt = d.imagePrompt;
+            imagePrompt =
+              d.allowText === true && d.overlayText?.trim()
+                ? [
+                    d.imagePrompt,
+                    `EXACT TEXT:\n"${d.overlayText.trim()}"`,
+                    "Render that exact quoted text once, with no extra words or characters.",
+                  ].join("\n\n")
+                : d.imagePrompt;
             allowTextOnImage = d.allowText === true;
             directorWantsDesign = d.lane === "design";
             directorComposed = true;

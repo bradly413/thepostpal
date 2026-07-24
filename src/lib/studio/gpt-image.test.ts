@@ -13,6 +13,7 @@ import {
 } from "@/lib/studio/gpt-image";
 import {
   STUDIO_GEMINI_FALLBACK_RESERVE_MS,
+  STUDIO_GPT_DRAFT_PROVIDER_TIMEOUT_MS,
   STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
   STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
   STUDIO_IMAGE_CLIENT_TIMEOUT_MS,
@@ -21,11 +22,14 @@ import {
 } from "@/lib/studio/image-generation-budget";
 
 describe("gptImageSizeForAspect", () => {
-  it("maps Studio aspects to the nearest supported size", () => {
+  it("maps Studio aspects to exact GPT Image 2-compatible ratios", () => {
     expect(gptImageSizeForAspect("1:1")).toBe("1024x1024");
-    expect(gptImageSizeForAspect("4:5")).toBe("1024x1536");
-    expect(gptImageSizeForAspect("9:16")).toBe("1024x1536");
-    expect(gptImageSizeForAspect("16:9")).toBe("1536x1024");
+    expect(gptImageSizeForAspect("4:5")).toBe("1024x1280");
+    expect(gptImageSizeForAspect("9:16")).toBe("720x1280");
+    expect(gptImageSizeForAspect("16:9")).toBe("1280x720");
+    expect(gptImageSizeForAspect("5:4")).toBe("1280x1024");
+    expect(gptImageSizeForAspect("21:9")).toBe("1792x768");
+    expect(gptImageSizeForAspect("3:4")).toBe("768x1024");
     expect(gptImageSizeForAspect(undefined)).toBe("1024x1024");
     expect(gptImageSizeForAspect("weird")).toBe("1024x1024");
   });
@@ -93,6 +97,9 @@ describe("Studio image generation budget", () => {
   });
 
   it("selects the provider cap from the requested quality", () => {
+    expect(gptProviderTimeoutMsForQuality("draft")).toBe(
+      STUDIO_GPT_DRAFT_PROVIDER_TIMEOUT_MS,
+    );
     expect(gptProviderTimeoutMsForQuality("standard")).toBe(
       STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
     );

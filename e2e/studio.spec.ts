@@ -22,6 +22,18 @@ test.describe("Posterboy Studio", () => {
     const prompt = page.locator(".prompt-bar textarea");
     await expect(prompt).toBeVisible();
     await expect(primaryActionButton(page)).toBeDisabled();
+
+    const qualityButton = page.getByRole("button", { name: "Image quality: Standard" });
+    await expect(qualityButton).toBeVisible();
+    await qualityButton.click();
+
+    const qualityMenu = page.getByRole("listbox", { name: "Image model" });
+    await expect(qualityMenu.getByRole("option", { name: /Draft/ })).toBeVisible();
+    await expect(qualityMenu.getByRole("option", { name: /Standard/ })).toBeVisible();
+    await expect(qualityMenu.getByRole("option", { name: /High/ })).toBeVisible();
+
+    await qualityMenu.getByRole("option", { name: /Draft/ }).click();
+    await expect(page.getByRole("button", { name: "Image quality: Draft" })).toBeVisible();
   });
 
   test("listing without photo shows add-listing-photo gate", async ({ page }) => {

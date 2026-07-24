@@ -7,9 +7,14 @@ import {
   type OpenAiVisionDetail,
 } from "@/lib/studio/openai-vision-input";
 import {
+  STUDIO_GPT_DRAFT_PROVIDER_TIMEOUT_MS,
   STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS,
   STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS,
 } from "@/lib/studio/image-generation-budget";
+import {
+  gptOutputQualityForStudio,
+  type StudioImageQuality,
+} from "@/lib/studio/image-quality";
 
 /**
  * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
@@ -33,8 +38,9 @@ const GPT_PROVIDER_TIMEOUT_MS = STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS;
 const MIN_PROVIDER_ATTEMPT_MS = 1_000;
 
 export function gptProviderTimeoutMsForQuality(
-  quality: "standard" | "pro",
+  quality: StudioImageQuality,
 ): number {
+  if (quality === "draft") return STUDIO_GPT_DRAFT_PROVIDER_TIMEOUT_MS;
   return quality === "pro"
     ? STUDIO_GPT_HIGH_PROVIDER_TIMEOUT_MS
     : STUDIO_GPT_STANDARD_PROVIDER_TIMEOUT_MS;
@@ -68,15 +74,21 @@ export function gptImageConfigured(): boolean {
 export function gptImageSizeForAspect(aspectRatio: string | undefined): string {
   switch ((aspectRatio || "1:1").trim()) {
     case "16:9":
+      return "1280x720";
     case "3:2":
-    case "5:4":
-    case "21:9":
       return "1536x1024";
+    case "5:4":
+      return "1280x1024";
+    case "21:9":
+      return "1792x768";
     case "9:16":
+      return "720x1280";
     case "4:5":
+      return "1024x1280";
     case "2:3":
-    case "3:4":
       return "1024x1536";
+    case "3:4":
+      return "768x1024";
     default:
       return "1024x1024";
   }
@@ -175,7 +187,7 @@ async function callResponsesOnce(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  quality: "standard" | "pro";
+  quality: StudioImageQuality;
   visionImages?: OpenAiInputImagePart[];
   action?: GptImageAction;
   forceImageTool?: boolean;
@@ -202,7 +214,7 @@ async function callResponsesOnce(opts: {
         action,
         model: GPT_IMAGE_MODEL,
         size: gptImageSizeForAspect(opts.aspectRatio),
-        quality: opts.quality === "pro" ? "high" : "medium",
+        quality: gptOutputQualityForStudio(opts.quality),
         output_format: "jpeg",
       },
     ],
@@ -284,7 +296,7 @@ async function generateGptImageViaResponses(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  quality: "standard" | "pro";
+  quality: StudioImageQuality;
   visionImages?: OpenAiInputImagePart[];
   action?: GptImageAction;
   forceImageTool?: boolean;
@@ -329,7 +341,7 @@ async function generateGptImageViaImagesApi(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  quality: "standard" | "pro";
+  quality: StudioImageQuality;
   timeoutMs?: number;
 }): Promise<GptRunResult> {
   const timeoutMs = opts.timeoutMs ?? GPT_PROVIDER_TIMEOUT_MS;
@@ -354,7 +366,7 @@ async function generateGptImageViaImagesApi(opts: {
         prompt: opts.prompt,
         n: 1,
         size: gptImageSizeForAspect(opts.aspectRatio),
-        quality: opts.quality === "pro" ? "high" : "medium",
+        quality: gptOutputQualityForStudio(opts.quality),
         output_format: "jpeg",
       }),
       signal: AbortSignal.timeout(timeoutMs),
@@ -413,7 +425,7 @@ async function editGptImageViaImagesApi(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  quality: "standard" | "pro";
+  quality: StudioImageQuality;
   imageSource: string;
   timeoutMs?: number;
   deadlineMs?: number;
@@ -456,7 +468,7 @@ async function editGptImageViaImagesApi(opts: {
   form.append("prompt", opts.prompt);
   form.append("n", "1");
   form.append("size", gptImageSizeForAspect(opts.aspectRatio));
-  form.append("quality", opts.quality === "pro" ? "high" : "medium");
+  form.append("quality", gptOutputQualityForStudio(opts.quality));
   form.append("output_format", "jpeg");
   form.append("image", new Blob([new Uint8Array(bytes)], { type: "image/jpeg" }), "reference.jpg");
 
@@ -520,7 +532,7 @@ export async function generateGptImage(opts: {
   apiKey: string;
   prompt: string;
   aspectRatio?: string;
-  quality: "standard" | "pro";
+  quality: StudioImageQuality;
   /** Multimodal reference / inspiration images (Responses input_image). */
   visionImages?: OpenAiInputImagePart[];
   visionDetail?: OpenAiVisionDetail;

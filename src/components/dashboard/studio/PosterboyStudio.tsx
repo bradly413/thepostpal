@@ -59,6 +59,10 @@ import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
 import { STUDIO_IMAGE_WATCHDOG_MS } from "@/lib/studio/image-generation-budget";
+import {
+  studioImageQualityLabel,
+  type StudioImageQuality,
+} from "@/lib/studio/image-quality";
 import { isListingBrief, isProductAdBrief } from "@/lib/studio/scene-intent";
 import {
   extractReferenceImageUrl,
@@ -284,14 +288,14 @@ export default function PosterboyStudio() {
     }, 150);
   };
 
-  // Composer-bar image controls: optional reference photo (grounds the generation
-  // in their real product/place) + Pro image model (Nano Banana Pro) by default.
+  // Composer-bar image controls: optional reference photo plus a deliberate
+  // Draft / Standard / High fidelity ladder.
   const [refImage, setRefImage] = useState<string | null>(null);
   const [refName, setRefName] = useState("");
   const [refSource, setRefSource] = useState<StudioReferenceSource | null>(null);
   const [refImageLoading, setRefImageLoading] = useState(false);
   const refFileRef = useRef<HTMLInputElement>(null);
-  const [imageQuality, setImageQuality] = useState<"standard" | "pro">("pro");
+  const [imageQuality, setImageQuality] = useState<StudioImageQuality>("standard");
   // Nano Banana Pro defaults to 2K in /api/generate-image when quality=pro.
   const [imageSize] = useState<"1K" | "2K">("2K");
   const [modelMenuOpen, setModelMenuOpen] = useState(false);
@@ -732,7 +736,9 @@ export default function PosterboyStudio() {
         : generationElapsedMs < 180_000
           ? imageQuality === "pro"
             ? "Still rendering — High quality can take a few minutes."
-            : "Still rendering — detailed images can take a little longer."
+            : imageQuality === "draft"
+              ? "Finishing your fast draft…"
+              : "Still rendering — detailed images can take a little longer."
           : "Finishing the render or switching to Posterboy Visual…";
 
   useEffect(() => {
@@ -1511,7 +1517,9 @@ export default function PosterboyStudio() {
             : generationElapsedMs < 180_000
               ? imageQuality === "pro"
                 ? "Still rendering — High quality can take a few minutes."
-                : "Still rendering — detailed images can take a little longer."
+                : imageQuality === "draft"
+                  ? "Finishing your fast draft…"
+                  : "Still rendering — detailed images can take a little longer."
               : "Finishing or switching renderers…";
   const emergeOpacity =
     genState === "generating"
@@ -2819,15 +2827,27 @@ export default function PosterboyStudio() {
                               onClick={() => setModelMenuOpen((o) => !o)}
                               aria-expanded={modelMenuOpen}
                               aria-haspopup="listbox"
-                              aria-label={`Image quality: ${imageQuality === "pro" ? "High" : "Standard"}`}
+                              aria-label={`Image quality: ${studioImageQualityLabel(imageQuality)}`}
                             >
-                              {imageQuality === "pro" ? "High" : "Standard"}
+                              {studioImageQualityLabel(imageQuality)}
                               <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" aria-hidden>
                                 <path d="M6 9l6 6 6-6" strokeLinecap="round" strokeLinejoin="round" />
                               </svg>
                             </button>
                             {modelMenuOpen ? (
                               <div className="pb-tools-pop pb-model-pop" role="listbox" aria-label="Image model">
+                                <button
+                                  type="button"
+                                  role="option"
+                                  aria-selected={imageQuality === "draft"}
+                                  onClick={() => {
+                                    setImageQuality("draft");
+                                    setModelMenuOpen(false);
+                                  }}
+                                >
+                                  <span className="pb-model-name">Draft</span>
+                                  <span className="pb-model-sub">Fastest — ideas and layout</span>
+                                </button>
                                 <button
                                   type="button"
                                   role="option"
@@ -2838,7 +2858,7 @@ export default function PosterboyStudio() {
                                   }}
                                 >
                                   <span className="pb-model-name">Standard</span>
-                                  <span className="pb-model-sub">Fast — great for drafts</span>
+                                  <span className="pb-model-sub">Balanced — best for most posts</span>
                                 </button>
                                 <button
                                   type="button"

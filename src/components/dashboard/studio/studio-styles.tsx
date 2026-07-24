@@ -2587,6 +2587,12 @@ export function StudioStyles() {
     overflow: hidden !important;
     background: rgba(255, 255, 255, 0.92) !important;
   }
+  /* The composer clips its contents to keep the glass card rounded. Let an
+     open selector escape that clipping boundary so the stage cannot cover or
+     intercept the menu options. */
+  .pb-studio .canvas.is-chat-layout .prompt-bar.is-chat:has(.pb-tools-pop) {
+    overflow: visible !important;
+  }
   /* Status / soft notices live inside the stage as a bottom chip — never a
      flex band that opens a white canyon between carousel and composer. */
   .pb-studio .canvas.is-chat-layout .studio-error {

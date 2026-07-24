@@ -134,16 +134,19 @@ describe("scene-intent", () => {
     expect(isProductAdBrief("eyelash serum bottle flat lay on white")).toBe(false);
   });
 
-  it("uses references when available and brand knowledge when the site has no images", () => {
+  it("builds structured, evidence-only product-ad briefs", () => {
     expect(
       buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: true }),
-    ).toMatch(/using the reference product images/i);
+    ).toMatch(/REFERENCE USE:\nUse the supplied reference images/i);
     expect(
       buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: false }),
     ).toMatch(/do not invent packaging/i);
     expect(
       buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: true }),
-    ).toMatch(/do not invent statistics/i);
+    ).toMatch(/DO NOT INCLUDE:\nInvented statistics/i);
+    expect(
+      buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: true }),
+    ).toMatch(/EXACT TEXT:\nRender only copy explicitly quoted/i);
   });
 
   it("keeps product generation suffixes short and fidelity-first", () => {

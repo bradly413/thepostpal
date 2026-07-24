@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   buildResponsesInput,
+  referenceRoleForSource,
   uniqueHttpsUrls,
+  withIndexedReferenceInstructions,
 } from "@/lib/studio/openai-vision-input";
 
 describe("openai-vision-input", () => {
@@ -30,5 +32,32 @@ describe("openai-vision-input", () => {
     expect(input[0].role).toBe("user");
     expect(input[0].content[0]).toEqual({ type: "input_text", text: "product ad" });
     expect(input[0].content[1]?.type).toBe("input_image");
+  });
+
+  it("labels official logos and attached subjects instead of treating every image alike", () => {
+    expect(
+      referenceRoleForSource("https://brand.com/assets/official-logo.png", 0),
+    ).toMatch(/official logo/i);
+    expect(
+      referenceRoleForSource("https://brand.com/product.jpg", 0, {
+        attachedReference: true,
+      }),
+    ).toMatch(/primary attached subject/i);
+    expect(referenceRoleForSource("https://brand.com/hero.jpg", 0)).toMatch(
+      /primary website/i,
+    );
+    expect(referenceRoleForSource("https://brand.com/lifestyle.jpg", 1)).toMatch(
+      /supporting website/i,
+    );
+  });
+
+  it("adds indexed reference roles to the generation prompt", () => {
+    const prompt = withIndexedReferenceInstructions("Create a launch post.", [
+      "OFFICIAL LOGO. Preserve exactly.",
+      "STYLE REFERENCE. Use palette only.",
+    ]);
+    expect(prompt).toContain("Image 1 — OFFICIAL LOGO");
+    expect(prompt).toContain("Image 2 — STYLE REFERENCE");
+    expect(prompt).toMatch(/reference wins/i);
   });
 });

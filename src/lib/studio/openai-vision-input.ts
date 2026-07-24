@@ -12,6 +12,7 @@ export type OpenAiInputImagePart =
 
 const MAX_VISION_IMAGES = 4;
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
+const LOGO_REFERENCE_RE = /\b(logo|wordmark|brandmark|brand-mark|lockup|lock-up)\b/i;
 
 /** Dedupe while preserving order. */
 export function uniqueHttpsUrls(urls: string[]): string[] {
@@ -41,6 +42,38 @@ export function buildResponsesInput(
       content: [{ type: "input_text", text }, ...images],
     },
   ];
+}
+
+export function referenceRoleForSource(
+  source: string,
+  index: number,
+  opts?: { attachedReference?: boolean },
+): string {
+  if (LOGO_REFERENCE_RE.test(source)) {
+    return "OFFICIAL LOGO OR BRAND ASSET. Preserve the complete geometry, typography, colors, proportions, and spacing exactly. Do not redraw, retype, recolor, crop, simplify, or replace it.";
+  }
+  if (opts?.attachedReference) {
+    return "PRIMARY ATTACHED SUBJECT. Preserve its identity, geometry, labels, colors, and distinctive details. Apply requested changes around it without substituting a different subject.";
+  }
+  if (index === 0) {
+    return "PRIMARY WEBSITE PRODUCT OR HERO SOURCE. Treat it as factual visual evidence and preserve recognizable product and brand details.";
+  }
+  return "SUPPORTING WEBSITE REFERENCE. Use it for verified palette, materials, environment, and visual style only; do not invent elements that are not shown.";
+}
+
+export function withIndexedReferenceInstructions(
+  prompt: string,
+  descriptions: string[],
+): string {
+  if (!descriptions.length) return prompt.trim();
+  const referenceList = descriptions
+    .map((description, index) => `Image ${index + 1} — ${description}`)
+    .join("\n");
+  return [
+    prompt.trim(),
+    `REFERENCE IMAGES (in the exact order supplied):\n${referenceList}`,
+    "REFERENCE RULE: Use each image only for its assigned role. When a reference conflicts with a visual guess, the reference wins.",
+  ].join("\n\n");
 }
 
 async function uploadVisionFile(apiKey: string, jpegBase64: string): Promise<string | null> {

@@ -160,6 +160,41 @@ describe("POST /api/generate-image", () => {
         mimeType: "image/jpeg",
       }),
     });
+    expect(routeMocks.generateGptImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quality: "standard",
+        action: "generate",
+        preferDirectImagesApi: true,
+      }),
+    );
+  });
+
+  it("passes Draft through to GPT without requiring the High entitlement", async () => {
+    const rawBase64 = Buffer.from("draft-image").toString("base64");
+    routeMocks.generateGptImage.mockResolvedValue({
+      ok: true,
+      imageDataUrl: `data:image/jpeg;base64,${rawBase64}`,
+      rawBase64,
+      mimeType: "image/jpeg",
+      text: "",
+      model: "gpt-image-test",
+    });
+
+    const res = await postGenerateImage({
+      prompt: "Create a quick layout draft",
+      composed: true,
+      engine: "gpt",
+      quality: "draft",
+    });
+
+    expect(res.status).toBe(200);
+    expect(routeMocks.generateGptImage).toHaveBeenCalledWith(
+      expect.objectContaining({
+        quality: "draft",
+        preferDirectImagesApi: true,
+      }),
+    );
+    expect(routeMocks.withTenantDb).not.toHaveBeenCalled();
   });
 
   it("refuses an oversized inline response when durable storage is unavailable", async () => {
