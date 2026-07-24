@@ -1,7 +1,13 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import {
+  ChevronLeft,
+  ChevronRight,
+  FolderOpen,
+  Image as ImageIcon,
+  Upload,
+} from "lucide-react";
 import { Swiper, SwiperSlide } from "swiper/react";
 import { EffectCube, Navigation, A11y, Keyboard } from "swiper/modules";
 import type { Swiper as SwiperInstance } from "swiper";
@@ -29,6 +35,7 @@ interface PostPreviewProps {
   avatarInitials: string;
   uploadingMedia: boolean;
   onPickFile: (file: File | undefined) => void;
+  onOpenLibrary: () => void;
   onRemove: () => void;
   mediaError?: string | null;
   /** All carousel slides (when length > 1, cube/slide Swiper is used). */
@@ -72,6 +79,7 @@ export default function PostPreview({
   mediaType,
   uploadingMedia,
   onPickFile,
+  onOpenLibrary,
   onRemove,
   mediaError,
   mediaItems = [],
@@ -192,24 +200,51 @@ export default function PostPreview({
         className="relative flex min-h-0 w-full flex-1 items-center justify-center overflow-hidden"
       >
         {!mediaUrl ? (
-          <label
-            className={`relative flex h-full w-full cursor-pointer flex-col items-center justify-center gap-1.5 rounded-2xl bg-[#f3f3f4] text-center shadow-[0_12px_28px_-18px_rgba(20,20,40,0.35)] ring-1 ring-black/[0.05] transition-colors hover:bg-[#ececed] ${
-              uploadingMedia ? "pointer-events-none" : ""
-            }`}
-          >
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ee2532]/12 text-xl font-light leading-none text-[#ee2532]">
-              +
-            </span>
-            <span className="text-sm font-medium text-black/55">Add a photo or video</span>
-            <span className="text-[11px] text-black/35">Uploads to your secure bucket</span>
-            <input
-              type="file"
-              accept="image/*,video/*"
-              className="sr-only"
-              onChange={(e) => onPickFile(e.target.files?.[0])}
-              disabled={uploadingMedia}
-            />
-          </label>
+          <div className="relative flex h-full w-full flex-col items-center justify-center rounded-2xl bg-[#f3f3f4] px-4 text-center shadow-[0_12px_28px_-18px_rgba(20,20,40,0.35)] ring-1 ring-black/[0.05]">
+            {uploadingMedia ? (
+              <>
+                <span
+                  className="h-7 w-7 animate-spin rounded-full border-2 border-black/15 border-t-[#ee2532]"
+                  aria-hidden
+                />
+                <span className="mt-3 text-sm font-medium text-black/55">
+                  Uploading media…
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ee2532]/12 text-[#ee2532]">
+                  <ImageIcon size={18} aria-hidden />
+                </span>
+                <span className="mt-2 text-sm font-medium text-black/60">
+                  Add a photo or video
+                </span>
+                <span className="mt-0.5 text-[11px] text-black/35">
+                  Upload a new file or reuse one from your Library
+                </span>
+                <div className="mt-4 flex w-full max-w-[19rem] flex-col gap-2 sm:flex-row">
+                  <label className="inline-flex min-h-11 flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-[#ee2532] px-3 text-xs font-semibold text-white transition-colors hover:bg-[#c81e2a]">
+                    <Upload size={15} aria-hidden />
+                    Upload from device
+                    <input
+                      type="file"
+                      accept="image/*,video/*"
+                      className="sr-only"
+                      onChange={(e) => onPickFile(e.target.files?.[0])}
+                    />
+                  </label>
+                  <button
+                    type="button"
+                    onClick={onOpenLibrary}
+                    className="inline-flex min-h-11 flex-1 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white px-3 text-xs font-semibold text-black/65 transition-colors hover:border-black/20 hover:bg-[#fafafa] hover:text-black"
+                  >
+                    <FolderOpen size={15} aria-hidden />
+                    Choose from Library
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
         ) : (
           <div
             className={`relative shrink-0 overflow-hidden bg-[#111] ring-1 ring-black/[0.06] ${
@@ -292,6 +327,13 @@ export default function PostPreview({
             {!uploadingMedia && (
               <>
                 <div className="absolute right-2 top-2 z-20 flex gap-1.5">
+                  <button
+                    type="button"
+                    onClick={onOpenLibrary}
+                    className="rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65"
+                  >
+                    Library
+                  </button>
                   <label className="cursor-pointer rounded-lg bg-black/50 px-2 py-1 text-[11px] font-medium text-white backdrop-blur transition-colors hover:bg-black/65">
                     Change
                     <input

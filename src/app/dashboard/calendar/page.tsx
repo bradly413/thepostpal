@@ -41,6 +41,9 @@ import { usePlan, usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import PostPreview, {
   type ComposerMediaItem,
 } from "@/components/dashboard/calendar/PostPreview";
+import MediaLibraryPicker, {
+  type LibraryMediaSelection,
+} from "@/components/dashboard/calendar/MediaLibraryPicker";
 import CalendarPostRadialMenu, {
   type RadialPostAction,
 } from "@/components/dashboard/calendar/CalendarPostRadialMenu";
@@ -396,6 +399,7 @@ function CalendarPageContent() {
   const [uploadingMedia, setUploadingMedia] = useState(false);
   const [mediaError, setMediaError] = useState<string | null>(null);
   const [showBulkUpload, setShowBulkUpload] = useState(false);
+  const [showMediaLibrary, setShowMediaLibrary] = useState(false);
   const [showPostSettings, setShowPostSettings] = useState(false);
   const [autoGenerateCaptions, setAutoGenerateCaptions] = useState(false);
   autoGenerateCaptionsRef.current = autoGenerateCaptions;
@@ -556,6 +560,26 @@ function CalendarPageContent() {
     const nextIndex = Math.min(mediaIndex, nextItems.length - 1);
     setMediaItems(nextItems);
     setMediaIndex(nextIndex);
+  }
+
+  function selectLibraryMedia(media: LibraryMediaSelection) {
+    setMediaError(null);
+    setCaptionUserEdited(false);
+    setCaptionOptions([]);
+    setCaptionGenError(null);
+    stopCaptionRotation();
+    if (mediaItems.length === 0) {
+      setComposerMediaSingle(media.url, media.type);
+    } else {
+      setMediaItems((prev) =>
+        prev.map((item, index) =>
+          index === mediaIndex
+            ? { ...item, url: media.url, type: media.type, caption: "" }
+            : item,
+        ),
+      );
+    }
+    setShowMediaLibrary(false);
   }
 
   // On select/drop → bypass local blobs, push straight to S3, bind the returned
@@ -1884,6 +1908,7 @@ function CalendarPageContent() {
               avatarInitials={workspaceInitials}
               uploadingMedia={uploadingMedia || bulkUploading}
               onPickFile={(f) => handleMediaFile(f)}
+              onOpenLibrary={() => setShowMediaLibrary(true)}
               onRemove={removeActiveMedia}
               mediaError={mediaError}
               mediaItems={mediaItems}
@@ -3055,6 +3080,13 @@ function CalendarPageContent() {
       </AnimatedOverlay>
         </>
       </LocationGate>
+
+      <MediaLibraryPicker
+        open={showMediaLibrary}
+        locationId={locationId}
+        onClose={() => setShowMediaLibrary(false)}
+        onSelect={selectLibraryMedia}
+      />
 
       <DashboardConfirm
         open={confirmDeletePost}

@@ -74,3 +74,78 @@ test("downloads a Library image as PNG and carries it into Schedule", async ({
   await expect(preview).toBeVisible({ timeout: 20_000 });
   await expect(preview).toHaveAttribute("src", LIBRARY_IMAGE);
 });
+
+test("chooses existing image or video from Library inside Schedule", async ({
+  page,
+}) => {
+  await page.setViewportSize({ width: 1312, height: 618 });
+  await page.route(/\/api\/photos\?locationId=/, async (route) => {
+    await route.fulfill({
+      status: 200,
+      contentType: "application/json",
+      body: JSON.stringify({
+        photos: [
+          {
+            id: "photo-mercy-1",
+            organizationId: "demo-org",
+            locationId: "demo-location",
+            url: LIBRARY_IMAGE,
+            mimeType: "image/svg+xml",
+            alt: "Mercy recruiting flyer",
+            createdAt: "2026-07-24T00:00:00.000Z",
+          },
+          {
+            id: "video-mercy-1",
+            organizationId: "demo-org",
+            locationId: "demo-location",
+            url: "https://cdn.example.com/mercy-recruiting.mp4",
+            mimeType: "video/mp4",
+            alt: "Mercy recruiting video",
+            createdAt: "2026-07-23T00:00:00.000Z",
+          },
+        ],
+      }),
+    });
+  });
+
+  await loginAsDemo(page, "/dashboard/calendar");
+  await expect(page.getByRole("heading", { name: "Schedule" })).toBeVisible();
+  await page.getByRole("button", { name: "Choose from Library" }).click();
+
+  const picker = page.getByRole("dialog", { name: "Choose from Library" });
+  await expect(picker).toBeVisible();
+  await expect(
+    picker.getByRole("button", {
+      name: "Use Mercy recruiting flyer from Library",
+    }),
+  ).toBeVisible();
+
+  await picker.getByRole("button", { name: "Videos" }).click();
+  await expect(
+    picker.getByRole("button", {
+      name: "Use Mercy recruiting video from Library",
+    }),
+  ).toBeVisible();
+  await expect(
+    picker.getByRole("button", {
+      name: "Use Mercy recruiting flyer from Library",
+    }),
+  ).toBeHidden();
+
+  await picker.getByRole("button", { name: "All" }).click();
+  await picker
+    .getByRole("button", {
+      name: "Use Mercy recruiting flyer from Library",
+    })
+    .click();
+
+  await expect(picker).toBeHidden();
+  const preview = page.locator('img[alt="Post preview photo"]');
+  await expect(preview).toBeVisible();
+  await expect(preview).toHaveAttribute("src", LIBRARY_IMAGE);
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await page.getByRole("button", { name: "Library" }).click();
+  await expect(picker).toBeVisible();
+  await expect(page.getByRole("searchbox", { name: "Search Library" })).toBeVisible();
+});
