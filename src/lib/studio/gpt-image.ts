@@ -10,7 +10,7 @@ import {
 /**
  * GPT Image adapter — OpenAI gpt-image-2 for Studio generation.
  *
- * Primary: Responses API + image_generation tool (gpt-5.6 orchestrator, multimodal
+ * Primary: Responses API + image_generation tool (configured orchestrator, multimodal
  * input_image support, generate + edit). Fallback: Images API generations/edits.
  *
  * Listing-photo edits stay on Gemini in the generate route.
@@ -23,6 +23,21 @@ export const GPT_RESPONSES_MODEL =
   process.env.OPENAI_RESPONSES_MODEL?.trim() || "gpt-4.1-mini";
 
 export type GptImageAction = "auto" | "generate" | "edit";
+
+const GPT_PROVIDER_TIMEOUT_MS = 55_000;
+const MIN_PROVIDER_ATTEMPT_MS = 1_000;
+
+export function boundedProviderTimeoutMs(opts: {
+  deadlineMs?: number;
+  reserveMs?: number;
+  nowMs?: number;
+  capMs?: number;
+}): number {
+  const capMs = Math.max(0, opts.capMs ?? GPT_PROVIDER_TIMEOUT_MS);
+  if (opts.deadlineMs == null) return capMs;
+  const remaining = opts.deadlineMs - (opts.nowMs ?? Date.now()) - (opts.reserveMs ?? 0);
+  return Math.max(0, Math.min(capMs, remaining));
+}
 
 export function gptImageConfigured(): boolean {
   return Boolean(process.env.OPENAI_API_KEY?.trim());
@@ -101,10 +116,10 @@ type GptRunResult =
   | { ok: true; imageDataUrl: string; rawBase64: string; mimeType: string; text: string; model: string }
   | { ok: false; status: number; error: string; text?: string };
 
-/** Orchestrator fallbacks when gpt-5.6 is unavailable on the account. */
+/** Orchestrator fallbacks when the configured/default model is unavailable. */
 export function gptOrchestratorModels(): string[] {
   const env = process.env.OPENAI_RESPONSES_MODEL?.trim();
-  const chain = [env, "gpt-5.6", "gpt-4.1-mini", "gpt-4.1"].filter(
+  const chain = [env || GPT_RESPONSES_MODEL, "gpt-4.1-mini", "gpt-4.1", "gpt-5.6"].filter(
     (m): m is string => typeof m === "string" && m.length > 0,
   );
   return [...new Set(chain)];
@@ -125,7 +140,16 @@ async function callResponsesOnce(opts: {
   action?: GptImageAction;
   forceImageTool?: boolean;
   model: string;
+  timeoutMs?: number;
 }): Promise<GptRunResult> {
+  const timeoutMs = opts.timeoutMs ?? GPT_PROVIDER_TIMEOUT_MS;
+  if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
+    return {
+      ok: false,
+      status: 504,
+      error: "Image generation timed out. Try again or switch to Standard quality.",
+    };
+  }
   const action = opts.action ?? (opts.visionImages?.length ? "auto" : "generate");
   const input = buildResponsesInput(opts.prompt, opts.visionImages ?? []);
   const body: Record<string, unknown> = {
@@ -155,7 +179,7 @@ async function callResponsesOnce(opts: {
         Authorization: `Bearer ${opts.apiKey}`,
       },
       body: JSON.stringify(body),
-      signal: AbortSignal.timeout(55_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -212,6 +236,8 @@ async function generateGptImageViaResponses(opts: {
   action?: GptImageAction;
   forceImageTool?: boolean;
   maxAttempts?: number;
+  deadlineMs?: number;
+  reserveMs?: number;
 }): Promise<GptRunResult> {
   const models = gptOrchestratorModels().slice(0, 2);
   const toolAttempts = opts.forceImageTool ? [true, false] : [false];
@@ -223,8 +249,19 @@ async function generateGptImageViaResponses(opts: {
   for (const model of models) {
     for (const forceImageTool of toolAttempts) {
       if (attempts >= maxAttempts) break;
+      const timeoutMs = boundedProviderTimeoutMs({
+        deadlineMs: opts.deadlineMs,
+        reserveMs: opts.reserveMs,
+      });
+      if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
+        return {
+          ok: false,
+          status: 504,
+          error: "Image generation timed out. Try again or switch to Standard quality.",
+        };
+      }
       attempts += 1;
-      const result = await callResponsesOnce({ ...opts, model, forceImageTool });
+      const result = await callResponsesOnce({ ...opts, model, forceImageTool, timeoutMs });
       if (result.ok) return result;
       last = result;
       if (!isRetryableResponsesError(result.status, result.error)) return result;
@@ -239,7 +276,16 @@ async function generateGptImageViaImagesApi(opts: {
   prompt: string;
   aspectRatio?: string;
   quality: "standard" | "pro";
+  timeoutMs?: number;
 }): Promise<GptRunResult> {
+  const timeoutMs = opts.timeoutMs ?? GPT_PROVIDER_TIMEOUT_MS;
+  if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
+    return {
+      ok: false,
+      status: 504,
+      error: "Image generation timed out. Try again or switch to Standard quality.",
+    };
+  }
   let res: Response;
   try {
     res = await fetch("https://api.openai.com/v1/images/generations", {
@@ -256,7 +302,7 @@ async function generateGptImageViaImagesApi(opts: {
         quality: opts.quality === "pro" ? "high" : "medium",
         output_format: "jpeg",
       }),
-      signal: AbortSignal.timeout(55_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -298,10 +344,33 @@ async function editGptImageViaImagesApi(opts: {
   aspectRatio?: string;
   quality: "standard" | "pro";
   imageSource: string;
+  timeoutMs?: number;
+  deadlineMs?: number;
+  reserveMs?: number;
 }): Promise<GptRunResult> {
+  const initialBudgetMs =
+    opts.timeoutMs ??
+    boundedProviderTimeoutMs({
+      deadlineMs: opts.deadlineMs,
+      reserveMs: opts.reserveMs,
+    });
+  const sourceLoadReserveMs = /^https:\/\//i.test(opts.imageSource) ? 12_000 : 0;
+  if (initialBudgetMs < MIN_PROVIDER_ATTEMPT_MS + sourceLoadReserveMs) {
+    return { ok: false, status: 504, error: "Image edit timed out. Try again." };
+  }
   const bytes = await loadImageBytesForEdit(opts.imageSource);
   if (!bytes) {
     return { ok: false, status: 422, error: "Could not read the reference image for editing." };
+  }
+  const timeoutMs =
+    opts.deadlineMs == null
+      ? initialBudgetMs
+      : boundedProviderTimeoutMs({
+          deadlineMs: opts.deadlineMs,
+          reserveMs: opts.reserveMs,
+        });
+  if (timeoutMs < MIN_PROVIDER_ATTEMPT_MS) {
+    return { ok: false, status: 504, error: "Image edit timed out. Try again." };
   }
 
   const form = new FormData();
@@ -319,7 +388,7 @@ async function editGptImageViaImagesApi(opts: {
       method: "POST",
       headers: { Authorization: `Bearer ${opts.apiKey}` },
       body: form,
-      signal: AbortSignal.timeout(55_000),
+      signal: AbortSignal.timeout(timeoutMs),
     });
   } catch (err) {
     const timedOut = err instanceof DOMException && err.name === "TimeoutError";
@@ -372,13 +441,24 @@ export async function generateGptImage(opts: {
    * instead of Responses orchestrator — one hop, leaves budget for Gemini fallback.
    */
   preferDirectImagesApi?: boolean;
+  /** Absolute route deadline shared by every sequential OpenAI provider hop. */
+  deadlineMs?: number;
+  /** Time kept available for the route's Gemini fallback. */
+  fallbackReserveMs?: number;
 }): Promise<GptRunResult> {
+  const providerTimeoutMs = () =>
+    boundedProviderTimeoutMs({
+      deadlineMs: opts.deadlineMs,
+      reserveMs: opts.fallbackReserveMs,
+    });
+
   if (opts.preferDirectImagesApi && opts.action !== "edit") {
     const direct = await generateGptImageViaImagesApi({
       apiKey: opts.apiKey,
       prompt: opts.prompt,
       aspectRatio: opts.aspectRatio,
       quality: opts.quality,
+      timeoutMs: providerTimeoutMs(),
     });
     if (direct.ok) return direct;
     // Timed out — skip Responses so Gemini fallback still has room on Vercel.
@@ -392,6 +472,8 @@ export async function generateGptImage(opts: {
       action: opts.action,
       forceImageTool: opts.forceImageTool,
       maxAttempts: 1,
+      deadlineMs: opts.deadlineMs,
+      reserveMs: opts.fallbackReserveMs,
     });
     if (viaResponses.ok) return viaResponses;
     return direct;
@@ -406,6 +488,8 @@ export async function generateGptImage(opts: {
     action: opts.action,
     forceImageTool: opts.forceImageTool,
     maxAttempts: opts.forceImageTool ? 1 : 2,
+    deadlineMs: opts.deadlineMs,
+    reserveMs: opts.fallbackReserveMs,
   });
   if (viaResponses.ok) return viaResponses;
 
@@ -416,6 +500,8 @@ export async function generateGptImage(opts: {
       aspectRatio: opts.aspectRatio,
       quality: opts.quality,
       imageSource: opts.editImageSource,
+      deadlineMs: opts.deadlineMs,
+      reserveMs: opts.fallbackReserveMs,
     });
     if (viaEdit.ok) return viaEdit;
   }
@@ -429,6 +515,7 @@ export async function generateGptImage(opts: {
         prompt: opts.prompt,
         aspectRatio: opts.aspectRatio,
         quality: opts.quality,
+        timeoutMs: providerTimeoutMs(),
       });
       if (viaImages.ok) return viaImages;
     }

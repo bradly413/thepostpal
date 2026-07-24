@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   briefNeedsSceneGeography,
+  buildProductAdPrompt,
   composeSuffixForBrief,
   enrichScenicBrief,
   generationSuffixForBrief,
@@ -126,6 +127,15 @@ describe("scene-intent", () => {
     expect(isProductAdBrief("launch our new skincare serum instagram post")).toBe(true);
     expect(isProductAdBrief("create an image for Aurora Med Spa")).toBe(false);
     expect(isProductAdBrief("eyelash serum bottle flat lay on white")).toBe(false);
+  });
+
+  it("uses references when available and brand knowledge when the site has no images", () => {
+    expect(
+      buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: true }),
+    ).toMatch(/using the reference product images/i);
+    expect(
+      buildProductAdPrompt("RevitaLash facts", { hasReferenceImages: false }),
+    ).toMatch(/using your knowledge of this brand/i);
   });
 
   it("keeps product generation suffixes short and fidelity-first", () => {

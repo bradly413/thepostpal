@@ -1,5 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
+  GPT_RESPONSES_MODEL,
+  boundedProviderTimeoutMs,
   extractImageFromResponsesResponse,
   gptImageErrorMessage,
   gptImageSizeForAspect,
@@ -31,10 +33,40 @@ describe("gptImageErrorMessage", () => {
 });
 
 describe("gptOrchestratorModels", () => {
-  it("includes fallback models after the configured default", () => {
+  it("puts the configured/default model before fallbacks", () => {
     const models = gptOrchestratorModels();
     expect(models.length).toBeGreaterThanOrEqual(2);
+    expect(models[0]).toBe(GPT_RESPONSES_MODEL);
     expect(models).toContain("gpt-4.1-mini");
+  });
+});
+
+describe("boundedProviderTimeoutMs", () => {
+  it("caps a provider call while preserving the fallback reserve", () => {
+    expect(
+      boundedProviderTimeoutMs({
+        deadlineMs: 200_000,
+        reserveMs: 25_000,
+        nowMs: 100_000,
+      }),
+    ).toBe(55_000);
+    expect(
+      boundedProviderTimeoutMs({
+        deadlineMs: 150_000,
+        reserveMs: 25_000,
+        nowMs: 100_000,
+      }),
+    ).toBe(25_000);
+  });
+
+  it("returns zero instead of overrunning an exhausted deadline", () => {
+    expect(
+      boundedProviderTimeoutMs({
+        deadlineMs: 120_000,
+        reserveMs: 25_000,
+        nowMs: 100_000,
+      }),
+    ).toBe(0);
   });
 });
 

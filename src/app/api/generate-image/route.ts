@@ -38,6 +38,9 @@ import {
 export const maxDuration = 120; // GPT Image 2 + optional Gemini fallback on Pro/High
 
 export async function POST(req: NextRequest) {
+  // One wall-clock budget for auth, grounding, GPT, fallback, and response flush.
+  const routeDeadline = Date.now() + 118_000;
+
   let auth: AuthContext;
   try {
     auth = await requireAuthContext();
@@ -264,9 +267,8 @@ export async function POST(req: NextRequest) {
         ? generationSuffixForBrief(sourceIntent || promptForModel, true)
         : generationSuffixForBrief(sourceIntent || promptForModel, false);
 
-  const routeDeadline = Date.now() + 118_000;
   const geminiTimeoutMs = () =>
-    Math.min(85_000, Math.max(25_000, routeDeadline - Date.now() - 2_000));
+    Math.min(85_000, routeDeadline - Date.now() - 2_000);
 
   async function runGeneration(promptText: string) {
     const useGeminiPreamble = hasGeminiReference && !gptEditEligible;
@@ -283,6 +285,8 @@ export async function POST(req: NextRequest) {
         forceImageTool: designLane,
         editImageSource: gptEditEligible ? (referenceImage as string) : null,
         preferDirectImagesApi: designLane && visionImages.length === 0,
+        deadlineMs: routeDeadline,
+        fallbackReserveMs: !gptOnly && apiKey ? 25_000 : 0,
       });
       if (gptResult.ok || gptOnly || !apiKey) return gptResult;
     }
@@ -294,6 +298,13 @@ export async function POST(req: NextRequest) {
       };
     }
     const fallbackTimeout = geminiTimeoutMs();
+    if (fallbackTimeout < 1_000) {
+      return {
+        ok: false as const,
+        status: 504,
+        error: "Image generation timed out. Try Standard quality or a shorter brief.",
+      };
+    }
     if (!hasGeminiReference) {
       return generateNanoBananaImage({
         apiKey: apiKey!,

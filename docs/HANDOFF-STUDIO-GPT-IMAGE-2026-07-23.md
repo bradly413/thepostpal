@@ -14,7 +14,7 @@ Read **`CLAUDE.md`** and **`docs/ARCHITECTURE.md`** first. This doc supersedes t
 
 ## One-line reality
 
-Posterboy **Creator Studio** (`/dashboard/studio`) now routes most generation through **OpenAI GPT Image 2** (Responses API + Images API), with **Gemini (Nano Banana) as fallback**. Product-ad prompts with a website URL (e.g. RevitaLash) should produce designed social ads — not beauty portraits. As of this handoff, **prod still times out** on that prompt unless the **uncommitted WIP** below is committed and deployed.
+Posterboy **Creator Studio** (`/dashboard/studio`) routes most generation through **OpenAI GPT Image 2** (Responses API + Images API), with **Gemini (Nano Banana) as fallback**. Product-ad prompts with a website URL (e.g. RevitaLash) produce designed social ads — not beauty portraits. Commit `0ae2238` shipped the first timeout pass; the follow-up in this document enforces one end-to-end provider budget and scopes the client watchdog to the active image request.
 
 ---
 
@@ -40,34 +40,26 @@ Posterboy **Creator Studio** (`/dashboard/studio`) now routes most generation th
 | `3c331c0` | GPT Image 2 primary via Responses API |
 | `56e84df` | Multimodal vision inputs, product-ad routing, GPT edit path |
 | `5fbd2de` | Restore Gemini fallback; stop sending `engine:gpt` for design lane; orchestrator retries; parallel preview-url fallbacks |
+| `0ae2238` | Direct Images API product-ad path, Gemini remaining-budget fallback, client abort/watchdog recovery |
 
 ---
 
-## Uncommitted WIP (must commit + push + deploy)
+## Shipped implementation
 
-**6 files, ~126 insertions** — not on prod yet:
+The original six-file WIP shipped in `0ae2238`. A review follow-up tightens the same behavior:
 
 | File | Change |
 |------|--------|
-| `src/lib/studio/gpt-image.ts` | Direct Images API fast path for product ads; cap Responses retries; 55s per-call timeout; default orchestrator `gpt-4.1-mini` |
-| `src/app/api/generate-image/route.ts` | `preferDirectImagesApi` for design lane; route deadline + Gemini gets **remaining** budget |
+| `src/lib/studio/gpt-image.ts` | Direct Images API fast path; default `gpt-4.1-mini`; every sequential GPT hop shares the route deadline and fallback reserve |
+| `src/app/api/generate-image/route.ts` | Deadline starts at request entry; Gemini gets only the actual remaining budget |
 | `src/lib/studio/nano-banana.ts` | Optional `timeoutMs` for fallback |
 | `src/lib/studio/scene-intent.ts` | `buildProductAdPrompt(..., { hasReferenceImages })` when site fetch fails |
-| `src/components/dashboard/studio/hooks/use-studio-generation.ts` | Client gen timeout **130s**; removed blocking early return; better timeout copy |
-| `src/components/dashboard/studio/PosterboyStudio.tsx` | **135s watchdog**; try/catch on compose; stuck-turn recovery |
-
-**Suggested commit message:**
-
-```
-fix(studio): finish product-ad generates within Vercel budget
-
-Use direct GPT Image 2 for design-lane product ads, reserve time for
-Gemini fallback, and add client watchdog so UI never sticks on Generating.
-```
+| `src/components/dashboard/studio/hooks/use-studio-generation.ts` | 130s fetch abort plus tracked request IDs, cancellation, and stale-result invalidation |
+| `src/components/dashboard/studio/PosterboyStudio.tsx` | 135s watchdog starts at the image request only; Director and Veo are excluded |
 
 ---
 
-## Intended RevitaLash flow (after WIP deploy)
+## RevitaLash flow
 
 ```mermaid
 sequenceDiagram
@@ -125,17 +117,17 @@ sequenceDiagram
 | `src/app/api/studio/preview-url/route.ts` | Site OG + search grounding (`maxDuration 60`) |
 | `src/app/api/studio/director/route.ts` | Claude classify + art-direct (skipped when site-grounded) |
 
-### Time budgets (after WIP)
+### Time budgets
 
 | Stage | Budget |
 |-------|--------|
 | preview-url (client) | 12s |
 | Director (if used) | 35s client abort |
-| GPT direct Images API | 55s |
-| GPT Responses (fallback) | 1 attempt × 55s |
+| GPT direct Images API | up to 55s, bounded by route deadline minus fallback reserve |
+| GPT Responses (fallback) | up to 1 attempt, bounded by the same remaining budget |
 | Gemini fallback | min(85s, route deadline remaining) |
 | Client `/api/generate-image` abort | 130s |
-| Client watchdog | 135s |
+| Client watchdog | 135s from image-request start; aborts and invalidates that request only |
 
 ---
 
@@ -156,23 +148,33 @@ Per `CLAUDE.md` (2026-07-13): prod has `OPENAI_API_KEY`, `GEMINI_API_KEY`, and c
 
 Optional:
 
-- `OPENAI_RESPONSES_MODEL` — orchestrator for Responses API (default chain: env → `gpt-5.6` → `gpt-4.1-mini` → `gpt-4.1`). WIP defaults to **`gpt-4.1-mini`** if unset.
+- `OPENAI_RESPONSES_MODEL` — orchestrator override for Responses API. Default chain: env override → `gpt-4.1-mini` → `gpt-4.1` → `gpt-5.6`.
 
 Local `.env.local` often lacks `OPENAI_API_KEY` → local Studio uses Gemini only.
 
 ---
 
-## Verification checklist (post-deploy)
+## Verification
 
-1. **Commit and push** the 6 WIP files; `main` auto-deploys Vercel `angie-social-portal`.
-2. Prod: `/dashboard/studio` → same RevitaLash prompt, Instagram 4:5.
-3. **Network tab:**
+Recorded against production `0ae2238` on 2026-07-23 CT:
+
+- `POST /api/studio/preview-url` returned 200.
+- `POST /api/generate-image` returned 200.
+- High-quality 4:5 RevitaLash generated a designed product ad through the honest Gemini fallback; the UI showed `GPT Image 2 couldn't finish — generated with Posterboy Visual instead.`
+- The UI recovered before its 130s abort and did not stick on **Generating…**.
+- Browser console and Next.js overlay checks were clean.
+- `./scripts/smoke-prod.sh`: 12 passed, 0 failed.
+- `npm test -- --run`: 264 passed before the follow-up tests were added.
+
+Repeat after any provider-budget change:
+
+1. Prod: `/dashboard/studio` → same RevitaLash prompt, Instagram 4:5.
+2. **Network/runtime logs:**
    - `POST /api/studio/preview-url` — 200 or soft-fail; note `imageUrls[]` (often empty for RevitaLash)
    - `POST /api/generate-image` — should complete in &lt;130s with `modelId` containing `gpt-image` **or** `engineFallback: "gemini"`
-4. UI must **not** stay on Generating past ~2 min — watchdog should show error instead.
-5. If still timing out on **High**: try **Standard** (Pro/High GPT is slower).
-6. Run `./scripts/smoke-prod.sh` (unchanged by this work).
-7. Run `npm test -- --run` — **264 tests** should pass.
+3. UI must not stay on Generating; the image-only watchdog must not affect Director or Veo.
+4. If GPT still times out on **High**, confirm the honest Gemini fallback; compare **Standard** separately.
+5. Run `./scripts/smoke-prod.sh` and `npm test -- --run`.
 
 ---
 
@@ -181,8 +183,7 @@ Local `.env.local` often lacks `OPENAI_API_KEY` → local Studio uses Gemini onl
 - [ ] Wire `analyzeImageViaResponses` into reprompt when reference attached
 - [ ] Inpainting / masks — not implemented
 - [ ] When `revitalash.com` is bot-walled, consider curated product image URLs or Shopify JSON fallback (preview-url already tries parallel fallbacks)
-- [ ] Set `OPENAI_RESPONSES_MODEL=gpt-4.1-mini` on prod if `gpt-5.6` unavailable/slow
-- [ ] Update stale `docs/CODEX-HANDOFF.md` (still says localStorage-only dashboard)
+- [ ] Replace or retire the stale body of `docs/CODEX-HANDOFF.md` (its top warning now points here)
 
 ---
 
@@ -211,4 +212,4 @@ Local `.env.local` often lacks `OPENAI_API_KEY` → local Studio uses Gemini onl
 
 ## One paragraph for ChatGPT
 
-Brad is shipping **GPT Image 2 as Studio's primary generator** so product-ad prompts (e.g. RevitaLash + website URL) match what he gets from OpenAI directly. `main` has multimodal + Gemini fallback, but **timeouts persist** because GPT Responses retries consumed the full Vercel 120s before Gemini could run, and the client aborted at 120s. **Uncommitted WIP** adds a direct Images API fast path for design-lane product ads, caps GPT attempts, gives Gemini the remaining server budget, raises client timeout to 130s, and adds a UI watchdog. **Next agent:** commit/push/deploy that WIP, repro the RevitaLash prompt on prod, confirm `/api/generate-image` returns an image or honest Gemini fallback — not infinite Generating or timeout.
+GPT Image 2 is Studio's primary generator, with Gemini as an honest fallback. Commit `0ae2238` shipped the direct Images API product-ad path and succeeded on the RevitaLash production repro via fallback. The follow-up hardening makes all provider calls share one deadline, keeps real time for Gemini, defaults the Responses orchestrator to `gpt-4.1-mini`, and ties the 135s watchdog to a cancellable image request ID so late results cannot overwrite a newer turn and Veo is unaffected. Re-run the production repro, smoke suite, and tests after deploying any further timing change.

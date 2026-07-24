@@ -76,7 +76,7 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 | `POST /api/webhooks/stripe` | Stripe (auth-exempt) |
 | `POST /api/auth`, `/api/auth/signup` | Auth |
 | `POST /api/ai` | Claude chat |
-| `POST /api/generate-image` | Gemini image gen |
+| `POST /api/generate-image` | GPT Image 2 primary; Gemini fallback/listings |
 | `POST /api/meta/*` | Meta OAuth, publish, insights |
 | `POST /api/upload` | Uploads (S3 when configured) |
 
@@ -88,7 +88,7 @@ Login: `/sign-in` — `demo` / `demo123` (DB-backed tenant provisioning)
 | `/dashboard/drafts`, `/dashboard/calendar`, `/dashboard/photos` | API |
 | `/dashboard/brand` | Brand book API + cache |
 | `/onboarding` | Voice Architect (warm-light AI pill + personality) |
-| `/dashboard/studio` | Gemini + Leonardo |
+| `/dashboard/studio` | GPT Image 2 + Gemini fallback; Veo video |
 | `/dashboard/analytics`, `/dashboard/editor`, `/dashboard/ads`, `/dashboard/organization`, `/dashboard/settings`, `/dashboard/templates`, `/dashboard/connect/meta` | API (per 2026-07-11 audit: the old localStorage routes `/dispatch`, `/reports`, `/facebook`, `/instagram` NO LONGER EXIST; `schedule-store.ts`/`events-store.ts` are type-only leftovers) |
 
 ## Agent / workflow gotchas
@@ -123,7 +123,7 @@ See `docs/PROD-ENV-CHECKLIST.md`. As of 2026-07-13 prod has ALL core env set: `D
 
 ## Posterboy Studio (`/dashboard/studio`)
 
-AI image generation with particle reveal animation. Flow: prompt → `/api/generate-image` (Gemini) → `ParticleReveal` → optional Leonardo upscale/remove-bg.
+AI image generation with particle reveal animation. Flow: prompt → `/api/generate-image` (GPT Image 2 primary, Gemini fallback/listings) → `ParticleReveal`; video uses Veo.
 
 ## Deployment
 

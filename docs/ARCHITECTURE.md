@@ -24,7 +24,7 @@ Related: [`AGENT-HANDOFF-2026-06-03.md`](./AGENT-HANDOFF-2026-06-03.md) · [`PRO
 | Social publish | Meta Graph API (Facebook + Instagram) |
 | Billing | Stripe → `Organization.plan` via webhooks |
 | AI text | Anthropic Claude (Sonnet / Haiku); optional Vercel AI Gateway |
-| AI image | Google Gemini Nano Banana (`gemini-3.1-flash-image` / `gemini-3-pro-image`) |
+| AI image | OpenAI GPT Image 2 primary; Google Gemini Nano Banana fallback and listing-photo path |
 | AI video | Google Veo 3.1 (preview); Leonardo routes exist but Studio UI uses Veo |
 | Ops | Sentry; Vercel cron; marketing analytics via Plausible/gtag/dataLayer |
 
@@ -194,7 +194,7 @@ flowchart LR
 
 | Capability | API | Model / provider |
 |---|---|---|
-| Image | `/api/generate-image` | Gemini Nano Banana (`GEMINI_API_KEY`) via `nano-banana.ts` |
+| Image | `/api/generate-image` | GPT Image 2 (`OPENAI_API_KEY`) via `gpt-image.ts`; Gemini Nano Banana fallback/listings via `nano-banana.ts` |
 | Compose / reprompt | `/api/studio/compose`, `/api/studio/reprompt` | Claude Sonnet (`ANTHROPIC_API_KEY`) |
 | Video | `/api/generate-video` | Veo 3.1; poll client; materialize to S3 when configured |
 | Scene logic | `scene-intent.ts`, vertical aesthetics | Shared classifiers + prompt suffixes |
@@ -337,6 +337,7 @@ src/lib/post-approval-service.ts
 src/lib/brand-book-db.ts
 src/lib/ai/model.ts
 src/lib/studio/studio-image-routing.ts
+src/lib/studio/gpt-image.ts
 src/lib/studio/nano-banana.ts
 src/lib/studio/veo.ts
 src/lib/studio/schedule-handoff.ts
@@ -366,4 +367,4 @@ src/proxy.ts
 
 ## 13. One-line mental model
 
-Posterboy is a **multi-tenant Next.js app** where a **voice profile on the Location** (from Voice Architect) steers **Claude**, **Gemini** makes **Studio media**, the **calendar** owns **time + bulk**, and a **5-minute cron** is the only thing that publishes **`approved` `ScheduledPost`s** to **Meta** — with **Solo** skipping approval bureaucracy and **Command** (`house_account`) adding locations, reviewers, and rollups.
+Posterboy is a **multi-tenant Next.js app** where a **voice profile on the Location** (from Voice Architect) steers **Claude**, **GPT Image 2** makes most Studio images with **Gemini** as fallback/listing specialist, the **calendar** owns **time + bulk**, and a **5-minute cron** is the only thing that publishes **`approved` `ScheduledPost`s** to **Meta** — with **Solo** skipping approval bureaucracy and **Command** (`house_account`) adding locations, reviewers, and rollups.

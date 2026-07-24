@@ -1,6 +1,6 @@
 # Codex handoff — Posterboy Social
 
-> **Studio / GPT Image 2 (2026-07-23):** see **[HANDOFF-STUDIO-GPT-IMAGE-2026-07-23.md](./HANDOFF-STUDIO-GPT-IMAGE-2026-07-23.md)** for the active RevitaLash timeout work, uncommitted WIP, and verification steps. The rest of this file is an older session (May 2026) and is largely stale.
+> **Studio / GPT Image 2 (2026-07-23):** see **[HANDOFF-STUDIO-GPT-IMAGE-2026-07-23.md](./HANDOFF-STUDIO-GPT-IMAGE-2026-07-23.md)** for the shipped RevitaLash timeout work, current provider budgets, and verification evidence. The rest of this file is an older session (May 2026) and is largely stale.
 
 **Generated:** end of Claude session 2026-05-23
 **For:** OpenAI Codex (or any agent picking up this work cold)

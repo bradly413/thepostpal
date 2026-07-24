@@ -117,7 +117,7 @@ gsap.registerPlugin(useGSAP);
 // `publishable` = Posterboy can actually post to it today (Meta only). Others
 // are preview-only until their integration ships — surfaced up front (T4).
 
-/** Must exceed STUDIO_GENERATE_CLIENT_MS in use-studio-generation (130s). */
+/** Image-request safety net; must exceed the hook's 130s fetch abort. */
 const STUDIO_GENERATING_WATCHDOG_MS = 135_000;
 
 const PLATFORMS = [
@@ -579,6 +579,8 @@ export default function PosterboyStudio() {
     regenerateLast,
     setLastGenPrompt,
     lastGenPrompt,
+    imageRequestStartedAt,
+    cancelImageRequest,
   } = useStudioGeneration({
     prompt,
     composerBrief,
@@ -783,12 +785,15 @@ export default function PosterboyStudio() {
     clearCarousel,
   ]);
 
-  // Safety net when /api/generate-image hangs without aborting (Vercel hard-kill, etc.).
+  // Safety net for the image request only. Director/compose and Veo use separate budgets.
   useEffect(() => {
-    if (genState !== "generating") return;
+    if (imageRequestStartedAt == null) return;
+    const elapsed = Date.now() - imageRequestStartedAt;
     const id = window.setTimeout(() => {
-      setGenState("idle");
+      if (!cancelImageRequest()) return;
+      setGenState(generatedUrl ? "done" : "idle");
       setProgress(0);
+      setCaptionState("idle");
       setError("Generation timed out. Please try again.");
       composeInFlightRef.current = false;
       const aid = pendingAssistantIdRef.current;
@@ -803,9 +808,16 @@ export default function PosterboyStudio() {
         pendingAssistantIdRef.current = null;
         pendingPromptMemoryRef.current = null;
       }
-    }, STUDIO_GENERATING_WATCHDOG_MS);
+    }, Math.max(0, STUDIO_GENERATING_WATCHDOG_MS - elapsed));
     return () => window.clearTimeout(id);
-  }, [genState, setProgress]);
+  }, [
+    cancelImageRequest,
+    generatedUrl,
+    imageRequestStartedAt,
+    setCaptionState,
+    setGenState,
+    setProgress,
+  ]);
 
   const resolveWebsiteBrand = useCallback(
     async (

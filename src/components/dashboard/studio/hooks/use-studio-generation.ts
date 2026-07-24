@@ -27,10 +27,22 @@ const STUDIO_DIRECTOR_CLIENT_MS = 35_000;
 /** Product-ad compose + image gen — must exceed /api/generate-image maxDuration. */
 const STUDIO_GENERATE_CLIENT_MS = 130_000;
 
-function abortAfter(ms: number): { signal: AbortSignal; clear: () => void } {
+type AbortHandle = {
+  signal: AbortSignal;
+  abort: () => void;
+  clear: () => void;
+};
+
+type TrackedImageRequest = AbortHandle & { id: number };
+
+function abortAfter(ms: number): AbortHandle {
   const ctrl = new AbortController();
   const id = setTimeout(() => ctrl.abort(), ms);
-  return { signal: ctrl.signal, clear: () => clearTimeout(id) };
+  return {
+    signal: ctrl.signal,
+    abort: () => ctrl.abort(),
+    clear: () => clearTimeout(id),
+  };
 }
 
 /** Cover-crop a generated image to the platform's exact pixel dimensions. */
@@ -143,6 +155,9 @@ export function useStudioGeneration({
     return platform.genAspect;
   }, [aspectOverride, aspectPinRef, platform.genAspect]);
   const genTimer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const activeImageRequestRef = useRef<TrackedImageRequest | null>(null);
+  const nextImageRequestIdRef = useRef(0);
+  const [imageRequestStartedAt, setImageRequestStartedAt] = useState<number | null>(null);
   const lastGenPromptRef = useRef("");
   const [lastGenPrompt, setLastGenPromptState] = useState("");
   const rememberGenPrompt = useCallback((promptText: string) => {
@@ -166,6 +181,9 @@ export function useStudioGeneration({
   useEffect(
     () => () => {
       if (genTimer.current) clearInterval(genTimer.current);
+      activeImageRequestRef.current?.abort();
+      activeImageRequestRef.current?.clear();
+      activeImageRequestRef.current = null;
     },
     [],
   );
@@ -188,6 +206,41 @@ export function useStudioGeneration({
       genTimer.current = null;
     }
   }, []);
+
+  const beginImageRequest = useCallback((): TrackedImageRequest => {
+    const previous = activeImageRequestRef.current;
+    previous?.abort();
+    previous?.clear();
+
+    const handle = abortAfter(STUDIO_GENERATE_CLIENT_MS);
+    const request = { ...handle, id: ++nextImageRequestIdRef.current };
+    activeImageRequestRef.current = request;
+    setImageRequestStartedAt(Date.now());
+    return request;
+  }, []);
+
+  const isCurrentImageRequest = useCallback(
+    (id: number) => activeImageRequestRef.current?.id === id,
+    [],
+  );
+
+  const finishImageRequest = useCallback((request: TrackedImageRequest) => {
+    request.clear();
+    if (activeImageRequestRef.current?.id !== request.id) return;
+    activeImageRequestRef.current = null;
+    setImageRequestStartedAt(null);
+  }, []);
+
+  const cancelImageRequest = useCallback(() => {
+    const request = activeImageRequestRef.current;
+    if (!request) return false;
+    activeImageRequestRef.current = null;
+    request.clear();
+    request.abort();
+    setImageRequestStartedAt(null);
+    stopProgressTimer();
+    return true;
+  }, [stopProgressTimer]);
 
   const holdFloor = useCallback(async (startedAt: number) => {
     const elapsed = Date.now() - startedAt;
@@ -293,7 +346,7 @@ export function useStudioGeneration({
       startProgressTimer();
       const startedAt = Date.now();
 
-      const genAbort = abortAfter(STUDIO_GENERATE_CLIENT_MS);
+      const genAbort = beginImageRequest();
       try {
         const editingFromCanvas =
           recoverGenState === "done" &&
@@ -306,6 +359,7 @@ export function useStudioGeneration({
           referenceImage: refForGen,
           signal: genAbort.signal,
         });
+        if (!isCurrentImageRequest(genAbort.id)) return;
         if (data.error || !data.image) {
           await holdFloor(startedAt);
           stopProgressTimer();
@@ -328,6 +382,7 @@ export function useStudioGeneration({
         setGenState("done");
         onAfterGenerateSuccessRef.current?.();
       } catch (err) {
+        if (!isCurrentImageRequest(genAbort.id)) return;
         await holdFloor(startedAt);
         stopProgressTimer();
         setProgress(0);
@@ -342,7 +397,7 @@ export function useStudioGeneration({
         );
         setGenState("idle");
       } finally {
-        genAbort.clear();
+        finishImageRequest(genAbort);
       }
     },
     [
@@ -369,6 +424,9 @@ export function useStudioGeneration({
       startProgressTimer,
       stopProgressTimer,
       holdFloor,
+      beginImageRequest,
+      isCurrentImageRequest,
+      finishImageRequest,
       setGeneratedUrl,
       pushHistory,
       rememberGenPrompt,
@@ -414,7 +472,7 @@ export function useStudioGeneration({
 
     // Separate budgets: Director must not steal the image-gen abort window.
     const planAbort = abortAfter(STUDIO_DIRECTOR_CLIENT_MS);
-    let genAbort: { signal: AbortSignal; clear: () => void } | null = null;
+    let genAbort: TrackedImageRequest | null = null;
     try {
       let imagePrompt: string | null = null;
       let aspect = resolveAspect();
@@ -621,7 +679,7 @@ export function useStudioGeneration({
       }
 
       planAbort.clear();
-      genAbort = abortAfter(STUDIO_GENERATE_CLIENT_MS);
+      genAbort = beginImageRequest();
       const productAdTurn = isProductAdBrief(intent);
       const siteVisionUrls = opts?.siteImageUrls?.filter(Boolean) ?? [];
       const useVisionInputs = productAdTurn && siteVisionUrls.length > 0;
@@ -640,6 +698,7 @@ export function useStudioGeneration({
           : {}),
         signal: genAbort.signal,
       });
+      if (!isCurrentImageRequest(genAbort.id)) return;
       if (iData.error || !iData.image) {
         stopProgressTimer();
         setProgress(0);
@@ -671,6 +730,7 @@ export function useStudioGeneration({
       setGenState("done");
       onAfterGenerateSuccessRef.current?.();
     } catch (err) {
+      if (genAbort && !isCurrentImageRequest(genAbort.id)) return;
       stopProgressTimer();
       setProgress(0);
       setCaptionState("idle");
@@ -686,7 +746,7 @@ export function useStudioGeneration({
       setGenState(isReprompt ? "done" : "idle");
     } finally {
       planAbort.clear();
-      genAbort?.clear();
+      if (genAbort) finishImageRequest(genAbort);
     }
   }, [
     composerBrief,
@@ -723,6 +783,9 @@ export function useStudioGeneration({
     pushHistory,
     requestGenerateImage,
     rememberGenPrompt,
+    beginImageRequest,
+    isCurrentImageRequest,
+    finishImageRequest,
   ]);
 
   const regenerateLast = useCallback(async () => {
@@ -748,5 +811,7 @@ export function useStudioGeneration({
     resizeToExact,
     setLastGenPrompt,
     lastGenPrompt,
+    imageRequestStartedAt,
+    cancelImageRequest,
   };
 }
