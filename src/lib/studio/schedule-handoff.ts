@@ -1,4 +1,4 @@
-/** Session handoff: Studio → Schedule composer (`/dashboard/calendar`). */
+/** One-shot media handoff: Studio or Library → Schedule composer. */
 
 export const STUDIO_SCHEDULE_HANDOFF_KEY = "pb-studio-schedule-handoff";
 

@@ -16,6 +16,8 @@ import { usePlanFeatures } from "@/components/dashboard/PlanProvider";
 import { useFocusTrap } from "@/components/dashboard/use-focus-trap";
 import { SkeletonGrid, EmptyState, ErrorState, LocationGate } from "@/components/dashboard/StateViews";
 import { DashboardConfirm } from "@/components/dashboard/DashboardModal";
+import { writeStudioScheduleHandoff } from "@/lib/studio/schedule-handoff";
+import { CalendarPlus, Download } from "lucide-react";
 
 interface DisplayMedia {
   id: string;
@@ -66,6 +68,7 @@ export default function PhotosPage() {
   const [filter, setFilter] = useState<"all" | "image" | "video">("all");
   const [sortDir, setSortDir] = useState<"newest" | "oldest">("newest");
   const [pendingDeleteId, setPendingDeleteId] = useState<string | null>(null);
+  const [downloadingId, setDownloadingId] = useState<string | null>(null);
   const gridRef = useRef<HTMLDivElement>(null);
   const lightboxRef = useRef<HTMLDivElement>(null);
 
@@ -210,6 +213,63 @@ export default function PhotosPage() {
     const params = new URLSearchParams({ photoUrl: item.src, photoId: item.id });
     router.push(`/dashboard/editor/photo-overlay?${params.toString()}`);
   };
+
+  const scheduleMedia = useCallback(
+    (item: DisplayMedia) => {
+      writeStudioScheduleHandoff({
+        mediaUrl: item.src,
+        mediaType: item.kind,
+        format: "single",
+      });
+      router.push("/dashboard/calendar?from=library");
+    },
+    [router],
+  );
+
+  const downloadPng = useCallback(
+    async (item: DisplayMedia) => {
+      if (item.kind !== "image" || downloadingId) return;
+      setDownloadingId(item.id);
+      try {
+        const response = await fetch(
+          `/api/photos/${encodeURIComponent(item.id)}/download`,
+          { credentials: "same-origin" },
+        );
+        if (!response.ok) {
+          const body = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(body?.error || "Could not download that image.");
+        }
+
+        const blob = await response.blob();
+        const objectUrl = URL.createObjectURL(blob);
+        const disposition = response.headers.get("content-disposition") || "";
+        const headerName = disposition.match(/filename="([^"]+)"/i)?.[1];
+        const fallbackName = `${item.name
+          .replace(/\.[A-Za-z0-9]{1,8}$/i, "")
+          .replace(/[^A-Za-z0-9_-]+/g, "-")
+          .replace(/-+/g, "-")
+          .replace(/^-+|-+$/g, "")
+          .slice(0, 80) || "posterboy-image"}.png`;
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = headerName || fallbackName;
+        document.body.appendChild(link);
+        link.click();
+        link.remove();
+        window.setTimeout(() => URL.revokeObjectURL(objectUrl), 1_000);
+        showToast("PNG download started.");
+      } catch (err) {
+        showToast(
+          err instanceof Error ? err.message : "Could not download that image.",
+        );
+      } finally {
+        setDownloadingId(null);
+      }
+    },
+    [downloadingId, showToast],
+  );
 
   const busy = locationLoading || loading;
 
@@ -357,39 +417,72 @@ export default function PhotosPage() {
                 <div className="px-3 py-2 flex flex-col gap-2">
                   <span className="text-xs truncate">{item.name}</span>
                   {!item.pending && (
-                    <div className="flex items-center gap-1.5">
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); openInStudio(item); }}
-                        className="min-h-11 flex-1 rounded-lg border border-black/10 bg-black/[0.03] px-2 text-[11px] font-semibold text-black/80 hover:border-[var(--pb-press)]/40 hover:text-[var(--pb-press)] transition-colors"
-                      >
-                        Composer
-                      </button>
-                      {item.kind === "image" ? (
+                    <>
+                      <div className="flex items-center gap-1.5">
                         <button
                           type="button"
-                          onClick={(e) => { e.stopPropagation(); openInEditor(item); }}
-                          title="Edit in Creator Studio"
-                          aria-label="Edit in Creator Studio"
-                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-black/[0.03] text-black/80 hover:border-[var(--pb-press)]/40 hover:text-[var(--pb-press)] transition-colors"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            scheduleMedia(item);
+                          }}
+                          aria-label={`Schedule ${item.name}`}
+                          className="inline-flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-lg border border-[var(--pb-press)]/25 bg-[rgba(238,37,50,0.07)] px-2 text-[11px] font-semibold text-[var(--pb-press)] transition-colors hover:border-[var(--pb-press)]/45 hover:bg-[rgba(238,37,50,0.11)]"
+                        >
+                          <CalendarPlus size={15} aria-hidden />
+                          Schedule
+                        </button>
+                        {item.kind === "image" ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              void downloadPng(item);
+                            }}
+                            disabled={downloadingId !== null}
+                            title="Download PNG"
+                            aria-label={`Download ${item.name} as PNG`}
+                            aria-busy={downloadingId === item.id}
+                            className="inline-flex min-h-11 min-w-16 shrink-0 items-center justify-center gap-1 rounded-lg border border-black/10 bg-black/[0.03] px-2 text-[10px] font-semibold text-black/70 transition-colors hover:border-[var(--pb-press)]/40 hover:text-[var(--pb-press)] disabled:cursor-wait disabled:opacity-45"
+                          >
+                            <Download size={15} aria-hidden />
+                            {downloadingId === item.id ? "Saving" : "PNG"}
+                          </button>
+                        ) : null}
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); openInStudio(item); }}
+                          className="min-h-11 flex-1 rounded-lg border border-black/10 bg-black/[0.03] px-2 text-[11px] font-semibold text-black/80 hover:border-[var(--pb-press)]/40 hover:text-[var(--pb-press)] transition-colors"
+                        >
+                          Composer
+                        </button>
+                        {item.kind === "image" ? (
+                          <button
+                            type="button"
+                            onClick={(e) => { e.stopPropagation(); openInEditor(item); }}
+                            title="Edit in Creator Studio"
+                            aria-label={`Edit ${item.name} in Creator Studio`}
+                            className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-black/[0.03] text-black/80 hover:border-[var(--pb-press)]/40 hover:text-[var(--pb-press)] transition-colors"
+                          >
+                            <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                            </svg>
+                          </button>
+                        ) : null}
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); setPendingDeleteId(item.id); }}
+                          title="Delete"
+                          aria-label={`Delete ${item.name}`}
+                          className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-black/[0.03] text-black/80 hover:border-[#c81e2a]/40 hover:text-[#c81e2a] transition-colors"
                         >
                           <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-                            <path strokeLinecap="round" strokeLinejoin="round" d="M16.862 4.487l1.687-1.688a1.875 1.875 0 112.652 2.652L10.582 16.07a4.5 4.5 0 01-1.897 1.13L6 18l.8-2.685a4.5 4.5 0 011.13-1.897l8.932-8.931zm0 0L19.5 7.125M18 14v4.75A2.25 2.25 0 0115.75 21H5.25A2.25 2.25 0 013 18.75V8.25A2.25 2.25 0 015.25 6H10" />
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
                           </svg>
                         </button>
-                      ) : null}
-                      <button
-                        type="button"
-                        onClick={(e) => { e.stopPropagation(); setPendingDeleteId(item.id); }}
-                        title="Delete"
-                        aria-label="Delete"
-                        className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-black/10 bg-black/[0.03] text-black/80 hover:border-[#c81e2a]/40 hover:text-[#c81e2a] transition-colors"
-                      >
-                        <svg width="16" height="16" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2} aria-hidden>
-                          <path strokeLinecap="round" strokeLinejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
-                        </svg>
-                      </button>
-                    </div>
+                      </div>
+                    </>
                   )}
                 </div>
               </div>
@@ -413,13 +506,33 @@ export default function PhotosPage() {
             className="pb-safe-sheet max-h-[85dvh] max-w-3xl w-[calc(100%-2rem)] overflow-hidden rounded-t-2xl sm:rounded-2xl border border-black/10 bg-white shadow-xl"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex items-center justify-between border-b border-black/10 px-4 py-3">
-              <p className="text-sm font-semibold">{selected.name}</p>
-              <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-3 border-b border-black/10 px-4 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="min-w-0 flex-1 truncate text-sm font-semibold">{selected.name}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => scheduleMedia(selected)}
+                  className="pb-btn-primary inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 text-xs"
+                >
+                  <CalendarPlus size={15} aria-hidden />
+                  Schedule
+                </button>
+                {selected.kind === "image" ? (
+                  <button
+                    type="button"
+                    onClick={() => void downloadPng(selected)}
+                    disabled={downloadingId !== null}
+                    aria-busy={downloadingId === selected.id}
+                    className="pb-btn-secondary inline-flex min-h-11 items-center gap-1.5 px-3 py-1.5 text-xs disabled:cursor-wait disabled:opacity-45"
+                  >
+                    <Download size={15} aria-hidden />
+                    {downloadingId === selected.id ? "Preparing…" : "Download PNG"}
+                  </button>
+                ) : null}
                 <button
                   type="button"
                   onClick={() => openInStudio(selected)}
-                  className="pb-btn-secondary px-3 py-1.5 text-xs"
+                  className="pb-btn-secondary min-h-11 px-3 py-1.5 text-xs"
                 >
                   Use in composer
                 </button>
@@ -427,7 +540,7 @@ export default function PhotosPage() {
                   type="button"
                   aria-label="Close preview"
                   onClick={() => setSelected(null)}
-                  className="rounded-lg p-1 opacity-60 transition-colors hover:bg-black/5 hover:opacity-100"
+                  className="inline-flex min-h-11 min-w-11 items-center justify-center rounded-lg p-1 opacity-60 transition-colors hover:bg-black/5 hover:opacity-100"
                 >
                   <svg width="18" height="18" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
                     <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
