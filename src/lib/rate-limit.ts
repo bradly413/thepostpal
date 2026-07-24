@@ -57,11 +57,17 @@ export async function rateLimit(
 }
 
 export function getClientIp(headers: Headers): string {
-  return (
-    headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-    headers.get("x-real-ip") ||
-    "unknown"
-  );
+  // Vercel sets x-real-ip to the true connecting IP — prefer it. x-forwarded-for
+  // is client-prependable (spoofable at the FRONT), so if we fall back to it we
+  // take the LAST hop, which is the address the platform proxy actually saw.
+  const realIp = headers.get("x-real-ip")?.trim();
+  if (realIp) return realIp;
+  const xff = headers.get("x-forwarded-for");
+  if (xff) {
+    const hops = xff.split(",").map((h) => h.trim()).filter(Boolean);
+    if (hops.length > 0) return hops[hops.length - 1];
+  }
+  return "unknown";
 }
 
 export function buildRateLimitKey(

@@ -2316,6 +2316,19 @@ export default function PosterboyStudio() {
             tabIndex={0}
             onScroll={updateStudioScrollPosition}
           >
+          {/* Screen-reader announcer: the canvas result is visual-only, so a
+              dedicated live region narrates the generation lifecycle. */}
+          <span className="sr-only" role="status" aria-live="polite">
+            {genState === "generating"
+              ? composerMode === "video"
+                ? "Creating your video."
+                : "Creating your image."
+              : genState === "done"
+                ? mediaKind === "video"
+                  ? "Your video is ready."
+                  : "Your image is ready."
+                : ""}
+          </span>
           <StudioChatThread
             messages={chatMessages}
             loadingInitial={loadingStudioHistory}

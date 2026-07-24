@@ -3011,6 +3011,14 @@ export function StudioStyles() {
     }
     .pb-studio .pb-bar-head { padding: 10px 10px 0; }
     .pb-studio .pb-plus { margin: 6px 0 0 10px; width: 32px; height: 32px; }
+    /* The Enhance label + its 7.5rem reserved padding crushed the textarea to
+       ~180px on phones (placeholder wrapped into 6 lines). Icon-only Enhance +
+       a tight reserve gives the prompt the full row. */
+    .pb-studio .pb-enhance {
+      right: 10px; top: 10px; width: 30px; min-width: 30px; padding: 0; gap: 0;
+    }
+    .pb-studio .pb-enhance span:not(.sr-only) { display: none; }
+    .pb-studio .pb-plus + textarea.pb-bar-textarea { padding-right: 2.75rem; }
     .pb-studio .pb-generate.pb-generate-primary {
       flex: 1 1 100%;
       margin-left: 0;

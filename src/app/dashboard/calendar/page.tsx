@@ -2627,6 +2627,7 @@ function CalendarPageContent() {
               type="button"
               role="switch"
               aria-checked={autoGenerateCaptions}
+              aria-label="Auto-generate captions"
               onClick={() => setAutoGenerateCaptions((v) => !v)}
               className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${
                 autoGenerateCaptions ? "bg-[#ee2532]" : "bg-black/15"

@@ -205,8 +205,34 @@ export default function AppMobileNav() {
 
   useEffect(() => {
     if (!moreOpen) return;
+    const opener = document.activeElement as HTMLElement | null;
+    const focusables = () =>
+      Array.from(
+        sheetRef.current?.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ) ?? [],
+      );
+    // Move focus into the sheet so it doesn't sit behind the modal scrim.
+    focusables()[0]?.focus();
     const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setMoreOpen(false);
+      if (e.key === "Escape") {
+        setMoreOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+      const items = focusables();
+      if (items.length === 0) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      // Cycle focus inside the sheet instead of escaping to the page behind.
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
     };
     document.addEventListener("keydown", onKey);
     const prev = document.body.style.overflow;
@@ -214,6 +240,8 @@ export default function AppMobileNav() {
     return () => {
       document.removeEventListener("keydown", onKey);
       document.body.style.overflow = prev;
+      // Return focus to whatever opened the sheet.
+      opener?.focus?.();
     };
   }, [moreOpen]);
 
