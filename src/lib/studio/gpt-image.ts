@@ -145,6 +145,16 @@ type GptRunResult =
       requestId?: string;
       errorCode?: string;
     };
+type GptFailure = Extract<GptRunResult, { ok: false }>;
+
+export function selectGptFailure(
+  ...failures: [GptFailure, ...GptFailure[]]
+): GptFailure {
+  return (
+    [...failures].reverse().find((failure) => failure.status === 504) ??
+    failures[failures.length - 1]
+  );
+}
 
 /** Orchestrator fallbacks when the configured/default model is unavailable. */
 export function gptOrchestratorModels(): string[] {
@@ -561,7 +571,7 @@ export async function generateGptImage(opts: {
       reserveMs: opts.fallbackReserveMs,
     });
     if (viaResponses.ok) return viaResponses;
-    return direct;
+    return selectGptFailure(direct, viaResponses);
   }
 
   const viaResponses = await generateGptImageViaResponses({
@@ -577,6 +587,7 @@ export async function generateGptImage(opts: {
     reserveMs: opts.fallbackReserveMs,
   });
   if (viaResponses.ok) return viaResponses;
+  const providerFailures: [GptFailure, ...GptFailure[]] = [viaResponses];
 
   if (opts.action === "edit" && opts.editImageSource) {
     const viaEdit = await editGptImageViaImagesApi({
@@ -589,6 +600,7 @@ export async function generateGptImage(opts: {
       reserveMs: opts.fallbackReserveMs,
     });
     if (viaEdit.ok) return viaEdit;
+    providerFailures.push(viaEdit);
   }
 
   if (opts.action === "generate" || !opts.visionImages?.length) {
@@ -603,8 +615,9 @@ export async function generateGptImage(opts: {
         timeoutMs: providerTimeoutMs(),
       });
       if (viaImages.ok) return viaImages;
+      providerFailures.push(viaImages);
     }
   }
 
-  return viaResponses;
+  return selectGptFailure(...providerFailures);
 }

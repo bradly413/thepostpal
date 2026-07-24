@@ -9,6 +9,7 @@ import {
   gptOrchestratorModels,
   gptProviderTimeoutMsForQuality,
   isRetryableResponsesError,
+  selectGptFailure,
 } from "@/lib/studio/gpt-image";
 import {
   STUDIO_GEMINI_FALLBACK_RESERVE_MS,
@@ -115,6 +116,26 @@ describe("classifyGptFallbackReason", () => {
     expect(classifyGptFallbackReason(429, "Rate limit reached")).toBe(
       "provider_error",
     );
+  });
+});
+
+describe("selectGptFailure", () => {
+  it("returns the terminal failure when no provider timed out", () => {
+    expect(
+      selectGptFailure(
+        { ok: false, status: 429, error: "Rate limit", provider: "images" },
+        { ok: false, status: 422, error: "No image", provider: "responses" },
+      ),
+    ).toMatchObject({ status: 422, provider: "responses" });
+  });
+
+  it("preserves a timeout even when another provider error follows it", () => {
+    expect(
+      selectGptFailure(
+        { ok: false, status: 504, error: "Timed out", provider: "responses" },
+        { ok: false, status: 502, error: "Could not reach service", provider: "images" },
+      ),
+    ).toMatchObject({ status: 504, provider: "responses" });
   });
 });
 
