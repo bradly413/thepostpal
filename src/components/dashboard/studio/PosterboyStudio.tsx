@@ -93,6 +93,10 @@ import {
   type PromptMemoryEntry,
 } from "@/lib/studio/prompt-memory";
 import { canStartStudioChatTurn } from "@/lib/studio/studio-chat-guards";
+import {
+  shouldReplaceWebsiteReference,
+  type StudioReferenceSource,
+} from "@/lib/studio/reference-provenance";
 
 /**
  * Posterboy Social - Studio (responsive)
@@ -241,6 +245,9 @@ export default function PosterboyStudio() {
     setCaptionState("idle");
     setCaptionError("");
     setError("");
+    setRefImage(null);
+    setRefName("");
+    setRefSource(null);
     resetEdit();
     setActiveEdit(null);
     window.setTimeout(() => inputRef.current?.focus(), 0);
@@ -281,6 +288,7 @@ export default function PosterboyStudio() {
   // in their real product/place) + Pro image model (Nano Banana Pro) by default.
   const [refImage, setRefImage] = useState<string | null>(null);
   const [refName, setRefName] = useState("");
+  const [refSource, setRefSource] = useState<StudioReferenceSource | null>(null);
   const [refImageLoading, setRefImageLoading] = useState(false);
   const refFileRef = useRef<HTMLInputElement>(null);
   const [imageQuality, setImageQuality] = useState<"standard" | "pro">("pro");
@@ -336,13 +344,17 @@ export default function PosterboyStudio() {
     return () => window.clearInterval(id);
   }, [prompt, genState, selectedIntentId, promptMode]);
 
-  const attachReferenceFromUrl = useCallback((rawUrl: string) => {
+  const attachReferenceFromUrl = useCallback((
+    rawUrl: string,
+    source: StudioReferenceSource = "direct",
+  ) => {
     const url = extractReferenceImageUrl(rawUrl) || rawUrl.trim();
     if (!/^https:\/\//i.test(url)) return false;
     try {
       const host = new URL(url).hostname.replace(/^www\./, "");
       setRefImage(url);
       setRefName(host);
+      setRefSource(source);
       setError("");
       return true;
     } catch {
@@ -370,6 +382,7 @@ export default function PosterboyStudio() {
       if (res.ok && data.url) {
         setRefImage(data.url);
         setRefName(file.name);
+        setRefSource("manual");
         setRefImageLoading(false);
         return;
       }
@@ -388,6 +401,7 @@ export default function PosterboyStudio() {
       c.getContext("2d")?.drawImage(img, 0, 0, c.width, c.height);
       setRefImage(c.toDataURL("image/jpeg", 0.82));
       setRefName(file.name);
+      setRefSource("manual");
       setRefImageLoading(false);
       URL.revokeObjectURL(url);
     };
@@ -686,6 +700,90 @@ export default function PosterboyStudio() {
     },
   });
 
+  const [generationClock, setGenerationClock] = useState<{
+    requestStartedAt: number | null;
+    elapsedMs: number;
+  }>({ requestStartedAt: null, elapsedMs: 0 });
+  useEffect(() => {
+    if (imageRequestStartedAt == null) return;
+    const updateElapsed = () => {
+      setGenerationClock({
+        requestStartedAt: imageRequestStartedAt,
+        elapsedMs: Math.max(0, Date.now() - imageRequestStartedAt),
+      });
+    };
+    const kickoff = window.setTimeout(updateElapsed, 0);
+    const id = window.setInterval(updateElapsed, 1_000);
+    return () => {
+      window.clearTimeout(kickoff);
+      window.clearInterval(id);
+    };
+  }, [imageRequestStartedAt]);
+  const generationElapsedMs =
+    generationClock.requestStartedAt === imageRequestStartedAt
+      ? generationClock.elapsedMs
+      : 0;
+
+  const workingChatText =
+    imageRequestStartedAt == null
+      ? "Preparing your image…"
+      : generationElapsedMs < 60_000
+        ? "Rendering your image…"
+        : generationElapsedMs < 180_000
+          ? imageQuality === "pro"
+            ? "Still rendering — High quality can take a few minutes."
+            : "Still rendering — detailed images can take a little longer."
+          : "Finishing the render or switching to Posterboy Visual…";
+
+  useEffect(() => {
+    if (genState !== "generating") return;
+    const aid = pendingAssistantIdRef.current;
+    if (!aid) return;
+    setChatMessages((prev) => {
+      let changed = false;
+      const next = prev.map((message) => {
+        if (
+          message.id !== aid ||
+          message.role !== "assistant" ||
+          message.status !== "working" ||
+          message.text === workingChatText
+        ) {
+          return message;
+        }
+        changed = true;
+        return { ...message, text: workingChatText };
+      });
+      return changed ? next : prev;
+    });
+  }, [genState, workingChatText]);
+
+  const cancelActiveImageGeneration = useCallback(() => {
+    if (!cancelImageRequest()) return;
+    setGenState(generatedUrl ? "done" : "idle");
+    setProgress(0);
+    setCaptionState("idle");
+    setSoftNotice("Generation canceled. You can adjust the prompt and try again.");
+    composeInFlightRef.current = false;
+    const aid = pendingAssistantIdRef.current;
+    if (aid) {
+      setChatMessages((prev) =>
+        prev.map((message) =>
+          message.id === aid && message.role === "assistant"
+            ? { ...message, status: "error" as const, text: "Canceled." }
+            : message,
+        ),
+      );
+      pendingAssistantIdRef.current = null;
+      pendingPromptMemoryRef.current = null;
+    }
+  }, [
+    cancelImageRequest,
+    generatedUrl,
+    setCaptionState,
+    setGenState,
+    setProgress,
+  ]);
+
   const clearCarousel = useCallback(() => {
     carouselFillAbortRef.current?.abort();
     carouselFillAbortRef.current = null;
@@ -954,10 +1052,18 @@ export default function PosterboyStudio() {
   );
 
   const runComposeFromIntent = useCallback(async (overrideUserText?: string) => {
-    let nextRef = refImage;
     let briefOverride: string | undefined;
     const sourceText = `${prompt}\n${composerBrief}`;
     const pageUrl = extractWebsiteUrl(sourceText);
+    // A website-derived reference belongs to the turn that discovered it.
+    // A new website prompt must never silently edit the previous site's image.
+    const replaceWebsiteReference = shouldReplaceWebsiteReference(refSource, pageUrl);
+    let nextRef = replaceWebsiteReference ? null : refImage;
+    if (replaceWebsiteReference) {
+      setRefImage(null);
+      setRefName("");
+      setRefSource(null);
+    }
     const userText = (overrideUserText ?? composerBrief ?? prompt).trim();
     const gate = canStartStudioChatTurn({
       genState,
@@ -1022,7 +1128,12 @@ export default function PosterboyStudio() {
       if (site.imageUrls.length > 0) {
         siteImageUrls = site.imageUrls;
       }
-      if (!nextRef && site.imageUrl && !isProductAdBrief(userText) && attachReferenceFromUrl(site.imageUrl)) {
+      if (
+        !nextRef &&
+        site.imageUrl &&
+        !isProductAdBrief(userText) &&
+        attachReferenceFromUrl(site.imageUrl, "website")
+      ) {
         nextRef = site.imageUrl;
         if (site.label) setRefName(site.label);
       } else if (!nextRef && site.error) {
@@ -1080,6 +1191,7 @@ export default function PosterboyStudio() {
     postFormat,
     prompt,
     refImage,
+    refSource,
     refImageLoading,
     resolveWebsiteBrand,
   ]);
@@ -1139,6 +1251,7 @@ export default function PosterboyStudio() {
     setMediaKind("image");
     setRefImage(dupe);
     setRefName("Top performing");
+    setRefSource("history");
     setPrompt(clipped);
     pendingDupeBrief.current = clipped;
     const next = new URLSearchParams(searchParams.toString());
@@ -1389,13 +1502,17 @@ export default function PosterboyStudio() {
   const statusText =
     genState !== "generating"
       ? ""
-      : progress < 8
-        ? "Thinking…"
-        : progress < 28
-          ? "Analyzing the request…"
-          : progress < 99
-            ? "Generating…"
-            : "Finishing…";
+      : imageRequestStartedAt == null
+        ? "Preparing your image…"
+        : generationElapsedMs < 15_000
+          ? "Starting the image render…"
+          : generationElapsedMs < 60_000
+            ? "Rendering your image…"
+            : generationElapsedMs < 180_000
+              ? imageQuality === "pro"
+                ? "Still rendering — High quality can take a few minutes."
+                : "Still rendering — detailed images can take a little longer."
+              : "Finishing or switching renderers…";
   const emergeOpacity =
     genState === "generating"
       ? Math.max(0, Math.min(0.85, ((progress - 58) / 38) * 0.85))
@@ -1850,6 +1967,18 @@ export default function PosterboyStudio() {
                   <span>{mediaKind === "video" ? "Latest video" : "Latest image"}</span>
                 </button>
               </div>
+            ) : genState === "generating" && !isAtLatest ? (
+              <div className="top-actions">
+                <button
+                  type="button"
+                  className="preview-toggle"
+                  onClick={() => scrollToLatest()}
+                  title="Return to the active generation"
+                >
+                  <ArrowDown size={15} />
+                  <span>Latest generation</span>
+                </button>
+              </div>
             ) : null}
 
             <div className="top-toggles">
@@ -2116,7 +2245,16 @@ export default function PosterboyStudio() {
                       >
                         Cancel
                       </button>
-                    ) : null}
+                    ) : (
+                      <button
+                        type="button"
+                        className="studio-video-cancel"
+                        onClick={cancelActiveImageGeneration}
+                        aria-label="Cancel image generation"
+                      >
+                        Cancel
+                      </button>
+                    )}
                   </div>
                 )}
                 {genState === "idle" && composerMode === "image" ? (
@@ -2531,6 +2669,7 @@ export default function PosterboyStudio() {
                     onClick={() => {
                       setRefImage(null);
                       setRefName("");
+                      setRefSource(null);
                     }}
                     aria-label="Remove reference image"
                   >

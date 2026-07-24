@@ -32,6 +32,68 @@ test.describe("Posterboy Studio", () => {
     await expect(primaryActionButton(page)).toHaveText("Add listing photo");
   });
 
+  test("shows live progress and lets a user cancel a slow image render", async ({ page }) => {
+    let releaseGeneration!: () => void;
+    let markGenerationStarted!: () => void;
+    const generationGate = new Promise<void>((resolve) => {
+      releaseGeneration = resolve;
+    });
+    const generationStarted = new Promise<void>((resolve) => {
+      markGenerationStarted = resolve;
+    });
+
+    await page.route("**/api/studio/director", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          platform: "instagram",
+          lane: "photo",
+          imagePrompt: "A polished launch announcement",
+          allowText: false,
+        }),
+      });
+    });
+    await page.route("**/api/generate-image", async (route) => {
+      markGenerationStarted();
+      await generationGate;
+      await route
+        .fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({
+            image: "https://media.example.com/late-generation.jpg",
+            modelId: "mock-delayed-generation",
+          }),
+        })
+        .catch(() => {
+          // Canceling aborts the browser request before this delayed mock resolves.
+        });
+    });
+
+    const prompt = page.locator(".prompt-bar textarea");
+    await prompt.fill("Create an Instagram launch announcement");
+    await primaryActionButton(page).click();
+    await generationStarted;
+
+    const working = page.locator('.studio-chat-msg-asst[data-status="working"]');
+    await expect(working).toBeVisible();
+    await expect(working).toContainText("Rendering your image");
+    await expect(page.locator(".frame.generating .gen-progress")).toBeVisible();
+    await expect(page.getByRole("button", { name: "Cancel image generation" })).toBeVisible();
+    await expect(prompt).toBeDisabled();
+
+    await page.getByRole("button", { name: "Cancel image generation" }).click();
+    releaseGeneration();
+
+    await expect(page.locator('.studio-chat-msg-asst[data-status="error"]')).toContainText(
+      "Canceled.",
+    );
+    await expect(prompt).toBeEnabled();
+    await expect(primaryActionButton(page)).toBeEnabled();
+    await expect(page.locator(".frame.done")).toBeHidden();
+  });
+
   test("listing with photo uses passthrough without calling generate-image", async ({ page }) => {
     let composeCalls = 0;
     let generateCalls = 0;

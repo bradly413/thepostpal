@@ -12,8 +12,8 @@ export const STUDIO_GEMINI_FALLBACK_RESERVE_MS = 90_000;
 export const STUDIO_GEMINI_PROVIDER_TIMEOUT_MS = 85_000;
 
 /**
- * The browser signal remains active while the base64 response is downloaded
- * and parsed, so it must outlive the 300s function plus a transfer margin.
+ * The browser signal must outlive the 300s function plus durable image
+ * delivery and response parsing.
  */
 export const STUDIO_IMAGE_CLIENT_TIMEOUT_MS = 315_000;
 export const STUDIO_IMAGE_WATCHDOG_MS = 325_000;

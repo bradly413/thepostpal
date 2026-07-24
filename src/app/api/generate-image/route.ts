@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { randomUUID } from "crypto";
 import { rateLimit, buildRateLimitKey, RateLimitUnavailableError } from "@/lib/rate-limit";
 import { requireAuthContext, type AuthContext } from "@/lib/api-auth";
 import { withTenantDb } from "@/lib/db";
@@ -43,14 +44,33 @@ import {
   STUDIO_GEMINI_PROVIDER_TIMEOUT_MS,
   STUDIO_IMAGE_ROUTE_BUDGET_MS,
 } from "@/lib/studio/image-generation-budget";
+import { isS3Configured, uploadToS3 } from "@/lib/storage";
+import { isSafeMediaUrl } from "@/lib/safe-media-url";
 
 // Studio: GPT Image 2 (Responses multimodal + edit) · Gemini fallback for listings.
 
+export const runtime = "nodejs";
 export const maxDuration = 300; // High GPT Image 2 (up to 190s) + optional Gemini fallback
 
+// Keep enough of the 300s function window for durable object-storage delivery.
+// Vercel Function responses are capped at 4.5 MB, so 2K image bytes must not
+// ride back to the browser inside a base64 JSON response.
+const STUDIO_IMAGE_DELIVERY_RESERVE_MS = 12_000;
+const STUDIO_INLINE_RESPONSE_MAX_BYTES = 4_000_000;
+
+function generatedImageExtension(mimeType: string): string {
+  if (mimeType === "image/jpeg") return "jpg";
+  if (mimeType === "image/png") return "png";
+  if (mimeType === "image/webp") return "webp";
+  return "img";
+}
+
 export async function POST(req: NextRequest) {
-  // One wall-clock budget for auth, grounding, GPT, fallback, and response flush.
-  const routeDeadline = Date.now() + STUDIO_IMAGE_ROUTE_BUDGET_MS;
+  const routeStartedAt = Date.now();
+  // One wall-clock budget for auth, grounding, GPT, and fallback. Delivery gets
+  // its own reserve so a completed image can be persisted before maxDuration.
+  const routeDeadline =
+    routeStartedAt + STUDIO_IMAGE_ROUTE_BUDGET_MS - STUDIO_IMAGE_DELIVERY_RESERVE_MS;
 
   let auth: AuthContext;
   try {
@@ -405,8 +425,7 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    return NextResponse.json({
-      image: result.imageDataUrl,
+    const responseMeta = {
       text: result.text,
       model: quality,
       modelId: result.model,
@@ -419,8 +438,114 @@ export async function POST(req: NextRequest) {
               gptFallbackState.diagnostic?.reason ?? ("provider_error" as const),
           }
         : {}),
+    };
+    const mimeType = /^image\/[a-z0-9.+-]+$/i.test(result.mimeType)
+      ? result.mimeType.toLowerCase()
+      : "image/jpeg";
+    const imageBytes = Buffer.from(result.rawBase64, "base64");
+    const inlineResponse = {
+      image: result.imageDataUrl,
+      ...responseMeta,
+    };
+    const inlineResponseBytes = Buffer.byteLength(JSON.stringify(inlineResponse));
+
+    if (imageBytes.length === 0) {
+      return NextResponse.json(
+        {
+          error: "Image generation finished without image data. Please try again.",
+          code: "GENERATED_IMAGE_EMPTY",
+        },
+        { status: 502 },
+      );
+    }
+
+    if (isS3Configured()) {
+      try {
+        const filename = `${randomUUID()}.${generatedImageExtension(mimeType)}`;
+        const uploaded = await uploadToS3({
+          key: `tenants/${auth.tenantId}/studio/${filename}`,
+          body: imageBytes,
+          contentType: mimeType,
+        });
+
+        let registeredInLibrary = false;
+        if (locationId && isSafeMediaUrl(uploaded.url)) {
+          try {
+            await withTenantDb(auth, async (tx) => {
+              await tx.photoAsset.create({
+                data: {
+                  organizationId: auth.tenantId,
+                  locationId,
+                  url: uploaded.url,
+                  mimeType,
+                  alt: (sourceIntent || prompt).trim().slice(0, 200) || "Studio generation",
+                },
+              });
+            });
+            registeredInLibrary = true;
+          } catch (error) {
+            // The durable image is still usable; library registration is best-effort.
+            console.warn("[studio-image] media registration failed", {
+              elapsedMs: Date.now() - routeStartedAt,
+              error: error instanceof Error ? error.message : "unknown",
+            });
+          }
+        }
+
+        const hostedResponse = {
+          image: uploaded.url,
+          ...responseMeta,
+        };
+        console.info("[studio-image] completed", {
+          elapsedMs: Date.now() - routeStartedAt,
+          modelId: result.model,
+          quality,
+          aspectRatio,
+          imageBytes: imageBytes.length,
+          responseBytes: Buffer.byteLength(JSON.stringify(hostedResponse)),
+          delivery: "object-storage",
+          registeredInLibrary,
+        });
+        return NextResponse.json(hostedResponse);
+      } catch (error) {
+        console.error("[studio-image] object-storage delivery failed", {
+          elapsedMs: Date.now() - routeStartedAt,
+          imageBytes: imageBytes.length,
+          inlineResponseBytes,
+          error: error instanceof Error ? error.message : "unknown",
+        });
+      }
+    }
+
+    // Local development can still use compact inline results. Never send a
+    // response that risks being truncated by the platform proxy.
+    if (inlineResponseBytes > STUDIO_INLINE_RESPONSE_MAX_BYTES) {
+      return NextResponse.json(
+        {
+          error:
+            "The image finished, but it was too large to deliver safely. Try Standard quality.",
+          code: "GENERATED_IMAGE_DELIVERY_FAILED",
+        },
+        { status: 502 },
+      );
+    }
+
+    console.info("[studio-image] completed", {
+      elapsedMs: Date.now() - routeStartedAt,
+      modelId: result.model,
+      quality,
+      aspectRatio,
+      imageBytes: imageBytes.length,
+      responseBytes: inlineResponseBytes,
+      delivery: "inline",
+      registeredInLibrary: false,
     });
-  } catch {
+    return NextResponse.json(inlineResponse);
+  } catch (error) {
+    console.error("[studio-image] generation failed", {
+      elapsedMs: Date.now() - routeStartedAt,
+      error: error instanceof Error ? error.message : "unknown",
+    });
     return NextResponse.json(
       { error: "Failed to generate image" },
       { status: 500 },

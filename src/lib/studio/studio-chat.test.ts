@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   enrichIntentWithFormat,
+  makeWorkingAssistant,
   platformIdxForAspect,
 } from "./studio-chat";
 
@@ -29,6 +30,16 @@ describe("enrichIntentWithFormat", () => {
   it("clamps carousel count to 2–5", () => {
     expect(enrichIntentWithFormat("promo", "carousel", 99)).toContain("slide 1 of 5");
     expect(enrichIntentWithFormat("promo", "carousel", 1)).toContain("slide 1 of 2");
+  });
+});
+
+describe("makeWorkingAssistant", () => {
+  it("starts with an honest preparation status", () => {
+    expect(makeWorkingAssistant({ format: "single" })).toMatchObject({
+      role: "assistant",
+      status: "working",
+      text: "Preparing your image…",
+    });
   });
 });
 

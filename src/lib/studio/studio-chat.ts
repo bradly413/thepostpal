@@ -47,7 +47,7 @@ export function makeWorkingAssistant(opts: {
   return {
     id: newChatId(),
     role: "assistant",
-    text: "Creating Images",
+    text: "Preparing your image…",
     status: "working",
     format: opts.format,
     carouselCount: opts.format === "carousel" ? opts.carouselCount : undefined,
