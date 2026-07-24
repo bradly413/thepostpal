@@ -838,6 +838,24 @@ export function StudioStyles() {
     object-fit: cover;
     vertical-align: middle;
   }
+  .pb-studio .studio-chat-image-card--button {
+    appearance: none;
+    display: block;
+    padding: 0;
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: zoom-in;
+    transition: box-shadow 180ms ease, transform 180ms ease;
+  }
+  .pb-studio .studio-chat-image-card--button:not(:disabled):hover {
+    transform: translateY(-2px);
+    box-shadow: 0 18px 42px -16px rgba(20, 20, 40, 0.55);
+  }
+  .pb-studio .studio-chat-image-card--button:focus-visible {
+    outline: 3px solid rgba(238, 37, 50, 0.72);
+    outline-offset: 3px;
+  }
   .pb-studio .studio-chat-image-card--error {
     display: flex;
     align-items: center;
@@ -2705,6 +2723,82 @@ export function StudioStyles() {
     mask-image: linear-gradient(to bottom, transparent 0, #000 36px);
   }
 
+  /* The generation timeline has one scroll owner. Historical turns flow above
+     a full-scrollport current stage, so the latest image keeps its existing
+     size while a normal upward scroll reveals every earlier generation. */
+  .pb-studio .canvas.is-chat-layout .studio-body {
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    scrollbar-gutter: stable;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(26, 26, 46, 0.28) transparent;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-body::-webkit-scrollbar {
+    width: 8px;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-body::-webkit-scrollbar-thumb {
+    border: 2px solid transparent;
+    border-radius: 999px;
+    background: rgba(26, 26, 46, 0.25);
+    background-clip: padding-box;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-body:focus-visible {
+    outline: 2px solid rgba(238, 37, 50, 0.55);
+    outline-offset: -3px;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread {
+    position: relative !important;
+    inset: auto !important;
+    flex: 0 0 auto;
+    width: 100%;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
+    padding: 24px 16px 32px;
+    pointer-events: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-chat-thread,
+  .pb-studio .canvas.is-chat-layout:has(.studio-coverflow) .studio-chat-thread,
+  .pb-studio .canvas.is-chat-layout:has(.frame-wrap.as-post) .studio-chat-thread {
+    height: auto !important;
+    max-height: none !important;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread[data-empty="true"] {
+    padding-block: 0;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread[data-empty="true"] .studio-chat-inner {
+    padding-bottom: 0;
+  }
+  .pb-studio .canvas.is-chat-layout .studio-stage {
+    flex: 0 0 100%;
+    width: 100%;
+    height: 100%;
+    min-height: 100%;
+  }
+  @media (max-width: 768px) {
+    /* The dashboard shell already reserves the fixed bottom navigation. Give
+       Studio a definite remaining viewport height so the full-stage history
+       panel scrolls internally instead of expanding the outer mobile page. */
+    .pb-studio {
+      height: calc(100dvh - 84px - env(safe-area-inset-bottom, 0px));
+      min-height: 0;
+    }
+    .pb-studio .app {
+      height: 100%;
+      min-height: 0;
+      padding: 8px;
+    }
+    .pb-studio .canvas.is-chat-layout {
+      height: 100% !important;
+      max-height: 100% !important;
+      min-height: 0 !important;
+    }
+  }
+
   /* ── Hero-size the creation (final say — retires the earlier compact caps:
         200px/28vh is-generating, 340px chat-layout, 320px result stage) ── */
   .pb-studio .frame-wrap.is-generating:not(.as-post),
@@ -2747,20 +2841,6 @@ export function StudioStyles() {
   }
 
   @media (min-width: 769px) {
-    /* The active result already owns the visual stage. Collapse the completed
-       chat band without removing its live log from assistive technology. */
-    .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-chat-thread {
-      position: absolute !important;
-      width: 1px !important;
-      height: 1px !important;
-      max-height: 1px !important;
-      margin: -1px !important;
-      padding: 0 !important;
-      overflow: hidden !important;
-      clip: rect(0 0 0 0) !important;
-      clip-path: inset(50%) !important;
-      white-space: nowrap !important;
-    }
     .pb-studio .canvas.is-chat-layout:has(.studio-result-stage) .studio-stage {
       padding-top: 4px;
       padding-bottom: 4px;

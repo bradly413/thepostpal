@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import type { StudioChatMessage } from "@/lib/studio/studio-chat";
 
 type Props = {
@@ -12,6 +12,12 @@ type Props = {
    * image; the thread uses this URL only to suppress its duplicate message card.
    */
   resultUrl?: string | null;
+  /** Opens a historical result without changing the active editor image. */
+  onPreviewImage?: (src: string, turnId: string) => void;
+  /** Historical turn currently shown in the preview dialog. */
+  previewTurnId?: string | null;
+  /** Keeps the parent timeline anchored after a cached image resolves its size. */
+  onHistoryImageLoad?: () => void;
   className?: string;
 };
 
@@ -21,14 +27,23 @@ function formatBadge(msg: Extract<StudioChatMessage, { role: "assistant" }>): st
   return `Carousel · ${n} slides`;
 }
 
-function scrollKey(messages: StudioChatMessage[]): string {
-  const last = messages[messages.length - 1];
-  if (!last) return "0";
-  if (last.role === "user") return `${messages.length}:${last.id}`;
-  return `${messages.length}:${last.id}:${last.status}`;
-}
-
-function ResultImage({ src, badge }: { src: string; badge?: string | null }) {
+function ResultImage({
+  src,
+  badge,
+  onPreview,
+  onLoad,
+  expanded = false,
+  turnId,
+  label,
+}: {
+  src: string;
+  badge?: string | null;
+  onPreview?: (src: string, turnId: string) => void;
+  onLoad?: () => void;
+  expanded?: boolean;
+  turnId: string;
+  label: string;
+}) {
   const [failed, setFailed] = useState(false);
   if (failed) {
     return (
@@ -38,11 +53,25 @@ function ResultImage({ src, badge }: { src: string; badge?: string | null }) {
     );
   }
   return (
-    <div className="studio-chat-image-card">
+    <button
+      type="button"
+      className="studio-chat-image-card studio-chat-image-card--button"
+      data-studio-history-image="true"
+      aria-label={label}
+      aria-haspopup="dialog"
+      aria-expanded={expanded}
+      onClick={() => onPreview?.(src, turnId)}
+      disabled={!onPreview}
+    >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={src} alt="Generated studio image" onError={() => setFailed(true)} />
+      <img
+        src={src}
+        alt="Previous generated studio image"
+        onLoad={onLoad}
+        onError={() => setFailed(true)}
+      />
       {badge ? <span className="studio-chat-format-badge on-image">{badge}</span> : null}
-    </div>
+    </button>
   );
 }
 
@@ -50,26 +79,32 @@ export default function StudioChatThread({
   messages,
   liveSlot,
   resultUrl = null,
+  onPreviewImage,
+  previewTurnId = null,
+  onHistoryImageLoad,
   className = "",
 }: Props) {
-  const endRef = useRef<HTMLDivElement>(null);
-  const scrollerRef = useRef<HTMLDivElement>(null);
-  const key = scrollKey(messages);
-
-  useEffect(() => {
-    const el = endRef.current;
-    if (!el) return;
-    const reduce =
-      typeof window !== "undefined" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "end" });
-  }, [key, resultUrl]);
-
   const lastAsst = [...messages].reverse().find((m) => m.role === "assistant");
+  const promptByAssistantId = new Map<string, string>();
+  const ordinalByAssistantId = new Map<string, number>();
+  let latestUserPrompt = "";
+  let imageOrdinal = 0;
+  for (const message of messages) {
+    if (message.role === "user") {
+      latestUserPrompt = message.text;
+      continue;
+    }
+    promptByAssistantId.set(message.id, latestUserPrompt);
+    if (message.status === "done" && message.imageUrl) {
+      imageOrdinal += 1;
+      ordinalByAssistantId.set(message.id, imageOrdinal);
+    }
+  }
   return (
     <div
-      ref={scrollerRef}
       className={`studio-chat-thread${className ? ` ${className}` : ""}`}
+      data-studio-history="session"
+      data-empty={messages.length === 0 && !liveSlot ? "true" : "false"}
       role="log"
       aria-live="polite"
       aria-relevant="additions"
@@ -85,12 +120,24 @@ export default function StudioChatThread({
           }
 
           const badge = formatBadge(msg);
-          // History cards for single posts only — carousel uses the coverflow stage.
+          const isCurrentCarousel =
+            msg.format === "carousel" &&
+            lastAsst?.id === msg.id &&
+            lastAsst.status === "done" &&
+            !resultUrl;
+          // The active single result is suppressed by URL; the active carousel
+          // is suppressed by turn while its coverflow owns the stage. Older
+          // carousel covers remain available in the upward history.
           const showCard =
             !!msg.imageUrl &&
             msg.status === "done" &&
-            msg.format !== "carousel" &&
-            !(resultUrl && msg.imageUrl === resultUrl);
+            !(resultUrl && msg.imageUrl === resultUrl) &&
+            !isCurrentCarousel;
+          const sourcePrompt = promptByAssistantId.get(msg.id)?.trim().slice(0, 90);
+          const ordinal = ordinalByAssistantId.get(msg.id) ?? 1;
+          const previewLabel = sourcePrompt
+            ? `Enlarge previous generation ${ordinal}: ${sourcePrompt}`
+            : `Enlarge previous generation ${ordinal}`;
           return (
             <div
               key={msg.id}
@@ -104,7 +151,17 @@ export default function StudioChatThread({
                   <span className="studio-chat-aspect-badge">{msg.aspect}</span>
                 ) : null}
               </div>
-              {showCard ? <ResultImage src={msg.imageUrl!} badge={badge} /> : null}
+              {showCard ? (
+                <ResultImage
+                  src={msg.imageUrl!}
+                  badge={badge}
+                  onPreview={onPreviewImage}
+                  onLoad={onHistoryImageLoad}
+                  expanded={previewTurnId === msg.id}
+                  turnId={msg.id}
+                  label={previewLabel}
+                />
+              ) : null}
             </div>
           );
         })}
@@ -115,7 +172,7 @@ export default function StudioChatThread({
         ) : null}
 
         {liveSlot ? <div className="studio-chat-live-slot">{liveSlot}</div> : null}
-        <div ref={endRef} className="studio-chat-end" aria-hidden />
+        <div className="studio-chat-end" aria-hidden />
       </div>
     </div>
   );

@@ -28,6 +28,7 @@ import {
   History,
   Clapperboard,
   Plus,
+  ArrowDown,
   Sparkles,
   Wand2 as EnhanceIcon,
   Image as ImageTabIcon,
@@ -136,6 +137,9 @@ type PostType = "photo" | "update" | "offer";
 type GenState = "idle" | "generating" | "done";
 type ComposerMode = "image" | "video";
 type MediaKind = "image" | "video";
+type StudioLightboxSelection =
+  | { src: string; kind: "current" }
+  | { src: string; kind: "history"; turnId: string };
 
 function buildPostCaption(body: string, tags: string, fallback: string): string {
   const combined = [body.trim(), tags.trim()].filter(Boolean).join(" ");
@@ -161,6 +165,15 @@ export default function PosterboyStudio() {
   const [genState, setGenState] = useState<GenState>("idle");
   const [generatedUrl, setGeneratedUrl] = useState<string | null>(null);
   const [imageLightboxOpen, setImageLightboxOpen] = useState(false);
+  const [lightboxSelection, setLightboxSelection] = useState<StudioLightboxSelection | null>(null);
+  const openCurrentImageLightbox = useCallback((src: string) => {
+    setLightboxSelection({ src, kind: "current" });
+    setImageLightboxOpen(true);
+  }, []);
+  const openHistoryImageLightbox = useCallback((src: string, turnId: string) => {
+    setLightboxSelection({ src, turnId, kind: "history" });
+    setImageLightboxOpen(true);
+  }, []);
   const closeImageLightbox = useCallback(() => setImageLightboxOpen(false), []);
   const [error, setError] = useState("");
   const [publishState, setPublishState] = useState<"idle" | "published">("idle");
@@ -522,9 +535,45 @@ export default function PosterboyStudio() {
   const promptToolsRef = useRef<HTMLDivElement>(null);
   const frameWrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLElement>(null);
+  const studioBodyRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const followLatestRef = useRef(true);
+  const previousChatLengthRef = useRef(0);
+  const [isAtLatest, setIsAtLatest] = useState(true);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
+
+  const updateStudioScrollPosition = useCallback(() => {
+    const body = studioBodyRef.current;
+    if (!body) return;
+    const distanceFromLatest = body.scrollHeight - body.clientHeight - body.scrollTop;
+    const atLatest = distanceFromLatest <= 96;
+    followLatestRef.current = atLatest;
+    setIsAtLatest((current) => (current === atLatest ? current : atLatest));
+    if (!atLatest) {
+      setActiveEdit(null);
+      setActiveTool(null);
+    }
+  }, []);
+
+  const scrollToLatest = useCallback((behavior: ScrollBehavior = "smooth") => {
+    const body = studioBodyRef.current;
+    if (!body) return;
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    body.scrollTo({
+      top: body.scrollHeight,
+      behavior: reduceMotion ? "auto" : behavior,
+    });
+    if (behavior === "auto" || reduceMotion) {
+      followLatestRef.current = true;
+      setIsAtLatest(true);
+    }
+  }, []);
+
+  const keepLatestAfterHistoryImageLoad = useCallback(() => {
+    if (!followLatestRef.current) return;
+    scrollToLatest("auto");
+  }, [scrollToLatest]);
 
   const platform = PLATFORMS[platformIdx];
 
@@ -1204,6 +1253,26 @@ export default function PosterboyStudio() {
     return () => ro.disconnect();
   }, []);
 
+  // The body is one timeline: earlier turns sit above a full-height latest
+  // stage. New turns jump to that stage, but status/image updates only keep
+  // following while the user has not deliberately scrolled into history.
+  useLayoutEffect(() => {
+    const messageCount = chatMessages.length;
+    const appendedTurn = messageCount > previousChatLengthRef.current;
+    previousChatLengthRef.current = messageCount;
+    if (messageCount === 0 && genState === "idle" && !generatedUrl) {
+      followLatestRef.current = true;
+      return;
+    }
+    if (!appendedTurn && !followLatestRef.current) return;
+
+    const frame = window.requestAnimationFrame(() => {
+      if (!appendedTurn && !followLatestRef.current) return;
+      scrollToLatest("auto");
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [chatMessages, genState, generatedUrl, scrollToLatest]);
+
   // Close the post-type popover on outside click (lives in the right rail).
   useEffect(() => {
     if (!activeTool) return;
@@ -1719,7 +1788,7 @@ export default function PosterboyStudio() {
               {/* Mode switching lives in the composer head tabs now. */}
             </div>
 
-            {genState === "done" ? (
+            {genState === "done" && isAtLatest ? (
               <div className="top-actions" role="group" aria-label="Post actions">
                 {mediaKind === "image" ? (
                   <button
@@ -1769,6 +1838,18 @@ export default function PosterboyStudio() {
                   </button>
                 ) : null}
               </div>
+            ) : genState === "done" ? (
+              <div className="top-actions">
+                <button
+                  type="button"
+                  className="preview-toggle"
+                  onClick={() => scrollToLatest()}
+                  title={`Return to the latest ${mediaKind}`}
+                >
+                  <ArrowDown size={15} />
+                  <span>{mediaKind === "video" ? "Latest video" : "Latest image"}</span>
+                </button>
+              </div>
             ) : null}
 
             <div className="top-toggles">
@@ -1803,7 +1884,15 @@ export default function PosterboyStudio() {
             </div>
           </div>
 
-          <div className="studio-body">
+          <div
+            className="studio-body"
+            ref={studioBodyRef}
+            data-studio-generation-feed="true"
+            role="region"
+            aria-label="Studio generations and current result"
+            tabIndex={0}
+            onScroll={updateStudioScrollPosition}
+          >
           <StudioChatThread
             messages={chatMessages}
             resultUrl={
@@ -1813,6 +1902,13 @@ export default function PosterboyStudio() {
                 ? generatedUrl
                 : null
             }
+            onPreviewImage={openHistoryImageLightbox}
+            previewTurnId={
+              imageLightboxOpen && lightboxSelection?.kind === "history"
+                ? lightboxSelection.turnId
+                : null
+            }
+            onHistoryImageLoad={keepLatestAfterHistoryImageLoad}
           />
 
           <div className="studio-stage" ref={stageRef}>
@@ -1843,9 +1939,9 @@ export default function PosterboyStudio() {
                 className="studio-result-zoom-trigger"
                 aria-label="Enlarge generated image"
                 aria-haspopup="dialog"
-                aria-expanded={imageLightboxOpen}
+                aria-expanded={imageLightboxOpen && lightboxSelection?.kind === "current"}
                 disabled={videoBusy}
-                onClick={() => setImageLightboxOpen(true)}
+                onClick={() => openCurrentImageLightbox(generatedUrl)}
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -2057,7 +2153,7 @@ export default function PosterboyStudio() {
           </div>{/* /.studio-body */}
 
           {/* Image edit tools */}
-          {genState === "done" && !showTemplate && (
+          {genState === "done" && !showTemplate && isAtLatest && (
             <div className="tool-rail edit-rail" ref={editRailRef}>
               <div className="rail-item">
                 <button
@@ -2780,14 +2876,18 @@ export default function PosterboyStudio() {
 
       </div>
 
-      {generatedUrl && mediaKind === "image" ? (
+      {lightboxSelection || (generatedUrl && mediaKind === "image") ? (
         <StudioImageLightbox
           open={imageLightboxOpen}
-          src={generatedUrl}
-          imageStyle={{
-            transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
-            filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
-          }}
+          src={lightboxSelection?.src || generatedUrl!}
+          imageStyle={
+            lightboxSelection?.kind !== "history"
+              ? {
+                  transform: `translate(${edit.x}%, ${edit.y}%) scale(${edit.scale}) rotate(${edit.rotate}deg)`,
+                  filter: `brightness(${edit.brightness}%) contrast(${edit.contrast}%) saturate(${edit.saturate}%)`,
+                }
+              : undefined
+          }
           onClose={closeImageLightbox}
         />
       ) : null}
