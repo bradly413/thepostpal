@@ -102,6 +102,7 @@ model Organization {
   subscriptions     Subscription[]
   analytics         AnalyticsSnapshot[]
   metaAdAccounts    MetaAdAccount[]
+  studioMessages    StudioMessage[]
 }
 
 model User {
@@ -117,6 +118,7 @@ model User {
   submittedApprovals  PostApproval[]       @relation("SubmittedApprovals")
   reviewedApprovals   PostApproval[]       @relation("ReviewedApprovals")
   approvalEvents      ApprovalEvent[]
+  studioMessages      StudioMessage[]
 
   @@index([organizationId])
 }
@@ -160,6 +162,7 @@ model Location {
   analytics         AnalyticsSnapshot[]
   knowledgeEntries  KnowledgeBaseEntry[]
   metaAdAccounts    MetaAdAccount[]
+  studioMessages    StudioMessage[]
 
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @updatedAt
@@ -370,6 +373,33 @@ model PhotoAsset {
 
   @@index([organizationId])
   @@index([locationId])
+}
+
+model StudioMessage {
+  id             String       @id @default(cuid())
+  organizationId String
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  locationId     String
+  location       Location     @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  clientId       String
+  role           String
+  text           String
+  status         String?
+  mediaUrl       String?
+  mediaUrls      Json?
+  mediaType      String?
+  aspect         String?
+  format         String?
+  carouselCount  Int?
+  sentAt         DateTime
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  @@unique([locationId, userId, clientId])
+  @@index([organizationId, locationId, sentAt])
+  @@index([userId, locationId, sentAt])
 }
 
 model CalendarEvent {

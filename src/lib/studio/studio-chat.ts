@@ -17,6 +17,8 @@ export type StudioChatAssistantMessage = {
   text: string;
   status: "working" | "done" | "error";
   imageUrl?: string | null;
+  mediaUrls?: string[];
+  mediaType?: "image" | "video";
   aspect?: StudioChatAspect | string;
   format: StudioPostFormat;
   carouselCount?: number;
@@ -43,12 +45,14 @@ export function makeWorkingAssistant(opts: {
   format: StudioPostFormat;
   carouselCount?: number;
   aspect?: string;
+  mediaType?: "image" | "video";
 }): StudioChatAssistantMessage {
   return {
     id: newChatId(),
     role: "assistant",
-    text: "Preparing your image…",
+    text: opts.mediaType === "video" ? "Preparing your video…" : "Preparing your image…",
     status: "working",
+    mediaType: opts.mediaType ?? "image",
     format: opts.format,
     carouselCount: opts.format === "carousel" ? opts.carouselCount : undefined,
     aspect: opts.aspect,

@@ -450,6 +450,9 @@ export function StudioStyles() {
   .pb-studio .studio-chat-thread .studio-chat-inner,
   .pb-studio .studio-chat-thread .studio-chat-bubble,
   .pb-studio .studio-chat-thread .studio-chat-image-card,
+  .pb-studio .studio-chat-thread .studio-chat-video-card,
+  .pb-studio .studio-chat-thread .studio-chat-carousel-card,
+  .pb-studio .studio-chat-thread .studio-chat-load-earlier,
   .pb-studio .studio-chat-thread .studio-chat-msg-asst {
     pointer-events: auto;
   }
@@ -876,6 +879,83 @@ export function StudioStyles() {
     bottom: 8px;
     margin: 0;
     background: rgba(255, 255, 255, 0.9);
+  }
+  .pb-studio .studio-chat-video-card {
+    width: min(460px, 82vw);
+    overflow: hidden;
+    border: 1px solid rgba(255, 255, 255, 0.72);
+    border-radius: 14px;
+    background: #090a0f;
+    box-shadow: 0 12px 32px -16px rgba(20, 20, 40, 0.48);
+  }
+  .pb-studio .studio-chat-video-card video {
+    display: block;
+    width: 100%;
+    max-height: 520px;
+    background: #090a0f;
+    object-fit: contain;
+  }
+  .pb-studio .studio-chat-carousel-card {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+    width: min(560px, 88vw);
+  }
+  .pb-studio .studio-chat-carousel-card .studio-chat-image-card {
+    width: 100%;
+    min-height: 0;
+    border-radius: 10px;
+  }
+  .pb-studio .studio-chat-carousel-card .studio-chat-image-card img {
+    min-height: 0;
+    aspect-ratio: 4 / 5;
+    object-fit: cover;
+  }
+  .pb-studio .studio-chat-load-earlier {
+    align-self: center;
+    min-height: 38px;
+    padding: 8px 14px;
+    border: 1px solid rgba(26, 26, 46, 0.12);
+    border-radius: 999px;
+    background: rgba(255, 255, 255, 0.84);
+    color: rgba(26, 26, 46, 0.76);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 650;
+    cursor: pointer;
+    box-shadow: 0 8px 20px -16px rgba(20, 20, 40, 0.45);
+  }
+  .pb-studio .studio-chat-load-earlier:disabled {
+    cursor: wait;
+    opacity: 0.62;
+  }
+  .pb-studio .studio-chat-history-status {
+    align-self: center;
+    margin: 0;
+    color: rgba(26, 26, 46, 0.48);
+    font-size: 12px;
+  }
+  .pb-studio .studio-chat-history-error,
+  .pb-studio .studio-chat-sync-error {
+    align-self: center;
+    margin: 0;
+    color: #a61e28;
+    font-size: 12px;
+    text-align: center;
+  }
+  .pb-studio .studio-chat-history-error {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .pb-studio .studio-chat-history-error button {
+    border: 0;
+    background: transparent;
+    color: #d51f2c;
+    font: inherit;
+    font-weight: 700;
+    text-decoration: underline;
+    cursor: pointer;
   }
   .pb-studio .studio-recent-prompts {
     display: flex;
@@ -2439,6 +2519,9 @@ export function StudioStyles() {
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-inner,
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-bubble,
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-image-card,
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-video-card,
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-carousel-card,
+  .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-load-earlier,
   .pb-studio .canvas.is-chat-layout .studio-chat-thread .studio-chat-msg-asst {
     pointer-events: auto;
   }

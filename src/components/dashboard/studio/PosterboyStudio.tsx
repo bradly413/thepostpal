@@ -58,6 +58,7 @@ import { StudioStyles } from "./studio-styles";
 import { useGenHistory } from "./hooks/use-gen-history";
 import { EDIT_DEFAULT, useImageEdit } from "./hooks/use-image-edit";
 import { resizeToExact, useStudioGeneration } from "./hooks/use-studio-generation";
+import { useStudioChatPersistence } from "./hooks/use-studio-chat-persistence";
 import { STUDIO_IMAGE_WATCHDOG_MS } from "@/lib/studio/image-generation-budget";
 import {
   studioImageQualityLabel,
@@ -556,7 +557,7 @@ export default function PosterboyStudio() {
   const studioBodyRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
   const followLatestRef = useRef(true);
-  const previousChatLengthRef = useRef(0);
+  const previousLastChatIdRef = useRef<string | null>(null);
   const [isAtLatest, setIsAtLatest] = useState(true);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [stageSize, setStageSize] = useState({ w: 0, h: 0 });
@@ -798,6 +799,94 @@ export default function PosterboyStudio() {
     setCarouselSelected(0);
   }, []);
 
+  const restoreLatestStudioTurn = (messages: StudioChatMessage[]) => {
+    pendingAssistantIdRef.current = null;
+    pendingPromptMemoryRef.current = null;
+    composeInFlightRef.current = false;
+    setError("");
+    setSoftNotice("");
+    setCaptionState("idle");
+    setActiveEdit(null);
+    setEdit(EDIT_DEFAULT);
+
+    const latest = [...messages]
+      .reverse()
+      .find(
+        (message) =>
+          message.role === "assistant" &&
+          message.status === "done" &&
+          Boolean(message.imageUrl),
+      );
+    if (!latest || latest.role !== "assistant" || !latest.imageUrl) {
+      clearCarousel();
+      setGeneratedUrl(null);
+      setGenState("idle");
+      setShowTemplate(false);
+      return;
+    }
+
+    const restoredAspect = STUDIO_ASPECT_OPTIONS.find(
+      (aspect) => aspect === latest.aspect,
+    );
+    setAspectOverride(restoredAspect ?? null);
+    if (restoredAspect) {
+      setPlatformIdx(platformIdxForAspect(restoredAspect, PLATFORMS));
+    }
+
+    const restoredMediaType = latest.mediaType === "video" ? "video" : "image";
+    setMediaKind(restoredMediaType);
+    setComposerMode(restoredMediaType);
+    setPostFormat(latest.format);
+    setGenState("done");
+    setCaptionState("idle");
+    setShowTemplate(restoredMediaType === "video");
+
+    if (latest.format === "carousel" && restoredMediaType === "image") {
+      clearCarousel();
+      const slides = [
+        ...new Set(
+          [latest.imageUrl, ...(latest.mediaUrls ?? [])].filter(
+            (url): url is string => Boolean(url),
+          ),
+        ),
+      ];
+      setCarouselCount(latest.carouselCount ?? Math.max(2, slides.length));
+      setCarouselSlides(slides);
+      setCarouselSelected(0);
+      setGeneratedUrl(slides[0] ?? latest.imageUrl);
+    } else {
+      clearCarousel();
+      setGeneratedUrl(latest.imageUrl);
+    }
+  };
+
+  const {
+    loadingInitial: loadingStudioHistory,
+    loadingEarlier: loadingEarlierStudioHistory,
+    hasEarlier: hasEarlierStudioHistory,
+    loadError: studioHistoryError,
+    syncError: studioHistorySyncError,
+    loadEarlier: loadEarlierStudioHistory,
+    retryInitial: retryStudioHistory,
+  } = useStudioChatPersistence({
+    locationId,
+    messages: chatMessages,
+    setMessages: setChatMessages,
+    onRestoreLatest: restoreLatestStudioTurn,
+  });
+
+  const loadEarlierStudioHistoryKeepingPosition = useCallback(async () => {
+    const body = studioBodyRef.current;
+    const beforeHeight = body?.scrollHeight ?? 0;
+    const beforeTop = body?.scrollTop ?? 0;
+    const loaded = await loadEarlierStudioHistory();
+    if (!loaded || !body) return;
+    window.requestAnimationFrame(() => {
+      body.scrollTop = beforeTop + (body.scrollHeight - beforeHeight);
+      updateStudioScrollPosition();
+    });
+  }, [loadEarlierStudioHistory, updateStudioScrollPosition]);
+
   const selectCarouselSlide = useCallback(
     (index: number) => {
       setCarouselSelected(index);
@@ -811,7 +900,7 @@ export default function PosterboyStudio() {
   );
 
   const fillCarouselSlides = useCallback(
-    async (heroUrl: string, intent: string, count: number) => {
+    async (heroUrl: string, intent: string, count: number, assistantId: string) => {
       carouselFillAbortRef.current?.abort();
       const ctrl = new AbortController();
       carouselFillAbortRef.current = ctrl;
@@ -854,6 +943,18 @@ export default function PosterboyStudio() {
               next[i] = url;
               return next;
             });
+            setChatMessages((prev) =>
+              prev.map((message) => {
+                if (message.id !== assistantId || message.role !== "assistant") {
+                  return message;
+                }
+                const nextUrls = [
+                  ...(message.mediaUrls?.length ? message.mediaUrls : [heroUrl]),
+                ];
+                nextUrls[i] = url;
+                return { ...message, mediaUrls: nextUrls.filter(Boolean) };
+              }),
+            );
             pushHistory(url, `Carousel slide ${i + 1}/${n}`);
           }
         } catch (err) {
@@ -863,18 +964,16 @@ export default function PosterboyStudio() {
 
       if (ctrl.signal.aborted || runId !== carouselRunIdRef.current) return;
       setSoftNotice("");
-      setChatMessages((prev) => {
-        const last = [...prev].reverse().find((m) => m.role === "assistant" && m.status === "done");
-        if (!last || last.role !== "assistant") return prev;
-        return prev.map((m) =>
-          m.id === last.id && m.role === "assistant"
+      setChatMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId && m.role === "assistant"
             ? {
                 ...m,
                 text: `Here’s your ${n}-slide carousel — use Prev / Next to browse.`,
               }
             : m,
-        );
-      });
+        ),
+      );
     },
     [
       businessType,
@@ -906,6 +1005,8 @@ export default function PosterboyStudio() {
                   : "Here’s your image.",
               aspect: effectiveAspect,
               imageUrl: generatedUrl,
+              mediaUrls: [generatedUrl],
+              mediaType: "image" as const,
             }
           : m,
       ),
@@ -925,7 +1026,7 @@ export default function PosterboyStudio() {
         composerBrief.trim() ||
         prompt.trim() ||
         "Instagram carousel";
-      void fillCarouselSlides(generatedUrl, intent, countForTurn ?? 3);
+      void fillCarouselSlides(generatedUrl, intent, countForTurn ?? 3, aid);
     } else {
       clearCarousel();
     }
@@ -1376,10 +1477,11 @@ export default function PosterboyStudio() {
   // stage. New turns jump to that stage, but status/image updates only keep
   // following while the user has not deliberately scrolled into history.
   useLayoutEffect(() => {
-    const messageCount = chatMessages.length;
-    const appendedTurn = messageCount > previousChatLengthRef.current;
-    previousChatLengthRef.current = messageCount;
-    if (messageCount === 0 && genState === "idle" && !generatedUrl) {
+    const lastMessageId = chatMessages[chatMessages.length - 1]?.id ?? null;
+    const appendedTurn =
+      lastMessageId != null && lastMessageId !== previousLastChatIdRef.current;
+    previousLastChatIdRef.current = lastMessageId;
+    if (chatMessages.length === 0 && genState === "idle" && !generatedUrl) {
       followLatestRef.current = true;
       return;
     }
@@ -1585,17 +1687,56 @@ export default function PosterboyStudio() {
     if (!captionText.trim()) void generateCaption();
   };
 
-  const handleVideoReady = (url: string) => {
+  const handleVideoReady = useCallback((url: string) => {
     setImageLightboxOpen(false);
     setGeneratedUrl(url);
     setMediaKind("video");
     setComposerMode("video");
+    setPostFormat("single");
+    clearCarousel();
     setGenState("done");
     setShowTemplate(true);
     setCaptionState("idle");
     setVideoBusy(false);
     setVideoStatusText("");
-  };
+  }, [
+    clearCarousel,
+    setCaptionState,
+    setComposerMode,
+    setGenState,
+    setGeneratedUrl,
+    setImageLightboxOpen,
+    setMediaKind,
+    setPostFormat,
+    setShowTemplate,
+    setVideoBusy,
+    setVideoStatusText,
+  ]);
+
+  const handleComposerVideoReady = useCallback(
+    (url: string, details?: { prompt?: string }) => {
+      handleVideoReady(url);
+      const promptText = details?.prompt?.trim();
+      const assistant = makeWorkingAssistant({
+        format: "single",
+        aspect: effectiveAspect,
+        mediaType: "video",
+      });
+      const completed: StudioChatMessage = {
+        ...assistant,
+        status: "done",
+        text: promptText ? "Here’s your video." : "Video added to Studio.",
+        imageUrl: url,
+        mediaUrls: [url],
+      };
+      setChatMessages((prev) => [
+        ...prev,
+        ...(promptText ? [makeUserMessage(promptText)] : []),
+        completed,
+      ]);
+    },
+    [effectiveAspect, handleVideoReady],
+  );
 
   const stopVideoJob = useCallback(() => {
     videoAbortRef.current?.abort();
@@ -1605,14 +1746,36 @@ export default function PosterboyStudio() {
   }, []);
 
   const runVeo = useCallback(
-    async (opts: { prompt: string; image?: string | null }) => {
+    async (opts: {
+      prompt: string;
+      image?: string | null;
+      assistantId?: string;
+    }) => {
       const brief = opts.prompt.trim();
       if (!brief) {
         setError("Describe the video you want.");
+        if (opts.assistantId) {
+          setChatMessages((prev) =>
+            prev.map((message) =>
+              message.id === opts.assistantId && message.role === "assistant"
+                ? { ...message, status: "error" as const, text: "Describe the video you want." }
+                : message,
+            ),
+          );
+        }
         return;
       }
       if (!canUseProImage) {
         setError("Video is a Pro feature.");
+        if (opts.assistantId) {
+          setChatMessages((prev) =>
+            prev.map((message) =>
+              message.id === opts.assistantId && message.role === "assistant"
+                ? { ...message, status: "error" as const, text: "Video is a Pro feature." }
+                : message,
+            ),
+          );
+        }
         return;
       }
       stopVideoJob();
@@ -1643,22 +1806,64 @@ export default function PosterboyStudio() {
         });
         handleVideoReady(videoUrl);
         pushHistory(videoUrl, brief);
+        if (opts.assistantId) {
+          setChatMessages((prev) =>
+            prev.map((message) =>
+              message.id === opts.assistantId && message.role === "assistant"
+                ? {
+                    ...message,
+                    status: "done" as const,
+                    text: "Here’s your video.",
+                    imageUrl: videoUrl,
+                    mediaUrls: [videoUrl],
+                    mediaType: "video" as const,
+                    aspect: effectiveAspect,
+                    format: "single" as const,
+                  }
+                : message,
+            ),
+          );
+        }
       } catch (err) {
         if (err instanceof DOMException && err.name === "AbortError") {
           setGenState(generatedUrl && mediaKind === "image" ? "done" : "idle");
+          if (opts.assistantId) {
+            setChatMessages((prev) =>
+              prev.map((message) =>
+                message.id === opts.assistantId && message.role === "assistant"
+                  ? { ...message, status: "error" as const, text: "Canceled." }
+                  : message,
+              ),
+            );
+          }
           return;
         }
-        setError(err instanceof Error ? err.message : "Video generation failed.");
+        const message = err instanceof Error ? err.message : "Video generation failed.";
+        setError(message);
+        if (opts.assistantId) {
+          setChatMessages((prev) =>
+            prev.map((item) =>
+              item.id === opts.assistantId && item.role === "assistant"
+                ? { ...item, status: "error" as const, text: message }
+                : item,
+            ),
+          );
+        }
         setGenState(generatedUrl && mediaKind === "image" ? "done" : "idle");
         setVideoBusy(false);
         setVideoStatusText("");
       } finally {
-        videoAbortRef.current = null;
+        if (videoAbortRef.current === ctrl) videoAbortRef.current = null;
+        if (pendingAssistantIdRef.current === opts.assistantId) {
+          pendingAssistantIdRef.current = null;
+        }
       }
     },
     [
       canUseProImage,
+      effectiveAspect,
       generatedUrl,
+      handleVideoReady,
       mediaKind,
       platform.id,
       pushHistory,
@@ -1666,12 +1871,60 @@ export default function PosterboyStudio() {
     ],
   );
 
+  const runVideoChatTurn = useCallback(
+    (opts: { prompt: string; image?: string | null }) => {
+      const brief = opts.prompt.trim();
+      if (!brief) {
+        setError("Describe the video you want.");
+        return;
+      }
+      if (!canUseProImage) {
+        setError("Video is a Pro feature.");
+        return;
+      }
+      const user = makeUserMessage(brief);
+      const assistant = makeWorkingAssistant({
+        format: "single",
+        aspect: effectiveAspect,
+        mediaType: "video",
+      });
+      pendingAssistantIdRef.current = assistant.id;
+      setPostFormat("single");
+      clearCarousel();
+      setChatMessages((prev) => [...prev, user, assistant]);
+      void runVeo({ ...opts, prompt: brief, assistantId: assistant.id });
+    },
+    [canUseProImage, clearCarousel, effectiveAspect, runVeo],
+  );
+
+  const cancelActiveVideoGeneration = useCallback(() => {
+    const assistantId = pendingAssistantIdRef.current;
+    stopVideoJob();
+    setGenState(generatedUrl && mediaKind === "image" ? "done" : "idle");
+    if (!assistantId) return;
+    setChatMessages((prev) =>
+      prev.map((message) =>
+        message.id === assistantId && message.role === "assistant"
+          ? { ...message, status: "error" as const, text: "Canceled." }
+          : message,
+      ),
+    );
+    pendingAssistantIdRef.current = null;
+  }, [generatedUrl, mediaKind, stopVideoJob]);
+
   const animateCurrentImage = useCallback(() => {
     if (!generatedUrl || mediaKind !== "image") return;
     const brief =
       (composerBrief || prompt || lastGenPrompt || "Subtle cinematic motion, natural light").trim();
-    void runVeo({ prompt: brief, image: generatedUrl });
-  }, [composerBrief, generatedUrl, lastGenPrompt, mediaKind, prompt, runVeo]);
+    runVideoChatTurn({ prompt: brief, image: generatedUrl });
+  }, [
+    composerBrief,
+    generatedUrl,
+    lastGenPrompt,
+    mediaKind,
+    prompt,
+    runVideoChatTurn,
+  ]);
 
   const requestVideoMode = useCallback(() => {
     if (composerMode === "video") return;
@@ -2032,10 +2285,16 @@ export default function PosterboyStudio() {
           >
           <StudioChatThread
             messages={chatMessages}
+            loadingInitial={loadingStudioHistory}
+            loadingEarlier={loadingEarlierStudioHistory}
+            hasEarlier={hasEarlierStudioHistory}
+            historyError={studioHistoryError}
+            syncError={studioHistorySyncError}
+            onLoadEarlier={() => void loadEarlierStudioHistoryKeepingPosition()}
+            onRetryHistory={() => void retryStudioHistory()}
             resultUrl={
               genState === "done" &&
-              mediaKind === "image" &&
-              postFormat !== "carousel"
+              (mediaKind === "video" || postFormat !== "carousel")
                 ? generatedUrl
                 : null
             }
@@ -2195,7 +2454,7 @@ export default function PosterboyStudio() {
             ) : composerMode === "video" && genState === "idle" && !videoBusy ? (
               <div className="studio-video-compose">
                 <VideoComposer
-                  onComplete={handleVideoReady}
+                  onComplete={handleComposerVideoReady}
                   onError={(msg) => setError(msg)}
                   aspectHint={veoAspectForPlatform(platform.id)}
                 />
@@ -2249,7 +2508,7 @@ export default function PosterboyStudio() {
                       <button
                         type="button"
                         className="studio-video-cancel"
-                        onClick={stopVideoJob}
+                        onClick={cancelActiveVideoGeneration}
                       >
                         Cancel
                       </button>
@@ -2935,7 +3194,7 @@ export default function PosterboyStudio() {
                             if (hasVariants) rotateCaption();
                             else startCaptionGeneration();
                           } else if (composerMode === "video") {
-                            void runVeo({ prompt: composerBrief });
+                            runVideoChatTurn({ prompt: composerBrief });
                           } else if (composerBrief) {
                             void runComposeFromIntent();
                           } else if (lastGenPrompt) {

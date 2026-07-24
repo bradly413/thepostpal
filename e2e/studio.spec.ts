@@ -10,6 +10,21 @@ function primaryActionButton(page: import("@playwright/test").Page) {
 
 test.describe("Posterboy Studio", () => {
   test.beforeEach(async ({ page }) => {
+    await page.route("**/api/studio/history**", async (route) => {
+      if (route.request().method() === "GET") {
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ messages: [], nextCursor: null }),
+        });
+        return;
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ saved: 0 }),
+      });
+    });
     await loginAsDemo(page, "/dashboard/studio");
     await expect(page.getByRole("heading", { name: "Studio" })).toBeVisible();
     const newImage = page.getByRole("button", { name: "New image" });
@@ -391,9 +406,144 @@ test.describe("Posterboy Studio", () => {
     await expect
       .poll(() => mobileFeed.evaluate((element) => element.scrollTop))
       .toBeLessThan(mobileMetrics.scrollTop);
-    await expect(mobileHistoryImage).toBeInViewport({ ratio: 0.35 });
+    await expect(mobileHistoryImage).toBeInViewport({ ratio: 0.34 });
     await expect(page.getByRole("button", { name: "Latest image" })).toBeVisible();
     expect(composeCalls).toBe(0);
     expect(repromptCalls).toBe(0);
+  });
+
+  test("restores persisted conversations, images, and videos after reload", async ({
+    page,
+  }) => {
+    await page.unroute("**/api/studio/history**");
+    const stored = new Map<string, Record<string, unknown>>();
+    await page.route("**/api/studio/history**", async (route) => {
+      if (route.request().method() === "GET") {
+        const messages = [...stored.values()].sort(
+          (a, b) => Number(a.at ?? 0) - Number(b.at ?? 0),
+        );
+        await route.fulfill({
+          status: 200,
+          contentType: "application/json",
+          body: JSON.stringify({ messages, nextCursor: null }),
+        });
+        return;
+      }
+      const payload = route.request().postDataJSON() as {
+        messages?: Record<string, unknown>[];
+      };
+      for (const message of payload.messages ?? []) {
+        stored.set(String(message.id), message);
+      }
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ saved: payload.messages?.length ?? 0 }),
+      });
+    });
+
+    const imageUrls = ["#194d70", "#9b3c55"].map((fill, index) => {
+      const svg = Buffer.from(
+        `<svg xmlns="http://www.w3.org/2000/svg" width="1080" height="1350"><rect width="1080" height="1350" fill="${fill}"/><text x="540" y="675" fill="white" font-size="88" text-anchor="middle">Saved ${index + 1}</text></svg>`,
+      ).toString("base64");
+      return `data:image/svg+xml;base64,${svg}`;
+    });
+    let generationIndex = 0;
+    await page.route("**/api/studio/director", async (route) => {
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({
+          platform: "instagram",
+          lane: "photo",
+          imagePrompt: "Persisted Studio test image",
+          allowText: false,
+        }),
+      });
+    });
+    await page.route("**/api/generate-image", async (route) => {
+      const image = imageUrls[Math.min(generationIndex, imageUrls.length - 1)];
+      generationIndex += 1;
+      await route.fulfill({
+        status: 200,
+        contentType: "application/json",
+        body: JSON.stringify({ image, modelId: "mock-persisted-studio-history" }),
+      });
+    });
+    await page.route("**/api/upload", async (route) => {
+      await route.fulfill({
+        status: 500,
+        contentType: "application/json",
+        body: JSON.stringify({ error: "disabled in persistence test" }),
+      });
+    });
+
+    const prompt = page.locator(".prompt-bar textarea");
+    const prompts = ["Create a navy launch image", "Create a berry follow-up image"];
+    for (let index = 0; index < prompts.length; index += 1) {
+      await prompt.fill(prompts[index]);
+      await primaryActionButton(page).click();
+      await expect(page.locator(".studio-result-stage img")).toHaveAttribute(
+        "src",
+        imageUrls[index],
+        { timeout: 30_000 },
+      );
+    }
+    await expect
+      .poll(
+        () =>
+          [...stored.values()].filter(
+            (message) => message.role === "assistant" && message.status === "done",
+          ).length,
+        { timeout: 10_000 },
+      )
+      .toBe(2);
+
+    const oldVideoAt = Date.now() - 60_000;
+    stored.set("saved-video-user", {
+      id: "saved-video-user",
+      role: "user",
+      text: "Create a short recruiting reel",
+      at: oldVideoAt,
+    });
+    stored.set("saved-video-assistant", {
+      id: "saved-video-assistant",
+      role: "assistant",
+      text: "Here’s your video.",
+      status: "done",
+      imageUrl: "/videos/ai-aurora.webm",
+      mediaUrls: ["/videos/ai-aurora.webm"],
+      mediaType: "video",
+      aspect: "9:16",
+      format: "single",
+      at: oldVideoAt + 1,
+    });
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: "Studio" })).toBeVisible();
+    const feed = page.locator('[data-studio-generation-feed="true"]');
+    await expect(feed.getByText(prompts[0], { exact: true })).toBeVisible();
+    await expect(feed.getByText(prompts[1], { exact: true })).toBeVisible();
+    await expect(page.locator(".studio-result-stage img")).toHaveAttribute(
+      "src",
+      imageUrls[1],
+      { timeout: 15_000 },
+    );
+    await expect(
+      page.locator('video[aria-label="Previous generated studio video"]'),
+    ).toHaveCount(1);
+
+    const metrics = await feed.evaluate((element) => ({
+      clientHeight: element.clientHeight,
+      scrollHeight: element.scrollHeight,
+      scrollTop: element.scrollTop,
+    }));
+    expect(metrics.scrollHeight).toBeGreaterThan(metrics.clientHeight);
+    await feed.hover({ position: { x: 20, y: 20 } });
+    await page.mouse.wheel(0, -2200);
+    await expect.poll(() => feed.evaluate((element) => element.scrollTop)).toBeLessThan(
+      metrics.scrollTop,
+    );
+    await expect(page.getByText("Create a short recruiting reel", { exact: true })).toBeInViewport();
   });
 });

@@ -16,7 +16,7 @@ const ASPECT_DIMS: Record<VideoAspectPreset, { w: number; h: number }> = {
 };
 
 interface Props {
-  onComplete: (publicUrl: string) => void;
+  onComplete: (publicUrl: string, details?: { prompt?: string }) => void;
   onError: (message: string) => void;
   initialUrl?: string | null;
   /** Veo aspect for AI generation (upload export can still use other presets). */
@@ -206,7 +206,7 @@ export default function VideoComposer({
           }
         },
       });
-      onComplete(videoUrl);
+      onComplete(videoUrl, { prompt: brief });
     } catch (err) {
       if (!(err instanceof DOMException && err.name === "AbortError")) {
         onError(err instanceof Error ? err.message : "Video generation failed.");
